@@ -1,0 +1,90 @@
+/* BR design kit — tokens.
+   Source of truth: benryan.com.au app/globals.css (@theme, :root, .dark), copied 2026-10-19.
+
+   Dark mode: the site toggles a `.dark` class on <html>. This kit also follows the OS
+   preference when no class is set, and `.light` forces light. Pick one mechanism per app. */
+
+:root {
+  /* ── Palette ─────────────────────────────────────────────────────────── */
+  --color-base-100: #f9fafb; /* off-white: dominant backgrounds */
+  --color-base-200: #e5e7eb; /* light grey: borders, secondary bg */
+  --color-base-300: #6b7280; /* mid grey: muted text (light theme only) */
+  --color-base-400: #0d0d0d; /* near-black: primary text, dark surfaces */
+  --color-base-500: #ff6e14; /* orange: accent. Use sparingly. */
+
+  --color-accent-1: #1e3a5f; /* deep navy */
+  --color-accent-2: #334155; /* slate */
+  --color-accent-3: #475569; /* grey-blue */
+  --color-accent-4: #0f766e; /* teal */
+  --color-accent-5: #1d4ed8; /* blue */
+
+  /* ── Type ────────────────────────────────────────────────────────────── */
+  --font-display: "Atkinson Hyperlegible Next", Arial, sans-serif; /* h1–h3, buttons */
+  --font-body: "Inter", Arial, sans-serif; /* body, h4, card titles */
+  --font-mono: "Geist Mono", ui-monospace, monospace; /* labels, data, addresses */
+
+  /* ── Layout ──────────────────────────────────────────────────────────── */
+  --content-width: 65%; /* readable column, as a % of .container */
+  --measure: 60ch; /* max prose line length */
+  --measure-lede: 46ch; /* max lede line length (p.lg) */
+
+  /* Spacing: 0.25rem grid. Above 3rem, write page-band rhythm as literals (3.5–7rem). */
+  --space-3xs: 0.25rem;
+  --space-2xs: 0.5rem;
+  --space-xs: 0.75rem;
+  --space-sm: 1rem;
+  --space-md: 1.25rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 2.5rem;
+  --space-3xl: 3rem;
+
+  /* Mono uppercase micro-label ("SCORE", "BAND", tags) */
+  --label-size: 0.7rem;
+  --label-track: 0.1rem;
+
+  /* ── Semantic: light ─────────────────────────────────────────────────── */
+  --bg-page: #f9fafb;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #ffffff;
+  --text-primary: #0d0d0d;
+  --text-secondary: #6b7280;
+  --text-on-dark: #f9fafb; /* text on surfaces that are dark in BOTH themes */
+  --text-muted-on-dark: #9ca3af; /* muted text on those surfaces (9.15:1 on #0D0D0D) */
+  --border-color: #e5e7eb;
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --shadow-heavy: rgba(0, 0, 0, 0.15);
+  /* Orange fails 3:1 for a focus ring on light surfaces (2.68:1 on --bg-page), so light
+     uses this darker orange (4.06:1). Dark theme uses the brand orange. */
+  --focus-ring: #ca5912;
+}
+
+/* ── Semantic: dark ────────────────────────────────────────────────────── */
+.dark {
+  --bg-page: #0d0d0d;
+  --bg-surface: #1a1a1a;
+  --bg-surface-elevated: #222222;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af; /* base-300 fails AA on dark, so never use it here */
+  --border-color: #333333;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --shadow-heavy: rgba(0, 0, 0, 0.5);
+  --focus-ring: var(--color-base-500);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not(.dark) {
+    --bg-page: #0d0d0d;
+    --bg-surface: #1a1a1a;
+    --bg-surface-elevated: #222222;
+    --text-primary: #f9fafb;
+    --text-secondary: #9ca3af;
+    --border-color: #333333;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --shadow-color: rgba(0, 0, 0, 0.3);
+    --shadow-heavy: rgba(0, 0, 0, 0.5);
+    --focus-ring: var(--color-base-500);
+  }
+}

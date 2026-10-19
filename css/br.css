@@ -1,0 +1,5 @@
+/* BR design kit — single entry point. Import this one file. */
+@import "./br-fonts.css";
+@import "./br-tokens.css";
+@import "./br-base.css";
+@import "./br-components.css";

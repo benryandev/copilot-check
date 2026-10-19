@@ -1,0 +1,363 @@
+/* BR design kit — components.
+   Adapted from benryan.com.au: components/Button/Button.css (the pill) and the tool pages
+   (app/(tools)/tools/_shared/scan-results.css, ai-readiness.css), which are the closest
+   existing analogue to a report card. Class names are generic `br-*`. */
+
+/* ── Primary-action pill ───────────────────────────────────────────────────
+   Markup:
+   <a class="br-button" href="…">
+     <span class="br-button-label">Check wallet</span>
+     <span class="br-button-icon"><span class="br-button-icon-inner">↗ (12px icon)</span></span>
+   </a>
+   Roles: default = primary; add .br-button--secondary for outline.
+   Surfaces: add .br-button--light on a dark surface; .dark flips it automatically.
+   Orange is NEVER used on the pill. */
+.br-button {
+  --pill-fill: var(--color-base-400);
+  --pill-fill-hover: #1a1a1a;
+  --pill-ink: var(--color-base-100);
+  --pill-border: var(--pill-fill);
+  --pill-border-hover: var(--pill-fill-hover);
+  --pill-glyph: var(--color-base-400);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: max-content;
+  min-height: 48px;
+  margin: 0;
+  padding: 0 calc((48px - 1.75rem) / 2) 0 var(--space-xl);
+  background-color: var(--pill-fill);
+  color: var(--pill-ink);
+  border: 1px solid var(--pill-border);
+  border-radius: 999px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.5;
+  letter-spacing: -0.025rem;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-font-smoothing: antialiased;
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+.br-button:hover {
+  transform: scale(1.02);
+  background-color: var(--pill-fill-hover);
+  border-color: var(--pill-border-hover);
+}
+.br-button:active { transform: scale(0.98); }
+.br-button:disabled,
+.br-button[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Order matters: surface, then role, then role-on-dark-surface. */
+.br-button--light,
+.dark .br-button {
+  --pill-fill: var(--color-base-100);
+  --pill-fill-hover: var(--color-base-200);
+  --pill-ink: var(--color-base-400);
+  --pill-glyph: var(--color-base-100);
+}
+.br-button.br-button--secondary {
+  --pill-fill: transparent;
+  --pill-fill-hover: transparent;
+  --pill-ink: var(--color-base-400);
+  --pill-border: var(--color-base-400);
+  --pill-border-hover: var(--color-base-400);
+  --pill-glyph: var(--color-base-100);
+}
+.br-button--light.br-button--secondary,
+.dark .br-button.br-button--secondary {
+  --pill-ink: var(--color-base-100);
+  --pill-border: var(--color-base-100);
+  --pill-border-hover: var(--color-base-100);
+  --pill-glyph: var(--color-base-400);
+}
+
+.br-button-label {
+  display: inline-block;
+  width: max-content;
+  transform: translateY(0.1rem); /* Atkinson optical baseline */
+}
+.br-button-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+.br-button-icon-inner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  background-color: var(--pill-ink);
+  color: var(--pill-glyph);
+  border-radius: 10rem;
+}
+.br-button:hover .br-button-icon { animation: br-flip-twice 0.8s ease-out forwards; }
+.br-button:not(:hover) .br-button-icon { animation: br-flip-back 0.8s ease-out forwards; }
+@keyframes br-flip-twice { from { transform: rotateY(0deg); } to { transform: rotateY(720deg); } }
+@keyframes br-flip-back { from { transform: rotateY(720deg); } to { transform: rotateY(0deg); } }
+@media (max-width: 1000px) {
+  .br-button:hover .br-button-icon,
+  .br-button:not(:hover) .br-button-icon { animation: none; }
+}
+
+/* ── Micro-label ─────────────────────────────────────────────────────────── */
+.br-label {
+  font-family: var(--font-mono);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* ── Panel / card ────────────────────────────────────────────────────────── */
+.br-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  background-color: var(--bg-surface);
+  box-shadow: 0 1px 3px var(--shadow-color);
+}
+.br-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: 1.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  background-color: var(--bg-surface);
+}
+.br-block-heading {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.br-note {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  max-width: var(--measure);
+}
+.br-empty {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px dashed var(--border-color);
+  border-radius: 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+/* ── Form field ──────────────────────────────────────────────────────────── */
+.br-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  padding: var(--space-xl);
+  border: 1px solid var(--border-color);
+  border-radius: 1rem;
+  background-color: var(--bg-surface);
+  box-shadow: 0 1px 3px var(--shadow-color);
+}
+.br-field { display: flex; flex-direction: column; gap: var(--space-2xs); }
+.br-field-label {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+}
+.br-input {
+  width: 100%;
+  padding: var(--space-sm);
+  font-family: var(--font-mono); /* addresses, numbers */
+  font-size: 1rem; /* never below 16px: iOS zooms */
+  color: var(--text-primary);
+  background-color: var(--bg-page);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  transition: border-color 0.15s ease;
+}
+.br-input::placeholder { color: var(--text-secondary); opacity: 0.7; }
+.br-input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-color: var(--color-base-500);
+}
+.br-input[aria-invalid="true"] { border-color: var(--color-base-500); }
+.br-field-hint { font-size: 0.85rem; line-height: 1.4; color: var(--text-secondary); }
+
+/* ── Report headline: score + verdict ───────────────────────────────────── */
+.br-headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--space-xl);
+}
+.br-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3xs);
+  flex: 0 0 auto;
+  min-width: 9rem;
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  background-color: var(--bg-page);
+}
+.br-score-value {
+  font-family: var(--font-display);
+  font-size: clamp(3rem, 8vw, 4.5rem);
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+.br-score-max { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary); }
+.br-verdict {
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2.6vw, 1.75rem);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+/* Orange left rule = "pay attention". The one sanctioned large use of orange. */
+.br-notice {
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+  font-weight: 600;
+  line-height: 1.35;
+  border-left: 3px solid var(--color-base-500);
+  padding-left: var(--space-sm);
+}
+
+/* ── Key/value stat row (mono numbers) ──────────────────────────────────── */
+.br-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-sm);
+}
+.br-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background-color: var(--bg-page);
+}
+.br-stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* ── Findings list (the "catches") ──────────────────────────────────────── */
+.br-findings { display: flex; flex-direction: column; gap: var(--space-xs); list-style: none; }
+.br-finding {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--border-color);
+  border-radius: 0.5rem;
+  background-color: var(--bg-page);
+}
+/* Severity is carried by rule WIDTH, not by new colours */
+.br-finding[data-severity="critical"] { border-left: 7px solid var(--color-base-500); }
+.br-finding[data-severity="high"] { border-left: 6px solid var(--color-base-500); }
+.br-finding[data-severity="medium"] { border-left: 4px solid var(--color-base-500); }
+.br-finding[data-severity="low"] { border-left: 3px solid var(--color-base-500); }
+.br-finding-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+.br-finding-body {
+  margin-top: 0.6rem;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  max-width: var(--measure);
+}
+
+/* ── Tag / chip ──────────────────────────────────────────────────────────── */
+.br-tags { display: flex; flex-wrap: wrap; gap: var(--space-2xs); line-height: 1; }
+.br-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem var(--space-2xs);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background-color: var(--bg-surface);
+}
+.br-tag--alert { border-color: var(--color-base-500); color: var(--text-primary); font-weight: 600; }
+.br-tag--critical {
+  border-color: var(--color-base-500);
+  background-color: var(--color-base-500);
+  color: var(--color-base-400);
+  font-weight: 700;
+}
+
+/* ── Data table ──────────────────────────────────────────────────────────── */
+.br-table-wrap { overflow-x: auto; }
+.br-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+.br-table th {
+  text-align: left;
+  padding: var(--space-2xs) var(--space-sm);
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: var(--label-size);
+  font-weight: 500;
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.br-table td {
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.br-table td.num { font-family: var(--font-mono); text-align: right; }
+
+/* ── Dark band (CTA / footer): dark in BOTH themes ───────────────────────── */
+.br-band-dark {
+  background-color: var(--color-base-400);
+  color: var(--text-on-dark);
+}
+.br-band-dark .br-label,
+.br-band-dark p.sm,
+.br-band-dark a.sm { color: var(--text-muted-on-dark); }
+
+@media (prefers-reduced-motion: reduce) {
+  .br-button { transition: none; }
+  .br-button-icon,
+  .br-button:hover .br-button-icon,
+  .br-button:not(:hover) .br-button-icon { animation: none; }
+}
