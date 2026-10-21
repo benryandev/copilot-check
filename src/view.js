@@ -176,6 +176,7 @@ function renderReplay(r, el) {
       h('div', {}, h('p', { class: 'br-label', text: 'Leverage' }), h('p', { class: 'mono', text: `${b.lev}x isolated` }))));
     el.append(h('p', { class: 'br-field-hint', text: `In that replay the most margin in use at once was $${b.totalCap.toLocaleString('en-US')}, and $${b.symCap.toLocaleString('en-US')} on one market. These describe the replay, not what to set.` }));
   }
+  el.append(paperCta(r));
   if (r.replay.unmarked.length) el.append(h('p', { class: 'br-field-hint', text: `No hourly prices read for ${r.replay.unmarked.map(s => s.replace(/-USD$/, '')).join(', ')} (budget of 12 markets), so liquidations there aren't checked.` }));
 }
 
@@ -200,4 +201,18 @@ function renderMonths(r, el) {
       !up ? h('div', { class: 'down' }, bar, val) : h('div', { class: 'down' }), h('span', { class: 'mo', text: monthShort(m.ym) })));
   }
   el.append(box);
+}
+
+/** "Try it on paper first": settings from the replay row with the most per $ of drop (or fixed margin 5x). app.js posts it. */
+function paperCta(r) {
+  const b = r.replay.best;
+  const settings = b ? { mode: b.mode, amount: b.mode === 'fm' ? b.marginPerEntry : b.amount, lev: b.lev, marginMode: 'isolated', cap: 0, tcap: 0, excluded: [], start: r.size }
+    : { mode: 'fm', amount: Math.max(1, Math.round(r.size / 20)), lev: 5, marginMode: 'isolated', cap: 0, tcap: 0, excluded: [], start: r.size };
+  const desc = `${settings.mode === 'fm' ? `fixed margin $${settings.amount.toLocaleString('en-US')} per entry` : `fixed ratio $${settings.amount.toLocaleString('en-US')}`}, ${settings.lev}x isolated`;
+  return h('div', { class: 'paper-cta' },
+    h('h3', { class: 'card-title', text: 'Try it on paper first' }),
+    h('p', { class: 'block-intro', text: `Start a paper copy (${desc}, on a $${r.size.toLocaleString('en-US')} paper account). It counts from 14 days ago, then follows this wallet's real trades. Change any setting on its page. No money, no sign-up; the link is the only way back to it.` }),
+    h('p', { class: 'field-error', id: 'paper-error', role: 'alert', hidden: true }),
+    h('button', { class: 'br-button br-button--secondary', type: 'button', 'data-paper': JSON.stringify({ lead: r.addr, settings }) },
+      h('span', { class: 'br-button-label', text: 'Start a paper copy' }), h('span', { class: 'br-button-icon', 'aria-hidden': 'true' }, h('span', { class: 'br-button-icon-inner', text: '→' }))));
 }

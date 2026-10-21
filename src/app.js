@@ -2,6 +2,8 @@
 // goes in the URL hash so a report link can be shared.
 import { HlBusyError } from '../core/http.js';
 
+const PAPER_API = 'https://copilot-watch.benryan.workers.dev/api/paper';
+
 export const MIN_SIZE = 10, MAX_SIZE = 1_000_000;
 const SIZE_MSG = 'Enter an account size from $10 to $1,000,000.';
 
@@ -94,7 +96,18 @@ if (typeof document !== 'undefined') {
       history.replaceState(null, '', `#${p.addr}${p.size !== 1000 ? `/${p.size}` : ''}`);
       check(p.addr, p.size);
     });
-    document.addEventListener('click', e => {
+    document.addEventListener('click', async e => {
+      const pb = e.target.closest?.('[data-paper]');
+      if (pb) {
+        const err = $('paper-error'); pb.disabled = true;
+        try {
+          const r = await fetch(PAPER_API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: pb.getAttribute('data-paper') });
+          const j = await r.json().catch(() => ({}));
+          if (r.ok && /^[A-Za-z0-9_-]{22}$/.test(j.id || '')) { location.assign(`/paper/${j.id}`); return; }
+          err.textContent = j.error === 'rate' ? 'Too many paper copies from here; try again in a minute.' : j.error === 'full' ? 'Paper copies are at their limit for now.' : 'Couldn\'t start the paper copy. Try again in a minute.';
+        } catch (x) { err.textContent = errorText(x); }
+        err.hidden = false; pb.disabled = false; return;
+      }
       const ex = e.target.closest?.('[data-example]'); if (!ex) return;
       addr.value = ex.getAttribute('data-example'); form.requestSubmit();
     });
