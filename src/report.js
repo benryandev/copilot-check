@@ -116,7 +116,7 @@ export function buildReport(d) {
   }
   if (firstTrade && record.ageMonths < 6) add('medium', 'Young record', `First trade ${new Date(firstTrade).toLocaleDateString('en-AU', { month: 'short', year: 'numeric', timeZone: 'UTC' })}: under 6 months of history.`);
   if (ls.share != null && (ls.share < 0.5 || (ls14.share != null && ls14.share < ls.share - 0.2)))
-    add('medium', 'Profit drifting to markets Strike doesn\'t list', `Strike lists the markets behind ${pct(ls.share)} of its realised P&L over ${meta.days} days${ls14.share != null ? ` (${pct(ls14.share)} in the last 14 days)` : ''}. A copy only follows the listed part.`);
+    add('medium', ls14.share != null && ls14.share < ls.share - 0.2 ? 'Profit drifting to markets Strike doesn\'t list' : 'Most profit is on markets Strike doesn\'t list', `Strike lists the markets behind ${pct(ls.share)} of its realised P&L over ${meta.days} days${ls14.share != null ? ` (${pct(ls14.share)} in the last 14 days)` : ''}. A copy only follows the listed part.`);
   const mag = sum(coinsPnl.map(c => Math.abs(c.pnl)));
   if (mag > 0 && coinsPnl[0] && Math.abs(coinsPnl[0].pnl) / mag > 0.6) add('medium', `Concentrated in ${coinsPnl[0].coin.replace('xyz:', '')}`, `${pct(Math.abs(coinsPnl[0].pnl) / mag)} of its realised P&L over ${meta.days} days comes from one coin.`);
   const out30 = sum((d.ledger || []).filter(u => u.usdc < 0 && u.time >= now - 30 * DAY).map(u => -u.usdc));
@@ -139,6 +139,7 @@ export function buildReport(d) {
     else if (ls.share >= 0.4) { word = 'Partly copyable on Strike'; sentence = 'About half of this wallet\'s closed profit and loss is on markets Strike lists.'; }
     else { word = 'Mostly not copyable on Strike'; sentence = 'Most of this wallet\'s results come from markets Strike doesn\'t list, so a copy can\'t follow them.'; }
     if (replay.best) sentence += replay.best.net >= 0 ? ` In the replay at $${size.toLocaleString('en-US')}, a copy made money in at least one setting with no liquidations.` : ' In the replay, no setting made money without a liquidation.';
+    else if (!lost.some(r => r.taken > 0)) sentence += ' None of its trades in the replay window were on Strike markets, so a copy would have opened nothing.';
     else if (lost.length) sentence += ' Every setting in the replay had a liquidation.';
   }
   // A serious catch changes the headline; the notice counts the catches instead of repeating one of them.

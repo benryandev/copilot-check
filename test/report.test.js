@@ -52,6 +52,8 @@ test('catches fire on their threshold, not 1 unit under', () => {
   assert.match(titles(wd(1001)), /Large withdrawals/); assert.doesNotMatch(titles(wd(1000)), /Large withdrawals/);
   const drift = { fills: [{ coin: 'BTC', time: NOW - 60 * DAY, closedPnl: 100 }, { coin: 'XMR', time: NOW - DAY, closedPnl: 40 }] };
   assert.match(titles(drift), /drifting/);
+  const never = { fills: [{ coin: 'XMR', time: NOW - 60 * DAY, closedPnl: 100 }, { coin: 'XMR', time: NOW - DAY, closedPnl: 40 }] };
+  assert.match(titles(never), /Most profit is on markets Strike doesn't list/); assert.doesNotMatch(titles(never), /drifting/);
 });
 test('wipeouts use P&L, so withdrawals are not wipeouts', () => {
   assert.equal(wipeoutsFrom([[1, 1000], [2, 50]], [[1, 0], [2, 0]]).n, 0);          // withdrew 950
@@ -75,4 +77,11 @@ test('a serious catch changes the headline; the notice counts catches', () => {
   assert.match(r.verdict.sentence, /But: one wipeout in its history\.$/);
   assert.equal(r.verdict.notice.title, 'Catches below: 1 serious, 1 to weigh'); // plus concentration in one coin
   assert.equal(buildReport(base({ fills: [...fills, { coin: 'xyz:GOLD', time: NOW - DAY, closedPnl: 90 }] })).verdict.notice, null);
+});
+test('verdict: a replay that copied nothing does not claim liquidations', () => {
+  const fills = [{ coin: 'XMR', time: NOW - DAY, closedPnl: 100, dir: 'Close Long' }];
+  const v = buildReport(base({ fills, replays: [row({ taken: 0, net: 0, dd: 0 }), row({ mode: 'fr', taken: 0, net: 0, dd: 0 })] })).verdict;
+  assert.match(v.sentence, /would have opened nothing/); assert.doesNotMatch(v.sentence, /liquidation/);
+  const liq = buildReport(base({ fills, replays: [row({ liquidations: 1 })] })).verdict;
+  assert.match(liq.sentence, /Every setting in the replay had a liquidation/);
 });
