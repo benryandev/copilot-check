@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Paper copy · Copilot Check</title>
+  <meta name="description" content="A paper copy of a Hyperliquid wallet with your Strike copy settings: real trades, no money." />
+  <meta name="robots" content="noindex" />
+  <meta name="color-scheme" content="light dark" />
+  <script src="/src/theme.js"></script>
+  <link rel="stylesheet" href="/css/br.css" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/css/paper.css" />
+  <link rel="icon" href="/img/favicon.svg" type="image/svg+xml" />
+  <script type="module" src="/src/paper-page.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <p class="sm"><a class="home" href="/">Copilot Check</a> · paper copy</p>
+      <button class="theme-toggle" type="button" aria-label="Switch to dark mode" id="theme-toggle">
+        <svg class="theme-toggle-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <g class="theme-toggle-rays">
+            <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </g>
+          <path class="theme-toggle-path" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
+        </svg>
+      </button>
+    </div>
+    <main class="paper" id="paper" aria-live="polite"></main>
+  </div>
+  <footer class="br-band-dark">
+    <div class="wrap">
+      <p class="foot-note">A paper copy: no money is involved. General information only, not financial advice. Copy trading can lose money quickly. Past results don't predict future ones. Not affiliated with Strike Finance.</p>
+      <p class="foot-note">How it works: each time this page opens, it replays the wallet's real trades on Strike markets since the start date with these settings, Strike's base fee (0.05% per side), closes 10 bp worse and hourly prices; funding is not modelled. The trial stores only the wallet and the settings, and ends after 30 days.</p>
+      <p class="foot-note foot-credit"><img src="/img/br-logo-white.svg" alt="" width="32" height="15" /> <span>Built by <a href="https://benryan.com.au">Ben Ryan</a>. Source on <a href="https://github.com/benryandev/copilot-check">GitHub</a>.</span></p>
+    </div>
+  </footer>
+</body>
+</html>

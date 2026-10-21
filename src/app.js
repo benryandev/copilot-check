@@ -41,6 +41,7 @@ if (typeof document !== 'undefined') {
   const $ = id => document.getElementById(id);
   const ready = fn => (document.readyState === 'loading' ? addEventListener('DOMContentLoaded', fn) : fn());
   ready(async () => {
+    if (!document.getElementById('check')) return; // another page (paper.html) importing helpers
     const [{ render, renderState }, { gatherWallet, loadMarkets }, { buildReport }] = await Promise.all([import('./view.js'), import('./fetch-wallet.js'), import('./report.js')]);
     const form = $('check'), addr = $('addr'), size = $('size'), fee = $('fee'), go = $('go');
     const root = document.documentElement;

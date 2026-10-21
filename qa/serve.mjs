@@ -6,6 +6,7 @@ const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 const port = Number(process.env.PORT || 8080);
 createServer(async (req, res) => {
   let p = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)); if (p.endsWith('/')) p += 'index.html';
+  if (/^\/paper\/[A-Za-z0-9_-]+$/.test(p)) p = '/paper.html';
   if (p.includes('..')) { res.writeHead(400).end(); return; }
   try { const body = await readFile(join(root, p)); res.writeHead(200, { 'content-type': types[extname(p)] || 'application/octet-stream', ...Object.fromEntries(vh.map(h => [h.key, h.value])) }); res.end(body); }
   catch { res.writeHead(404).end('not found'); }
