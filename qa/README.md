@@ -125,3 +125,24 @@ Hierarchy 7, layout 5, typography 8, colour and kit rules 8, accessibility 6, st
 
 Hierarchy 8, layout 8.5, typography 8.5, colour and kit rules 9, accessibility 8.5, states 8. All 80 frames clean
 with the new overlap check; full address fits at 1280, 1440 and 1920.
+
+## Blind re-score 4 (a fourth fresh reviewer): 7.6
+
+Hierarchy 6.5, layout 7, typography 8, colour and kit rules 8.5, accessibility 7.5, states 8.
+- Below 7, hierarchy: the column chart drew losses at less than half the scale of gains (resultA at 1440: gains
+  ~0.61 px per $1K, losses ~0.27). Round 2 caused it: each half was sized to its own largest bar but both reserved
+  the same fixed label room, so the smaller half's bars shrank more. On a risk tool that understates losses. Fixed in
+  round 5. `shoot.mjs` now reads every bar's length against its printed value and fails if the px-per-$ differs by
+  more than 8% (it flags the round-4 chart at 2.32x).
+- Also fixed: "Open in Strike" was a second filled pill (the plan specifies it as secondary; "Check wallet" is now
+  the only primary); the best-cell tag reads "Most per $ of drop" at every width.
+- Not changed: "$1,000" in the replay heading is Atkinson's own slashed zero, not mono; the address clipped inside
+  its field on phones and at 768 (inputs scroll; 16px minimum); uneven columns and the 1279/1280 jump (agreed
+  structure); the repeated catch (`src/report.js`).
+
+## Round 5 (22 Oct): 8.5
+
+Hierarchy 8.5, layout 8.5, typography 8.5, colour and kit rules 9, accessibility 8.5, states 8. All 80 frames clean
+with the scale check. Columns: each side's room is its largest bar × 9rem plus 1.5rem for the label, bars
+`--f × 9rem`. Rows: the shared scale `--S` comes from container-query width (`100cqw`), so phones get the widest
+bars that still leave label room.

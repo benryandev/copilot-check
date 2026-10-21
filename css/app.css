@@ -362,3 +362,18 @@ footer a { color: inherit; }
   .br-input.addr { padding-inline: 0.875rem; }
 }
 @media (min-width: 1440px) { .layout { grid-template-columns: 28rem minmax(0, 1fr); } }
+
+/* ---------- design QA round 5 (blind review r4, 7.6/10) ---------- */
+/* Month chart on one scale for gains and losses (JS sets --up and --down: each side's largest bar as a share of the
+   overall largest, and --f: each bar's share). Each side gets its bars' room plus a fixed room for the value label. */
+@container (min-width: 600.02px) {
+  .months { height: auto; }
+  .m { grid-template-rows: calc(var(--up, 1) * 9rem + 1.5rem) calc(var(--down, 1) * 9rem + 1.5rem) auto; }
+  .up .bar, .down .bar { height: calc(var(--f, 0.02) * 9rem); }
+}
+@container (max-width: 600px) {
+  /* --S: the width left for bars once the month column and both label rooms are taken, shared by the two sides */
+  .months { --S: calc((100cqw - 2rem - 7rem) / (var(--up, 1) + var(--down, 1))); }
+  .m { grid-template-columns: 2rem calc(var(--down, 1) * var(--S) + 3.5rem) calc(var(--up, 1) * var(--S) + 3.5rem); }
+  .up .bar, .down .bar { width: calc(var(--f, 0.02) * var(--S)); }
+}

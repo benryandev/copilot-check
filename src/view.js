@@ -98,7 +98,7 @@ function renderSummary(r, res) {
     h('div', {}, h('p', { class: 'br-label', text: 'Wallet' }), h('p', { class: 'mono', title: r.addr, text: shortAddr(r.addr) })),
     r.record.firstTrade ? h('div', {}, h('p', { class: 'br-label', text: 'Trading since' }), h('p', { class: 'mono', text: dateLong(r.record.firstTrade) })) : null,
     h('div', {}, h('p', { class: 'br-label', text: 'Checked' }), h('p', { class: 'mono', text: new Date(r.at).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }))));
-  res.append(h('div', { class: 'actions' }, btn('Open in Strike', strikeUrl(r.addr)), btn('Set up alerts', WATCH_URL, { secondary: true })));
+  res.append(h('div', { class: 'actions' }, btn('Open in Strike', strikeUrl(r.addr), { secondary: true }), btn('Set up alerts', WATCH_URL, { secondary: true })));
 }
 
 function renderHolds(r, el) {
@@ -148,7 +148,7 @@ function renderReplay(r, el) {
       const isBest = b && b.mode === mode && b.lev === lev;
       const kv = (l, s, v, hit = false) => h('span', { class: `kv${hit ? ' hit' : ''}` }, h('span', { class: 'k' }, lab(l, s)), h('span', { class: 'v', text: v }));
       row.append(h('div', { class: `cell${isBest ? ' best' : ''}`, role: 'cell' },
-        isBest ? h('span', { class: 'br-tag best-tag' }, lab('Most per $ of drop', 'Most per $ drop')) : null,
+        isBest ? h('span', { class: 'br-tag best-tag', text: 'Most per $ of drop' }) : null,
         h('span', { class: 'net', text: x.wiped ? 'Wiped out' : money(x.net) }),
         kv('Biggest drop', 'Drop', money(x.dd)), y ? kv('Last 30 days', '30d', money(y.net)) : null,
         kv('Liquidations', 'Liq.', String(x.liquidations), x.liquidations > 0)));
@@ -186,10 +186,11 @@ function renderMonths(r, el) {
   const label = ms.map(m => { const s = moneyShort(m.pnl); return `${monthShort(m.ym)} ${s.num === '0' ? '' : s.sign}$${s.num}`; }).join(', ');
   const box = h('div', { class: 'months', role: 'img', 'aria-label': `Monthly profit and loss: ${label}` });
   box.style.setProperty('--n', ms.length);
-  box.style.setProperty('--rows', `minmax(1.5rem, ${(maxUp / max).toFixed(3)}fr) minmax(1.5rem, ${(maxDown / max).toFixed(3)}fr) auto`);
+  // One scale for gains and losses: each side's room is its own largest bar as a share of the overall largest
+  const upShare = maxUp / max, downShare = maxDown / max;
+  box.style.setProperty('--up', (upShare || (downShare ? 0 : 1)).toFixed(3)); box.style.setProperty('--down', downShare.toFixed(3));
   for (const m of ms) {
     const s = moneyShort(m.pnl), bar = h('span', { class: 'bar' }); bar.style.setProperty('--f', Math.max(0.02, Math.abs(m.pnl) / max).toFixed(3));
-    bar.style.setProperty('--fr', Math.max(0.02, Math.abs(m.pnl) / ((m.pnl >= 0 ? maxUp : maxDown) || 1)).toFixed(3));
     const val = h('span', { class: 'val' }, s.num === '0' ? '' : s.sign, h('span', { class: 'cur', text: '$' }), s.num);
     const up = m.pnl >= 0 || s.num === '0'; // a month that rounds to $0 sits on the gain side, like any other zero
     box.append(h('div', { class: 'm' }, up ? h('div', { class: 'up' }, val, bar) : h('div', { class: 'up' }),

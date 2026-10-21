@@ -70,6 +70,17 @@ function audit() {
     if (r.left < o.left - 1 || r.right > o.right + 1 || r.top < o.top - 1 || r.bottom > o.bottom + 1)
       fails.push(`overlap: ${el.className} "${el.textContent.trim().slice(0, 24)}" leaves ${box.className.split(' ')[0]} [${Math.round(r.left)}–${Math.round(r.right)} vs ${Math.round(o.left)}–${Math.round(o.right)}]`);
   }
+  // Chart scale: every bar's length per dollar must match (gains and losses on one scale), within 8%
+  const usd = t => { const m = t.replace(/[^0-9.KM−-]/g, '').match(/[−-]?([\d.]+)([KM]?)/); return m ? Number(m[1]) * (m[2] === 'M' ? 1e6 : m[2] === 'K' ? 1e3 : 1) : NaN; };
+  const bars = [...document.querySelectorAll('.months .bar')].map(bar => {
+    const val = bar.parentElement.querySelector('.val'), r = bar.getBoundingClientRect(), v = usd(val.textContent);
+    const horiz = getComputedStyle(bar.parentElement).flexDirection.startsWith('row');
+    return { v, px: horiz ? r.width : r.height, t: val.textContent };
+  }).filter(b => b.v > 0);
+  const big = Math.max(0, ...bars.map(b => b.v));
+  const per = bars.filter(b => b.v >= big * 0.1).map(b => ({ ...b, k: b.px / b.v }));
+  if (per.length > 1) { const ks = per.map(b => b.k), lo = Math.min(...ks), hi = Math.max(...ks);
+    if (hi / lo > 1.08) fails.push(`chart scale differs ${(hi / lo).toFixed(2)}x: ${per.map(b => `${b.t}=${Math.round(b.px)}px`).join(' ')}`); }
   const W = innerWidth, over = document.documentElement.scrollWidth > W;
   const poke = [];
   for (const el of document.body.querySelectorAll('*')) {
@@ -126,7 +137,7 @@ for (const state of pick) {
       const bad = a.over || a.fails.length || a.poke.length || a.clipped.length || a.words.length;
       if (bad) problems++;
       console.log(`${bad ? 'FAIL' : 'ok  '} ${state}-${w}-${theme}${a.over ? ` overflow ${a.scrollWidth}>${w}` : ''}`);
-      for (const f of a.fails) console.log(`     ${f.startsWith("overlap") ? "" : "contrast "}${f}`);
+      for (const f of a.fails) console.log(`     ${/^(overlap|chart)/.test(f) ? "" : "contrast "}${f}`);
       for (const p of a.poke) console.log(`     past edge ${p}`);
       for (const c of a.clipped) console.log(`     clipped ${c}`);
       if (a.words.length) console.log(`     wording ${a.words.join(', ')}`);
