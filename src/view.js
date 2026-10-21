@@ -28,7 +28,8 @@ export const pct = x => (x == null ? '–' : `${Math.round(x * 100)}%`);
 export const shortAddr = a => `${a.slice(0, 6)}…${a.slice(-4)}`;
 const coinName = c => String(c).replace(/^xyz:/, '');
 const dateLong = t => new Date(t).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
-const monthShort = ym => new Date(`${ym}-15T00:00:00Z`).toLocaleDateString('en-AU', { month: 'short', timeZone: 'UTC' });
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const monthShort = ym => MONTHS[Number(String(ym).slice(5, 7)) - 1] || String(ym);
 const modeName = m => (m === 'fm' ? 'Fixed margin' : 'Fixed ratio');
 const btn = (label, href, { secondary = false, icon = '↗', external = true } = {}) =>
   h('a', { class: `br-button${secondary ? ' br-button--secondary' : ''}`, href, rel: external ? 'noopener noreferrer' : null, target: external ? '_blank' : null },
@@ -42,6 +43,7 @@ export const WATCH_URL = 'https://t.me/CopilotWatchBot';
 const sections = root => ['holds', 'catches', 'replay', 'months'].map(id => root.querySelector(`#${id}`));
 
 export function renderState(state, detail, root = document) {
+  root.querySelector('.layout')?.setAttribute('data-idle', '');
   const res = clear(root.querySelector('#result'));
   for (const s of sections(root)) { s.hidden = true; clear(s); }
   if (state === 'empty') {
@@ -70,6 +72,7 @@ export function renderState(state, detail, root = document) {
 // ---------- result ----------
 export function render(r, root = document) {
   const [holds, catches, replay, months] = sections(root);
+  root.querySelector('.layout')?.removeAttribute('data-idle');
   renderSummary(r, clear(root.querySelector('#result')));
   renderHolds(r, clear(holds)); holds.hidden = false;
   renderCatches(r, clear(catches)); catches.hidden = false;
@@ -179,12 +182,12 @@ function renderMonths(r, el) {
     h('p', { class: 'block-intro', text: 'Its own profit and loss on Hyperliquid (all markets). Gains are filled, losses outlined.' }));
   if (!ms.length) return;
   const max = Math.max(...ms.map(m => Math.abs(m.pnl)), 1);
-  const label = ms.map(m => { const s = moneyShort(m.pnl); return `${monthShort(m.ym)} ${s.sign}$${s.num}`; }).join(', ');
+  const label = ms.map(m => { const s = moneyShort(m.pnl); return `${monthShort(m.ym)} ${s.num === '0' ? '' : s.sign}$${s.num}`; }).join(', ');
   const box = h('div', { class: 'months', role: 'img', 'aria-label': `Monthly profit and loss: ${label}` });
-  box.style.gridTemplateColumns = `repeat(${ms.length}, minmax(0, 1fr))`;
+  box.style.setProperty('--n', ms.length);
   for (const m of ms) {
-    const s = moneyShort(m.pnl), bar = h('span', { class: 'bar' }); bar.style.height = `${Math.max(2, Math.round(Math.abs(m.pnl) / max * 100))}%`;
-    const val = h('span', { class: 'val' }, s.sign, h('span', { class: 'cur', text: '$' }), s.num);
+    const s = moneyShort(m.pnl), bar = h('span', { class: 'bar' }); bar.style.setProperty('--f', Math.max(0.02, Math.abs(m.pnl) / max).toFixed(3));
+    const val = h('span', { class: 'val' }, s.num === '0' ? '' : s.sign, h('span', { class: 'cur', text: '$' }), s.num);
     box.append(h('div', { class: 'm' }, m.pnl >= 0 ? h('div', { class: 'up' }, val, bar) : h('div', { class: 'up' }),
       m.pnl < 0 ? h('div', { class: 'down' }, bar, val) : h('div', { class: 'down' }), h('span', { class: 'mo', text: monthShort(m.ym) })));
   }

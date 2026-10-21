@@ -238,3 +238,52 @@ footer a { color: inherit; }
 .result:focus { outline: none; }
 .result:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .advanced summary { gap: 0.35em; }
+
+/* ---------- design QA round 1 ---------- */
+/* The result panel takes focus after a check so screen readers land on it. It isn't a control, so no orange ring. */
+.result:focus-visible { outline: none; }
+.state-note, .empty-list { font-size: 1.05rem; line-height: 1.5; }
+.sec-holds .block-intro, .sec-months .block-intro { margin-bottom: 0; }
+
+/* Form, 768–1279: wallet | size | button on one row; hint, errors and fee underneath at full width */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .check > p, .check > details { grid-column: 1 / -1; order: 1; }
+}
+
+/* Sidebar stats (1280+): net on its own row so a four-figure result never meets the box edge */
+@media (min-width: 1280px) {
+  .stats-2.stats-3 { grid-template-columns: 1fr 1fr; }
+  .stats-3 .br-stat:first-child { grid-column: 1 / -1; }
+  .stats-3 .l { display: inline; } .stats-3 .s { display: none; }
+}
+.stat-wide .br-label { text-wrap: balance; }
+
+/* Holds and months span the full column on tablets and phones (no ragged right edge) */
+@media (max-width: 1000px) { .sec-holds, .sec-months { max-width: none; } }
+
+/* Idle states (empty, loading, error) on wide screens: the panel fills the right column instead of leaving it blank */
+@media (min-width: 1280px) {
+  .layout[data-idle] { row-gap: var(--space-xl); }
+  .layout[data-idle] .summary { display: contents; }
+  .layout[data-idle] .summary > header { grid-column: 1; grid-row: 1; }
+  .layout[data-idle] .check { grid-column: 1; grid-row: 2; align-self: start; }
+  .layout[data-idle] .result { grid-column: 2; grid-row: 1 / span 2; align-self: start; max-width: 46rem; }
+  .layout[data-idle] .detail { display: none; }
+}
+
+/* Month bars: count and bar size come from JS as custom properties; the bar leaves room for its value label */
+.months { grid-template-columns: repeat(var(--n, 12), minmax(0, 1fr)); }
+.up .bar, .down .bar { flex: none; height: calc(var(--f, 0.02) * (100% - 1.25rem)); }
+/* Narrow containers (phones, the half-width card at 1001–1279): one row per month, losses left of the axis, gains right */
+.sec-months { container-type: inline-size; }
+@container (max-width: 600px) {
+  .months { grid-template-columns: minmax(0, 1fr); height: auto; gap: 0.3rem; }
+  .m { grid-template-rows: none; grid-template-columns: 2.25rem minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; min-height: 1.5rem; }
+  .m .mo { order: -1; align-self: center; padding-top: 0; text-align: left; }
+  .m .up { flex-direction: row-reverse; justify-content: flex-end; align-items: center; }
+  .m .down { flex-direction: row-reverse; justify-content: flex-start; align-items: center; border-top: 0; border-right: 1px solid var(--text-secondary); }
+  .up .bar, .down .bar { height: 0.85rem; width: calc(var(--f, 0.02) * (100% - 4rem)); }
+  .down .bar { border: 1.5px solid var(--text-primary); border-right: 0; }
+  .m .val { padding-inline: 0.4rem; letter-spacing: 0; }
+  .m .cur { display: inline; }
+}
