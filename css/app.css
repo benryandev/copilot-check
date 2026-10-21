@@ -314,8 +314,6 @@ footer a { color: inherit; }
 }
 /* Half-width cards at 1001–1279 keep their own height */
 @media (min-width: 1001px) and (max-width: 1279px) { .layout .sec-holds, .layout .sec-months { align-self: start; } }
-/* Wallet field fits a full address in the 1280+ sidebar */
-@media (min-width: 1280px) { .br-input.addr { font-size: 0.8rem; } }
 /* Inline form row (768–1279): the pill matches the inputs' height */
 @media (min-width: 768px) and (max-width: 1279px) { .check .br-button { min-height: 55px; } }
 /* Widows and wraps */
@@ -330,3 +328,18 @@ footer a { color: inherit; }
 /* Dark theme: the footer band steps up to the surface tone so it reads as a band */
 .dark footer.br-band-dark { background-color: var(--bg-surface); }
 @media (prefers-color-scheme: dark) { :root:not(.light) footer.br-band-dark { background-color: var(--bg-surface); } }
+
+/* ---------- design QA round 3 (blind review r2, 7.0/10) ---------- */
+/* Field edges meet 3:1 against the page (WCAG 1.4.11); the kit's hairline border is 1.2:1. Placeholder at text-secondary. */
+:root { --field-border: #878e99; }
+.dark { --field-border: #6b6b6b; }
+@media (prefers-color-scheme: dark) { :root:not(.light) { --field-border: #6b6b6b; } }
+.br-input { border-color: var(--field-border); }
+.br-input::placeholder { color: var(--text-secondary); opacity: 1; }
+/* The verdict's notice rule is as wide as its catch's rule (kit: severity by rule width) */
+.br-notice[data-severity="critical"] { border-left-width: 7px; }
+.br-notice[data-severity="medium"] { border-left-width: 4px; }
+/* The pill matches the inputs' height wherever they share a row */
+.check .br-button { min-height: 55px; }
+/* Replay footnotes stay within the prose measure */
+#replay .br-field-hint { max-width: var(--measure); }

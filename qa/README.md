@@ -82,3 +82,24 @@ Hierarchy 8, layout 8.5, typography 8.5, colour and kit rules 9, accessibility 8
 - 0.8rem mono address in the 1280+ sidebar; 55px pill in the 768–1279 form row; `text-wrap: balance` on h1, verdict,
   notice and replay note; "Copilot Watch" never splits; the eyebrow tail hides under 420px.
 - "Change" cue on the fee disclosure; a liquidation count over zero is bold; dark footer on the surface tone.
+
+## Blind re-score 2 (a second fresh reviewer): 7.0
+
+Hierarchy 6, layout 7, typography 8, colour and kit rules 8, accessibility 6, states 7.
+- Below 7, hierarchy: the wipeout wallet gets the same headline and sentence as the clean one ("Mostly copyable on
+  Strike… made money in at least one setting with no liquidations"), with only a 3px notice rule to set it apart;
+  the catch is said three times. The headline and sentence come from `src/report.js` (raised with the lead). Round 3
+  gives the notice the same rule width as its catch (7px for high), so the difference is visible in the panel.
+- Below 7, accessibility: input borders 1.2:1 light and 1.5:1 dark (WCAG 1.4.11 wants 3:1), placeholder 2.7:1.
+  Fixed in round 3, and `shoot.mjs` now checks field borders too (it flags the old 1.18:1).
+- Also fixed: the pill vs input height at 1280+, the replay footnote running to ~110ch, "$0" months on the loss
+  side, "MOST/DROP" on phones (now "Most per $ drop").
+- Not changed: the address clipped inside its input (inputs scroll; the kit keeps inputs at 16px for iOS, so the
+  0.8rem sidebar address from round 2 is reverted); "Check wallet" not busy in the loading frame (the `?demo` flag
+  skips the real submit, which does disable it); whitespace beside the shorter card at 1001–1279 and under the left
+  column at 1280+ (agreed structure); orange rules at 2.7:1 on light (decorative; severity is also in the tag text).
+
+## Round 3 (22 Oct): 8.4
+
+Hierarchy 7.5, layout 8.5, typography 8.5, colour and kit rules 9, accessibility 8.5, states 8. Audit clean on all
+80 frames including the new field-border check.

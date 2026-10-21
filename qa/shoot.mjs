@@ -55,6 +55,13 @@ function audit() {
     const need = large ? 3 : 4.5;
     if (ratio < need) fails.push(`${ratio.toFixed(2)}<${need} "${n.textContent.trim().slice(0, 40)}" (${el.tagName.toLowerCase()}.${el.className})`);
   }
+  // Non-text contrast (WCAG 1.4.11): a text field's border against what surrounds it, 3:1
+  for (const el of document.querySelectorAll('input.br-input')) {
+    if (!visible(el)) continue;
+    const bc = parse(getComputedStyle(el).borderTopColor), out = bgOf(el.parentElement);
+    const [A, B] = [lum(bc), lum(out)].sort((x, y) => y - x), ratio = (A + 0.05) / (B + 0.05);
+    if (ratio < 3) fails.push(`${ratio.toFixed(2)}<3 field border (#${el.id})`);
+  }
   const W = innerWidth, over = document.documentElement.scrollWidth > W;
   const poke = [];
   for (const el of document.body.querySelectorAll('*')) {
