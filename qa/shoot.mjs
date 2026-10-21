@@ -62,6 +62,14 @@ function audit() {
     const [A, B] = [lum(bc), lum(out)].sort((x, y) => y - x), ratio = (A + 0.05) / (B + 0.05);
     if (ratio < 3) fails.push(`${ratio.toFixed(2)}<3 field border (#${el.id})`);
   }
+  // Overlap: tags, values and labels must stay inside their own box (cells, stats, findings, chart rows)
+  const boxes = '.cell, .br-stat, .br-finding, .m, .used > div, .meta > div, .actions';
+  for (const el of document.querySelectorAll(`:is(${boxes}) :is(.br-tag, .net, .kv, .br-stat-value, .br-label, .val, .mono, .br-button)`)) {
+    if (!visible(el)) continue;
+    const box = el.parentElement.closest(boxes), r = el.getBoundingClientRect(), o = box.getBoundingClientRect();
+    if (r.left < o.left - 1 || r.right > o.right + 1 || r.top < o.top - 1 || r.bottom > o.bottom + 1)
+      fails.push(`overlap: ${el.className} "${el.textContent.trim().slice(0, 24)}" leaves ${box.className.split(' ')[0]} [${Math.round(r.left)}–${Math.round(r.right)} vs ${Math.round(o.left)}–${Math.round(o.right)}]`);
+  }
   const W = innerWidth, over = document.documentElement.scrollWidth > W;
   const poke = [];
   for (const el of document.body.querySelectorAll('*')) {
@@ -118,7 +126,7 @@ for (const state of pick) {
       const bad = a.over || a.fails.length || a.poke.length || a.clipped.length || a.words.length;
       if (bad) problems++;
       console.log(`${bad ? 'FAIL' : 'ok  '} ${state}-${w}-${theme}${a.over ? ` overflow ${a.scrollWidth}>${w}` : ''}`);
-      for (const f of a.fails) console.log(`     contrast ${f}`);
+      for (const f of a.fails) console.log(`     ${f.startsWith("overlap") ? "" : "contrast "}${f}`);
       for (const p of a.poke) console.log(`     past edge ${p}`);
       for (const c of a.clipped) console.log(`     clipped ${c}`);
       if (a.words.length) console.log(`     wording ${a.words.join(', ')}`);

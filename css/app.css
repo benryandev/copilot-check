@@ -343,3 +343,22 @@ footer a { color: inherit; }
 .check .br-button { min-height: 55px; }
 /* Replay footnotes stay within the prose measure */
 #replay .br-field-hint { max-width: var(--measure); }
+
+/* ---------- design QA round 4 (blind review r3, 6.8/10) ---------- */
+/* Phones: the "most per $ of drop" tag wraps inside its cell instead of running over the next column */
+@media (max-width: 560px) {
+  .cell.best .best-tag { white-space: normal; max-width: 100%; border-radius: 0.5rem; line-height: 1.25; margin-right: 0; }
+}
+/* Leverage keeps its lower-case x inside upper-case labels */
+.br-label .lc { text-transform: none; }
+/* 1001–1279: holds and months stack at full width, as at 768, so the chart keeps its column form and no card
+   sits beside a much taller one */
+@media (min-width: 1001px) and (max-width: 1279px) {
+  .layout .sec-holds, .layout .sec-months { grid-column: 1 / -1; }
+}
+/* 1280+: the sidebar is wide enough for a whole 42-character address at 16px (the kit's minimum for inputs) */
+@media (min-width: 1280px) {
+  .layout { grid-template-columns: 27.5rem minmax(0, 1fr); }
+  .br-input.addr { padding-inline: 0.875rem; }
+}
+@media (min-width: 1440px) { .layout { grid-template-columns: 28rem minmax(0, 1fr); } }

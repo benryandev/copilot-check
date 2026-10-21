@@ -89,7 +89,7 @@ function renderSummary(r, res) {
   if (r.fit.listedShareAll != null) res.append(h('div', { class: 'br-stat stat-wide' },
     h('span', { class: 'br-label', text: `Realised P&L on Strike markets, ${r.fit.windowDays} days` }), h('span', { class: 'br-stat-value', text: pct(r.fit.listedShareAll) })));
   if (b) res.append(h('div', { class: 'replay-sum' },
-    h('p', { class: 'br-label', text: `Most per $ of drop · ${modeName(b.mode).toLowerCase()} ${b.lev}x` }),
+    h('p', { class: 'br-label' }, `Most per $ of drop · ${modeName(b.mode).toLowerCase()} `, h('span', { class: 'lc', text: `${b.lev}x` })),
     h('div', { class: 'stats-2 stats-3' },
       h('div', { class: 'br-stat' }, h('span', { class: 'br-label', text: 'Net' }), h('span', { class: 'br-stat-value', text: money(b.net) })),
       h('div', { class: 'br-stat' }, h('span', { class: 'br-label' }, lab('Biggest drop', 'Drop')), h('span', { class: 'br-stat-value', text: money(b.dd) })),

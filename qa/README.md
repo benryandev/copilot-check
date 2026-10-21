@@ -103,3 +103,25 @@ Hierarchy 6, layout 7, typography 8, colour and kit rules 8, accessibility 6, st
 
 Hierarchy 7.5, layout 8.5, typography 8.5, colour and kit rules 9, accessibility 8.5, states 8. Audit clean on all
 80 frames including the new field-border check.
+
+## Blind re-score 3 (a third fresh reviewer): 6.8
+
+Hierarchy 7, layout 5, typography 8, colour and kit rules 8, accessibility 6, states 7.
+- Below 7, layout and accessibility: at 375 the best cell's tag ran over the next column and hid its value
+  ("+$170" read "70"). Round 3 caused it by lengthening the phone label, and the audit only checked page edges. Fixed
+  in round 4, and `shoot.mjs` now checks that tags, values, labels and buttons stay inside their own box (cell, stat,
+  finding, chart row); it flags the old frame.
+- Address clipped in the 1280+ sidebar even at 1920 (403px of text, 350–382px of field). Fixed in round 4 by widening
+  the sidebar (27.5rem, 28rem from 1440), keeping the kit's 16px for inputs.
+- Short holds card beside the tall chart at 1001–1279, and the chart switching shape between 768 (columns), 1001
+  (rows) and 1280 (columns). Round 4 stacks holds and months at full width at 1001–1279, as at 768, so the chart is
+  in column form from 768 up and in row form only on phones. This departs from the round-10 sketch's side-by-side
+  pair at that width; it is one rule if Ben wants the pair back.
+- "10X" in an upper-case label: leverage keeps its lower-case x.
+- Not changed: the theme toggle (a 44px button with a 20px icon, as on benryan.com.au); light orange rules at 2.8:1
+  (kit colour; severity is also in the tag text); the verdict notice repeating the catch title (`src/report.js`).
+
+## Round 4 (22 Oct): 8.5
+
+Hierarchy 8, layout 8.5, typography 8.5, colour and kit rules 9, accessibility 8.5, states 8. All 80 frames clean
+with the new overlap check; full address fits at 1280, 1440 and 1920.
