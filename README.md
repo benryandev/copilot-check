@@ -21,7 +21,7 @@ From a report, or with `/paper <wallet>` in [Copilot Watch](https://t.me/Copilot
 
 ## How it uses Strike
 
-Everything runs in the browser against public APIs; there is no server of ours and nothing is stored.
+The report runs in the browser against public APIs; there is no server of ours and nothing about a report is stored. Paper Copy stores only the wallet and settings, with Copilot Watch's Worker, for 30 days.
 
 | Need | Source |
 |---|---|
@@ -49,7 +49,7 @@ node qa/serve.mjs    # http://localhost:8080 with the production security header
 
 ## Privacy and security
 
-No accounts, cookies, analytics or keys. The wallet you paste goes into the URL after `#` (never sent to the server) so a report can be shared. Strict Content Security Policy; all API data is rendered as text. See [SECURITY.md](SECURITY.md).
+No accounts, cookies, analytics or keys. A paper copy stores only the wallet and settings (30 days); a report stores nothing. The wallet you paste goes into the URL after `#` (never sent to the server) so a report can be shared. Strict Content Security Policy; all API data is rendered as text. See [SECURITY.md](SECURITY.md).
 
 ## Design
 
