@@ -11,7 +11,7 @@ test('settings refusals', () => {
 });
 test('go-live fields', () => {
   const f = goLiveFields({ mode: 'fr', amount: 500, lev: 3, marginMode: 'isolated', cap: 0, tcap: 400, excluded: ['PUMP-USD'] });
-  assert.deepEqual(f.map(x => x[1]), ['Fixed ratio', '$500', 'None', '$400', 'PUMP', '3x isolated, set on each market before the first copy']);
+  assert.deepEqual(f.map(x => x[1]), ['Fixed ratio', '$500', 'None', '$400', 'PUMP', '3x isolated']);
 });
 test('event words', () => {
   assert.deepEqual(eventWords({ kind: 'skip', why: 'capped' }), ['Skipped: over a cap', null]);

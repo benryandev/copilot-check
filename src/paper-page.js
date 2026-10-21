@@ -55,10 +55,11 @@ function render(main, t, lead, mk, now) {
     : h('p', { class: 'empty-list', text: 'No open paper positions right now.' }));
 
   const recent = log.slice(-40).reverse();
-  const acts = sec('Activity', 'h-act', h('p', { class: 'block-intro', text: 'Each lead trade on a Strike market and what the paper copy did with it, newest first (last 40).' }),
-    recent.length ? h('ul', { class: 'events' }, recent.map(e => { const [what, amt] = eventWords(e);
-      return h('li', {}, h('span', { class: 'when', text: when(e.t) }), h('span', { class: 'sym', text: e.sym.replace(/-USD$/, '') }), h('span', { class: 'what', text: what }), h('span', { class: 'amt', text: amt == null ? '' : money(amt) })); }))
-      : h('p', { class: 'empty-list', text: 'No trades on Strike markets since the start yet.' }));
+  const evRow = e => { const [what, amt] = eventWords(e);
+    return h('li', {}, h('span', { class: 'when', text: when(e.t) }), h('span', { class: 'sym', text: e.sym.replace(/-USD$/, '') }), h('span', { class: 'what', text: what }), h('span', { class: 'amt', text: amt == null ? '' : money(amt) })); };
+  const acts = sec('Activity', 'h-act', h('p', { class: 'block-intro', text: 'Each lead trade on a Strike market and what the paper copy did with it, newest first.' }),
+    recent.length ? h('ul', { class: 'events' }, recent.slice(0, 10).map(evRow)) : h('p', { class: 'empty-list', text: 'No trades on Strike markets since the start yet.' }),
+    recent.length > 10 ? h('details', { class: 'more' }, h('summary', { text: `Show ${recent.length - 10} more` }), h('ul', { class: 'events' }, recent.slice(10).map(evRow))) : null);
 
   // Same period, other settings
   const cmp = h('div', { class: 'cmp', role: 'table', 'aria-label': 'Net and liquidations by leverage and copy mode over the trial period' },
@@ -80,13 +81,17 @@ function render(main, t, lead, mk, now) {
   const top = clean.sort((a, b) => b.net / Math.max(Math.abs(b.dd), 1) - a.net / Math.max(Math.abs(a.dd), 1))[0];
   const shows = sec('What the trial shows', 'h-shows', h('p', { class: 'block-intro', text: `The same trades since ${dateShort(t.from)}, with other settings. Your settings are outlined.` }), cmp,
     h('p', { class: 'replay-note', text: [
-      top ? `In this trial, ${modeName(top.mode)} at ${top.lev}x ${s.marginMode} made the most per dollar of drop (${money(top.net)}, drop ${money(top.dd)}) with no liquidations.` : 'In this trial, every leverage shown had a liquidation.',
-      ` At ${s.lev}x, ${other.marginMode} margin would have made ${money(other.net)} with ${other.liquidations} liquidation${other.liquidations === 1 ? '' : 's'}.`].join('') }),
+      !top ? 'In this trial, every leverage shown had a liquidation.'
+        : top.net > 0 ? `In this trial, ${modeName(top.mode)} at ${top.lev}x ${s.marginMode} made the most per dollar of drop (${money(top.net)}, drop ${money(top.dd)}) with no liquidations.`
+        : `In this trial, no setting shown made money; ${modeName(top.mode)} at ${top.lev}x lost least for its drop (${money(top.net)}).`,
+      Math.round(other.net) === Math.round(r.net) && other.liquidations === r.liquidations ? ` ${other.marginMode[0].toUpperCase()}${other.marginMode.slice(1)} margin at ${s.lev}x ends the same here.`
+        : ` At ${s.lev}x, ${other.marginMode} margin would have ended at ${money(other.net)} with ${other.liquidations} liquidation${other.liquidations === 1 ? '' : 's'}.`].join('') }),
     h('p', { class: 'br-field-hint', text: 'These describe this trial, not what to set. Past results don\'t predict future ones.' }));
 
   const go = sec('Go live', 'h-go', h('p', { class: 'block-intro', text: 'To copy this wallet for real with these settings, these are the fields in Strike\'s copy dialog. Strike locks a market\'s leverage when its first position opens, so set leverage and margin mode first.' }),
     h('div', { class: 'kvlist' }, goLiveFields(s).map(([k, v]) => h('div', {}, h('p', { class: 'br-label', text: k }), h('p', { class: 'mono', text: v })))),
-    h('div', { class: 'actions' }, h('a', { class: 'br-button', href: strikeUrl(t.lead), target: '_blank', rel: 'noopener noreferrer' }, h('span', { class: 'br-button-label', text: 'Open in Strike' }), h('span', { class: 'br-button-icon', 'aria-hidden': 'true' }, h('span', { class: 'br-button-icon-inner', text: '↗' }))),
+    h('p', { class: 'br-field-hint', text: `Set ${s.lev}x ${s.marginMode} on each market before the first copy: the first position on a market locks it.` }),
+    h('div', { class: 'actions' }, h('a', { class: 'br-button br-button--secondary', href: strikeUrl(t.lead), target: '_blank', rel: 'noopener noreferrer' }, h('span', { class: 'br-button-label', text: 'Open in Strike' }), h('span', { class: 'br-button-icon', 'aria-hidden': 'true' }, h('span', { class: 'br-button-icon-inner', text: '↗' }))),
       h('a', { class: 'br-button br-button--secondary', href: WATCH_URL, target: '_blank', rel: 'noopener noreferrer' }, h('span', { class: 'br-button-label', text: 'Set up alerts' }), h('span', { class: 'br-button-icon', 'aria-hidden': 'true' }, h('span', { class: 'br-button-icon-inner', text: '↗' })))));
 
   show(main, head, panel, holds, acts, shows, go, editForm(t));

@@ -28,7 +28,7 @@ export function goLiveFields(s) {
     ['Max margin per market', s.cap ? usd(s.cap) : 'None'],
     ['Max total margin', s.tcap ? usd(s.tcap) : 'None'],
     ['Excluded markets', s.excluded.length ? s.excluded.map(x => x.replace(/-USD$/, '')).join(', ') : 'None'],
-    ['Leverage and margin mode', `${s.lev}x ${s.marginMode}, set on each market before the first copy`],
+    ['Leverage and margin mode', `${s.lev}x ${s.marginMode}`],
   ];
 }
 
