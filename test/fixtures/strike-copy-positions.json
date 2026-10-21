@@ -1,0 +1,2 @@
+{"positions":[{"id":"p1","subscription_id":"sub-aaa","lead_account_id":"0xLEAD000000000000000000000000000000000001","market":"BTC-USD","side":"long","margin_mode":"isolated","collateral":"85","leverage":10,"entry_price":"85000","mark_price":"84000","liquidation_price":"76000","size":"0.01","pnl":"-10"}],
+ "traders":[{"account_id":"0xlead000000000000000000000000000000000001","platform":"hyperliquid"}]}

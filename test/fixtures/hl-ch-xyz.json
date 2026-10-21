@@ -1,0 +1,1 @@
+{"marginSummary":{"accountValue":"3000","totalMarginUsed":"2900"},"withdrawable":"100","assetPositions":[{"type":"oneWay","position":{"coin":"xyz:GOLD","szi":"-1","entryPx":"4000","liquidationPx":null,"leverage":{"type":"isolated","value":10},"positionValue":"4000"}}]}

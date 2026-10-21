@@ -1,0 +1,3 @@
+{"count":2,"positions":[
+ {"id":1,"account_id":"acc-1","margin_mode":"isolated","leverage":10,"size":"0.01","entry_price":"85000","iso_balance":"85","symbol":"BTC-USD","upnl":"-10","maintenance_margin":"5","bankruptcy_price":"76500","liquidation_price":"76000"},
+ {"id":2,"account_id":"acc-1","margin_mode":"isolated","leverage":10,"size":"0","entry_price":"0","iso_balance":"0","symbol":"ETH-USD","upnl":"0","liquidation_price":"0"}]}

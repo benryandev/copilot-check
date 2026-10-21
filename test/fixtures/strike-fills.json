@@ -1,0 +1,4 @@
+{"count":3,"fills":[
+ {"id":3,"symbol":"BTC-USD","side":"buy","role":"taker","price":"84000","size":"0.01","realized_pnl":"0","fee":"0.42","timestamp":1790000300000,"auto_close_type":"","client_order_id":"copy:sub-aaa:111"},
+ {"id":2,"symbol":"ETH-USD","side":"sell","role":"taker","price":"3000","size":"0.1","realized_pnl":"1.5","fee":"0.15","timestamp":1790000200000,"auto_close_type":null,"client_order_id":"manual-1"},
+ {"id":1,"symbol":"SOL-USD","side":"sell","role":"taker","price":"150","size":"2","realized_pnl":"-20","fee":"0.15","timestamp":1790000100000,"auto_close_type":"liquidation","client_order_id":"copy:sub-aaa:110"}]}

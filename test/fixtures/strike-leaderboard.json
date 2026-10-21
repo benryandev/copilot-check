@@ -1,0 +1,2 @@
+{"entries":[{"follower":{"account_id":"acc-sub1","address":"addr1qtest"},"lead_account_id":"0xLEAD000000000000000000000000000000000001","copy_mode":"fixed_amount","copy_amount":"0","margin_per_entry_order":"10","status":"active","created_at":1790000000000,"platform":"hyperliquid"},
+ {"follower":{"account_id":"acc-x"},"lead_account_id":"0xlead000000000000000000000000000000000002","copy_mode":"fixed_ratio","copy_amount":"500","margin_per_entry_order":"0","status":"active","created_at":1790000000001,"platform":"hyperliquid"}]}
