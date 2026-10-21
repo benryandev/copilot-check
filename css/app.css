@@ -384,3 +384,7 @@ footer a { color: inherit; }
 
 .paper-cta { display: grid; gap: var(--space-xs); justify-items: start; margin-top: var(--space-lg); padding-top: var(--space-md); border-top: 1px solid var(--border-color); }
 .paper-cta .card-title { margin: 0; }
+
+/* ---------- design QA round 7 (after the verdict and paper-copy additions) ---------- */
+/* Balance suits headings and one-line notes; the verdict sentence is prose, so it wraps normally */
+.result .br-verdict { text-wrap: pretty; }

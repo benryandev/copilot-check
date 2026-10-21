@@ -201,3 +201,12 @@ Audit clean before and after; every defect was visual.
     secondary per the plan.
   - When every replay loses, the note reads "made the most per dollar of drop (−$534, drop −$620)", and the cross
     line can repeat the same figure ("cross margin would have made −$534").
+
+## Round 7 (22 Oct): after the lead's verdict and Paper Copy additions
+
+Full audit on all 8 states (128 frames): clean, including the new verdict wording ("…, with a serious catch",
+"But: …"), the catch-count notice, the fixed-ratio hint and the "Try it on paper first" block (wording ban list
+included). "Update now" on the paper page is natural width at every size (148–167px; fixed in paper round 1).
+- The verdict sentence used `text-wrap: balance`, which made short ragged prose lines; now `pretty` (balance stays
+  on headings and the notice).
+- The "no hourly prices" replay note now comes before the paper-copy block, next to the replay data it qualifies.

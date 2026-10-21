@@ -176,8 +176,8 @@ function renderReplay(r, el) {
       h('div', {}, h('p', { class: 'br-label', text: 'Leverage' }), h('p', { class: 'mono', text: `${b.lev}x isolated` }))));
     el.append(h('p', { class: 'br-field-hint', text: `In that replay the most margin in use at once was $${b.totalCap.toLocaleString('en-US')}, and $${b.symCap.toLocaleString('en-US')} on one market. These describe the replay, not what to set.` }));
   }
-  el.append(paperCta(r));
   if (r.replay.unmarked.length) el.append(h('p', { class: 'br-field-hint', text: `No hourly prices read for ${r.replay.unmarked.map(s => s.replace(/-USD$/, '')).join(', ')} (budget of 12 markets), so liquidations there aren't checked.` }));
+  el.append(paperCta(r));
 }
 
 function renderMonths(r, el) {
