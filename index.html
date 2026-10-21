@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Copilot Check: should I copy this wallet on Strike?</title>
+  <meta name="description" content="Paste a Hyperliquid wallet. See how much of its profit Strike can copy, and how a copy would have done at your size. Runs in your browser; nothing is stored." />
+  <meta name="color-scheme" content="light dark" />
+  <script src="src/theme.js"></script>
+  <link rel="preload" href="fonts/AtkinsonHyperlegibleNext-Variable.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="css/br.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml" />
+  <script type="module" src="src/app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#result">Skip to the result</a>
+  <div class="wrap">
+    <div class="topbar">
+      <p class="sm">Copilot Check · for Strike copiers</p>
+      <button class="theme-toggle" type="button" aria-label="Switch to dark mode" id="theme-toggle">
+        <svg class="theme-toggle-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <g class="theme-toggle-rays">
+            <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </g>
+          <path class="theme-toggle-path" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
+        </svg>
+      </button>
+    </div>
+
+    <main class="layout">
+      <section class="summary" aria-label="Summary">
+        <header>
+          <h1>Should I copy this wallet on Strike?</h1>
+          <p class="lede">Paste a Hyperliquid wallet. See how much of its profit Strike can copy, and how a copy would have done at your size.</p>
+        </header>
+
+        <form class="check" id="check" novalidate>
+          <div class="br-field">
+            <label class="br-field-label" for="addr">Hyperliquid wallet</label>
+            <input class="br-input addr" name="wallet" id="addr" aria-describedby="addr-hint addr-error" placeholder="0x…" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="200" />
+          </div>
+          <p class="br-field-hint" id="addr-hint">A public address. Nothing is stored and no key is needed.</p>
+          <p class="field-error" id="addr-error" role="alert" hidden></p>
+          <div class="row">
+            <div class="br-field">
+              <label class="br-field-label" for="size">Account size, US$</label>
+              <input class="br-input" name="size" id="size" inputmode="decimal" placeholder="1000" value="1000" aria-describedby="size-error" maxlength="20" />
+            </div>
+            <button class="br-button" type="submit" id="go">
+              <span class="br-button-label">Check wallet</span>
+              <span class="br-button-icon" aria-hidden="true"><span class="br-button-icon-inner">→</span></span>
+            </button>
+          </div>
+          <p class="field-error" id="size-error" role="alert" hidden></p>
+          <details class="advanced">
+            <summary>Fee per side: <span id="fee-show">0.05%</span></summary>
+            <div class="br-field">
+              <label class="br-field-label" for="fee">Taker fee per side, %</label>
+              <input class="br-input" id="fee" inputmode="decimal" value="0.05" maxlength="8" />
+            </div>
+            <p class="br-field-hint">Strike's base taker fee. Lower it if your volume tier, staking or referral discount gives you less.</p>
+          </details>
+        </form>
+
+        <article class="br-panel result" id="result" aria-label="Result" aria-live="polite" tabindex="-1"></article>
+        <section class="br-block sec-holds" id="holds" aria-labelledby="h-holds" hidden></section>
+      </section>
+
+      <div class="detail">
+        <section class="br-block" id="catches" aria-labelledby="h-catches" hidden></section>
+        <section class="br-block" id="replay" aria-labelledby="h-replay" hidden></section>
+        <section class="br-block sec-months" id="months" aria-labelledby="h-months" hidden></section>
+      </div>
+    </main>
+  </div>
+
+  <footer class="br-band-dark">
+    <div class="wrap">
+      <p class="foot-note">General information only, not financial advice. Copy trading can lose money quickly. Past results don't predict future ones. Not affiliated with Strike Finance.</p>
+      <p class="foot-note">How the replay works: every trade the wallet made on a market Strike lists, copied at your size with Strike's fees (0.05% per side unless you change it), closes 10 bp worse, hourly prices and liquidations modelled; funding is not modelled. Runs in your browser against Hyperliquid's and Strike's public APIs; nothing is sent anywhere else or stored.</p>
+      <p class="foot-note">Optional: if you sign up to Strike, referral code <span class="foot-ref">BenRyan</span> supports this tool. I earn a share of Strike's fees if you use it; you don't have to.</p>
+      <p class="foot-note foot-credit"><img src="img/br-logo-white.svg" alt="" width="32" height="15" /> <span>Built by <a href="https://benryan.com.au">Ben Ryan</a>. Source on <a href="https://github.com/benryandev/copilot-check">GitHub</a>. Alerts for your copies: <a href="https://t.me/CopilotWatchBot">Copilot Watch</a>.</span></p>
+    </div>
+  </footer>
+</body>
+</html>

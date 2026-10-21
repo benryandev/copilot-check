@@ -87,7 +87,7 @@ export function buildReport(d) {
   for (const dex of ['main', 'xyz']) for (const p of d.ch?.[dex]?.positions || []) {
     const mark = p.value && p.szi ? Math.abs(p.value / p.szi) : p.entry;
     book.push({ coin: p.coin, sym: map[p.coin] || null, listed: !!map[p.coin], side: p.szi > 0 ? 'long' : 'short', lev: p.lev,
-      value: Math.abs(p.value || 0), liqDist: p.liqPx && mark ? fin(Math.abs(mark - p.liqPx) / mark) : null });
+      value: Math.abs(p.value || 0), upnl: p.upnl || 0, liqDist: p.liqPx && mark ? fin(Math.abs(mark - p.liqPx) / mark) : null });
   }
   book.sort((a, b) => b.value - a.value);
   const coinsPnl = Object.entries(ls.byCoin).map(([coin, pnl]) => ({ coin, pnl, listed: !!map[coin] })).sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl));
@@ -97,9 +97,9 @@ export function buildReport(d) {
   const best = bestInReplay(replays.filter(r => r.days === meta.days));
   const replay = {
     rows: replays.map(r => ({ mode: r.mode, lev: r.lev, days: r.days, net: r.net, dd: r.dd, liquidations: r.liquidations, wiped: r.wiped, taken: r.taken,
-      skipped: Object.values(r.skipped || {}).reduce((s, x) => s + x, 0), peakMargin: r.peakMargin, fees: r.fees })),
+      skipped: Object.values(r.skipped || {}).reduce((s, x) => s + x, 0), peakMargin: r.peakMargin, peakEntries: r.peakEntries, fees: r.fees })),
     best: best ? { mode: best.mode, lev: best.lev, days: best.days, net: best.net, dd: best.dd,
-      marginPerEntry: best.mode === 'fm' ? size / 20 : null, amount: best.mode === 'fr' ? size : null,
+      marginPerEntry: best.mode === 'fm' ? size / 20 : null, amount: best.mode === 'fr' ? size : null, peakEntries: best.peakEntries, liquidations: 0,
       symCap: ceil10(Math.max(0, ...Object.values(best.symPk || {}))), totalCap: ceil10(best.peakMargin || 0) } : null,
     days: meta.days, truncated: !!meta.truncated, unmarked: meta.unmarked || [], fee,
   };
@@ -129,14 +129,19 @@ export function buildReport(d) {
   const rank = { critical: 0, medium: 1, info: 2 };
   catches.sort((a, b) => rank[a.severity] - rank[b.severity]);
 
-  // Verdict
-  let sentence;
-  if (!perpFills.length && !replays.some(r => r.taken)) sentence = 'No perp trades in this wallet\'s history yet.';
-  else if (ls.share == null) sentence = 'No closed perp trades in the window yet, so there is no realised P&L to compare.';
-  else if (ls.share >= 0.7) sentence = 'Most of this wallet\'s closed profit and loss is on markets Strike lists.';
-  else if (ls.share >= 0.4) sentence = 'About half of this wallet\'s closed profit and loss is on markets Strike lists.';
-  else sentence = 'Most of this wallet\'s results come from markets Strike doesn\'t list, so a copy can\'t follow them.';
-  const verdict = { sentence, notice: catches.find(c => c.severity !== 'info') || null };
+  // Verdict: a short headline, one descriptive sentence, and the most severe catch as the notice
+  let word, sentence;
+  const lost = replay.rows.filter(r => r.days === meta.days);
+  if (!perpFills.length && !replays.some(r => r.taken)) { word = 'No perp history yet'; sentence = 'No perp trades in this wallet\'s history yet.'; }
+  else if (ls.share == null) { word = 'Nothing closed yet'; sentence = 'No closed perp trades in the window yet, so there is no realised P&L to compare.'; }
+  else {
+    if (ls.share >= 0.7) { word = 'Mostly copyable on Strike'; sentence = 'Most of this wallet\'s closed profit and loss is on markets Strike lists.'; }
+    else if (ls.share >= 0.4) { word = 'Partly copyable on Strike'; sentence = 'About half of this wallet\'s closed profit and loss is on markets Strike lists.'; }
+    else { word = 'Mostly not copyable on Strike'; sentence = 'Most of this wallet\'s results come from markets Strike doesn\'t list, so a copy can\'t follow them.'; }
+    if (replay.best) sentence += replay.best.net >= 0 ? ` In the replay at $${size.toLocaleString('en-US')}, a copy made money in at least one setting with no liquidations.` : ' In the replay, no setting made money without a liquidation.';
+    else if (lost.length) sentence += ' Every setting in the replay had a liquidation.';
+  }
+  const verdict = { word, sentence, notice: catches.find(c => c.severity !== 'info') || null };
 
   return { addr, size, fee, at: now, record, fit, replay, catches, verdict };
 }

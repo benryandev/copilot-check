@@ -1,0 +1,6 @@
+test
+tools
+qa
+scripts
+node_modules
+*.test.js
