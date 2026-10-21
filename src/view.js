@@ -156,6 +156,9 @@ function renderReplay(r, el) {
     m.append(row);
   }
   el.append(m);
+  const fr = rows.filter(x => x.mode === 'fr' && x.days === days);
+  if (fr.length > 1 && fr.every(x => Math.round(x.net) === Math.round(fr[0].net) && x.liquidations === 0))
+    el.append(h('p', { class: 'br-field-hint', text: 'Fixed ratio sizes each copy from the wallet\'s own trade, not from leverage, so with no liquidations it ends the same at every leverage; leverage only changes how much margin it ties up.' }));
   const liqd = rows.filter(x => x.days === days && x.liquidations > 0);
   let note;
   if (b) {

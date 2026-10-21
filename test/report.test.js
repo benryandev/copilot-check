@@ -68,3 +68,11 @@ test('wording: no advice words and no score in any report', () => {
   assert.doesNotMatch(JSON.stringify(r), banned);
   assert.ok(r.catches.some(c => /30 days only/.test(c.title)));
 });
+test('a serious catch changes the headline; the notice counts catches', () => {
+  const fills = [{ coin: 'BTC', time: NOW - DAY, closedPnl: 100 }];
+  const r = buildReport(base({ fills, replays: [row({})], portfolio: { accountValue: [[NOW - 400 * DAY, 1000], [NOW - 300 * DAY, 50]], pnl: [[NOW - 400 * DAY, 0], [NOW - 300 * DAY, -950]], perp: null } }));
+  assert.equal(r.verdict.word, 'Mostly copyable on Strike, with a serious catch');
+  assert.match(r.verdict.sentence, /But: one wipeout in its history\.$/);
+  assert.equal(r.verdict.notice.title, 'Catches below: 1 serious, 1 to weigh'); // plus concentration in one coin
+  assert.equal(buildReport(base({ fills: [...fills, { coin: 'xyz:GOLD', time: NOW - DAY, closedPnl: 90 }] })).verdict.notice, null);
+});

@@ -141,7 +141,12 @@ export function buildReport(d) {
     if (replay.best) sentence += replay.best.net >= 0 ? ` In the replay at $${size.toLocaleString('en-US')}, a copy made money in at least one setting with no liquidations.` : ' In the replay, no setting made money without a liquidation.';
     else if (lost.length) sentence += ' Every setting in the replay had a liquidation.';
   }
-  const verdict = { word, sentence, notice: catches.find(c => c.severity !== 'info') || null };
+  // A serious catch changes the headline; the notice counts the catches instead of repeating one of them.
+  const crit = catches.filter(c => c.severity === 'critical'), med = catches.filter(c => c.severity === 'medium');
+  if (crit.length && word.endsWith('on Strike')) { word += ', with a serious catch'; sentence += ` But: ${crit[0].title.charAt(0).toLowerCase()}${crit[0].title.slice(1)}.`; }
+  const parts = [crit.length && `${crit.length} serious`, med.length && `${med.length} to weigh`].filter(Boolean);
+  const notice = parts.length ? { severity: crit.length ? 'critical' : 'medium', title: `Catches below: ${parts.join(', ')}` } : null;
+  const verdict = { word, sentence, notice };
 
   return { addr, size, fee, at: now, record, fit, replay, catches, verdict };
 }
