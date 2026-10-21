@@ -43,5 +43,5 @@ test('fills paging marks truncation at maxPages', async () => {
 test('clearinghouse reads both dexes', async () => {
   const c = await hl.clearinghouse('0xabc', { fetch: fake({ clearinghouseState: 'hl-ch-main.json', 'clearinghouseState:xyz': 'hl-ch-xyz.json' }) });
   assert.equal(c.main.positions[0].coin, 'BTC'); assert.equal(c.main.accountValue, 10000);
-  assert.equal(c.xyz.positions[0].coin, 'xyz:GOLD'); assert.equal(c.xyz.marginUsed, 2900); assert.equal(c.xyz.positions[0].liqPx, null);
+  assert.equal(c.xyz.positions[0].coin, 'xyz:GOLD'); assert.equal(c.xyz.marginUsed, 2900); assert.equal(c.xyz.maintUsed, 1500); assert.equal(c.xyz.positions[0].liqPx, null);
 });
