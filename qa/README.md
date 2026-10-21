@@ -54,3 +54,31 @@ Fixes:
   liquidated below it (long labels again).
 - Idle states (empty, loading, error) at 1280+: the panel moves into the right column instead of leaving it empty.
 - Holds and months span the full width at ≤1000px (they were capped at 40rem, giving a ragged right edge).
+
+## Blind re-score 1 (fresh reviewer, screenshots + kit README only): 6.5
+
+Hierarchy 6, layout 6, typography 7, colour and kit rules 7, accessibility 7, states 6. Triage of its 24 points:
+- Fixed in round 2: month rows without a shared zero line (a real bug: grid order put gains left and losses right),
+  net overflowing its tile at 375, idle panel short of the right edge at 1440, a full-width "Try again" pill and a
+  second primary pill, the empty "What it holds now" card stretched to the chart's height at 1001–1279, orange outline
+  on non-critical tags, the idle heading larger than the page h1, address clipped in the 1280+ sidebar, widows, the
+  eyebrow wrapping at 375, fee line not reading as a control, the pill shorter than the inputs, dead space in the
+  vertical chart, liquidations looking like zero, the dark footer not reading as a band.
+- Not defects: negatives already use U+2212 (−); the theme toggle and example link are 44px tall. The empty wallet
+  field in loading and error appears only in the `?demo=` frames (a real check fills the address in).
+- Left as agreed: Catches at the top of the right column from 1280 (the round-10 sketch Ben approved), the full
+  reflow at 1280 and the uneven column bottoms that follow from it.
+- Raised with the lead (report numbers or wording from `src/report.js`): the verdict notice repeats the top catch's
+  title; the fixed-ratio column can be identical at 10x, 5x and 3x with nothing saying why.
+
+## Round 2 (22 Oct): 8.4
+
+Hierarchy 8, layout 8.5, typography 8.5, colour and kit rules 9, accessibility 8.5, states 8. Audit clean on all
+80 frames, both themes; reduced motion clean.
+- Month chart: rows read month | losses ← axis | → gains. Wide charts size the gain and loss areas to their own
+  largest bar (rows set from JS as `--rows`), so labels sit by the bars.
+- Net on its own row on phones too. Idle panel: full right column, heading below h1 size, buttons at natural width.
+- "Try again" is secondary; only the highest-severity tag is orange (rule width carries severity).
+- 0.8rem mono address in the 1280+ sidebar; 55px pill in the 768–1279 form row; `text-wrap: balance` on h1, verdict,
+  notice and replay note; "Copilot Watch" never splits; the eyebrow tail hides under 420px.
+- "Change" cue on the fee disclosure; a liquidation count over zero is bold; dark footer on the surface tone.

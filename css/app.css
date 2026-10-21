@@ -287,3 +287,46 @@ footer a { color: inherit; }
   .m .val { padding-inline: 0.4rem; letter-spacing: 0; }
   .m .cur { display: inline; }
 }
+
+/* ---------- design QA round 2 (blind review r1, 6.5/10) ---------- */
+/* Month rows share one zero line: month | losses ← axis | → gains */
+@container (max-width: 600px) {
+  .m .down { order: 0; }
+  .m .up { order: 1; }
+}
+/* Vertical chart: gain and loss areas sized to their own largest bar (set by JS), labels close to the bars */
+@container (min-width: 600.02px) {
+  .months { height: 12rem; }
+  .m { grid-template-rows: var(--rows, 18fr 21fr auto); }
+  .up .bar, .down .bar { height: calc(var(--fr, 0.02) * (100% - 1.25rem)); }
+}
+/* Phones: net on its own row, as in the sidebar */
+@media (max-width: 560px) {
+  .stats-2.stats-3 { grid-template-columns: 1fr 1fr; }
+  .stats-3 .br-stat:first-child { grid-column: 1 / -1; }
+}
+/* Idle panel: full width of the right column; its heading sits below the page h1; buttons keep their own width */
+.layout[data-idle] .verdict-word { font-size: clamp(1.4rem, 2vw, 1.6rem); }
+@media (min-width: 1280px) {
+  .layout[data-idle] .result { max-width: none; }
+  .layout[data-idle] .actions { flex-direction: row; }
+  .layout[data-idle] .actions .br-button { width: auto; }
+}
+/* Half-width cards at 1001–1279 keep their own height */
+@media (min-width: 1001px) and (max-width: 1279px) { .layout .sec-holds, .layout .sec-months { align-self: start; } }
+/* Wallet field fits a full address in the 1280+ sidebar */
+@media (min-width: 1280px) { .br-input.addr { font-size: 0.8rem; } }
+/* Inline form row (768–1279): the pill matches the inputs' height */
+@media (min-width: 768px) and (max-width: 1279px) { .check .br-button { min-height: 55px; } }
+/* Widows and wraps */
+.summary h1, .br-notice, .result .br-verdict, .replay-note { text-wrap: balance; }
+.nowrap { white-space: nowrap; }
+@media (max-width: 420px) { .eyebrow-tail { display: none; } }
+/* Fee disclosure reads as a control */
+.summary-cue { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
+.advanced[open] .summary-cue { display: none; }
+/* A liquidation weighs more than zero */
+.cell .kv.hit .v, .cell .kv.hit .k { color: var(--text-primary); font-weight: 700; }
+/* Dark theme: the footer band steps up to the surface tone so it reads as a band */
+.dark footer.br-band-dark { background-color: var(--bg-surface); }
+@media (prefers-color-scheme: dark) { :root:not(.light) footer.br-band-dark { background-color: var(--bg-surface); } }

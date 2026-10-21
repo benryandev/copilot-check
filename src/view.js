@@ -64,7 +64,7 @@ export function renderState(state, detail, root = document) {
       h('p', { class: 'state-note', text: 'Usually under 15 seconds. Busy wallets take longer: up to 20,000 fills are read straight from Hyperliquid.' }));
   } else if (state === 'error') {
     res.append(h('h2', { class: 'verdict-word', text: 'Couldn\'t check that wallet' }), h('p', { class: 'state-note', text: detail || 'Something went wrong.' }),
-      h('div', { class: 'actions' }, h('button', { class: 'br-button', type: 'submit', form: 'check' }, h('span', { class: 'br-button-label', text: 'Try again' }),
+      h('div', { class: 'actions' }, h('button', { class: 'br-button br-button--secondary', type: 'submit', form: 'check' }, h('span', { class: 'br-button-label', text: 'Try again' }),
         h('span', { class: 'br-button-icon', 'aria-hidden': 'true' }, h('span', { class: 'br-button-icon-inner', text: '→' })))));
   }
 }
@@ -122,7 +122,7 @@ function renderCatches(r, el) {
   el.append(h('ul', { class: 'br-findings' }, r.catches.map(c => {
     const [sev, label] = SEV[c.severity];
     return h('li', { class: 'br-finding', 'data-severity': sev },
-      h('div', { class: 'br-tags' }, h('span', { class: `br-tag${c.severity === 'info' ? '' : ' br-tag--alert'}`, text: label })),
+      h('div', { class: 'br-tags' }, h('span', { class: `br-tag${c.severity === 'critical' ? ' br-tag--alert' : ''}`, text: label })),
       h('p', { class: 'br-finding-title', text: c.title }), h('p', { class: 'br-finding-body', text: c.body }));
   })));
 }
@@ -146,12 +146,12 @@ function renderReplay(r, el) {
     for (const mode of ['fm', 'fr']) {
       const x = cell(mode, lev), y = c30(mode, lev); if (!x) { row.append(h('div', { class: 'cell', role: 'cell', text: '–' })); continue; }
       const isBest = b && b.mode === mode && b.lev === lev;
-      const kv = (l, s, v) => h('span', { class: 'kv' }, h('span', { class: 'k' }, lab(l, s)), h('span', { class: 'v', text: v }));
+      const kv = (l, s, v, hit = false) => h('span', { class: `kv${hit ? ' hit' : ''}` }, h('span', { class: 'k' }, lab(l, s)), h('span', { class: 'v', text: v }));
       row.append(h('div', { class: `cell${isBest ? ' best' : ''}`, role: 'cell' },
         isBest ? h('span', { class: 'br-tag best-tag' }, lab('Most per $ of drop', 'Most/drop')) : null,
         h('span', { class: 'net', text: x.wiped ? 'Wiped out' : money(x.net) }),
         kv('Biggest drop', 'Drop', money(x.dd)), y ? kv('Last 30 days', '30d', money(y.net)) : null,
-        kv('Liquidations', 'Liq.', String(x.liquidations))));
+        kv('Liquidations', 'Liq.', String(x.liquidations), x.liquidations > 0)));
     }
     m.append(row);
   }
@@ -182,11 +182,14 @@ function renderMonths(r, el) {
     h('p', { class: 'block-intro', text: 'Its own profit and loss on Hyperliquid (all markets). Gains are filled, losses outlined.' }));
   if (!ms.length) return;
   const max = Math.max(...ms.map(m => Math.abs(m.pnl)), 1);
+  const maxUp = Math.max(...ms.map(m => m.pnl), 0), maxDown = Math.max(...ms.map(m => -m.pnl), 0);
   const label = ms.map(m => { const s = moneyShort(m.pnl); return `${monthShort(m.ym)} ${s.num === '0' ? '' : s.sign}$${s.num}`; }).join(', ');
   const box = h('div', { class: 'months', role: 'img', 'aria-label': `Monthly profit and loss: ${label}` });
   box.style.setProperty('--n', ms.length);
+  box.style.setProperty('--rows', `minmax(1.5rem, ${(maxUp / max).toFixed(3)}fr) minmax(1.5rem, ${(maxDown / max).toFixed(3)}fr) auto`);
   for (const m of ms) {
     const s = moneyShort(m.pnl), bar = h('span', { class: 'bar' }); bar.style.setProperty('--f', Math.max(0.02, Math.abs(m.pnl) / max).toFixed(3));
+    bar.style.setProperty('--fr', Math.max(0.02, Math.abs(m.pnl) / ((m.pnl >= 0 ? maxUp : maxDown) || 1)).toFixed(3));
     const val = h('span', { class: 'val' }, s.num === '0' ? '' : s.sign, h('span', { class: 'cur', text: '$' }), s.num);
     box.append(h('div', { class: 'm' }, m.pnl >= 0 ? h('div', { class: 'up' }, val, bar) : h('div', { class: 'up' }),
       m.pnl < 0 ? h('div', { class: 'down' }, bar, val) : h('div', { class: 'down' }), h('span', { class: 'mo', text: monthShort(m.ym) })));
