@@ -377,3 +377,7 @@ footer a { color: inherit; }
   .m { grid-template-columns: 2rem calc(var(--down, 1) * var(--S) + 3.5rem) calc(var(--up, 1) * var(--S) + 3.5rem); }
   .up .bar, .down .bar { width: calc(var(--f, 0.02) * var(--S)); }
 }
+
+/* ---------- design QA round 6 (blind review r5, 7.7/10) ---------- */
+/* Verdict panel shares the cards' inner padding, so stacked text keeps one left edge */
+.result.br-panel { padding: 1.75rem; }

@@ -146,3 +146,18 @@ Hierarchy 8.5, layout 8.5, typography 8.5, colour and kit rules 9, accessibility
 with the scale check. Columns: each side's room is its largest bar × 9rem plus 1.5rem for the label, bars
 `--f × 9rem`. Rows: the shared scale `--S` comes from container-query width (`100cqw`), so phones get the widest
 bars that still leave label room.
+
+## Blind re-score 5 (a fifth fresh reviewer): 7.7, every pillar 7 or over
+
+Hierarchy 8, layout 7, typography 8, colour and kit rules 8, accessibility 7, states 8. No clipping, overflow or
+horizontal scroll at any width.
+- Round 6 fixes its left-edge point: the verdict panel (kit `br-panel`, 2rem) now uses the cards' 1.75rem.
+- Left as polish for later: the replay table on phones is tall (five lines a cell, the tag and the fixed-ratio
+  header in three lines each); replay cells wrap differently where a value is longer; the month chart has no year;
+  a liquidation is shown by weight (and the count), not a marker; the error card has no notice rule; light grey
+  text is 4.6–4.8:1 (kit token, passes AA); "Change" and the toggle have 44px hit areas, though the glyphs are small.
+
+## Round 6 (22 Oct): 8.5 (mine), 7.7 blind
+
+All 80 frames clean: no overflow, no overlap, AA text and field borders in both themes, one chart scale, wording,
+no console errors, reduced motion respected.
