@@ -33,3 +33,31 @@
   .cmp { grid-template-columns: 2.75rem repeat(2, minmax(0, 1fr)); }
   .cmp > div { padding: var(--space-2xs) var(--space-xs); font-size: 0.85rem; }
 }
+
+/* ---------- design QA, Paper Copy round 1 ---------- */
+/* Lede at the main page's size; the message states keep the heading and its line together */
+.paper .lede { font-size: 1.05rem; }
+.paper > h1 + .lede { margin-top: calc(var(--space-sm) - var(--space-xl)); }
+/* Short pages (not found, bad link) keep the footer at the bottom of the window */
+body { min-height: 100dvh; display: flex; flex-direction: column; }
+body > .wrap { flex: 1 0 auto; width: 100%; }
+/* Buttons keep their natural width (app.css stacks them full width for the main page's 1280+ sidebar) */
+.paper .actions { flex-direction: row; }
+.paper .actions .br-button { width: auto; }
+/* Open positions: room for market names like SKHYNIX */
+.paper .holds li { grid-template-columns: minmax(5.5rem, max-content) 4rem minmax(0, 1fr) auto; }
+/* Activity: the time on one line, tighter rows */
+.events li { grid-template-columns: 9rem 6rem minmax(0, 1fr) auto; padding-block: var(--space-2xs); }
+.events .when { white-space: nowrap; font-size: 0.9rem; }
+@media (max-width: 560px) {
+  .events li { grid-template-columns: minmax(0, 1fr) auto; row-gap: 0.15rem; }
+  .events .when { grid-column: 1; grid-row: 1; font-size: 0.8rem; color: var(--text-secondary); }
+  .events .sym { grid-column: 2; grid-row: 1; text-align: right; }
+  .events .what { grid-column: 1; grid-row: 2; }
+  .events .amt { grid-column: 2; grid-row: 2; text-align: right; }
+}
+.kvlist .mono { text-wrap: balance; }
+/* One frame width at every size: topbar, content and footer share the 64rem column (centred), so 1279 and 1440 match */
+.wrap { max-width: calc(64rem + 4rem); }
+@media (max-width: 1000px) { .wrap { max-width: none; } }
+.paper { max-width: none; }

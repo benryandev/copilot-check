@@ -24,6 +24,10 @@ const STATES = {
   error: '/?demo=busy',
   resultA: '/#0x01bb092c2e4fef1d68ef1ca66e9b1db29f0cf7b7',
   resultB: '/#0x42fd5648cf21c158d15e4f58785760755b3f6623',
+  // Paper Copy trial page (served at /paper/<id> by the rewrite in vercel.json and serve.mjs)
+  paper: '/paper/NlpQ3_cKru9OII4FHqNSpA',
+  paperGone: '/paper/AAAAAAAAAAAAAAAAAAAAAA',
+  paperBad: '/paper/x',
 };
 const pick = opt('states') || Object.keys(STATES);
 const out = new URL('./shots/', import.meta.url).pathname;
@@ -63,8 +67,8 @@ function audit() {
     if (ratio < 3) fails.push(`${ratio.toFixed(2)}<3 field border (#${el.id})`);
   }
   // Overlap: tags, values and labels must stay inside their own box (cells, stats, findings, chart rows)
-  const boxes = '.cell, .br-stat, .br-finding, .m, .used > div, .meta > div, .actions';
-  for (const el of document.querySelectorAll(`:is(${boxes}) :is(.br-tag, .net, .kv, .br-stat-value, .br-label, .val, .mono, .br-button)`)) {
+  const boxes = '.cell, .br-stat, .br-finding, .m, .used > div, .meta > div, .actions, .cmp > div, .events li, .kvlist > div';
+  for (const el of document.querySelectorAll(`:is(${boxes}) :is(.br-tag, .net, .kv, .br-stat-value, .br-label, .val, .mono, .br-button, .sub, .when, .sym, .what, .amt)`)) {
     if (!visible(el)) continue;
     const box = el.parentElement.closest(boxes), r = el.getBoundingClientRect(), o = box.getBoundingClientRect();
     if (r.left < o.left - 1 || r.right > o.right + 1 || r.top < o.top - 1 || r.bottom > o.bottom + 1)
@@ -118,9 +122,12 @@ for (const state of pick) {
   await ctx.addInitScript(() => { try { if (!sessionStorage.getItem('qa-theme-set')) { localStorage.setItem('theme', 'light'); sessionStorage.setItem('qa-theme-set', '1'); } } catch {} });
   const page = await ctx.newPage();
   const errs = [];
-  page.on('console', m => { if (m.type() === 'error') errs.push(m.text()); });
+  page.on('console', m => { if (m.type() === 'error' && !(state === 'paperGone' && /status of 404/.test(m.text()))) errs.push(m.text()); }); // a 404 is that state's expected reply
   page.on('pageerror', e => errs.push(String(e)));
-  await page.goto(base + STATES[state], { waitUntil: 'networkidle' });
+  await page.goto(base + STATES[state], { waitUntil: 'load' });
+  if (state.startsWith('paper')) {
+    await page.waitForFunction(() => { const t = document.querySelector('#paper h1')?.textContent; return t && t !== 'Paper copy'; }, null, { timeout: 120_000 });
+  }
   if (state.startsWith('result')) {
     await page.waitForSelector('#h-catches, #result .verdict-word', { timeout: 90_000 });
     await page.waitForFunction(() => !/Checking/.test(document.querySelector('#result .verdict-word')?.textContent || ''), null, { timeout: 120_000 });

@@ -161,3 +161,43 @@ horizontal scroll at any width.
 
 All 80 frames clean: no overflow, no overlap, AA text and field borders in both themes, one chart scale, wording,
 no console errors, reduced motion respected.
+
+# Paper Copy page (paper.html)
+
+States: `paper` (/paper/NlpQ3_cKru9OII4FHqNSpA, a live trial), `paperGone` (/paper/AAAAAAAAAAAAAAAAAAAAAA, the API's
+404), `paperBad` (/paper/x). Same widths, themes and audit; `node qa/shoot.mjs --states=paper,paperGone,paperBad`.
+The audit's overlap check also covers the comparison table cells, activity rows and Go live fields. The 404 console
+line is expected in `paperGone` and exempted there only. Presentation fixes go in `css/paper.css`; markup lives in
+`src/paper-page.js` (the lead's).
+
+## Paper round 1 (22 Oct): 6.5 → 8.3
+
+Audit clean before and after; every defect was visual.
+| Pillar | Before | After |
+|---|---|---|
+| Hierarchy and content | 6.5 | 8 |
+| Layout and responsive | 6 | 8.5 |
+| Typography | 7 | 8 |
+| Colour and kit rules | 8 | 8 |
+| Accessibility | 8 | 8.5 |
+| Interaction and states | 6 | 8 |
+
+- Activity: the time wrapped onto three lines in a 6.5rem column ("22 Oct, / 01:26 / am"), making 40 rows ~4,000px
+  on phones. Now one line (9rem column); on phones each row is time + market, then what happened + amount.
+- Open positions: "SKHYNIX" ran into "Short" (4rem column). The market column now fits its name.
+- Lede at 1.35rem grey on every state, and a 2rem gap between the not-found heading and its line. Lede at 1.05rem,
+  heading and line kept together.
+- Short pages (not found, bad link): the footer ended mid-window with page colour below. The body is now a full-height
+  column, so the footer sits at the bottom.
+- Buttons ("Update now", "Open in Strike", "Set up alerts") stretched full width from 1280, inherited from the main
+  page's sidebar rule. Natural width here.
+- Frame: content centred in a 64rem column at 1279 but left-aligned with a ~400px void at 1440. The topbar, content
+  and footer now share one centred 64rem column from 1001 up.
+- Raised with the lead (markup or wording in `src/paper-page.js`):
+  - 40 activity rows still dominate the page; show ~10 with a "Show all 40" disclosure (`<details>`).
+  - "Leverage and margin mode" value is a sentence in mono ("5x isolated, set on each market before the first
+    copy"); split into the value ("5x isolated") and a hint line.
+  - Two primary pills ("Open in Strike" in Go live, "Start a new paper copy"); the main page has "Open in Strike" as
+    secondary per the plan.
+  - When every replay loses, the note reads "made the most per dollar of drop (−$534, drop −$620)", and the cross
+    line can repeat the same figure ("cross margin would have made −$534").
