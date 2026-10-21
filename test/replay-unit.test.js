@@ -97,3 +97,13 @@ test('wiped is the UTC date equity first reached zero, and the replay stops ther
     start: 1000, size: fmSize(1000, 10), lev: 10, fee: 0, mk: { 'X-USD': { ...mkt('X'), tiers: [[1e18, 10, 0, 0]] } } });
   assert.equal(r.wiped, '2026-10-01'); assert.equal(r.taken, 1);
 });
+
+test('replay log records opens, skips and closes without changing results', async () => {
+  const { replay, fmSize } = await import('../core/replay.js');
+  const mk = { 'BTC-USD': { hl: 'BTC', minNotional: 10, tiers: [[1e18, 10, 0.025, 0]] } };
+  const orders = [{ c: 'BTC-USD', t: 1, q: 1, n: 100, sp: 0 }, { c: 'BTC-USD', t: 2, q: 1, n: 100, sp: 1 }, { c: 'BTC-USD', t: 3, q: -2, n: 220, sp: 2 }];
+  const args = { orders, marks: [], start: 100, size: fmSize(10, 5), lev: 5, fee: 0.0005, mk, cap: 15 };
+  const log = []; const a = replay({ ...args, log }), b = replay(args);
+  assert.deepEqual(a, b);
+  assert.deepEqual(log.map(e => e.kind + (e.why ? ':' + e.why : '')), ['open', 'skip:capped', 'close']);
+});
