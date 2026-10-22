@@ -1,7 +1,7 @@
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { bech32Decode, bech32Encode, cardanoAddress, toHex, fromHex, utf8Hex, newKey, authHeaders, signedMessage, client, connect,
-  plan, execute, openMarkets, readBack, cardanoWallets, FEE_BPS } from '../src/golive.js';
+  plan, execute, openMarkets, readBack, cardanoWallets, FEE_BPS, blake2b, strikeSignPayload } from '../src/golive.js';
 
 const fx = n => JSON.parse(readFileSync(new URL(`./fixtures/${n}`, import.meta.url), 'utf8'));
 const res = (status, v) => ({ ok: status < 300, status, text: async () => (v === undefined ? '' : JSON.stringify(v)), json: async () => v });
@@ -77,7 +77,7 @@ test('connect: no fee, CIP-30 signature format, account checked before and after
   assert.deepEqual(Object.keys(rq).sort(), ['address', 'chain', 'code', 'fee_share_bps', 'public_key']); // no referral code
   assert.equal(rq.fee_share_bps, 0); assert.equal(FEE_BPS, 0); assert.equal(rq.chain, 'cardano'); assert.equal(rq.public_key, c.key.pub);
   const vf = calls.find(x => x.path === '/auth/builder/verify-signature').body;
-  assert.equal(vf.nonce, 'N1'); assert.equal(vf.wallet_signature, `sig(${addrHex.slice(0, 4)},${utf8Hex('Connect via "cc" 0').length}):cosekey`);
+  assert.equal(vf.nonce, 'N1'); assert.equal(vf.wallet_signature, `sig(${addrHex.slice(0, 4)},${strikeSignPayload('Connect via "cc" 0').length}):cosekey`);
 });
 
 test('connect refusals: no code, no Strike account, wrong account, a fee, wallet declines', async () => {
@@ -162,4 +162,11 @@ test('open markets and installed wallets', async () => {
   assert.deepEqual(await openMarkets(call), ['BTC-USD']);
   const w = cardanoWallets({ cardano: { eternl: { name: 'eternl', enable() {} }, lace: { name: 'lace', enable() {} }, junk: 1, typhon: { name: 'Typhon' } } });
   assert.deepEqual(w, [{ id: 'eternl', name: 'eternl' }, { id: 'lace', name: 'lace' }]);
+});
+
+test('BLAKE2b-224 and Strike\'s short Cardano payload match Python hashlib', () => {
+  assert.equal(toHex(blake2b(new Uint8Array(), 28)), '836cc68931c2e4e3e838602eca1902591d216837bafddfe6f0c8cb07');
+  assert.equal(toHex(blake2b(new TextEncoder().encode('abc'), 28)), '9bd237b02a29e43bdd6738afa5b53ff0eee178d6210b618e4511aec8');
+  assert.equal(toHex(blake2b(new TextEncoder().encode('x'.repeat(300)), 28)), '060ea19f7232a355c557ab739801eaadc086d3de6e9a0abc86b5cb8e');
+  assert.equal(strikeSignPayload('Connect to Strike via builder "copilotcheck".\nThis authorizes'), '537472696b653a643963343533663162363361333563633461353562303234');
 });
