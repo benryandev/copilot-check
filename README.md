@@ -6,6 +6,8 @@ Paste a Hyperliquid wallet and see whether it's worth copying on Strike: how muc
 
 Built during the Strike Finance hackathon (22–24 Oct 2026). Not affiliated with Strike Finance. Not financial advice. Past results don't predict future ones.
 
+<p><img src="docs/img/report.png" alt="A Copilot Check report: verdict, Strike fit, catches and the replay at $1,000 in both copy modes at 10x, 5x and 3x" width="73%"> <img src="docs/img/report-phone.png" alt="The same report on a phone" width="23%"></p>
+
 ## What the report shows
 
 - **Verdict:** a short headline and one descriptive sentence, plus the most serious catch.
@@ -18,6 +20,8 @@ Built during the Strike Finance hackathon (22–24 Oct 2026). Not affiliated wit
 ## Paper Copy
 
 From a report, or with `/paper <wallet>` in [Copilot Watch](https://t.me/CopilotWatchBot), start a paper copy with your own settings (mode, amount, leverage, isolated or cross, caps, excluded markets). It is back-dated 14 days so it has numbers straight away, and every time the trial page opens it replays the wallet's real trades since then: paper equity, open positions, each entry copied or skipped (and why), the same period under other settings, and the exact fields to enter in Strike's copy dialog to go live. Trials store only the wallet and settings, and end after 30 days.
+
+![A Paper Copy trial page: paper equity, open paper positions, every lead trade and what the copy did, and the same trades under other settings](docs/img/paper-copy.png)
 
 ## How it uses Strike
 
