@@ -4,8 +4,11 @@
 //   - WCAG AA contrast failures on text, from computed styles (4.5:1, or 3:1 for large text).
 // Result states hit Hyperliquid live, so each wallet loads once; widths and themes are then changed in the same page.
 import { mkdir } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+const PF = new URL('./private-words.txt', import.meta.url);
+const PRIVATE = existsSync(PF) ? readFileSync(PF, 'utf8').split('\n').map(w => w.trim()).filter(Boolean).map(w => '|' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('') : '';
 
 let chromium;
 try { ({ chromium } = await import('playwright')); } catch {
@@ -34,7 +37,7 @@ const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
 
 // Runs in the page: overflow and contrast audit.
-function audit() {
+function audit(PRIVATE = '') {
   const parse = c => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p[3] ?? 1 }; };
   const lum = ({ r, g, b }) => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
   const blend = (top, under) => ({ r: top.r * top.a + under.r * (1 - top.a), g: top.g * top.a + under.g * (1 - top.a), b: top.b * top.a + under.b * (1 - top.a), a: 1 });
@@ -99,9 +102,9 @@ function audit() {
     const s = getComputedStyle(el);
     if ((s.overflowX === 'hidden' || s.textOverflow === 'ellipsis') && el.scrollWidth > el.clientWidth + 1) clipped.push(`${el.tagName.toLowerCase()}.${el.className} "${el.textContent.trim().slice(0, 30)}"`);
   }
-  // Wording rules: descriptive only, no score
+  // Wording rules: descriptive only, no score, and none of the words in qa/private-words.txt (untracked, one per line)
   const text = document.body.innerText + ' ' + [...document.querySelectorAll('[aria-label],[title]')].map(e => `${e.getAttribute('aria-label') || ''} ${e.getAttribute('title') || ''}`).join(' ');
-  const words = [...new Set((text.match(/recommend\w*|you should|best setting\w*|\bscore\w*/gi) || []).map(w => w.toLowerCase()))];
+  const words = [...new Set((text.match(new RegExp(`recommend\\w*|you should|best setting\\w*|\\bscore\\w*${PRIVATE}`, 'gi')) || []).map(w => w.toLowerCase()))];
   return { over, scrollWidth: document.documentElement.scrollWidth, fails, poke: poke.slice(0, 8), clipped: clipped.slice(0, 8), words };
 }
 
@@ -111,7 +114,7 @@ let problems = 0;
 {
   const page = await browser.newPage({ viewport: { width: 400, height: 300 } });
   await page.setContent('<body style="margin:0;background:#fff"><p style="color:#bbb">pale grey text</p><div style="width:600px">wide</div><p>the best settings</p></body>');
-  const a = await page.evaluate(audit);
+  const a = await page.evaluate(audit, PRIVATE);
   const ok = a.fails.length === 1 && a.over && a.words.length === 1;
   console.log(ok ? 'ok   audit self-test' : `FAIL audit self-test ${JSON.stringify(a)}`);
   if (!ok) process.exit(1);
@@ -140,7 +143,7 @@ for (const state of pick) {
       await page.waitForTimeout(350);
       const file = `${out}${state}-${w}-${theme}.png`;
       await page.screenshot({ path: file, fullPage: true });
-      const a = await page.evaluate(audit);
+      const a = await page.evaluate(audit, PRIVATE);
       const bad = a.over || a.fails.length || a.poke.length || a.clipped.length || a.words.length;
       if (bad) problems++;
       console.log(`${bad ? 'FAIL' : 'ok  '} ${state}-${w}-${theme}${a.over ? ` overflow ${a.scrollWidth}>${w}` : ''}`);
