@@ -28,7 +28,7 @@ const STATES = {
   resultA: '/#0x01bb092c2e4fef1d68ef1ca66e9b1db29f0cf7b7',
   resultB: '/#0x42fd5648cf21c158d15e4f58785760755b3f6623',
   // Paper Copy trial page (served at /paper/<id> by the rewrite in vercel.json and serve.mjs)
-  paper: '/paper/NlpQ3_cKru9OII4FHqNSpA',
+  paper: '/paper/dmlPU88K0egpF3IdPV3Pvg',
   paperGone: '/paper/AAAAAAAAAAAAAAAAAAAAAA',
   paperBad: '/paper/x',
 };
