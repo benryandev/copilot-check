@@ -55,8 +55,8 @@ export function renderState(state, detail, root = document) {
   } else if (state === 'loading') {
     const p = detail || {};
     const steps = { markets: 'Reading Strike\'s markets…', account: 'Reading the wallet\'s positions and history…', fills: `Reading fills, page ${p.page || 1} of up to ${p.pages || 10}…`,
-      candles: `Reading hourly prices, ${p.page || 1} of ${p.pages || 1}${p.sym ? ` (${p.sym.replace(/-USD$/, '')})` : ''}…`, equity: 'Reading equity history…', ledger: 'Reading deposits and withdrawals…', replay: 'Replaying 12 copy settings…' };
-    const order = ['markets', 'account', 'fills', 'candles', 'equity', 'ledger', 'replay'];
+      candles: `Reading hourly prices, ${p.page || 1} of ${p.pages || 1}${p.sym ? ` (${p.sym.replace(/-USD$/, '')})` : ''}…`, funding: 'Reading Strike\'s funding history…', equity: 'Reading equity history…', ledger: 'Reading deposits and withdrawals…', replay: 'Replaying 12 copy settings…' };
+    const order = ['markets', 'account', 'fills', 'candles', 'funding', 'equity', 'ledger', 'replay'];
     const frac = Math.min(1, (order.indexOf(p.step) + (p.pages ? (p.page || 0) / p.pages : 0)) / order.length);
     const bar = h('span'); bar.style.width = `${Math.round(Math.max(0.04, frac) * 100)}%`;
     res.append(h('h2', { class: 'verdict-word', text: 'Checking…' }), h('p', { class: 'progress', text: steps[p.step] || 'Starting…' }),
@@ -135,7 +135,7 @@ function renderReplay(r, el) {
   const b = r.replay.best;
   el.append(h('div', { class: 'block-head' }, h('h2', { class: 'br-block-heading', id: 'h-replay', text: `The replay at $${size.toLocaleString('en-US')}` }),
     h('p', { class: 'br-label', text: `Last ${days} days` })));
-  el.append(h('p', { class: 'block-intro', text: `Every trade it made on Strike markets, copied the way Strike copies: fees, your leverage, liquidations included. Fixed margin puts $${fmM.toLocaleString('en-US')} into each trade; fixed ratio copies in proportion to the wallet, as if its whole account were $${size.toLocaleString('en-US')} of yours. Past results don't predict future ones.` }));
+  el.append(h('p', { class: 'block-intro', text: `Every trade it made on Strike markets, copied the way Strike copies: fees, funding, your leverage, liquidations included. Fixed margin puts $${fmM.toLocaleString('en-US')} into each trade; fixed ratio copies in proportion to the wallet, as if its whole account were $${size.toLocaleString('en-US')} of yours. Past results don't predict future ones.` }));
   if (!rows.some(x => x.taken > 0)) { el.append(h('p', { class: 'empty-list', text: `No trades on Strike markets in the last ${days} days, so there is nothing to replay.` })); return; }
   const m = h('div', { class: 'matrix', role: 'table', 'aria-label': 'Replay results by leverage and copy mode' },
     h('div', { class: 'mrow', role: 'row' }, h('div', { class: 'h', role: 'columnheader' }, h('span', { class: 'sr-only', text: 'Leverage' })),
@@ -162,7 +162,7 @@ function renderReplay(r, el) {
   const liqd = rows.filter(x => x.days === days && x.liquidations > 0);
   let note;
   if (b) {
-    note = `Of the six replays, ${modeName(b.mode).toLowerCase()} at ${b.lev}x made the most per dollar of drop (${money(b.net)} for a ${money(Math.abs(b.dd), { sign: false })} drop), with no liquidations.`;
+    note = `Of the six replays, ${modeName(b.mode).toLowerCase()} at ${b.lev}x made the most per dollar of drop (${money(b.net)} for a ${money(Math.abs(b.dd), { sign: false })} drop), with no liquidations. Funding in that replay: ${money(b.funding)}.`;
     const more = rows.filter(x => x.days === days && x.net > b.net && x.liquidations > 0).sort((p, q) => q.net - p.net)[0];
     if (more) note += ` ${modeName(more.mode)} at ${more.lev}x made more but was liquidated ${more.liquidations === 1 ? 'once' : `${more.liquidations} times`}.`;
   } else note = liqd.length ? 'Every one of the six replays had at least one liquidation.' : 'None of the six replays made money.';

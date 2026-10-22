@@ -1,5 +1,5 @@
 // Gathers everything one report needs, inside a browser-friendly budget: at most 10 fill pages (20,000 fills) and
-// hourly prices for the 12 most-traded markets. Hyperliquid calls are sequential with short pauses.
+// hourly prices and Strike's funding for the 12 most-traded markets. Hyperliquid calls are sequential with short pauses.
 import * as strike from '../core/strike.js';
 import * as hl from '../core/hl.js';
 import { hlInfo } from '../core/http.js';
@@ -25,7 +25,7 @@ export function runReplays(lead, { size, fee, mk, now, windows }) {
     const t0 = now - days * DAY;
     const orders = lead.orders.filter(o => o.t >= t0), marks = lead.marks.filter(m => m[0] >= t0);
     for (const mode of ['fm', 'fr']) for (const lev of LEVS) {
-      const r = replay({ orders, marks, start: size, size: mode === 'fm' ? fmSize(size / 20, lev) : frSize(size, eq), lev, fee, mk });
+      const r = replay({ orders, marks, start: size, size: mode === 'fm' ? fmSize(size / 20, lev) : frSize(size, eq), lev, fee, mk, funding: lead.funding });
       rows.push({ mode, lev, days, ...r });
     }
   }

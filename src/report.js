@@ -97,8 +97,8 @@ export function buildReport(d) {
   const best = bestInReplay(replays.filter(r => r.days === meta.days));
   const replay = {
     rows: replays.map(r => ({ mode: r.mode, lev: r.lev, days: r.days, net: r.net, dd: r.dd, liquidations: r.liquidations, wiped: r.wiped, taken: r.taken,
-      skipped: Object.values(r.skipped || {}).reduce((s, x) => s + x, 0), peakMargin: r.peakMargin, peakEntries: r.peakEntries, fees: r.fees })),
-    best: best ? { mode: best.mode, lev: best.lev, days: best.days, net: best.net, dd: best.dd,
+      skipped: Object.values(r.skipped || {}).reduce((s, x) => s + x, 0), peakMargin: r.peakMargin, peakEntries: r.peakEntries, fees: r.fees, funding: r.funding || 0 })),
+    best: best ? { mode: best.mode, lev: best.lev, days: best.days, net: best.net, dd: best.dd, funding: best.funding || 0,
       marginPerEntry: best.mode === 'fm' ? size / 20 : null, amount: best.mode === 'fr' ? size : null, peakEntries: best.peakEntries, liquidations: 0,
       symCap: ceil10(Math.max(0, ...Object.values(best.symPk || {}))), totalCap: ceil10(best.peakMargin || 0) } : null,
     days: meta.days, truncated: !!meta.truncated, unmarked: meta.unmarked || [], fee,

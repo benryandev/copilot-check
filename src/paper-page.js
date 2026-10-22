@@ -32,7 +32,7 @@ const sizeFor = (mode, amount, lev, eq) => (mode === 'fm' ? fmSize(amount, lev) 
 function run(t, lead, mk, over = {}) {
   const s = { ...t.settings, ...over }, eq = equityFn(lead.equityHistory), log = over.log || null;
   return replay({ orders: lead.orders, marks: lead.marks, start: s.start, size: sizeFor(s.mode, s.amount, s.lev, eq), lev: s.lev, fee: 0.0005,
-    cap: s.cap, tcap: s.tcap, excluded: new Set(s.excluded), mk, marginMode: s.marginMode, log });
+    cap: s.cap, tcap: s.tcap, excluded: new Set(s.excluded), mk, marginMode: s.marginMode, funding: lead.funding, log });
 }
 
 function render(main, t, lead, mk, now) {
@@ -45,7 +45,7 @@ function render(main, t, lead, mk, now) {
     h('h2', { class: 'verdict-word', text: r.wiped ? 'Wiped out' : `${money(r.net)} since ${dateShort(t.from)}` }),
     h('div', { class: 'p-stats' }, stat('Paper equity', money(s.start + r.net, { sign: false })), stat('Biggest drop', money(r.dd)), stat('Liquidations', String(r.liquidations)),
       stat('Entries copied', String(r.taken)), stat('Entries skipped', String(skipped)), stat('Fees', money(-r.fees))),
-    h('p', { class: 'br-field-hint', text: `Updated ${when(now)}. ${lead.truncated ? 'Busy wallet: only the most recent fills fitted in the browser budget. ' : ''}${lead.unmarked.length ? `No hourly prices for ${lead.unmarked.join(', ')}, so liquidations there aren't checked.` : ''}` }),
+    h('p', { class: 'br-field-hint', text: `Updated ${when(now)}. Funding ${r.funding >= 0 ? 'received' : 'paid'}: ${money(Math.abs(r.funding), { sign: false })}, at Strike's hourly rates. ${lead.truncated ? 'Busy wallet: only the most recent fills fitted in the browser budget. ' : ''}${lead.unmarked.length ? `No hourly prices for ${lead.unmarked.join(', ')}, so liquidations there aren't checked.` : ''}` }),
     h('div', { class: 'actions' }, h('button', { class: 'br-button br-button--secondary', type: 'button', id: 'refresh' }, h('span', { class: 'br-button-label', text: 'Update now' }),
       h('span', { class: 'br-button-icon', 'aria-hidden': 'true' }, h('span', { class: 'br-button-icon-inner', text: '↻' })))));
 
@@ -143,7 +143,7 @@ async function start(main) {
     const t = await r.json(); const now = Date.now();
     document.title = `Paper copy of ${shortAddr(t.lead)} · Copilot Check`;
     const mk = await loadMarkets();
-    const lead = await fetchLead(t.lead, trialDays(t, now), mk, { now, maxPages: 5, onProgress: p => prog(p.step === 'fills' ? `Reading fills, page ${p.page}…` : p.step === 'candles' ? `Reading hourly prices, ${p.page} of ${p.pages}…` : 'Reading equity history…') });
+    const lead = await fetchLead(t.lead, trialDays(t, now), mk, { now, maxPages: 5, onProgress: p => prog(p.step === 'fills' ? `Reading fills, page ${p.page}…` : p.step === 'candles' ? `Reading hourly prices, ${p.page} of ${p.pages}…` : p.step === 'funding' ? 'Reading Strike\'s funding history…' : 'Reading equity history…') });
     render(main, t, lead, mk, now);
   } catch (e) { message(main, 'Couldn\'t load this paper copy', errorText(e), false); }
 }

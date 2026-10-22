@@ -26,7 +26,7 @@ test('fetchLead marks only the 12 most-traded of 13 coins and lists the rest as 
   const calls = [];
   const f = fake({ userFillsByTime: fills, candleSnapshot: b => [{ T: T + 3600e3, t: T, c: '1', l: '1', h: '1', s: b.req.coin }], portfolio }, calls);
   const r = await fetchLead('0xab', 90, m13, { fetch: f, now: T + 1e7, pause: 0 });
-  const coins = calls.map(c => JSON.parse(c.init.body)).filter(b => b.type === 'candleSnapshot').map(b => b.req.coin);
+  const coins = calls.filter(c => c.init.body).map(c => JSON.parse(c.init.body)).filter(b => b.type === 'candleSnapshot').map(b => b.req.coin);
   assert.equal(coins.length, 12); assert.ok(!coins.includes('C13'));
   assert.deepEqual(r.unmarked, ['C13-USD']); assert.equal(r.marks.length, 12); assert.equal(r.truncated, false);
 });

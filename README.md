@@ -14,7 +14,7 @@ Built during the Strike Finance hackathon (22–24 Oct 2026). Not affiliated wit
 - **Strike fit:** the share of the wallet's realised P&L (last 90 days, and last 14) that comes from markets Strike lists. A copy can only follow those.
 - **What it holds now:** open positions, leverage, distance to liquidation, listed or not.
 - **Catches:** wipeouts in its history, high leverage now, close to liquidation on Hyperliquid, young record, profit drifting to unlisted markets, concentration in one coin, large withdrawals, last month's loss.
-- **The replay at your size:** every trade the wallet made on a Strike market, copied the way Strike copies, in both copy modes (fixed margin, fixed ratio) at 10x, 5x and 3x, over 90 and 30 days. It uses Strike's fees (0.05% per side by default, editable), closes 10 bp worse, hourly prices, Strike's margin tiers and liquidations. The page says which setting made the most per dollar of drawdown in the replay, described as a fact about the past, not a setting to use.
+- **The replay at your size:** every trade the wallet made on a Strike market, copied the way Strike copies, in both copy modes (fixed margin, fixed ratio) at 10x, 5x and 3x, over 90 and 30 days. It uses Strike's fees (0.05% per side by default, editable), Strike's own hourly funding rates, closes 10 bp worse, hourly prices, Strike's margin tiers and liquidations. The page says which setting made the most per dollar of drawdown in the replay, described as a fact about the past, not a setting to use.
 - **Month by month:** the wallet's own P&L.
 
 ## Paper Copy
@@ -30,6 +30,7 @@ The report runs in the browser against public APIs; there is no server of ours a
 | Need | Source |
 |---|---|
 | Strike's markets, minimum order size, margin tiers (max leverage and maintenance margin by size) | Strike `GET /v2/markets` |
+| Hourly funding rates per market, last 90 days (settled on each copy in the replay; isolated funding comes out of the position's margin) | Strike `GET /stat/v1/stats/coin/history/funding` |
 | Strike symbol ↔ Hyperliquid coin (including stocks and commodities on Hyperliquid's `xyz` dex: SKHYNIX, XAU, XAG, WTI, NAS100) | `core/markets.js` |
 | The wallet's fills (paged, up to 20,000), positions on both dexes, equity history, deposits and withdrawals, hourly candles | Hyperliquid info API |
 | "Open in Strike" | `app.strikefinance.org/public-portfolio/<wallet>?platform=hyperliquid` |
