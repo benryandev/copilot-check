@@ -5,6 +5,7 @@ import { API, LEVS, parseSettings, goLiveFields, eventWords, trialDays } from '.
 import { loadMarkets } from './fetch-wallet.js';
 import { fetchLead, replay, fmSize, frSize, equityFn } from '../core/replay.js';
 import { errorText } from './app.js';
+import { goLivePanel } from './golive-ui.js';
 
 const $ = id => document.getElementById(id);
 const root = document.documentElement;
@@ -92,7 +93,8 @@ function render(main, t, lead, mk, now) {
     h('div', { class: 'kvlist' }, goLiveFields(s).map(([k, v]) => h('div', {}, h('p', { class: 'br-label', text: k }), h('p', { class: 'mono', text: v })))),
     h('p', { class: 'br-field-hint', text: `Set ${s.lev}x ${s.marginMode} on each market before the first copy: the first position on a market locks it.` }),
     h('div', { class: 'actions' }, h('a', { class: 'br-button br-button--secondary', href: strikeUrl(t.lead), target: '_blank', rel: 'noopener noreferrer' }, h('span', { class: 'br-button-label', text: 'Open in Strike' }), h('span', { class: 'br-button-icon', 'aria-hidden': 'true' }, h('span', { class: 'br-button-icon-inner', text: '↗' }))),
-      h('a', { class: 'br-button br-button--secondary', href: WATCH_URL, target: '_blank', rel: 'noopener noreferrer' }, h('span', { class: 'br-button-label', text: 'Set up alerts' }), h('span', { class: 'br-button-icon', 'aria-hidden': 'true' }, h('span', { class: 'br-button-icon-inner', text: '↗' })))));
+      h('a', { class: 'br-button br-button--secondary', href: WATCH_URL, target: '_blank', rel: 'noopener noreferrer' }, h('span', { class: 'br-button-label', text: 'Set up alerts' }), h('span', { class: 'br-button-icon', 'aria-hidden': 'true' }, h('span', { class: 'br-button-icon-inner', text: '↗' })))),
+    goLivePanel(t, mk));
 
   show(main, head, panel, holds, acts, shows, go, editForm(t));
   $('refresh').addEventListener('click', () => start(main));
