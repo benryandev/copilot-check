@@ -6,6 +6,8 @@ Paste a Hyperliquid wallet and see whether it's worth copying on Strike: how muc
 
 Built during the Strike Finance hackathon (22–24 Oct 2026). Not affiliated with Strike Finance. Not financial advice. Past results don't predict future ones.
 
+**Related tools:** [Copilot Watch](https://github.com/benryandev/copilot-watch) ([Telegram](https://t.me/CopilotWatchBot)) sends Telegram and Discord alerts when a copy needs a look. [Strike Copilot](https://github.com/benryandev/strike-copilot) reviews your Strike account and helps you set copies up, by chatting with Claude on your own computer.
+
 <p><img src="docs/img/report.png" alt="A Copilot Check report: verdict, Strike fit, catches and the replay at $1,000 in both copy modes at 10x, 5x and 3x" width="73%"> <img src="docs/img/report-phone.png" alt="The same report on a phone" width="23%"></p>
 
 ## What the report shows
