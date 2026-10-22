@@ -45,3 +45,15 @@ test('clearinghouse reads both dexes', async () => {
   assert.equal(c.main.positions[0].coin, 'BTC'); assert.equal(c.main.accountValue, 10000);
   assert.equal(c.xyz.positions[0].coin, 'xyz:GOLD'); assert.equal(c.xyz.marginUsed, 2900); assert.equal(c.xyz.maintUsed, 1500); assert.equal(c.xyz.positions[0].liqPx, null);
 });
+
+test('clearinghouse reads extra builder dexes with their prefix; otherDexes lists them', async () => {
+  const st = c => ({ marginSummary: { accountValue: '10' }, assetPositions: [{ position: { coin: c, szi: '-2', leverage: { value: 3, type: 'isolated' } } }] });
+  const f = async (u, init) => { const b = JSON.parse(init.body); const v = b.type === 'clearinghouseState' ? st(b.dex === 'io' ? 'io:DRAM' : b.dex === 'xyz' ? 'GOLD' : 'BTC')
+    : b.type === 'perpDexs' ? [null, { name: 'xyz' }, { name: 'io' }] : b.type === 'meta' ? { universe: [{ name: 'io:DRAM' }, { name: 'io:OLD', isDelisted: true }] } : null;
+    return { ok: true, status: 200, text: async () => JSON.stringify(v) }; };
+  const c = await hl.clearinghouse('0xabc', { fetch: f, dexes: ['io'] });
+  assert.deepEqual(Object.keys(c), ['main', 'xyz', 'io']);
+  assert.deepEqual(hl.allPositions(c).map(p => p.coin), ['BTC', 'xyz:GOLD', 'io:DRAM']);
+  const o = await hl.otherDexes({ fetch: f });
+  assert.deepEqual(Object.keys(o), ['io']); assert.deepEqual([...o.io], ['io:DRAM']);
+});

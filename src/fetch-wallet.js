@@ -3,19 +3,20 @@
 import * as strike from '../core/strike.js';
 import * as hl from '../core/hl.js';
 import { hlInfo } from '../core/http.js';
-import { buildMarkets } from '../core/markets.js';
+import { buildMarkets, altDexes } from '../core/markets.js';
 import { fetchLead, replay, fmSize, frSize, equityFn, DAY } from '../core/replay.js';
 
 export const LEVS = [10, 5, 3];
 
-/** Strike markets with their Hyperliquid twins (3 calls). */
+/** Strike markets with their Hyperliquid twins (3 calls, plus one per builder dex). */
 export async function loadMarkets({ fetch } = {}) {
-  const [sm, core, xyz] = await Promise.all([
+  const [sm, core, xyz, other] = await Promise.all([
     strike.markets({ fetch }),
     hlInfo({ type: 'meta' }, { want: Object, fetch }),
     hlInfo({ type: 'meta', dex: 'xyz' }, { want: Object, fetch }),
+    hl.otherDexes({ fetch }).catch(() => ({})),
   ]);
-  return buildMarkets(sm, new Set(core.universe.map(u => u.name)), new Set(xyz.universe.map(u => u.name)));
+  return buildMarkets(sm, new Set(core.universe.map(u => u.name)), new Set(xyz.universe.map(u => u.name)), other);
 }
 
 /** The 12 replays (2 modes x 3 leverages x 2 windows, or 1 window when the wallet is too big for 90 days). */
@@ -41,7 +42,7 @@ export async function gatherWallet(addr, size, { fetch, onProgress = () => {}, n
   onProgress({ step: 'markets' });
   mk = mk || await loadMarkets({ fetch });
   onProgress({ step: 'account' });
-  const ch = await hl.clearinghouse(addr, { fetch });
+  const ch = await hl.clearinghouse(addr, { fetch, dexes: altDexes(mk) });
   const portfolio = await hl.portfolioHistory(addr, { fetch });
   let days = 90, lead = await fetchLead(addr, 90, mk, { fetch, now, onProgress });
   if (lead.truncated) { days = 30; lead = await fetchLead(addr, 30, mk, { fetch, now, onProgress }); }

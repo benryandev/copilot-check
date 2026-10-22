@@ -1,6 +1,7 @@
 // Pure report metrics for one Hyperliquid wallet as a Strike copy. No I/O: everything comes in as data.
 // Wording is descriptive ("in the replay"), never advice. There is no score.
 import { hlMap } from '../core/markets.js';
+import { allPositions } from '../core/hl.js';
 
 const DAY = 86_400_000;
 const sum = a => a.reduce((s, x) => s + x, 0);
@@ -57,7 +58,7 @@ const ceil10 = x => Math.ceil(x / 10) * 10;
  * @param {number} d.fee taker fee per side
  * @param {object[]} d.fills Hyperliquid fills in the replay window (for listed share)
  * @param {number} d.fillsSince start of that window
- * @param {{main, xyz}|null} d.ch clearinghouse (both dexes)
+ * @param {{main, xyz, ...}|null} d.ch clearinghouse (main, xyz and the builder dexes Strike copies from)
  * @param {{accountValue, pnl, perp}|null} d.portfolio
  * @param {{time, usdc}[]} d.ledger last 30 days
  * @param {object} d.mk Strike markets
@@ -84,7 +85,7 @@ export function buildReport(d) {
   const ls = listedShare(perpFills, mk, d.fillsSince || 0), ls14 = listedShare(perpFills, mk, now - 14 * DAY);
   const map = hlMap(mk);
   const book = [];
-  for (const dex of ['main', 'xyz']) for (const p of d.ch?.[dex]?.positions || []) {
+  for (const p of allPositions(d.ch)) {
     const mark = p.value && p.szi ? Math.abs(p.value / p.szi) : p.entry;
     book.push({ coin: p.coin, sym: map[p.coin] || null, listed: !!map[p.coin], side: p.szi > 0 ? 'long' : 'short', lev: p.lev,
       value: Math.abs(p.value || 0), upnl: p.upnl || 0, liqDist: p.liqPx && mark ? fin(Math.abs(mark - p.liqPx) / mark) : null });
@@ -110,9 +111,9 @@ export function buildReport(d) {
   if (wipe.n) add('critical', `${wipe.n === 1 ? 'One wipeout' : `${wipe.n} wipeouts`} in its history`, 'At least once, losses since a high reached 90% of the account. A copy at the same leverage would have been wiped too.');
   const maxLev = Math.max(0, ...book.map(b => b.lev || 0));
   if (maxLev >= 20) add('critical', `Holds a ${maxLev}x position now`, 'At that leverage a 5% move against it ends the position. Strike copies use your own leverage setting, not the lead\'s.');
-  for (const dex of ['main', 'xyz']) {
-    const x = d.ch?.[dex];
-    if (x && x.accountValue > 0 && x.maintUsed / x.accountValue >= 0.6) add('critical', 'Close to liquidation on Hyperliquid', `Maintenance margin is ${pct(x.maintUsed / x.accountValue)} of account value${dex === 'xyz' ? ' on its stock and commodity account' : ''}; Hyperliquid liquidates at 100%.`);
+  for (const dex of Object.keys(d.ch || {})) {
+    const x = d.ch[dex];
+    if (x && x.accountValue > 0 && x.maintUsed / x.accountValue >= 0.6) add('critical', 'Close to liquidation on Hyperliquid', `Maintenance margin is ${pct(x.maintUsed / x.accountValue)} of account value${dex === 'main' ? '' : ' on its stock and commodity account'}; Hyperliquid liquidates at 100%.`);
   }
   if (firstTrade && record.ageMonths < 6) add('medium', 'Young record', `First trade ${new Date(firstTrade).toLocaleDateString('en-AU', { month: 'short', year: 'numeric', timeZone: 'UTC' })}: under 6 months of history.`);
   if (ls.share != null && (ls.share < 0.5 || (ls14.share != null && ls14.share < ls.share - 0.2)))
@@ -120,7 +121,7 @@ export function buildReport(d) {
   const mag = sum(coinsPnl.map(c => Math.abs(c.pnl)));
   if (mag > 0 && coinsPnl[0] && Math.abs(coinsPnl[0].pnl) / mag > 0.6) add('medium', `Concentrated in ${coinsPnl[0].coin.replace('xyz:', '')}`, `${pct(Math.abs(coinsPnl[0].pnl) / mag)} of its realised P&L over ${meta.days} days comes from one coin.`);
   const out30 = sum((d.ledger || []).filter(u => u.usdc < 0 && u.time >= now - 30 * DAY).map(u => -u.usdc));
-  const eqNow = (d.ch?.main?.accountValue || 0) + (d.ch?.xyz?.accountValue || 0);
+  const eqNow = Object.values(d.ch || {}).reduce((t, x) => t + (x?.accountValue || 0), 0);
   if (out30 > 0 && out30 > 0.5 * (eqNow + out30)) add('medium', 'Large withdrawals', `${usd(out30)} moved out in the last 30 days. Fixed-ratio copies size off the lead's equity, so they shrink or grow with moves like this.`);
   const lastFull = months.filter(m => m.ym < ym(now)).at(-1);
   if (lastFull && lastFull.pnl < 0) add('info', 'Last full month was a loss', `${lastFull.ym}: −${usd(lastFull.pnl)}.`);
