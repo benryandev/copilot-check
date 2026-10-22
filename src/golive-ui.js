@@ -39,7 +39,7 @@ export function goLivePanel(t, mk) {
   function wallets() {
     const list = cardanoWallets(globalThis.window);
     if (!list.length) { box.replaceChildren(h('p', { class: 'field-error', role: 'alert', text: 'No Cardano wallet found in this browser (Eternl, Lace, Vespr and others). Use the fields above in Strike instead.' })); return; }
-    box.replaceChildren(h('p', { class: 'block-intro', text: 'Choose the wallet you use with Strike. It will ask you to sign one message; check it says the fee is 0%.' }),
+    box.replaceChildren(h('p', { class: 'block-intro', text: 'Choose the wallet you use with Strike. It will ask you to sign one message from Strike: check it says "up to 0% fee". It also says you entrust the key to the builder, copilotcheck; that\'s this page, and the key never leaves this tab.' }),
       h('div', { class: 'actions' }, list.map(w => { const b = button(w.name, { 'data-w': w.id }, '→', true); b.addEventListener('click', () => connectWith(w.id)); return b; }),
         cancelBtn()));
   }
