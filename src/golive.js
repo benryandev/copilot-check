@@ -124,7 +124,7 @@ export async function connect(wallet, { code = BUILDER_CODE, fetch = globalThis.
   onStep('sign');
   let sig;
   try { sig = await wallet.signData(addrHex, utf8Hex(ch.data.message_to_sign)); }
-  catch { throw new Error('The wallet didn\'t sign, so nothing was connected.'); }
+  catch (e) { throw new Error(`The wallet didn't sign (${e?.info || e?.message || 'declined'}), so nothing was connected`); }
   onStep('verify');
   const v = await post('/auth/builder/verify-signature', { nonce: ch.data.nonce, wallet_signature: `${sig.signature}:${sig.key}` });
   if (!v.ok || !v.data?.account_id) throw new Error(errOf(v, 'Strike didn\'t accept the signature.'));

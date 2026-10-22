@@ -48,13 +48,20 @@ export function goLivePanel(t, mk) {
 
   async function connectWith(id) {
     const status = h('div', {}); box.replaceChildren(status, h('div', { class: 'actions' }, cancelBtn()));
+    let at = 'open';
+    const STEP = { open: 'Opening the wallet (approve this site in its popup; unlock it first if it\'s locked)…', wallet: 'Reading the wallet\'s address…', sign: 'Sign the message in your wallet.', verify: 'Checking with Strike…' };
+    const WHERE = { open: 'opening the wallet', wallet: 'reading its address', sign: 'signing', verify: 'checking with Strike' };
     try {
-      say(status, 'Opening the wallet…');
+      say(status, STEP.open);
       const api = await globalThis.window.cardano[id].enable();
-      const c = await connect(api, { code, onStep: st => say(status, st === 'sign' ? 'Sign the message in your wallet.' : st === 'verify' ? 'Checking with Strike…' : 'Finding your Strike account…') });
+      const c = await connect(api, { code, onStep: st => { at = st; say(status, STEP[st] || STEP.wallet); } });
       session = { ...c, call: client(c.key) };
       review(null);
-    } catch (e) { say(status, e?.message || 'The wallet didn\'t connect.', 'field-error'); }
+    } catch (e) {
+      say(status, `Stopped while ${WHERE[at] || 'connecting'}: ${e?.message || e?.info || 'the wallet didn\'t answer'}. Nothing was changed.`, 'field-error');
+      const again = button('Try again', {}, '↻', true); again.addEventListener('click', () => connectWith(id));
+      box.querySelector('.actions')?.prepend(again);
+    }
   }
 
   async function review(subId) {
