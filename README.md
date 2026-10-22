@@ -56,7 +56,7 @@ node qa/serve.mjs    # http://localhost:8080 with the production security header
 
 ## Privacy and security
 
-No accounts, cookies, analytics or keys. A paper copy stores only the wallet and settings (30 days); a report stores nothing. The wallet you paste goes into the URL after `#` (never sent to the server) so a report can be shared. Strict Content Security Policy; all API data is rendered as text. See [SECURITY.md](SECURITY.md).
+No accounts, cookies, analytics or keys. A paper copy stores only the wallet and settings (30 days); a report stores nothing. The Worker keeps daily totals of paper copies started and of visits to Copilot Watch through this site's link, as plain numbers with no wallet or ids. The wallet you paste goes into the URL after `#` (never sent to the server) so a report can be shared. Strict Content Security Policy; all API data is rendered as text. See [SECURITY.md](SECURITY.md).
 
 ## Design
 

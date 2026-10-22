@@ -37,7 +37,7 @@ const btn = (label, href, { secondary = false, icon = '↗', external = true } =
 const lab = (long, short) => (short ? [h('span', { class: 'l', text: long }), h('span', { class: 's', text: short })] : long);
 
 export const strikeUrl = addr => `https://app.strikefinance.org/public-portfolio/${addr}?platform=hyperliquid`;
-export const WATCH_URL = 'https://t.me/CopilotWatchBot';
+export const WATCH_URL = 'https://t.me/CopilotWatchBot?start=check'; // ?start=check: Watch counts arrivals from here (a number, no ids)
 
 // ---------- states ----------
 const sections = root => ['holds', 'catches', 'replay', 'months'].map(id => root.querySelector(`#${id}`));
