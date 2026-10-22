@@ -6,7 +6,7 @@ import { STRIKE_API } from '../core/http.js';
 import { accountByAddress, accountById } from '../core/strike.js';
 
 /** Builder code registered on Strike for this site. Empty = the Go live button stays hidden. */
-export const BUILDER_CODE = '';
+export const BUILDER_CODE = 'copilotcheck';
 /** Builder fee the user approves: none. */
 export const FEE_BPS = 0;
 /** Strike's copy minimums (/v2/copy/lead-traders: min_margin_per_entry_order, min_copy_amount). */
