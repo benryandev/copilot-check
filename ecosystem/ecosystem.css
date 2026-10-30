@@ -91,6 +91,12 @@ body { overflow: hidden; overscroll-behavior: none; }
   pointer-events: none;
 }
 .hud-foot a { color: inherit; pointer-events: auto; }
+/* The footer sits on the 3D scene with no panel: a halo of the page colour keeps it legible
+   over the car and bright ground, as the pad hint does */
+.hud-foot { text-shadow: 0 0 4px var(--bg-page), 0 0 8px var(--bg-page); }
+/* Light theme: HUD panels go opaque. At 88% the grey labels on them dropped to ~3.9:1 over
+   dark scenery; on solid white they are 4.8:1 whatever is behind. */
+.light :is(.hud-title, .chip, .race-hud, .prompt-card) { background: var(--bg-surface); }
 
 /* ── Touch controls ──────────────────────────────────────────────────── */
 .touch {
@@ -243,12 +249,17 @@ body { overflow: hidden; overscroll-behavior: none; }
 @media (max-width: 420px) {
   .hud-title .br-label { display: none; }
   .hud-foot span:nth-child(1) { display: none; }
+  /* The disclosure and credit wrap to two lines here: lift the driving buttons clear of them */
+  .touch { bottom: calc(max(var(--space-2xs), env(safe-area-inset-bottom)) + 3rem); }
+
   .pad-btn { width: 4rem; height: 4rem; }
   .pad-gas { width: 4.75rem; height: 4.75rem; }
 }
 
 @media (pointer: coarse) {
   .keys { display: none; }
+  /* A 44px tap height for the credit link without moving the text */
+  .hud-foot a { display: inline-block; padding-block: 15px; margin-block: -15px; }
 }
 
 /* ── Graphics setting (in Map view) ─────────────────────────────────── */
