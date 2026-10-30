@@ -494,6 +494,7 @@ onBoard(() => {
 });
 $("intro-map").addEventListener("click", openMap);
 $("start").addEventListener("click", () => $("intro").close());
+$("intro-race").addEventListener("click", () => { $("intro").close(); toStart(); });
 document.querySelectorAll("[data-quality]").forEach((b) =>
   b.addEventListener("click", () => {
     qualityPref = b.dataset.quality;

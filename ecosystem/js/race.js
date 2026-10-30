@@ -14,6 +14,18 @@ const $ = (id) => document.getElementById(id);
 
 const load = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+// Anonymous funnel counts (opened the world, reached the raceway, started a lap, finished one): each
+// stage is sent at most once per page load, and the worker counts a visitor once per stage per day.
+const sent = new Set();
+function countStage(kind) {
+  if (sent.has(kind)) return;
+  sent.add(kind);
+  const body = JSON.stringify({ track: RACE_TRACK.id, kind });
+  try {
+    if (!navigator.sendBeacon?.(`${API}/race/event`, body)) fetch(`${API}/race/event`, { method: "POST", body, keepalive: true }).catch(() => {});
+  } catch {}
+}
+
 let best = (() => {
   const b = load(BEST_KEY);
   return b && Number.isFinite(b.ms) && b.ms > 0 ? b : null;
@@ -36,6 +48,7 @@ function note(text, ms = 3000) {
 }
 
 function startLap(t) {
+  countStage("start");
   Object.assign(lap, { running: true, start: t, next: 1, splits: [] });
 }
 export function raceCancel(why) {
@@ -97,6 +110,7 @@ function finish(t) {
     save(BEST_KEY, best);
   }
   finished = { ms, splits, prevBest, posted: false };
+  countStage("finish");
   openFinish();
 }
 
@@ -230,6 +244,7 @@ export const raceBoard = () => board;
 export const onBoard = (f) => listeners.add(f);
 // While on the raceway: fetch on arrival, then every 60 s
 export function raceRefresh(onRaceway) {
+  if (onRaceway) countStage("found");
   if (onRaceway && Date.now() - board.at > 60_000) fetchTop();
 }
 
@@ -261,4 +276,5 @@ export function toStart() {
 
 export function initRace(h) {
   hooks = h;
+  countStage("open");
 }
