@@ -155,7 +155,7 @@ export function createDust(max, palette) {
       const age = 1 - p.life / p.max;
       pos.set([p.x, p.y, p.z], i * 3);
       size[i] = p.s * (0.6 + age * 1.6);
-      alpha[i] = Math.min(1, age * 6) * (1 - age) * 0.55;
+      alpha[i] = Math.min(1, age * 6) * (1 - age) * 0.7;
     }
     geo.attributes.position.needsUpdate = true;
     geo.attributes.aSize.needsUpdate = true;

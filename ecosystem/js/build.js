@@ -36,8 +36,8 @@ export function canvasTexture(w, h, draw) {
 }
 
 export function addCollider(obj, inset = 0.3) {
-  obj.updateMatrixWorld(true);
-  const b = new THREE.Box3().setFromObject(obj);
+  obj.updateWorldMatrix(true, true); // parents too, or a child's box lands at the origin
+  const b = new THREE.Box3().setFromObject(obj, true); // precise: rotated shapes don't inflate the box
   colliders.push({ minX: b.min.x + inset, maxX: b.max.x - inset, minZ: b.min.z + inset, maxZ: b.max.z - inset });
   return b;
 }
@@ -205,8 +205,8 @@ export function buildStops(scene) {
     g.rotation.y = Math.atan2(toCentre.x, toCentre.z);
     const height = SHAPES[stop.shape](g, A);
     scene.add(g);
+    const bb = addCollider(g); // before the label, whose sprite would widen the box
     makeLabel(stop.name, d.colour, height + 2.2, g);
-    const bb = addCollider(g);
     const reach = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 + 4.5;
     const padPos = new THREE.Vector3(stop.pos[0], 0.06, stop.pos[1]).addScaledVector(toCentre, reach);
     const ring = new THREE.Mesh(padGeo, new THREE.MeshBasicMaterial({ color: d.colour, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));

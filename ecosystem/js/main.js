@@ -36,9 +36,9 @@ const pal = () => (dark ? PALETTE.dark : PALETTE.light);
 
 // ── Quality tiers ─────────────────────────────────────────────────────
 const TIERS = {
-  high: { ratio: 2, shadow: 2048, grass: 14000, ground: 200, dust: 260 },
-  medium: { ratio: 1.5, shadow: 1024, grass: 7000, ground: 150, dust: 160 },
-  low: { ratio: 1, shadow: 0, grass: 2500, ground: 110, dust: 80 },
+  high: { ratio: 2, shadow: 2048, grass: 14000, ground: 200, dust: 420 },
+  medium: { ratio: 1.5, shadow: 1024, grass: 7000, ground: 150, dust: 280 },
+  low: { ratio: 1, shadow: 0, grass: 2500, ground: 110, dust: 140 },
 };
 const ORDER = ["high", "medium", "low"];
 let qualityPref = (() => { try { return localStorage.getItem("eco-quality") || "auto"; } catch { return "auto"; } })();
@@ -211,7 +211,7 @@ function emitDust(dt, info) {
   const { fx, fz } = info;
   const rx = -fz, rz = fx;
   if (info.event?.landed > 4) {
-    const n = Math.min(28, Math.round(info.event.landed * 2.5));
+    const n = Math.min(40, Math.round(info.event.landed * 3.5));
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, sp = 2 + Math.random() * 4;
       dust.userData.emit(s.x, s.y + 0.3, s.z, Math.cos(a) * sp, 0.6 + Math.random(), Math.sin(a) * sp, 1.6 + Math.random(), 1 + Math.random() * 0.6);
@@ -220,7 +220,7 @@ function emitDust(dt, info) {
   if (s.air || !info.dirt) return;
   const v = Math.abs(s.speed);
   if (v < 3) return;
-  dustCarry += dt * (v * 1.1 + Math.abs(s.steer) * v * 1.4);
+  dustCarry += dt * (v * 2 + Math.abs(s.steer) * v * 2.2);
   while (dustCarry >= 1) {
     dustCarry -= 1;
     for (const side of [-1, 1]) {
@@ -230,8 +230,8 @@ function emitDust(dt, info) {
         -fx * v * 0.12 + (Math.random() - 0.5) * 1.5 + rx * side * 0.6,
         0.5 + Math.random() * 0.8,
         -fz * v * 0.12 + (Math.random() - 0.5) * 1.5 + rz * side * 0.6,
-        0.9 + Math.random() * 0.7,
-        0.7 + Math.random() * 0.7,
+        1.2 + Math.random() * 0.9,
+        0.9 + Math.random() * 0.8,
       );
     }
   }
@@ -475,4 +475,4 @@ requestAnimationFrame(frame);
 show($("intro"));
 
 // Test hook for automated checks (no effect on play)
-window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera };
+window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, colliders };
