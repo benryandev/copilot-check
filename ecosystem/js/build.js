@@ -330,6 +330,9 @@ const MODELS = {
   hq: "hq.glb", exchange: "exchange.glb", slpvault: "slp-vault.glb", coinstack: "coin-stack.glb",
   bridgegate: "bridge-gate.glb", terminal: "terminal.glb", observatory: "observatory.glb",
   townhall: "town-hall.glb", rotunda: "rotunda.glb", gatehouse: "gatehouse.glb",
+  kiosk: "kiosk.glb", twin: "twin.glb", cluster: "cluster.glb", pillar: "pillar.glb", dome: "dome.glb",
+  tower: "tower.glb", antenna: "antenna.glb", grid: "grid.glb", coins: "coins.glb", vault: "vault.glb",
+  arch: "arch.glb", cliff: "cliff.glb", shop: "shop.glb", plot: "plot.glb",
 };
 const loader = new GLTFLoader();
 const loading = new Map();
