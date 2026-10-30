@@ -899,18 +899,4 @@ export const STOPS = [
     docs: "https://github.com/strike-finance/perpetuals-smart-contracts",
     docsLabel: "Perpetuals contracts",
   },
-  {
-    key: "txpipe-audits",
-    district: "chains",
-    name: "Audits",
-    shape: "arch",
-    summary: "Strike publishes a security audit report for its perpetuals smart contracts in its GitHub repository. It lists 13 findings from a code review at a fixed commit.",
-    points: [
-      "Findings include time-bound checks, missing input validation and token validation gaps in specific flows.",
-      "The report says no audit can guarantee zero flaws and suggests multiple independent audits.",
-    ],
-    live: null,
-    docs: "https://github.com/strike-finance/perpetuals-smart-contracts/blob/main/audits/first_audit.pdf",
-    docsLabel: "Audit report",
-  },
 ];
