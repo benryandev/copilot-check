@@ -322,11 +322,14 @@ async function swapInModel(g, file, A, colliderIndex) {
   }
   const model = src.clone(true);
   model.traverse((o) => {
+    // Multi-material nodes load as a group of meshes: spin the outermost spin_ node
+    if (o.name.startsWith("spin_") && !o.parent?.name.startsWith("spin_") && !reduceMotion) {
+      animated.push((t) => (o.rotation.y = t * 0.9));
+    }
     if (!o.isMesh) return;
     o.castShadow = o.receiveShadow = true;
     const n = o.material?.name;
     o.material = n === "Accent" ? A : n === "Trim" ? M.trim : n === "Glass" ? M.glass : n === "Building" ? M.build : o.material;
-    if (o.name.startsWith("spin_") && !reduceMotion) animated.push((t) => (o.rotation.y = t * 0.9));
   });
   // Keep the floating label; drop the blockout
   [...g.children].filter((c) => !c.isSprite).forEach((c) => g.remove(c));
