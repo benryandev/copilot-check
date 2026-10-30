@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Strike Ecosystem</title>
+  <meta name="description" content="Drive around Strike Finance: dirt roads between districts, live market figures, and what each feature does.">
+  <script src="/src/theme.js"></script>
+  <link rel="stylesheet" href="/css/br.css">
+  <link rel="stylesheet" href="/ecosystem/ecosystem.css">
+  <link rel="modulepreload" href="/ecosystem/vendor/three.module.min.js">
+</head>
+<body>
+  <canvas id="world" aria-hidden="true"></canvas>
+
+  <header class="hud hud-top">
+    <div class="hud-title">
+      <p class="br-label">Strike ecosystem, test build</p>
+      <p class="hud-district" id="where" aria-live="polite">Strike HQ</p>
+    </div>
+    <div class="hud-actions">
+      <button type="button" class="chip" id="open-map">Map view</button>
+      <button type="button" class="chip" id="theme" aria-label="Switch to dark theme">Dark</button>
+    </div>
+  </header>
+
+  <div class="hud hud-prompt" id="prompt" hidden>
+    <button type="button" class="br-button" id="prompt-btn"><span class="br-button-label" id="prompt-label">Open</span></button>
+    <p class="hud-hint" id="prompt-hint">or press Enter</p>
+  </div>
+
+  <div class="touch" id="touch" hidden>
+    <div class="touch-group">
+      <button type="button" class="pad-btn" data-key="left" aria-label="Steer left"><span class="tri tri-left"></span></button>
+      <button type="button" class="pad-btn" data-key="right" aria-label="Steer right"><span class="tri tri-right"></span></button>
+    </div>
+    <div class="touch-group">
+      <button type="button" class="pad-btn" data-key="down" aria-label="Brake and reverse"><span class="tri tri-down"></span></button>
+      <button type="button" class="pad-btn pad-gas" data-key="up" aria-label="Accelerate"><span class="tri tri-up"></span></button>
+    </div>
+  </div>
+
+  <footer class="hud hud-foot">
+    <span>Live data: Strike public API</span>
+    <span>Independent, not affiliated with Strike</span>
+    <a href="https://benryan.com.au">Built by Ben Ryan</a>
+  </footer>
+
+  <dialog id="intro" class="sheet">
+    <p class="br-label">Strike ecosystem</p>
+    <h1>Drive around Strike</h1>
+    <p>Follow the dirt roads and signposts from Strike HQ to each district. Pull onto a glowing pad to open that feature, with live figures from Strike where they exist.</p>
+    <ul class="keys">
+      <li><span class="key">↑ W</span> accelerate</li>
+      <li><span class="key">↓ S</span> brake, reverse</li>
+      <li><span class="key">← → A D</span> steer</li>
+      <li><span class="key">Enter</span> open a pad</li>
+    </ul>
+    <p class="muted">On a phone, use the buttons at the bottom of the screen. Looking for something? Map view jumps you straight there.</p>
+    <div class="sheet-actions">
+      <button type="button" class="br-button" id="start"><span class="br-button-label">Start driving</span></button>
+      <button type="button" class="br-button br-button--secondary" id="intro-map"><span class="br-button-label">Map view</span></button>
+    </div>
+  </dialog>
+
+  <dialog id="stop" class="sheet" aria-labelledby="stop-title">
+    <p class="br-label" id="stop-eyebrow"></p>
+    <h2 id="stop-title"></h2>
+    <p id="stop-summary"></p>
+    <dl class="stats" id="stop-live" hidden></dl>
+    <ul id="stop-points"></ul>
+    <div class="sheet-actions">
+      <a class="br-button" id="stop-docs" target="_blank" rel="noopener"><span class="br-button-label">Read the docs</span></a>
+      <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Keep driving</span></button>
+    </div>
+  </dialog>
+
+  <dialog id="map" class="sheet" aria-labelledby="map-title">
+    <p class="br-label">Map view</p>
+    <h2 id="map-title">Where to?</h2>
+    <p class="muted">Pick a feature to drive straight to it, or read about it here.</p>
+    <dl class="stats" id="map-live"></dl>
+    <div id="map-groups"></div>
+    <fieldset class="quality">
+      <legend>Graphics</legend>
+      <button type="button" class="chip" data-quality="auto">Auto</button>
+      <button type="button" class="chip" data-quality="high">High</button>
+      <button type="button" class="chip" data-quality="medium">Medium</button>
+      <button type="button" class="chip" data-quality="low">Low</button>
+    </fieldset>
+    <div class="sheet-actions">
+      <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Back to the world</span></button>
+    </div>
+  </dialog>
+
+  <script type="module" src="/ecosystem/js/main.js"></script>
+</body>
+</html>

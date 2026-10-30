@@ -1,0 +1,145 @@
+// The car: arcade driving on a height field. It follows the ground, leaves it when the ground
+// falls away faster than gravity (the jump), and squashes a little on landing.
+
+import * as THREE from "../vendor/three.module.min.js";
+import { M, accent, box, mesh, colliders } from "./build.js";
+import { groundHeight, onDirt, WORLD } from "./terrain.js";
+
+export const CAR_R = 1.6;
+const MAX_F = 24, MAX_R = 9, ACCEL = 16, BRAKE = 34, ROLL = 5, TURN = 2.2, GRAVITY = 30;
+const OFF_ROAD = 0.8; // top speed share on grass
+const MAX_CLIMB = 0.9; // steepest slope (rise per unit) the car can drive up
+
+export function createCar(colour) {
+  const car = new THREE.Group();
+  const tilt = new THREE.Group(); // pitch, roll and squash live here
+  car.add(tilt);
+  const A = accent(colour);
+  const body = box(2.2, 0.8, 4, A, 0, 0.45, 0);
+  const cabin = box(1.8, 0.75, 2, M.glass, 0, 1.25, 0.3);
+  tilt.add(body, cabin, box(2.25, 0.12, 4.05, M.trim, 0, 1.2, 0));
+  const wheels = [];
+  for (const [x, z] of [[-1.15, -1.3], [1.15, -1.3], [-1.15, 1.3], [1.15, 1.3]]) {
+    const hub = new THREE.Group();
+    hub.position.set(x, 0.45, z);
+    const w = mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.4, 18), M.tyre);
+    w.rotation.z = Math.PI / 2;
+    hub.add(w);
+    tilt.add(hub);
+    wheels.push({ hub, w, front: z < 0 });
+  }
+  const s = { x: 0, y: 0, z: 0, heading: 0, speed: 0, steer: 0, vy: 0, air: false, squash: 0, pitch: 0, roll: 0, airTime: 0 };
+  return { group: car, tilt, body, wheels, s };
+}
+
+function pushOut(px, pz, r) {
+  for (const c of colliders) {
+    const nx = Math.max(c.minX, Math.min(px, c.maxX));
+    const nz = Math.max(c.minZ, Math.min(pz, c.maxZ));
+    const dx = px - nx, dz = pz - nz;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < r * r) {
+      const d = Math.sqrt(d2) || 0.0001;
+      const ux = d2 ? dx / d : 0, uz = d2 ? dz / d : 1;
+      return { x: nx + ux * r, z: nz + uz * r, nx: ux, nz: uz };
+    }
+  }
+  return null;
+}
+export { pushOut };
+
+export function keepInWorld(o, r) {
+  const dx = o.x - WORLD.cx, dz = o.z - WORLD.cz;
+  const d = Math.hypot(dx, dz);
+  const lim = WORLD.radius - 8 - r;
+  if (d > lim) {
+    o.x = WORLD.cx + (dx * lim) / d;
+    o.z = WORLD.cz + (dz * lim) / d;
+    return true;
+  }
+  return false;
+}
+
+// Returns events for effects: { landed: impact speed } or null
+export function stepCar(car, keys, dt) {
+  const s = car.s;
+  const dirt = onDirt(s.x, s.z);
+  const top = MAX_F * (dirt ? 1 : OFF_ROAD);
+  const throttle = s.air ? 0 : (keys.up ? 1 : 0) - (keys.down ? 1 : 0);
+  if (throttle > 0) s.speed += (s.speed < 0 ? BRAKE : ACCEL) * dt;
+  else if (throttle < 0) s.speed -= (s.speed > 0 ? BRAKE : ACCEL * 0.7) * dt;
+  else if (!s.air) s.speed -= Math.sign(s.speed) * Math.min(Math.abs(s.speed), ROLL * dt);
+  if (s.speed > top) s.speed = Math.max(top, s.speed - BRAKE * 0.5 * dt); // ease down when leaving the road
+  s.speed = Math.max(-MAX_R, s.speed);
+
+  const steerIn = (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
+  s.steer += (steerIn - s.steer) * Math.min(1, dt * 10);
+  const grip = s.air ? 0.15 : Math.min(1, Math.abs(s.speed) / 8);
+  s.heading += s.steer * TURN * grip * Math.sign(s.speed) * dt;
+
+  const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
+  const nx = s.x + fx * s.speed * dt, nz = s.z + fz * s.speed * dt;
+
+  let event = null;
+  const gNew = groundHeight(nx, nz);
+  const step = Math.hypot(nx - s.x, nz - s.z);
+  // Too steep to drive up (the back of a kicker, the world's edge): stop like a wall
+  if (!s.air && step > 1e-4 && (gNew - s.y) / step > MAX_CLIMB && gNew - s.y > 0.25) {
+    s.speed *= -0.25;
+  } else {
+    s.x = nx;
+    s.z = nz;
+  }
+
+  const hit = pushOut(s.x, s.z, CAR_R);
+  if (hit) { s.x = hit.x; s.z = hit.z; s.speed *= 0.35; }
+  if (keepInWorld(s, CAR_R)) s.speed *= 0.6;
+
+  const g = groundHeight(s.x, s.z);
+  if (s.air) {
+    s.vy -= GRAVITY * dt;
+    s.y += s.vy * dt;
+    s.airTime += dt;
+    if (s.y <= g) {
+      event = { landed: -s.vy, airTime: s.airTime };
+      s.squash = Math.min(0.35, -s.vy * 0.03);
+      s.y = g;
+      s.vy = 0;
+      s.air = false;
+    }
+  } else {
+    const vyGround = dt > 0 ? (g - s.y) / dt : 0;
+    // Ground drops away faster than we'd fall in one frame: take off with the speed we had going up
+    if (s.y - g > GRAVITY * dt * dt * 2 && s.vy > 2) {
+      s.air = true;
+      s.airTime = 0;
+      s.y += s.vy * dt;
+    } else {
+      s.vy = vyGround;
+      s.y = g;
+    }
+  }
+
+  // Pitch and roll to the ground's slope; nose dips slowly in the air
+  if (!s.air) {
+    const ahead = groundHeight(s.x + fx * 1.6, s.z + fz * 1.6) - groundHeight(s.x - fx * 1.6, s.z - fz * 1.6);
+    const rx = -fz, rz = fx;
+    const side = groundHeight(s.x + rx, s.z + rz) - groundHeight(s.x - rx, s.z - rz);
+    s.pitch += (Math.atan2(ahead, 3.2) - s.pitch) * Math.min(1, dt * 12);
+    s.roll += (Math.atan2(side, 2) - s.roll) * Math.min(1, dt * 12);
+  } else {
+    s.pitch += (-0.25 - s.pitch) * Math.min(1, dt * 1.5);
+  }
+  s.squash *= Math.exp(-dt * 9);
+
+  car.group.position.set(s.x, s.y, s.z);
+  car.group.rotation.y = s.heading;
+  car.tilt.rotation.x = s.pitch;
+  car.tilt.rotation.z = s.roll - s.steer * grip * 0.04;
+  car.tilt.scale.set(1 + s.squash * 0.5, 1 - s.squash, 1 + s.squash * 0.3);
+  car.wheels.forEach(({ hub, w, front }) => {
+    if (front) hub.rotation.y = s.steer * 0.45;
+    w.rotation.x -= (s.speed * dt) / 0.45;
+  });
+  return { event, dirt, fx, fz };
+}

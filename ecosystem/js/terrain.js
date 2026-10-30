@@ -1,0 +1,278 @@
+// Ground: rolling hills that flatten under plazas and roads, dirt road ribbons, and jump kickers.
+// groundHeight(x, z) is the single source of truth for both the meshes and the car.
+
+import * as THREE from "../vendor/three.module.min.js";
+import { DISTRICTS, ROADS, JUMPS } from "./content.js";
+
+export const ROAD_HALF = 3.6;
+export const WORLD = { cx: 0, cz: -72, radius: 155 };
+
+const smooth = (a, b, x) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+
+// ── Roads as sampled polylines ─────────────────────────────────────────
+export const roads = ROADS.map((r) => {
+  const curve = new THREE.CatmullRomCurve3(r.points.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, "centripetal");
+  const n = 160;
+  const pts = curve.getSpacedPoints(n).map((p) => [p.x, p.z]);
+  let len = 0;
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) {
+    len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    cum.push(len);
+  }
+  return { ...r, curve, pts, cum, len };
+});
+
+// Nearest point on any road: distance, road index, t (0–1), unit tangent
+export function roadInfo(x, z) {
+  let best = { d: Infinity, road: -1, t: 0, tx: 0, tz: 1 };
+  roads.forEach((r, ri) => {
+    const p = r.pts;
+    for (let i = 0; i < p.length - 1; i++) {
+      const ax = p[i][0], az = p[i][1], bx = p[i + 1][0], bz = p[i + 1][1];
+      const vx = bx - ax, vz = bz - az;
+      const l2 = vx * vx + vz * vz;
+      const u = Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / l2));
+      const qx = ax + vx * u, qz = az + vz * u;
+      const d = Math.hypot(x - qx, z - qz);
+      if (d < best.d) {
+        const l = Math.sqrt(l2);
+        best = { d, road: ri, t: (r.cum[i] + l * u) / r.len, tx: vx / l, tz: vz / l, along: r.cum[i] + l * u };
+      }
+    }
+  });
+  return best;
+}
+
+// ── Jumps, placed in each road's local frame ───────────────────────────
+export const jumps = JUMPS.map((j) => {
+  const r = roads[j.road];
+  const start = r.curve.getPointAt(j.t);
+  const tan = r.curve.getTangentAt(j.t);
+  const tx = tan.x, tz = tan.z;
+  const l = Math.hypot(tx, tz);
+  // Right of travel, looking down the road (heading towards -z means right is -x... use cross product)
+  const rx = -tz / l, rz = tx / l;
+  const off = j.side * (ROAD_HALF - j.width / 2 - 0.2);
+  return { ...j, ox: start.x + rx * off, oz: start.z + rz * off, fx: tx / l, fz: tz / l, rx, rz };
+});
+
+function jumpHeight(x, z) {
+  for (const j of jumps) {
+    const dx = x - j.ox, dz = z - j.oz;
+    const u = dx * j.fx + dz * j.fz;
+    const v = dx * j.rx + dz * j.rz;
+    if (u >= 0 && u <= j.length && Math.abs(v) <= j.width / 2) return j.height * Math.pow(u / j.length, 1.35);
+  }
+  return 0;
+}
+
+// ── Height field ───────────────────────────────────────────────────────
+const plazas = Object.values(DISTRICTS);
+function flatMask(x, z, d) {
+  let m = smooth(ROAD_HALF + 2, ROAD_HALF + 16, d);
+  for (const p of plazas) {
+    const dp = Math.hypot(x - p.centre[0], z - p.centre[1]) - p.radius;
+    m *= smooth(1, 14, dp);
+  }
+  return m;
+}
+function hills(x, z) {
+  return (
+    1.6 +
+    2.0 * Math.sin(x * 0.045 + 1.3) * Math.cos(z * 0.038) +
+    1.1 * Math.sin((x + z) * 0.07) +
+    0.5 * Math.sin(x * 0.13 - z * 0.11)
+  );
+}
+function edgeRise(x, z) {
+  const d = Math.hypot(x - WORLD.cx, z - WORLD.cz);
+  return Math.max(0, d - (WORLD.radius - 25)) * 0.55;
+}
+
+export function terrainHeight(x, z, info = roadInfo(x, z)) {
+  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d) + edgeRise(x, z);
+}
+export function groundHeight(x, z) {
+  return terrainHeight(x, z) + jumpHeight(x, z);
+}
+// Grass grows where the ground isn't road or plaza
+export function grassWeight(x, z) {
+  const info = roadInfo(x, z);
+  return flatMask(x, z, info.d);
+}
+export const onDirt = (x, z) => roadInfo(x, z).d < ROAD_HALF + 0.3 || jumpHeight(x, z) > 0;
+
+// ── Meshes ─────────────────────────────────────────────────────────────
+export function buildGround(segments, palette) {
+  const size = WORLD.radius * 2 + 40;
+  const geo = new THREE.PlaneGeometry(size, size, segments, segments);
+  geo.rotateX(-Math.PI / 2);
+  geo.translate(WORLD.cx, 0, WORLD.cz);
+  const pos = geo.attributes.position;
+  const shade = new Float32Array(pos.count); // 0..1 variation, coloured per theme
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    pos.setY(i, terrainHeight(x, z));
+    shade[i] = 0.5 + 0.5 * Math.sin(x * 0.21 + Math.cos(z * 0.17) * 2) * Math.cos(z * 0.13);
+  }
+  geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(pos.count * 3), 3));
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.receiveShadow = true;
+  mesh.userData.recolour = (p) => {
+    const a = new THREE.Color(p.grassA), b = new THREE.Color(p.grassB), c = new THREE.Color();
+    const col = geo.attributes.color;
+    for (let i = 0; i < pos.count; i++) {
+      c.copy(a).lerp(b, shade[i]);
+      col.setXYZ(i, c.r, c.g, c.b);
+    }
+    col.needsUpdate = true;
+  };
+  mesh.userData.recolour(palette);
+  return mesh;
+}
+
+// Dirt texture: speckles, two wheel ruts, soft worn edges
+function dirtTexture() {
+  const c = document.createElement("canvas");
+  c.width = 128;
+  c.height = 256;
+  const ctx = c.getContext("2d");
+  const img = ctx.createImageData(c.width, c.height);
+  for (let y = 0; y < c.height; y++) {
+    for (let x = 0; x < c.width; x++) {
+      const u = x / (c.width - 1);
+      const edge = Math.min(1, Math.min(u, 1 - u) * 7);
+      const rut = Math.exp(-((u - 0.3) ** 2) / 0.002) + Math.exp(-((u - 0.7) ** 2) / 0.002);
+      const n = Math.random();
+      const v = 200 + n * 40 - rut * 30;
+      const i = (y * c.width + x) * 4;
+      img.data[i] = v;
+      img.data[i + 1] = v * 0.86;
+      img.data[i + 2] = v * 0.68;
+      // ragged edge
+      img.data[i + 3] = 255 * Math.min(1, edge * (0.75 + n * 0.5));
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+export function buildRoads(palette) {
+  const tex = dirtTexture();
+  const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 });
+  const group = new THREE.Group();
+  for (const r of roads) {
+    const n = r.pts.length;
+    const verts = new Float32Array(n * 2 * 3);
+    const uvs = new Float32Array(n * 2 * 2);
+    const idx = [];
+    const w = ROAD_HALF + 0.6;
+    for (let i = 0; i < n; i++) {
+      const [x, z] = r.pts[i];
+      const [ax, az] = r.pts[Math.max(0, i - 1)];
+      const [bx, bz] = r.pts[Math.min(n - 1, i + 1)];
+      const tx = bx - ax, tz = bz - az, l = Math.hypot(tx, tz);
+      const nx = -tz / l, nz = tx / l;
+      verts.set([x + nx * w, 0.03, z + nz * w, x - nx * w, 0.03, z - nz * w], i * 6);
+      const v = r.cum[i] / 8;
+      uvs.set([0, v, 1, v], i * 4);
+      if (i < n - 1) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
+    geo.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, mat);
+    m.receiveShadow = true;
+    m.renderOrder = 1;
+    group.add(m);
+  }
+  group.userData.recolour = (p) => mat.color.set(p.dirt);
+  group.userData.recolour(palette);
+  return group;
+}
+
+// Kicker: sampled from jumpHeight so the mesh matches the physics exactly
+export function buildJumps(palette) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial();
+  const side = new THREE.MeshLambertMaterial();
+  for (const j of jumps) {
+    const steps = 16;
+    const pos = [];
+    const P = (u, v, y) => [j.ox + j.fx * u + j.rx * v, y, j.oz + j.fz * u + j.rz * v];
+    const hw = j.width / 2;
+    const top = [];
+    for (let s = 0; s <= steps; s++) {
+      const u = (s / steps) * j.length;
+      const y = j.height * Math.pow(u / j.length, 1.35) + 0.02;
+      top.push([u, y]);
+    }
+    const tri = (a, b, c) => pos.push(...a, ...b, ...c);
+    for (let s = 0; s < steps; s++) {
+      const [u0, y0] = top[s], [u1, y1] = top[s + 1];
+      // top surface
+      tri(P(u0, -hw, y0), P(u1, -hw, y1), P(u1, hw, y1));
+      tri(P(u0, -hw, y0), P(u1, hw, y1), P(u0, hw, y0));
+    }
+    const sidePos = [];
+    const stri = (a, b, c) => sidePos.push(...a, ...b, ...c);
+    for (let s = 0; s < steps; s++) {
+      const [u0, y0] = top[s], [u1, y1] = top[s + 1];
+      for (const v of [-hw, hw]) {
+        stri(P(u0, v, 0), P(u1, v, 0), P(u1, v, y1));
+        stri(P(u0, v, 0), P(u1, v, y1), P(u0, v, y0));
+      }
+    }
+    // back face
+    const L = j.length, H = j.height + 0.02;
+    stri(P(L, -hw, 0), P(L, hw, 0), P(L, hw, H));
+    stri(P(L, -hw, 0), P(L, hw, H), P(L, -hw, H));
+    const g1 = new THREE.BufferGeometry();
+    g1.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    g1.computeVertexNormals();
+    const g2 = new THREE.BufferGeometry();
+    g2.setAttribute("position", new THREE.Float32BufferAttribute(sidePos, 3));
+    g2.computeVertexNormals();
+    const m1 = new THREE.Mesh(g1, mat);
+    const m2 = new THREE.Mesh(g2, side);
+    m1.material.side = THREE.DoubleSide;
+    m2.material.side = THREE.DoubleSide;
+    for (const m of [m1, m2]) { m.castShadow = true; m.receiveShadow = true; group.add(m); }
+  }
+  group.userData.recolour = (p) => { mat.color.set(p.dirtTop); side.color.set(p.dirtSide); };
+  group.userData.recolour(palette);
+  return group;
+}
+
+export function buildPlazas(palette) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial();
+  for (const d of Object.values(DISTRICTS)) {
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(d.radius, 72), mat);
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.set(d.centre[0], 0.02, d.centre[1]);
+    disc.receiveShadow = true;
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(d.radius - 0.5, d.radius, 96),
+      new THREE.MeshBasicMaterial({ color: d.colour }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(d.centre[0], 0.04, d.centre[1]);
+    group.add(disc, ring);
+  }
+  group.userData.recolour = (p) => mat.color.set(p.plaza);
+  group.userData.recolour(palette);
+  return group;
+}
