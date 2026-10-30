@@ -176,7 +176,7 @@ body { overflow: hidden; overscroll-behavior: none; }
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: var(--space-2xs);
 }
-.stats[hidden] { display: none; }
+.stats[hidden], .br-button[hidden] { display: none; }
 .stats div {
   padding: var(--space-xs) var(--space-sm);
   border: 1px solid var(--border-color);
@@ -266,4 +266,6 @@ body { overflow: hidden; overscroll-behavior: none; }
 .quality button { min-height: 44px; }
 .quality button[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-page); border-color: var(--text-primary); }
 .map-group { font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
-.map-list + .map-group { margin-top: var(--space-lg); }
+.map-group-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
+.map-list + .map-group-row { margin-top: var(--space-lg); }
+.map-group-row + .map-list { margin-top: var(--space-2xs); }

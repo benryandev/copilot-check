@@ -1,9 +1,21 @@
 // Buildings, labels, pads, billboards, signposts and ticker crates.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { DISTRICTS, STOPS } from "./content.js";
+import { DISTRICTS, STOPS, ROADS, layoutStops, boardSpot } from "./content.js";
 import { LABELS } from "./data.js";
 import { roads, jumps, ROAD_HALF, terrainHeight } from "./terrain.js";
+
+// Everything in a district lives in its group, so far-away districts can be skipped when drawing
+export const districtGroups = {};
+export function groupFor(scene, key) {
+  if (!districtGroups[key]) {
+    const g = new THREE.Group();
+    g.userData.key = key;
+    scene.add(g);
+    districtGroups[key] = g;
+  }
+  return districtGroups[key];
+}
 
 export const colliders = []; // axis-aligned boxes in x/z: { minX, maxX, minZ, maxZ }
 export const animated = []; // (t) => void
@@ -150,6 +162,46 @@ const SHAPES = {
     if (!reduceMotion) animated.push((t) => (holder.rotation.y = Math.sin(t * 1.4) * 0.35));
     return 12;
   },
+  dome(g, A) {
+    g.add(cyl(4.5, 3, M.build, 0, 0, 0, 32));
+    g.add(mesh(new THREE.SphereGeometry(4.5, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2), M.build, 0, 3, 0));
+    g.add(cyl(4.6, 0.35, A, 0, 2.6, 0, 32));
+    g.add(cyl(0.35, 1.6, A, 0, 7.3, 0, 8));
+    return 9;
+  },
+  vault(g, A) {
+    g.add(box(7, 6, 6, M.build, 0, 0, 0));
+    const door = mesh(new THREE.CylinderGeometry(1.9, 1.9, 0.4, 28), A, 0, 3, 3.1);
+    door.rotation.x = Math.PI / 2;
+    g.add(door, box(7.4, 0.4, 6.4, M.trim, 0, 6, 0));
+    if (!reduceMotion) animated.push((t) => (door.rotation.y = t * 0.3));
+    return 7;
+  },
+  coins(g, A) {
+    [[-2.2, 0, 5], [0.4, -1.6, 8], [2.3, 1.2, 3]].forEach(([x, z, n]) => {
+      for (let i = 0; i < n; i++) g.add(cyl(1.4, 0.45, i % 2 ? A : M.build, x, i * 0.5, z, 24));
+    });
+    return 5;
+  },
+  kiosk(g, A) {
+    g.add(box(5, 3.2, 4, M.build, 0, 0, 0));
+    const awning = box(5.6, 0.25, 2, A, 0, 0, 0);
+    awning.position.set(0, 3.1, 2.6);
+    awning.rotation.x = -0.3;
+    g.add(awning, box(5.4, 0.3, 4.4, M.trim, 0, 3.2, 0));
+    return 5;
+  },
+  pillar(g, A) {
+    g.add(cyl(2, 10, M.build, 0, 0, 0, 20));
+    for (const y of [3, 6, 9]) g.add(cyl(2.1, 0.3, A, 0, y, 0, 20));
+    g.add(mesh(new THREE.ConeGeometry(2.4, 2.4, 20), A, 0, 11.2, 0));
+    return 13;
+  },
+  arch(g, A) {
+    g.add(box(1.4, 7, 1.4, M.build, -3.5, 0, 0), box(1.4, 7, 1.4, M.build, 3.5, 0, 0), box(8.4, 1.2, 1.6, A, 0, 7, 0));
+    g.add(box(4, 1.5, 4, M.build, 0, 0, -3));
+    return 9;
+  },
   grid(g, A) {
     for (let i = -1; i <= 1; i++)
       for (let j = -1; j <= 1; j++) {
@@ -192,10 +244,16 @@ function makeLabel(text, colour, y, parent) {
 export const pads = [];
 const padGeo = new THREE.RingGeometry(2.3, 3, 40);
 const discGeo = new THREE.CircleGeometry(2.3, 40);
+const FALLBACK = ["dome", "vault", "kiosk", "pillar", "coins", "arch", "tower", "twin", "cluster"];
 export function buildStops(scene) {
-  for (const stop of STOPS) {
+  const placed = layoutStops();
+  STOPS.forEach((stop, i) => {
     const d = DISTRICTS[stop.district];
+    if (!d) return;
+    stop.pos = stop.pos || placed.get(stop.key);
+    const shape = SHAPES[stop.shape] ? stop.shape : FALLBACK[i % FALLBACK.length];
     const A = accent(d.colour);
+    const parent = groupFor(scene, stop.district);
     const g = new THREE.Group();
     g.position.set(stop.pos[0], 0, stop.pos[1]);
     // Face the open middle of the district (the hub's buildings face the spawn)
@@ -203,31 +261,33 @@ export function buildStops(scene) {
     const fl = Math.hypot(fx, fz) || 1;
     const toCentre = new THREE.Vector3(fx / fl, 0, fz / fl);
     g.rotation.y = Math.atan2(toCentre.x, toCentre.z);
-    const height = SHAPES[stop.shape](g, A);
-    scene.add(g);
+    const height = SHAPES[shape](g, A);
+    parent.add(g);
     const bb = addCollider(g); // before the label, whose sprite would widen the box
     makeLabel(stop.name, d.colour, height + 2.2, g);
     const reach = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 + 4.5;
-    const padPos = new THREE.Vector3(stop.pos[0], 0.06, stop.pos[1]).addScaledVector(toCentre, reach);
+    const padPos = new THREE.Vector3(stop.pos[0], 0.18, stop.pos[1]).addScaledVector(toCentre, reach);
     const ring = new THREE.Mesh(padGeo, new THREE.MeshBasicMaterial({ color: d.colour, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.copy(padPos);
     const disc = new THREE.Mesh(discGeo, new THREE.MeshBasicMaterial({ color: d.colour, transparent: true, opacity: 0.14 }));
     disc.rotation.x = -Math.PI / 2;
-    disc.position.copy(padPos).setY(0.05);
-    scene.add(ring, disc);
+    disc.position.copy(padPos).setY(0.16);
+    parent.add(ring, disc);
     pads.push({ stop, pos: padPos, ring });
-  }
+  });
 }
 
 // ── Billboards with live figures ───────────────────────────────────────
 export const boards = [];
-export function buildBoard(scene, district, x, z, rotY, getLive) {
+export function buildBoard(scene, district, getLive) {
   const d = DISTRICTS[district];
   const keys = d.board;
-  const cols = keys.length > 4 ? 3 : 2;
+  if (!keys) return;
+  const { x, z, rotY } = boardSpot(d);
+  const cols = keys.length > 4 ? 3 : keys.length > 1 ? 2 : 1;
   const rows = Math.ceil(keys.length / cols);
-  const W = cols === 3 ? 1600 : 1200, H = 190 + rows * 270;
+  const W = Math.max(1100, 140 + cols * 500), H = 190 + rows * 270;
   const board = canvasTexture(W, H, (ctx, w, h, p) => {
     const live = getLive();
     ctx.fillStyle = p.panel;
@@ -245,7 +305,7 @@ export function buildBoard(scene, district, x, z, rotY, getLive) {
       ctx.fillText(LABELS[k].toUpperCase(), x0, y0);
       ctx.fillStyle = p.text;
       ctx.font = "500 104px 'Geist Mono', monospace";
-      ctx.fillText(live ? live.values[k] : "…", x0, y0 + 56);
+      ctx.fillText(live?.values[k] ?? "…", x0, y0 + 56);
     });
   });
   redraws.push(board.redraw);
@@ -259,13 +319,13 @@ export function buildBoard(scene, district, x, z, rotY, getLive) {
   const panel = mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: board.tex, toneMapped: false }), 0, 5.5 + ph / 2, 0.3);
   panel.castShadow = false;
   g.add(...legs, back, panel);
-  scene.add(g);
+  groupFor(scene, district).add(g);
   legs.forEach((l) => addCollider(l, 0));
 }
 
 // ── Signposts ──────────────────────────────────────────────────────────
 // arms: [{ text, colour, dir: [dx, dz] }] — each board points along dir
-export function buildSignpost(scene, x, z, arms) {
+export function buildSignpost(parent, x, z, arms) {
   const g = new THREE.Group();
   const y0 = terrainHeight(x, z);
   g.position.set(x, y0, z);
@@ -307,35 +367,82 @@ export function buildSignpost(scene, x, z, arms) {
     arrow.rotation.y = Math.atan2(-arm.dir[1], arm.dir[0]);
     g.add(arrow);
   });
-  scene.add(g);
+  parent.add(g);
   colliders.push({ minX: x - 0.35, maxX: x + 0.35, minZ: z - 0.35, maxZ: z + 0.35 });
 }
 
-// Signs: one at each end of every road, and a warning before each jump
+// Wayfinding: a sign at HQ for every spoke, a welcome arch and a junction sign where each spoke
+// meets its district (back to HQ and on to both neighbours), and a warning before each jump.
+const unit = (x, z) => { const l = Math.hypot(x, z) || 1; return [x / l, z / l]; };
 export function buildRoadSigns(scene) {
   roads.forEach((r) => {
-    const sideOf = (t, s) => {
+    if (r.kind !== "spoke") return;
+    const to = DISTRICTS[r.to];
+    const side = (t, s) => {
       const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
-      return { x: p.x + -tan.z * s, z: p.z + tan.x * s, tx: tan.x, tz: tan.z };
+      return { x: p.x - tan.z * s, z: p.z + tan.x * s, tx: tan.x, tz: tan.z, px: p.x, pz: p.z };
     };
-    const a = sideOf(0.04, -(ROAD_HALF + 1.6));
-    const to = DISTRICTS[r.to], from = DISTRICTS[r.from];
-    buildSignpost(scene, a.x, a.z, [{ text: to.name, colour: to.colour, dir: [a.tx, a.tz] }]);
-    const b = sideOf(0.96, ROAD_HALF + 1.6);
-    buildSignpost(scene, b.x, b.z, [{ text: from.name, colour: from.colour, dir: [-b.tx, -b.tz] }]);
+    // At HQ: this road's destination
+    const a = side(0.03, ROAD_HALF + 1.6);
+    buildSignpost(groupFor(scene, "hub"), a.x, a.z, [{ text: to.name, colour: to.colour, dir: [a.tx, a.tz] }]);
+    // At the district: back to HQ, and along the ring road both ways
+    const b = side(0.97, -(ROAD_HALF + 1.6));
+    const arms = [{ text: "Strike HQ", colour: DISTRICTS.hub.colour, dir: [-b.tx, -b.tz] }];
+    for (const e of to.exits) {
+      const n = DISTRICTS[e.to];
+      arms.push({ text: n.name, colour: n.colour, dir: unit(e.at[0] - b.x, e.at[1] - b.z) });
+    }
+    buildSignpost(groupFor(scene, r.to), b.x, b.z, arms);
+    buildArch(groupFor(scene, r.to), r, to);
   });
-  jumps.forEach((j, i) => {
+  jumps.forEach((j) => {
     const r = roads[j.road];
     const t = Math.max(0, j.t - 14 / r.len);
     const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
     const s = j.side * (ROAD_HALF + 1.6);
-    buildSignpost(scene, p.x + -tan.z * s, p.z + tan.x * s, [{ text: "Jump ahead", colour: 0xf59e0b, dir: [tan.x, tan.z] }]);
+    buildSignpost(scene, p.x - tan.z * s, p.z + tan.x * s, [{ text: "Jump ahead", colour: 0xf59e0b, dir: [tan.x, tan.z] }]);
   });
+}
+
+// A gateway over the road where it enters a district, with the district's name on the beam
+function buildArch(parent, road, d) {
+  const t = 1 - 5 / road.len;
+  const p = road.curve.getPointAt(t), tan = road.curve.getTangentAt(t);
+  const g = new THREE.Group();
+  g.position.set(p.x, 0, p.z);
+  g.rotation.y = Math.atan2(tan.x, tan.z);
+  const A = accent(d.colour);
+  const half = ROAD_HALF + 1.6;
+  const posts = [box(0.8, 6.4, 0.8, M.build, -half, 0, 0), box(0.8, 6.4, 0.8, M.build, half, 0, 0)];
+  g.add(...posts, box(half * 2 + 1.4, 0.3, 1, A, 0, 6.4, 0));
+  const { tex, redraw } = canvasTexture(1024, 160, (ctx, w, h, pal) => {
+    ctx.fillStyle = pal.panel;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = hex(d.colour);
+    ctx.fillRect(0, h - 14, w, 14);
+    ctx.fillStyle = pal.text;
+    ctx.font = "600 76px 'Atkinson Hyperlegible Next', Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(d.name, w / 2, h / 2 - 4, w - 60);
+  });
+  redraws.push(redraw);
+  const bw = half * 2 + 1, bh = bw * (160 / 1024);
+  for (const [z, ry] of [[-0.52, Math.PI], [0.52, 0]]) {
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    plane.position.set(0, 5.4, z);
+    plane.rotation.y = ry;
+    g.add(plane);
+  }
+  g.add(box(bw + 0.2, bh + 0.2, 1, M.build, 0, 5.4 - (bh + 0.2) / 2, 0));
+  parent.add(g);
+  posts.forEach((post) => addCollider(post, 0));
 }
 
 // ── Ticker crates: one per Strike market, knock them about ─────────────
 export const crates = [];
 export function addCrates(scene, tickers, cx, cz, colour) {
+  const parent = groupFor(scene, "perps");
   tickers.forEach((t, i) => {
     const { tex, redraw } = canvasTexture(256, 256, (ctx, w, h, p) => {
       ctx.fillStyle = p.panel;
@@ -357,7 +464,7 @@ export function addCrates(scene, tickers, cx, cz, colour) {
     const r = 7 + ring * 2.2;
     m.position.set(cx + Math.cos(a) * r, s / 2, cz + Math.sin(a) * r);
     m.rotation.y = a;
-    scene.add(m);
+    parent.add(m);
     crates.push({ m, v: new THREE.Vector2(), spin: 0, tilt: 0, r: 0.9, redraw });
   });
 }

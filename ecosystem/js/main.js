@@ -6,7 +6,7 @@ import { fetchLive, LABELS } from "./data.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps } from "./terrain.js";
 import { createGrass, createDust } from "./effects.js";
 import {
-  M, animated, pads, crates, boards, colliders,
+  M, animated, pads, crates, boards, colliders, districtGroups,
   buildStops, buildBoard, buildRoadSigns, addCrates, recolourMaterials,
 } from "./build.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R } from "./car.js";
@@ -50,7 +50,7 @@ const canvas = $("world");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 320);
 const hemi = new THREE.HemisphereLight(0xffffff, 0x8892a0, 1.1);
 const sun = new THREE.DirectionalLight(0xffffff, 1.6);
 sun.castShadow = true;
@@ -69,8 +69,7 @@ buildRoadSigns(scene);
 
 let live = null;
 const getLive = () => live;
-buildBoard(scene, "hub", 19, 4, -1.2, getLive);
-buildBoard(scene, "perps", -12, -152, 0.55, getLive);
+Object.keys(DISTRICTS).forEach((k) => buildBoard(scene, k, getLive));
 
 let grass = null, dust = null;
 function applyTier() {
@@ -107,7 +106,7 @@ function applyTheme() {
   $("theme").textContent = dark ? "Light" : "Dark";
   $("theme").setAttribute("aria-label", `Switch to ${dark ? "light" : "dark"} theme`);
   scene.background = new THREE.Color(p.sky);
-  scene.fog = new THREE.Fog(p.sky, 80, 200);
+  scene.fog = new THREE.Fog(p.sky, 90, 240);
   hemi.intensity = dark ? 0.55 : 1.1;
   sun.intensity = dark ? 0.9 : 1.6;
   recolourMaterials(p, dark);
@@ -255,6 +254,14 @@ function placeCamera(dt, snap = false) {
   sun.target.position.set(s.x, s.y, s.z);
 }
 
+// ── Skip drawing districts out of sight (beyond the fog) ──────────────
+function cullDistricts() {
+  for (const [key, g] of Object.entries(districtGroups)) {
+    const d = DISTRICTS[key];
+    g.visible = Math.hypot(camera.position.x - d.centre[0], camera.position.z - d.centre[1]) < 250 + d.radius;
+  }
+}
+
 // ── Where am I ────────────────────────────────────────────────────────
 let whereText = "";
 function updateWhere() {
@@ -310,7 +317,7 @@ function fillStats(dl, ks) {
       const div = document.createElement("div");
       div.append(
         Object.assign(document.createElement("dt"), { textContent: LABELS[k] }),
-        Object.assign(document.createElement("dd"), { textContent: live ? live.values[k] : "Loading" }),
+        Object.assign(document.createElement("dd"), { textContent: live ? live.values[k] ?? "Not available" : "Loading" }),
       );
       return div;
     }),
@@ -327,7 +334,15 @@ function openStop(stop) {
   $("stop-live").hidden = !stop.live;
   if (stop.live) fillStats($("stop-live"), stop.live);
   $("stop-docs").href = stop.docs;
-  $("stop-docs").querySelector(".br-button-label").textContent = `Docs: ${stop.docsLabel}`;
+  // Strike's own docs read "Docs: …"; a third-party page just names itself
+  const own = stop.docs.startsWith("https://docs.strikefinance.org");
+  $("stop-docs").querySelector(".br-button-label").textContent = own ? `Docs: ${stop.docsLabel}` : stop.docsLabel;
+  const site = stop.site && stop.site !== stop.docs ? stop.site : null;
+  $("stop-site").hidden = !site;
+  if (site) {
+    $("stop-site").href = site;
+    $("stop-site").querySelector(".br-button-label").textContent = `Visit ${stop.name}`;
+  }
   show($("stop"));
 }
 
@@ -342,10 +357,33 @@ function teleport(stop) {
   updateWhere();
 }
 
+// Drop the car on the road just outside a district's arch, facing in
+function teleportDistrict(key) {
+  const r = roads.find((x) => x.kind === "spoke" && x.to === key);
+  const t = 1 - 16 / r.len;
+  const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
+  Object.assign(car.s, { x: p.x, z: p.z, y: groundHeight(p.x, p.z), heading: Math.atan2(-tan.x, -tan.z), speed: 0, steer: 0, vy: 0, air: false });
+  dialogs.forEach((d) => d.open && d.close());
+  stepCar(car, keys, 0);
+  placeCamera(0, true);
+  checkPads();
+  updateWhere();
+}
+
 function openMap() {
   fillStats($("map-live"), ["volume24h", "openInterest", "markets", "maxLeverage"]);
   const groups = Object.entries(DISTRICTS).flatMap(([key, d]) => {
-    const h = Object.assign(document.createElement("p"), { className: "map-group", textContent: d.name });
+    if (!STOPS.some((s) => s.district === key)) return [];
+    const h = document.createElement("div");
+    h.className = "map-group-row";
+    const label = Object.assign(document.createElement("p"), { className: "map-group", textContent: d.name });
+    h.append(label);
+    if (key !== "hub") {
+      const go = Object.assign(document.createElement("button"), { type: "button", className: "map-read", textContent: "Drive in" });
+      go.setAttribute("aria-label", `Go to the ${d.name} entrance`);
+      go.addEventListener("click", () => teleportDistrict(key));
+      h.append(go);
+    }
     const ul = document.createElement("ul");
     ul.className = "map-list";
     ul.append(
@@ -394,7 +432,7 @@ async function refresh() {
     if (!cratesAdded) {
       cratesAdded = true;
       const c = DISTRICTS.perps.centre;
-      addCrates(scene, live.tickers, c[0], c[1] - 6, DISTRICTS.perps.colour);
+      addCrates(scene, live.tickers, c[0], c[1], DISTRICTS.perps.colour);
       crates.forEach((cr) => cr.redraw(pal()));
     }
     boards.forEach((b) => b(pal()));
@@ -439,6 +477,8 @@ function resize() {
 addEventListener("resize", resize);
 
 const clock = new THREE.Clock();
+let frameNo = 0;
+let debugCam = false; // test hook: hold the camera still for overview shots
 function frame() {
   const raw = clock.getDelta();
   const dt = Math.min(raw, 1 / 30);
@@ -452,7 +492,8 @@ function frame() {
   stepCrates(dt);
   dust?.userData.step(dt);
   grass?.userData.tick(t);
-  placeCamera(dt);
+  if (!debugCam) placeCamera(dt);
+  if ((frameNo++ & 15) === 0 && !debugCam) cullDistricts();
   animated.forEach((f) => f(t));
   if (!reduceMotion) {
     const pulse = 0.65 + Math.sin(t * 3) * 0.2;
@@ -475,4 +516,6 @@ requestAnimationFrame(frame);
 show($("intro"));
 
 // Test hook for automated checks (no effect on play)
-window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, colliders };
+window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, colliders,
+  overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
+  info: () => renderer.info.render };

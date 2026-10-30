@@ -69,7 +69,7 @@ export function createGrass(count, palette, sway) {
     const g = grassWeight(x, z);
     if (g < 0.35) continue;
     // Denser near roads, where the camera mostly looks
-    const near = Math.exp(-roadInfo(x, z).d / 45);
+    const near = Math.exp(-Math.min(90, roadInfo(x, z, 60).d) / 30);
     if (Math.random() > 0.25 + 0.75 * near) continue;
     p.set(x, terrainHeight(x, z) - 0.02, z);
     q.setFromAxisAngle(up, Math.random() * Math.PI * 2);

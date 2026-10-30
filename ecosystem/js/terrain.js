@@ -5,7 +5,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, ROADS, JUMPS } from "./content.js";
 
 export const ROAD_HALF = 3.6;
-export const WORLD = { cx: 0, cz: -72, radius: 155 };
+export const WORLD = { cx: 0, cz: 0, radius: 250 };
 
 const smooth = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -26,24 +26,43 @@ export const roads = ROADS.map((r) => {
   return { ...r, curve, pts, cum, len };
 });
 
-// Nearest point on any road: distance, road index, t (0–1), unit tangent
-export function roadInfo(x, z) {
+// Road segments bucketed on a grid, so lookups only check nearby segments
+const CELL = 12;
+const grid = new Map();
+const cellKey = (i, j) => i * 100003 + j;
+roads.forEach((r, ri) => {
+  for (let i = 0; i < r.pts.length - 1; i++) {
+    const [ax, az] = r.pts[i], [bx, bz] = r.pts[i + 1];
+    const seg = { ax, az, bx, bz, ri, cum: r.cum[i] };
+    const i0 = Math.floor(Math.min(ax, bx) / CELL), i1 = Math.floor(Math.max(ax, bx) / CELL);
+    const j0 = Math.floor(Math.min(az, bz) / CELL), j1 = Math.floor(Math.max(az, bz) / CELL);
+    for (let a = i0; a <= i1; a++) for (let b = j0; b <= j1; b++) {
+      const k = cellKey(a, b);
+      if (!grid.has(k)) grid.set(k, []);
+      grid.get(k).push(seg);
+    }
+  }
+});
+
+// Nearest point on any road within maxD: distance, road index, t (0–1), unit tangent.
+// Beyond maxD, d is Infinity.
+export function roadInfo(x, z, maxD = 26) {
   let best = { d: Infinity, road: -1, t: 0, tx: 0, tz: 1 };
-  roads.forEach((r, ri) => {
-    const p = r.pts;
-    for (let i = 0; i < p.length - 1; i++) {
-      const ax = p[i][0], az = p[i][1], bx = p[i + 1][0], bz = p[i + 1][1];
-      const vx = bx - ax, vz = bz - az;
+  const ci = Math.floor(x / CELL), cj = Math.floor(z / CELL), n = Math.ceil(maxD / CELL);
+  for (let a = ci - n; a <= ci + n; a++) for (let b = cj - n; b <= cj + n; b++) {
+    const list = grid.get(cellKey(a, b));
+    if (!list) continue;
+    for (const g of list) {
+      const vx = g.bx - g.ax, vz = g.bz - g.az;
       const l2 = vx * vx + vz * vz;
-      const u = Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / l2));
-      const qx = ax + vx * u, qz = az + vz * u;
-      const d = Math.hypot(x - qx, z - qz);
-      if (d < best.d) {
-        const l = Math.sqrt(l2);
-        best = { d, road: ri, t: (r.cum[i] + l * u) / r.len, tx: vx / l, tz: vz / l, along: r.cum[i] + l * u };
+      const u = Math.max(0, Math.min(1, ((x - g.ax) * vx + (z - g.az) * vz) / l2));
+      const d = Math.hypot(x - (g.ax + vx * u), z - (g.az + vz * u));
+      if (d < best.d && d <= maxD) {
+        const l = Math.sqrt(l2), r = roads[g.ri];
+        best = { d, road: g.ri, t: (g.cum + l * u) / r.len, tx: vx / l, tz: vz / l };
       }
     }
-  });
+  }
   return best;
 }
 
@@ -183,7 +202,7 @@ export function buildRoads(palette) {
       const [bx, bz] = r.pts[Math.min(n - 1, i + 1)];
       const tx = bx - ax, tz = bz - az, l = Math.hypot(tx, tz);
       const nx = -tz / l, nz = tx / l;
-      verts.set([x + nx * w, 0.03, z + nz * w, x - nx * w, 0.03, z - nz * w], i * 6);
+      verts.set([x + nx * w, 0.14, z + nz * w, x - nx * w, 0.14, z - nz * w], i * 6);
       const v = r.cum[i] / 8;
       uvs.set([0, v, 1, v], i * 4);
       if (i < n - 1) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
@@ -216,7 +235,7 @@ export function buildJumps(palette) {
     const top = [];
     for (let s = 0; s <= steps; s++) {
       const u = (s / steps) * j.length;
-      const y = j.height * Math.pow(u / j.length, 1.35) + 0.02;
+      const y = j.height * Math.pow(u / j.length, 1.35) + 0.16;
       top.push([u, y]);
     }
     const tri = (a, b, c) => pos.push(...a, ...b, ...c);
@@ -236,7 +255,7 @@ export function buildJumps(palette) {
       }
     }
     // back face
-    const L = j.length, H = j.height + 0.02;
+    const L = j.length, H = j.height + 0.16;
     stri(P(L, -hw, 0), P(L, hw, 0), P(L, hw, H));
     stri(P(L, -hw, 0), P(L, hw, H), P(L, -hw, H));
     const g1 = new THREE.BufferGeometry();
@@ -262,14 +281,14 @@ export function buildPlazas(palette) {
   for (const d of Object.values(DISTRICTS)) {
     const disc = new THREE.Mesh(new THREE.CircleGeometry(d.radius, 72), mat);
     disc.rotation.x = -Math.PI / 2;
-    disc.position.set(d.centre[0], 0.02, d.centre[1]);
+    disc.position.set(d.centre[0], 0.08, d.centre[1]);
     disc.receiveShadow = true;
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(d.radius - 0.5, d.radius, 96),
       new THREE.MeshBasicMaterial({ color: d.colour }),
     );
     ring.rotation.x = -Math.PI / 2;
-    ring.position.set(d.centre[0], 0.04, d.centre[1]);
+    ring.position.set(d.centre[0], 0.12, d.centre[1]);
     group.add(disc, ring);
   }
   group.userData.recolour = (p) => mat.color.set(p.plaza);
