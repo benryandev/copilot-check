@@ -3,6 +3,7 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { M, accent, box, mesh, colliders } from "./build.js";
+import { GLTFLoader } from "../vendor/GLTFLoader.js";
 import { groundHeight, onDirt, WORLD } from "./terrain.js";
 
 export const CAR_R = 1.6;
@@ -29,7 +30,44 @@ export function createCar(colour) {
     wheels.push({ hub, w, front: z < 0 });
   }
   const s = { x: 0, y: 0, z: 0, heading: 0, speed: 0, steer: 0, vy: 0, air: false, squash: 0, pitch: 0, roll: 0, airTime: 0 };
-  return { group: car, tilt, body, wheels, s };
+  const out = { group: car, tilt, body, wheels, s };
+  upgradeCar(out, colour);
+  return out;
+}
+
+// Swap the box car for the Blender model once it loads (models/car.glb, made in Blender).
+// Its "Accent" material takes the theme-aware accent; wheels keep steering and spinning.
+async function upgradeCar(car, colour) {
+  let gltf;
+  try {
+    gltf = await new GLTFLoader().loadAsync("/ecosystem/models/car.glb");
+  } catch (err) {
+    console.warn("[eco] car model", err);
+    return;
+  }
+  const model = gltf.scene;
+  const wheels = [];
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = true;
+    o.receiveShadow = true;
+    const name = o.material?.name;
+    if (name === "Accent") o.material = accent(colour);
+    else if (name === "Tyre") o.material = M.tyre;
+  });
+  for (const node of [...model.children]) {
+    if (!node.name.startsWith("wheel_")) continue;
+    // Pivot: steer the pivot about y, spin the wheel inside it about x
+    const hub = new THREE.Group();
+    hub.position.copy(node.position);
+    node.position.set(0, 0, 0);
+    hub.add(node);
+    model.add(hub);
+    wheels.push({ hub, w: node, front: node.name.endsWith("FL") || node.name.endsWith("FR") });
+  }
+  car.tilt.clear();
+  car.tilt.add(model);
+  car.wheels = wheels;
 }
 
 function pushOut(px, pz, r) {
