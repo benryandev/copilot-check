@@ -78,9 +78,16 @@ body { overflow: hidden; overscroll-behavior: none; }
 }
 
 .hud-foot {
-  left: 0;
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 2rem);
   bottom: max(var(--space-2xs), env(safe-area-inset-bottom));
+  padding: 0.2rem var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: 10rem;
+  background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+  backdrop-filter: blur(6px);
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
@@ -91,12 +98,13 @@ body { overflow: hidden; overscroll-behavior: none; }
   pointer-events: none;
 }
 .hud-foot a { color: inherit; pointer-events: auto; }
-/* The footer sits on the 3D scene with no panel: a halo of the page colour keeps it legible
-   over the car and bright ground, as the pad hint does */
-.hud-foot { text-shadow: 0 0 4px var(--bg-page), 0 0 8px var(--bg-page); }
 /* Light theme: HUD panels go opaque. At 88% the grey labels on them dropped to ~3.9:1 over
    dark scenery; on solid white they are 4.8:1 whatever is behind. */
-.light :is(.hud-title, .chip, .race-hud, .prompt-card) { background: var(--bg-surface); }
+.light :is(.hud-title, .chip, .race-hud, .prompt-card, .hud-foot) { background: var(--bg-surface); }
+/* While a sheet is open the footer and driving buttons would only crowd its edges */
+body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
+/* The district name wraps the same way in both themes */
+.hud-district { text-wrap: balance; }
 
 /* ── Touch controls ──────────────────────────────────────────────────── */
 .touch {
@@ -179,7 +187,7 @@ body { overflow: hidden; overscroll-behavior: none; }
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  grid-template-columns: repeat(2, 1fr); /* four figures: 2x2, never 3 + 1 */
   gap: var(--space-2xs);
 }
 .stats[hidden], .br-button[hidden] { display: none; }
@@ -207,10 +215,13 @@ body { overflow: hidden; overscroll-behavior: none; }
 .map-item { display: flex; gap: var(--space-2xs); align-items: stretch; }
 .map-read {
   flex: none;
+  align-self: center;
   min-width: 4.5rem;
   min-height: 44px;
+  padding: 0 var(--space-sm);
   border: 1px solid var(--border-color);
-  border-radius: 0.5rem;
+  border-radius: 10rem;
+  white-space: nowrap;
   background: transparent;
   color: var(--text-primary);
   font-family: var(--font-mono);
@@ -250,7 +261,8 @@ body { overflow: hidden; overscroll-behavior: none; }
   .hud-title .br-label { display: none; }
   .hud-foot span:nth-child(1) { display: none; }
   /* The disclosure and credit wrap to two lines here: lift the driving buttons clear of them */
-  .touch { bottom: calc(max(var(--space-2xs), env(safe-area-inset-bottom)) + 3rem); }
+  .hud-foot { border-radius: 0.75rem; }
+  .touch { bottom: calc(max(var(--space-2xs), env(safe-area-inset-bottom)) + 3.75rem); }
 
   .pad-btn { width: 4rem; height: 4rem; }
   .pad-gas { width: 4.75rem; height: 4.75rem; }
@@ -279,6 +291,7 @@ body { overflow: hidden; overscroll-behavior: none; }
 .map-group-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
 .map-list + .map-group-row { margin-top: var(--space-lg); }
 .map-group-row + .map-list { margin-top: var(--space-2xs); }
+#map-race-top { margin-top: var(--space-lg); }
 
 /* ── Open prompt: one panel, district-coloured edge, Enter keycap ──── */
 .prompt-card {
