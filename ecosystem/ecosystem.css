@@ -103,6 +103,10 @@ body { overflow: hidden; overscroll-behavior: none; }
 .light :is(.hud-title, .chip, .race-hud, .prompt-card, .hud-foot) { background: var(--bg-surface); }
 /* While a sheet is open the footer and driving buttons would only crowd its edges */
 body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
+/* Below ~1140px a 34rem sheet overlaps the corner panels and cuts them mid-word: hide them too */
+@media (max-width: 1140px) { body:has(dialog[open]) :is(.hud-top, .race-hud) { visibility: hidden; } }
+/* The phone tip in the intro only matters on touch screens */
+@media (pointer: fine) { .touch-tip { display: none; } }
 /* The district name wraps the same way in both themes */
 .hud-district { text-wrap: balance; }
 
@@ -160,7 +164,7 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
   color: var(--text-primary);
   box-shadow: 0 12px 40px var(--shadow-heavy);
 }
-.sheet::backdrop { background: rgba(0, 0, 0, 0.35); }
+.sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
 .sheet > * { margin: 0; }
 .sheet > * + * { margin-top: var(--space-md); }
 .sheet h1 { font-size: 2.25rem; }
@@ -374,7 +378,7 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .race-top-ms { float: right; margin-left: var(--space-sm); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .race-top-empty { margin-top: var(--space-2xs) !important; }
 @media (max-width: 420px) {
-  .race-hud { min-width: 0; top: calc(max(var(--space-sm), env(safe-area-inset-top)) + 4.35rem); }
+  .race-hud { min-width: 0; left: max(var(--space-sm), env(safe-area-inset-left)); top: calc(max(var(--space-sm), env(safe-area-inset-top)) + 4.35rem); }
   .race-time { font-size: 1.4rem; }
   .race-result { font-size: 2rem !important; }
 }
