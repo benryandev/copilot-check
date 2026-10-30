@@ -9,6 +9,7 @@
      <span class="br-button-label">Check wallet</span>
      <span class="br-button-icon"><span class="br-button-icon-inner">↗ (12px icon)</span></span>
    </a>
+   The icon is optional: without one the label is centred (see "Icon-less pill" below).
    Roles: default = primary; add .br-button--secondary for outline.
    Surfaces: add .br-button--light on a dark surface; .dark flips it automatically.
    Orange is NEVER used on the pill. */
@@ -86,6 +87,15 @@
   width: max-content;
   transform: translateY(0.1rem); /* Atkinson optical baseline */
 }
+/* Icon-less pill. The padding above is asymmetric because the 28px disc sits in the end
+   cap; with no disc the label hung 22px right of centre. The 0.1rem nudge comes from the
+   site and is kept for pills WITH an icon (the site has not authorised removing it); on its
+   own it sets Atkinson's caps ~1.7px below centre in the 48px pill, so it goes here. */
+.br-button:not(:has(.br-button-icon)) {
+  justify-content: center;
+  padding-inline: var(--space-lg);
+}
+.br-button:not(:has(.br-button-icon)) .br-button-label { transform: none; }
 .br-button-icon {
   display: flex;
   justify-content: center;
