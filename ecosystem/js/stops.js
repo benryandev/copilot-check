@@ -17,10 +17,13 @@ export const STOPS = [
       "Matching, positions, liquidations and funding run on the Strike Node.",
       "Deposits sit in on-chain locker contracts, with validators signing deposits and withdrawals.",
       "There's a mobile app, a full API for bots and tools, and fiat on and off ramps.",
+      "The Open Strike button uses Ben Ryan's referral code.",
     ],
     live: ["users", "totalVolume", "volume24h"],
     docs: `${DOCS}/getting-started/welcome`,
     docsLabel: "Welcome",
+    site: "https://app.strikefinance.org/trade/BTC?referralCode=BenRyan",
+    siteLabel: "Open Strike",
   },
   {
     key: "perpetuals",

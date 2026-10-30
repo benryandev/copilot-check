@@ -31,7 +31,7 @@ export function createCar(colour) {
   }
   const s = { x: 0, y: 0, z: 0, heading: 0, speed: 0, steer: 0, vy: 0, air: false, squash: 0, pitch: 0, roll: 0, airTime: 0 };
   const out = { group: car, tilt, body, wheels, s };
-  upgradeCar(out, colour);
+  out.ready = upgradeCar(out, colour);
   return out;
 }
 

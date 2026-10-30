@@ -7,7 +7,7 @@ import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInf
 import { createGrass, createDust } from "./effects.js";
 import {
   M, animated, pads, crates, boards, colliders, districtGroups,
-  buildStops, buildBoard, buildRoadSigns, addCrates, addProps, recolourMaterials, setTicker,
+  buildStops, buildBoard, buildRoadSigns, addCrates, addProps, recolourMaterials, setTicker, modelsReady,
 } from "./build.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R } from "./car.js";
 import { tint } from "./colours.js";
@@ -349,7 +349,7 @@ function openStop(stop) {
   $("stop-site").hidden = !site;
   if (site) {
     $("stop-site").href = site;
-    $("stop-site").querySelector(".br-button-label").textContent = `Visit ${stop.name}`;
+    $("stop-site").querySelector(".br-button-label").textContent = stop.siteLabel || `Visit ${stop.name}`;
   }
   show($("stop"));
 }
@@ -522,6 +522,14 @@ updateWhere();
 refresh();
 setInterval(refresh, 30_000);
 requestAnimationFrame(frame);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+await Promise.all([
+  sleep(700), // long enough to read as a moment, not a flicker
+  Promise.race([Promise.allSettled([modelsReady(), car.ready]), sleep(8000)]),
+]);
+await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); // a drawn frame behind it
+$("loader").classList.add("is-done");
+setTimeout(() => $("loader").remove(), 450);
 show($("intro"));
 
 // Test hook for automated checks (no effect on play)

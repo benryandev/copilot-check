@@ -302,3 +302,22 @@ body { overflow: hidden; overscroll-behavior: none; }
 
 /* On touch screens the prompt sits above the driving buttons */
 @media (pointer: coarse) { .hud-prompt { bottom: 10.5rem; } }
+
+/* ── Loading screen: Strike's mark turning, like the one on HQ ───────── */
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-lg);
+  background: var(--bg-page);
+  transition: opacity 400ms ease;
+  perspective: 600px;
+}
+.loader.is-done { opacity: 0; pointer-events: none; }
+.loader-mark { width: 7.5rem; height: 7.5rem; animation: loader-turn 2.4s linear infinite; }
+.loader-text { margin: 0; font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
+@keyframes loader-turn { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+@media (prefers-reduced-motion: reduce) { .loader-mark { animation: none; } }

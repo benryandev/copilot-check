@@ -466,6 +466,9 @@ let codeValues = {};
 const clockFace = new THREE.MeshBasicMaterial({ color: 0xf4f1e8 });
 const clockHand = new THREE.MeshBasicMaterial({ color: 0x111111 });
 
+// Resolves once every model started so far has loaded (or failed)
+export const modelsReady = () => Promise.allSettled([...loading.values()]);
+
 const FALLBACK = ["dome", "vault", "kiosk", "pillar", "coins", "arch", "tower", "twin", "cluster"];
 export function buildStops(scene) {
   const placed = layoutStops();

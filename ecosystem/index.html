@@ -10,9 +10,15 @@
   <link rel="stylesheet" href="/ecosystem/ecosystem.css">
   <link rel="modulepreload" href="/ecosystem/vendor/three.module.min.js">
   <link rel="preload" href="/ecosystem/models/car.glb" as="fetch" crossorigin>
+  <link rel="preload" href="/ecosystem/img/strike-mark.svg" as="image">
 </head>
 <body>
   <canvas id="world" aria-hidden="true"></canvas>
+
+  <div class="loader" id="loader" role="status" aria-live="polite">
+    <img class="loader-mark" src="/ecosystem/img/strike-mark.svg" width="120" height="120" alt="">
+    <p class="loader-text">Loading the Strike ecosystem</p>
+  </div>
 
   <header class="hud hud-top">
     <div class="hud-title">
