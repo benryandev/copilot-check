@@ -465,7 +465,8 @@ function openMap() {
         go.className = "map-go";
         go.setAttribute("aria-label", `Go to ${s.name}`);
         go.append(Object.assign(document.createElement("strong"), { textContent: s.name }), Object.assign(document.createElement("span"), { textContent: s.summary }));
-        go.addEventListener("click", () => teleport(s));
+        // The raceway's card goes to the start line, as "Go to start" and "Race again" do; Read still opens its sheet
+        go.addEventListener("click", () => (s.key === "raceway" ? toStart() : teleport(s)));
         const read = document.createElement("button");
         read.type = "button";
         read.className = "map-read";
