@@ -856,10 +856,34 @@ export function addProps(scene) {
 
 // ── Ticker crates: one per Strike market, knock them about ─────────────
 export const crates = [];
+// Strike's own market icons (img/markets/<SYMBOL>.png, from app.strikefinance.org; see SOURCES.md).
+// Only symbols with a file are requested, so a new market keeps its text face without a 404.
+const MARKET_LOGOS = new Set(("AAOI ADA BNB BTC COIN CRCL CXMT DOGE DRAM ETH GOOGL HYPE LIT MINIMAX MU NAS100 " +
+  "NEAR NIGHT NVDA PUMP SKHYNIX SNDK SOL SP500 SPCX SUI TSLA UNITREE WTI XAG XAU XRP ZEC ZHIPU").split(" "));
+// The app puts these three on a text-colour disc (no "noBg"); the rest draw straight
+const LOGO_DISC = new Set(["ADA", "NEAR", "NIGHT"]);
+const marketLogos = new Map(); // symbol -> Image, loaded once and reused by every redraw
+function marketLogo(sym, onReady) {
+  if (!MARKET_LOGOS.has(sym)) return null;
+  let img = marketLogos.get(sym);
+  if (!img) {
+    img = new Image();
+    img.onerror = () => { img.failed = true; };
+    img.src = `/ecosystem/img/markets/${sym}.png`;
+    marketLogos.set(sym, img);
+  }
+  if (!img.complete) img.addEventListener("load", onReady, { once: true });
+  return img;
+}
 export function addCrates(scene, tickers, cx, cz, colour) {
   const parent = groupFor(scene, "perps");
   tickers.forEach((t, i) => {
+    const sym = String(t).toUpperCase();
+    let lastPal = null;
     const { tex, redraw } = canvasTexture(256, 256, (ctx, w, h, p) => {
+      lastPal = p;
+      const img = marketLogo(sym, () => lastPal && redraw(lastPal));
+      const logo = img && img.complete && img.naturalWidth && !img.failed;
       ctx.fillStyle = p.panel;
       ctx.fillRect(0, 0, w, h);
       ctx.strokeStyle = hex(colour);
@@ -868,8 +892,31 @@ export function addCrates(scene, tickers, cx, cz, colour) {
       ctx.fillStyle = p.text;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = `500 ${t.length > 5 ? 44 : 64}px 'Geist Mono', monospace`;
-      ctx.fillText(t, w / 2, h / 2);
+      if (!logo) {
+        ctx.font = `500 ${t.length > 5 ? 44 : 64}px 'Geist Mono', monospace`;
+        ctx.fillText(t, w / 2, h / 2);
+        return;
+      }
+      // Logo in a circle, as the app shows it, with the ticker underneath
+      const d = 116, lx = w / 2, ly = 98;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(lx, ly, d / 2, 0, Math.PI * 2);
+      ctx.clip();
+      if (LOGO_DISC.has(sym)) ctx.fillRect(lx - d / 2, ly - d / 2, d, d);
+      ctx.drawImage(img, lx - d / 2, ly - d / 2, d, d);
+      ctx.restore();
+      ctx.save(); // the app's faint ring, so white icons keep their edge on a light panel
+      ctx.globalAlpha = 0.18;
+      ctx.strokeStyle = p.text;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(lx, ly, d / 2 - 1.5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = p.text;
+      ctx.font = `500 ${t.length > 5 ? 32 : 40}px 'Geist Mono', monospace`;
+      ctx.fillText(t, w / 2, 196);
     });
     redraws.push(redraw);
     const s = 1.5;
