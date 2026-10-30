@@ -304,8 +304,8 @@ const discGeo = new THREE.CircleGeometry(2.3, 40);
 // ── Blender models ─────────────────────────────────────────────────────
 // Shapes with a model in /ecosystem/models replace their blockout once loaded. Material names in
 // the model pick the theme-aware materials: Accent (district colour), Building, Trim, Glass.
-// Nodes named spin_* turn slowly.
-const MODELS = { hq: "hq.glb", exchange: "exchange.glb" };
+// Nodes named spin_* turn slowly about the vertical; turn_* turn about the way they face (a door).
+const MODELS = { hq: "hq.glb", exchange: "exchange.glb", slpvault: "slp-vault.glb" };
 const loader = new GLTFLoader();
 const loading = new Map();
 const loadModel = (file) => {
@@ -326,6 +326,9 @@ async function swapInModel(g, file, A, colliderIndex) {
     if (o.name.startsWith("spin_") && !o.parent?.name.startsWith("spin_") && !reduceMotion) {
       animated.push((t) => (o.rotation.y = t * 0.9));
     }
+    if (o.name.startsWith("turn_") && !o.parent?.name.startsWith("turn_") && !reduceMotion) {
+      animated.push((t) => (o.rotation.z = t * 0.35));
+    }
     if (!o.isMesh) return;
     o.castShadow = o.receiveShadow = true;
     if (o.name.startsWith("screen_")) {
@@ -344,6 +347,14 @@ async function swapInModel(g, file, A, colliderIndex) {
   const b = new THREE.Box3();
   model.traverse((o) => o.isMesh && b.expandByObject(o, true));
   colliders[colliderIndex] = { minX: b.min.x + 0.3, maxX: b.max.x - 0.3, minZ: b.min.z + 0.3, maxZ: b.max.z - 0.3 };
+  // Move the pad out to clear the model's footprint
+  const pad = g.userData.pad;
+  if (pad) {
+    const reach = Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2 + 3.5;
+    pad.pos.set(g.position.x + pad.dir.x * reach, pad.pos.y, g.position.z + pad.dir.z * reach);
+    pad.ring.position.set(pad.pos.x, pad.ring.position.y, pad.pos.z);
+    pad.disc.position.set(pad.pos.x, pad.disc.position.y, pad.pos.z);
+  }
   // Float the label just above the model's top
   const label = g.children.find((c) => c.isSprite);
   if (label) label.position.y = b.max.y + 2.2;
@@ -408,7 +419,8 @@ export function buildStops(scene) {
     const bb = addCollider(g); // before the label, whose sprite would widen the box
     const colliderIndex = colliders.length - 1;
     makeLabel(stop.name, d.colour, height + 2.2, g);
-    if (MODELS[shape]) swapInModel(g, MODELS[shape], A, colliderIndex);
+    const modelFile = MODELS[stop.shape] || MODELS[shape]; // a landmark may have no blockout shape of its own
+    if (modelFile) swapInModel(g, modelFile, A, colliderIndex);
     const reach = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 + 4.5;
     const padPos = new THREE.Vector3(stop.pos[0], 0.18, stop.pos[1]).addScaledVector(toCentre, reach);
     const ring = new THREE.Mesh(padGeo, tintedBasic(d.colour, { transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
@@ -418,7 +430,9 @@ export function buildStops(scene) {
     disc.rotation.x = -Math.PI / 2;
     disc.position.copy(padPos).setY(0.16);
     parent.add(ring, disc);
-    pads.push({ stop, pos: padPos, ring });
+    const pad = { stop, pos: padPos, ring, disc, dir: toCentre };
+    pads.push(pad);
+    g.userData.pad = pad;
   });
 }
 

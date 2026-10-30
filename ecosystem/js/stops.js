@@ -245,7 +245,7 @@ export const STOPS = [
     key: "slp",
     district: "earn",
     name: "SLP Vault",
-    shape: "vault",
+    shape: "slpvault",
     summary: "The Strike Liquidity Provider (SLP) is Strike's own market-making vault. Depositors hold shares in one shared pool that quotes the order books, so results depend on trading, funding and fees.",
     points: [
       "It places bids and asks across supported markets and also receives eligible liquidation backstop positions.",
