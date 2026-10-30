@@ -795,13 +795,14 @@ let crateMat = null;
 function crateMaterial() {
   if (crateMat) return crateMat;
   const { tex, redraw } = canvasTexture(256, 256, (ctx, w, h) => {
-    ctx.fillStyle = REALFI.paper;
+    // Dark face, logo in RealFi's green (Ben, 30 Oct)
+    ctx.fillStyle = REALFI.green;
     ctx.fillRect(0, 0, w, h);
     ctx.strokeStyle = REALFI.accent;
     ctx.lineWidth = 16;
     ctx.strokeRect(8, 8, w - 16, h - 16);
-    if (!drawLogo(ctx, REALFI.green, 30, 30, w - 60, h - 60)) {
-      ctx.fillStyle = REALFI.green;
+    if (!drawLogo(ctx, REALFI.accent, 30, 30, w - 60, h - 60)) {
+      ctx.fillStyle = REALFI.accent;
       ctx.font = "600 52px 'Atkinson Hyperlegible Next', Arial, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
