@@ -250,7 +250,13 @@ const SHAPES = {
     g.add(box(8, 3.4, 5, M.build, 0, 0, 0), box(8.4, 0.3, 5.4, A, 0, 3.4, 0));
     g.add(box(7.2, 2.2, 4.4, M.glass, 0, 3.7, 0), box(8.6, 0.4, 5.6, M.trim, 0, 5.9, 0));
     g.add(box(2, 2.6, 0.2, M.trim, 0, 0, 2.55));
-    return 6.3;
+    // RealFi's mark turning on a pole above the roof, like Strike's on HQ (Ben, 30 Oct)
+    g.add(cyl(0.18, 2.2, M.trim, 0, 6.3, 0, 8));
+    const coin = realfiCoin();
+    coin.position.y = 6.3 + 2.2 + 1.9;
+    g.add(coin);
+    if (!reduceMotion) animated.push((t) => (coin.rotation.y = t * 0.9));
+    return 12.4;
   },
   // Builders' Row: a shopfront with the project's name over the door
   shop(g, A, stop) {
@@ -807,6 +813,43 @@ export function drawLogo(ctx, colour, x, y, w, h) {
   return true;
 }
 export const REALFI = { green: "#032327", accent: "#0fb89c", paper: "#fafafa" };
+
+// RealFi's mark on a coin (img/realfi-mark.svg: the rings and line from their logo), the size of HQ's
+function realfiCoin() {
+  const mark = new Image();
+  const face = canvasTexture(512, 512, (ctx, w, h) => {
+    ctx.fillStyle = REALFI.green;
+    ctx.fillRect(0, 0, w, h);
+    if (!mark.complete || !mark.naturalWidth) return;
+    // Tint the mark (drawn in RealFi's dark green) to the accent, then centre it
+    const c = document.createElement("canvas");
+    c.width = c.height = 512;
+    const k = c.getContext("2d");
+    const mh = 380, mw = (mark.naturalWidth / mark.naturalHeight) * mh;
+    k.drawImage(mark, (512 - mw) / 2, (512 - mh) / 2, mw, mh);
+    k.globalCompositeOperation = "source-in";
+    k.fillStyle = REALFI.accent;
+    k.fillRect(0, 0, 512, 512);
+    // A cylinder cap's UVs run a quarter-turn round from the face's upright: turn the mark to match
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(c, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  });
+  mark.onload = () => face.redraw();
+  mark.src = "/ecosystem/img/realfi-mark.svg";
+  face.redraw();
+  const faceMat = new THREE.MeshStandardMaterial({ map: face.tex, roughness: 0.5, emissive: 0xffffff, emissiveMap: face.tex, emissiveIntensity: 0.35 });
+  const rim = new THREE.MeshStandardMaterial({ color: REALFI.accent, roughness: 0.4 });
+  // Cylinder groups: side, top cap, bottom cap. Turned so the caps face the front and back.
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(1.9, 1.9, 0.36, 48), [rim, faceMat, faceMat]);
+  disc.rotation.x = Math.PI / 2;
+  disc.castShadow = true;
+  const holder = new THREE.Group();
+  holder.add(disc);
+  return holder;
+}
 const crateGeo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
 let crateMat = null;
 function crateMaterial() {
