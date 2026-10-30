@@ -288,7 +288,9 @@ function placeCamera(dt, snap = false) {
     want.z = s.z + (want.z - s.z) * keep;
     want.y += (1 - keep) * 6;
   }
-  const look = new THREE.Vector3(s.x + fx * 4, s.y + 2.2, s.z + fz * 4);
+  // Portrait: aim nearer and lower so the car sits above the driving buttons, not under them
+  const ahead = camera.aspect < 1 ? 1 : 4, lift = camera.aspect < 1 ? 0.6 : 2.2;
+  const look = new THREE.Vector3(s.x + fx * ahead, s.y + lift, s.z + fz * ahead);
   camPos.lerp(want, snap ? 1 : 1 - Math.exp(-dt * (t < 1 ? 20 : 5)));
   camLook.lerp(look, snap ? 1 : 1 - Math.exp(-dt * 8));
   camera.position.copy(camPos);
