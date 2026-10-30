@@ -250,6 +250,13 @@ const SHAPES = {
     g.add(box(8, 3.4, 5, M.build, 0, 0, 0), box(8.4, 0.3, 5.4, A, 0, 3.4, 0));
     g.add(box(7.2, 2.2, 4.4, M.glass, 0, 3.7, 0), box(8.6, 0.4, 5.6, M.trim, 0, 5.9, 0));
     g.add(box(2, 2.6, 0.2, M.trim, 0, 0, 2.55));
+    // RealFi's full logo across the glass floor, front (pad and start straight) and back (Ben, 30 Oct)
+    for (const side of [1, -1]) {
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(6.8, 1.9), realfiPanel());
+      panel.position.set(0, 3.7 + 1.1, side * 2.21);
+      if (side < 0) panel.rotation.y = Math.PI;
+      g.add(panel);
+    }
     // RealFi's mark turning on a pole above the roof, like Strike's on HQ (Ben, 30 Oct)
     g.add(cyl(0.18, 2.2, M.trim, 0, 6.3, 0, 8));
     const coin = realfiCoin();
@@ -813,6 +820,27 @@ export function drawLogo(ctx, colour, x, y, w, h) {
   return true;
 }
 export const REALFI = { green: "#032327", accent: "#0fb89c", paper: "#fafafa" };
+
+// RealFi's full logo, white on their dark green as on realfi.co, for the race-control booth
+let panelMat = null;
+function realfiPanel() {
+  if (panelMat) return panelMat;
+  const { tex, redraw } = canvasTexture(1024, 286, (ctx, w, h) => {
+    ctx.fillStyle = REALFI.green;
+    ctx.fillRect(0, 0, w, h);
+    if (!drawLogo(ctx, REALFI.paper, 120, 50, w - 240, h - 100)) {
+      ctx.fillStyle = REALFI.paper;
+      ctx.font = "600 120px 'Atkinson Hyperlegible Next', Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("RealFi", w / 2, h / 2);
+    }
+  });
+  redraw();
+  realfiLogo.then(() => redraw());
+  panelMat = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
+  return panelMat;
+}
 
 // RealFi's mark on a coin (img/realfi-mark.svg: the rings and line from their logo), the size of HQ's
 function realfiCoin() {
