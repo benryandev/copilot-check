@@ -107,7 +107,9 @@ export function accent(colour) {
   }
   return accents.get(colour);
 }
+let currentPal = null; // the theme's palette, for textures painted after a theme change
 export function recolourMaterials(pal, dark) {
+  currentPal = pal;
   setDark(dark);
   accents.forEach((m, c) => { m.color.set(tint(c)); m.emissive.set(tint(c)); });
   tinted.forEach(({ m, colour }) => m.color.set(tint(colour)));
@@ -372,6 +374,25 @@ async function swapInModel(g, file, A, colliderIndex) {
     }
     if (!o.isMesh) return;
     o.castShadow = o.receiveShadow = true;
+    // Builders' Row: paint the project's name on the shop's fascia board
+    if (o.name === "sign_board") {
+      const name = g.userData.pad?.stop.name ?? "";
+      const sign = canvasTexture(1024, 200, (ctx, w, h, p) => {
+        ctx.fillStyle = p.panel;
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = p.text;
+        ctx.font = "600 104px 'Atkinson Hyperlegible Next', Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(name, w / 2, h / 2 + 4, w - 80);
+      });
+      sign.tex.flipY = false; // glTF UVs
+      redraws.push(sign.redraw);
+      sign.redraw(currentPal);
+      o.material = new THREE.MeshBasicMaterial({ map: sign.tex, toneMapped: false });
+      o.castShadow = false;
+      return;
+    }
     if (o.name.startsWith("screen_") || o.name === "code_screen") {
       o.material = o.name === "code_screen" ? codeMaterial : tickerMaterial;
       o.castShadow = false;
