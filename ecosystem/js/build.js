@@ -74,7 +74,8 @@ export function obbOf(o, inset = 0.3) {
   const hx = Math.max(0.15, (box.max.x - box.min.x) / 2 - inset), hz = Math.max(0.15, (box.max.z - box.min.z) / 2 - inset);
   const c = Math.cos(yaw), s = Math.sin(yaw);
   const ex = Math.abs(hx * c) + Math.abs(hz * s), ez = Math.abs(hx * s) + Math.abs(hz * c);
-  return { cx: w.x, cz: w.z, hx, hz, c, s, minX: w.x - ex, maxX: w.x + ex, minZ: w.z - ez, maxZ: w.z + ez, box };
+  const top = w.y + (box.max.y - box.min.y) / 2; // the camera keeps out of anything this tall
+  return { cx: w.x, cz: w.z, hx, hz, c, s, minX: w.x - ex, maxX: w.x + ex, minZ: w.z - ez, maxZ: w.z + ez, box, top };
 }
 // A box turned to yaw about the vertical (local x runs along (cos yaw, −sin yaw)), as obbOf makes
 export function orientedBox(cx, cz, hx, hz, yaw) {
@@ -349,6 +350,8 @@ const MODELS = {
   tower: "tower.glb", antenna: "antenna.glb", grid: "grid.glb", coins: "coins.glb", vault: "vault.glb",
   arch: "arch.glb", cliff: "cliff.glb", shop: "shop.glb", plot: "plot.glb",
 };
+// Models whose front was built facing another way: turn them so it faces the pad (+z)
+const MODEL_YAW = { "cliff.glb": -Math.PI / 2 };
 const loader = new GLTFLoader();
 const loading = new Map();
 const loadModel = (file) => {
@@ -414,6 +417,7 @@ async function swapInModel(g, file, A, colliderIndex) {
   });
   // Keep the floating label; drop the blockout
   [...g.children].filter((c) => !c.isSprite).forEach((c) => g.remove(c));
+  model.rotation.y = MODEL_YAW[file] ?? 0;
   g.add(model);
   // The model's footprint replaces the blockout's in the collision list
   const obb = obbOf(model, 0.3);
@@ -643,6 +647,18 @@ export function buildSignpost(parent, x, z, arms) {
 // Wayfinding: a sign at HQ for every spoke, a welcome arch and a junction sign where each spoke
 // meets its district (back to HQ and on to both neighbours), and a warning before each jump.
 const unit = (x, z) => { const l = Math.hypot(x, z) || 1; return [x / l, z / l]; };
+// Gap from (x, z) to the nearest building's box. Models load later and can be a little wider
+// than the blockout, so callers ask for a margin.
+function clearance(x, z) {
+  let best = Infinity;
+  for (const k of colliders) {
+    if (k.top === undefined) continue;
+    const dx = x - k.cx, dz = z - k.cz;
+    const lx = dx * k.c - dz * k.s, lz = dx * k.s + dz * k.c;
+    best = Math.min(best, Math.hypot(Math.max(0, Math.abs(lx) - k.hx), Math.max(0, Math.abs(lz) - k.hz)));
+  }
+  return best;
+}
 export function buildRoadSigns(scene) {
   roads.forEach((r) => {
     if (r.kind !== "spoke") return;
@@ -651,8 +667,9 @@ export function buildRoadSigns(scene) {
       const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
       return { x: p.x - tan.z * s, z: p.z + tan.x * s, tx: tan.x, tz: tan.z, px: p.x, pz: p.z };
     };
-    // At HQ: this road's destination
-    const a = side(0.03, ROAD_HALF + 1.6);
+    // At HQ: this road's destination, on whichever side has room for a car past the stop beside it
+    const tries = [0.03, 0.05, 0.07, 0.09].flatMap((t) => [side(t, ROAD_HALF + 1.6), side(t, -(ROAD_HALF + 1.6))]);
+    const a = tries.find((c) => clearance(c.x, c.z) > 4) ?? tries[0];
     buildSignpost(groupFor(scene, "hub"), a.x, a.z, [{ text: to.name, colour: to.colour, dir: [a.tx, a.tz] }]);
     // At the district: back to HQ, and along the ring road both ways
     const b = side(0.95, -(ROAD_HALF + 3.4)); // clear of the arch posts

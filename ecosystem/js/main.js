@@ -246,6 +246,31 @@ function emitDust(dt, info) {
 }
 
 // ── Camera ────────────────────────────────────────────────────────────
+// How far along the sightline from (x, y, z) to `to` (0–1) the first building taller than the line
+// starts. Only colliders with a height count: signposts and tyre walls sit below the camera.
+function cameraBlock(x, y, z, to) {
+  let best = 1;
+  const minX = Math.min(x, to.x), maxX = Math.max(x, to.x), minZ = Math.min(z, to.z), maxZ = Math.max(z, to.z);
+  for (const k of colliders) {
+    if (k.top === undefined || k.maxX < minX || k.minX > maxX || k.maxZ < minZ || k.minZ > maxZ) continue;
+    // Into the box's own frame, then a slab test on the segment
+    const ax = x - k.cx, az = z - k.cz, bx = to.x - k.cx, bz = to.z - k.cz;
+    const p = [ax * k.c - az * k.s, ax * k.s + az * k.c], q = [bx * k.c - bz * k.s, bx * k.s + bz * k.c];
+    const h = [k.hx + 0.5, k.hz + 0.5];
+    if (Math.abs(p[0]) <= h[0] && Math.abs(p[1]) <= h[1]) continue; // parked against it: not in the way
+    let t0 = 0, t1 = 1;
+    for (let i = 0; i < 2 && t0 <= t1; i++) {
+      const d = q[i] - p[i];
+      if (Math.abs(d) < 1e-9) { if (Math.abs(p[i]) > h[i]) t0 = 2; continue; }
+      let ta = (-h[i] - p[i]) / d, tb = (h[i] - p[i]) / d;
+      if (ta > tb) [ta, tb] = [tb, ta];
+      t0 = Math.max(t0, ta); t1 = Math.min(t1, tb);
+    }
+    if (t0 > t1 || t0 >= best) continue;
+    if (y + (to.y - y) * t0 < k.top) best = t0; // the line passes under the roof there
+  }
+  return best;
+}
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
 function placeCamera(dt, snap = false) {
   const s = car.s;
@@ -254,8 +279,17 @@ function placeCamera(dt, snap = false) {
   const want = new THREE.Vector3(s.x - fx * back, s.y + 6.5, s.z - fz * back);
   // Never dip under a hill behind the car
   want.y = Math.max(want.y, groundHeight(want.x, want.z) + 2);
+  // Reversing up to a building: pull in to this side of it rather than sit inside it
+  const t = cameraBlock(s.x, s.y + 2.2, s.z, want);
+  if (t < 1) {
+    // With the car's back to the wall there's no room behind: rise over the car instead
+    const keep = Math.max(t - 0.8 / back, 0.05);
+    want.x = s.x + (want.x - s.x) * keep;
+    want.z = s.z + (want.z - s.z) * keep;
+    want.y += (1 - keep) * 6;
+  }
   const look = new THREE.Vector3(s.x + fx * 4, s.y + 2.2, s.z + fz * 4);
-  camPos.lerp(want, snap ? 1 : 1 - Math.exp(-dt * 5));
+  camPos.lerp(want, snap ? 1 : 1 - Math.exp(-dt * (t < 1 ? 20 : 5)));
   camLook.lerp(look, snap ? 1 : 1 - Math.exp(-dt * 8));
   camera.position.copy(camPos);
   camera.lookAt(camLook);
