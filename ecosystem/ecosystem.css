@@ -158,6 +158,10 @@ body { overflow: hidden; overscroll-behavior: none; }
 .sheet .muted { color: var(--text-secondary); font-size: 0.95rem; }
 .sheet-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 .sheet-actions .br-button { text-decoration: none; }
+/* The kit's pill leaves room on the right for a round icon; ours have none, so centre the label.
+   Its 0.1rem baseline nudge sets the caps ~1.7px low at 48px tall, so drop it here. */
+.br-button:not(:has(.br-button-icon)) { padding-inline: var(--space-lg); justify-content: center; }
+.br-button:not(:has(.br-button-icon)) .br-button-label { transform: none; }
 
 .keys { list-style: none; padding: 0 !important; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2xs); }
 .keys li + li { margin-top: 0; }
