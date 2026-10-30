@@ -385,7 +385,7 @@ export const STOPS = [
     key: "usdcx-usdm-lp",
     district: "collateral",
     name: "USDCx/USDM LP",
-    shape: "twin",
+    shape: "coinstack",
     summary: "A SundaeSwap liquidity-pool token for the USDCx/USDM pair. Strike accepts it as Borrow & Earn collateral, and it represents a share of that pool.",
     points: [
       "Trading fees paid into the pool add to the reserves behind each token, so it grows in value on its own.",
@@ -516,7 +516,7 @@ export const STOPS = [
     key: "dex-aggregators",
     district: "partners",
     name: "DEX Aggregators",
-    shape: "grid",
+    shape: "bridgegate",
     summary: "A DEX aggregator routes one swap across many liquidity pools to find a good price. Strike uses one when a volatile deposit, such as ADA, has to be turned into a stablecoin.",
     points: [
       "The swap is placed in a batching window; if it is not filled in time it is cancelled and resubmitted.",
@@ -531,7 +531,7 @@ export const STOPS = [
     key: "api",
     district: "developers",
     name: "REST + WS API",
-    shape: "antenna",
+    shape: "terminal",
     summary: "Strike offers REST and WebSocket APIs for market data, trading, accounts, vaults, copy trading and platform stats. Trading uses signed requests from Ed25519 API wallets.",
     points: [
       "API wallets can trade but cannot withdraw funds, and the private key never leaves your machine.",
@@ -601,7 +601,7 @@ export const STOPS = [
     key: "defillama",
     district: "analytics",
     name: "DefiLlama",
-    shape: "tower",
+    shape: "observatory",
     summary: "DefiLlama is an independent dashboard that tracks value locked and activity across DeFi protocols. It lists Strike under the name Strike Finance Perpetuals, in the Derivatives category.",
     points: [
       "Its Strike page covers Cardano and Ethereum, and links to Strike's site and @strikeperps on X.",
@@ -762,7 +762,7 @@ export const STOPS = [
     key: "discord",
     district: "community",
     name: "Discord",
-    shape: "dome",
+    shape: "townhall",
     summary: "Strike has an official Discord server, linked from the Strike website and its Linktree.",
     points: [
       "Invite link: discord.gg/PuWbEmrEee.",
@@ -860,7 +860,7 @@ export const STOPS = [
     key: "dao-treasury",
     district: "token",
     name: "DAO Treasury",
-    shape: "dome",
+    shape: "rotunda",
     summary: "13% of the STRIKE supply (3.25 million tokens) is set aside for the DAO. How it is released and used is left to votes by STRIKE holders.",
     points: [
       "Stated uses include incentives, initiatives and funding future development, as the community sees fit.",
@@ -944,7 +944,7 @@ export const STOPS = [
     key: "lockers",
     district: "chains",
     name: "Locker Contracts",
-    shape: "vault",
+    shape: "gatehouse",
     summary: "Locker contracts are on-chain smart contracts on each supported chain where deposited funds are held. The trading engine only tracks balances and never takes custody.",
     points: [
       "Withdrawals have rolling 1 hour and 24 hour limits, per asset and across all assets, plus approval thresholds and emergency controls.",

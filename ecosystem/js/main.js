@@ -440,7 +440,7 @@ async function refresh() {
       crates.forEach((cr) => cr.redraw(pal()));
     }
     boards.forEach((b) => b(pal()));
-    setTicker(live.quotes);
+    setTicker(live.quotes, live.values);
     if ($("stop").open && openKey) {
       const s = STOPS.find((x) => x.key === openKey);
       if (s.live) fillStats($("stop-live"), s.live);

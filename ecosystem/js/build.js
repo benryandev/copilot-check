@@ -305,7 +305,11 @@ const discGeo = new THREE.CircleGeometry(2.3, 40);
 // Shapes with a model in /ecosystem/models replace their blockout once loaded. Material names in
 // the model pick the theme-aware materials: Accent (district colour), Building, Trim, Glass.
 // Nodes named spin_* turn slowly about the vertical; turn_* turn about the way they face (a door).
-const MODELS = { hq: "hq.glb", exchange: "exchange.glb", slpvault: "slp-vault.glb" };
+const MODELS = {
+  hq: "hq.glb", exchange: "exchange.glb", slpvault: "slp-vault.glb", coinstack: "coin-stack.glb",
+  bridgegate: "bridge-gate.glb", terminal: "terminal.glb", observatory: "observatory.glb",
+  townhall: "town-hall.glb", rotunda: "rotunda.glb", gatehouse: "gatehouse.glb",
+};
 const loader = new GLTFLoader();
 const loading = new Map();
 const loadModel = (file) => {
@@ -331,10 +335,19 @@ async function swapInModel(g, file, A, colliderIndex) {
     }
     if (!o.isMesh) return;
     o.castShadow = o.receiveShadow = true;
-    if (o.name.startsWith("screen_")) {
-      o.material = tickerMaterial;
+    if (o.name.startsWith("screen_") || o.name === "code_screen") {
+      o.material = o.name === "code_screen" ? codeMaterial : tickerMaterial;
       o.castShadow = false;
       return;
+    }
+    // Town hall clock: the visitor's local time
+    if (o.name === "clockhand_h" || o.name === "clockhand_m") {
+      const hour = o.name === "clockhand_h";
+      animated.push(() => {
+        const d = new Date();
+        const m = d.getMinutes() + d.getSeconds() / 60;
+        o.rotation.z = -(hour ? ((d.getHours() % 12) + m / 60) / 12 : m / 60) * Math.PI * 2;
+      });
     }
     const n = o.material?.name;
     o.material = n === "Accent" ? A : n === "Trim" ? M.trim : n === "Glass" ? M.glass : n === "Building" ? M.build : o.material;
@@ -389,11 +402,43 @@ ticker.tex.flipY = false; // glTF UVs run top-down, unlike canvas textures
 ticker.tex.repeat.x = 0.32; // the board shows about a third of the strip at once
 const tickerMaterial = new THREE.MeshBasicMaterial({ map: ticker.tex, toneMapped: false });
 let tickerQuotes = [];
-export function setTicker(quotes) {
+export function setTicker(quotes, values = {}) {
   tickerQuotes = quotes || [];
   ticker.redraw({});
+  codeValues = values;
+  code.redraw({});
 }
 if (!reduceMotion) animated.push((t) => (ticker.tex.offset.x = (t * 0.018) % 1));
+
+// ── Developers' terminal screen: real API calls with live numbers ──────
+const code = canvasTexture(1024, 800, (ctx, w, h) => {
+  ctx.fillStyle = "#07090b";
+  ctx.fillRect(0, 0, w, h);
+  const v = codeValues;
+  const lines = [
+    ["#9ca3af", "$ curl api.strikefinance.org/v2/markets"],
+    ["#f9fafb", `{ "markets": ${v.markets ?? "…"}, "max_leverage": "${v.maxLeverage ?? "…"}" }`],
+    ["", ""],
+    ["#9ca3af", "$ curl …/price/v2/ticker/24hr"],
+    ["#f9fafb", `{ "volume_24h": "${v.volume24h ?? "…"}" }`],
+    ["", ""],
+    ["#26fab0", "POST /v2/order   X-Builder-Fee-Bps: 5"],
+    ["#26fab0", "WS   /ws/user-api   connected"],
+    ["", ""],
+    ["#9ca3af", "docs.strikefinance.org/api"],
+  ];
+  ctx.font = "500 40px 'Geist Mono', monospace";
+  ctx.textBaseline = "top";
+  lines.forEach(([c, t], i) => {
+    ctx.fillStyle = c || "#f9fafb";
+    ctx.fillText(t, 48, 60 + i * 68, w - 96);
+  });
+  ctx.fillStyle = "#26fab0";
+  ctx.fillRect(48, 60 + lines.length * 68, 22, 40); // cursor
+});
+code.tex.flipY = false; // glTF UVs
+const codeMaterial = new THREE.MeshBasicMaterial({ map: code.tex, toneMapped: false });
+let codeValues = {};
 
 const FALLBACK = ["dome", "vault", "kiosk", "pillar", "coins", "arch", "tower", "twin", "cluster"];
 export function buildStops(scene) {
