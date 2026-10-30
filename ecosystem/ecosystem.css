@@ -196,6 +196,9 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 }
 .stats[hidden], .br-button[hidden] { display: none; }
 .stats div {
+  display: flex; /* a label that wraps pushes its own value down, not out of line with its neighbour's */
+  flex-direction: column;
+  justify-content: space-between;
   padding: var(--space-xs) var(--space-sm);
   border: 1px solid var(--border-color);
   border-radius: 0.5rem;
@@ -296,6 +299,12 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .map-list + .map-group-row { margin-top: var(--space-lg); }
 .map-group-row + .map-list { margin-top: var(--space-2xs); }
 #map-race-top { margin-top: var(--space-lg); }
+/* Phones: READ beside each card squeezed the description to a narrow column; put it underneath */
+@media (max-width: 480px) {
+  .map-item { flex-direction: column; }
+  .map-read { align-self: flex-end; }
+  .map-item + .map-item { margin-top: var(--space-xs); }
+}
 
 /* ── Open prompt: one panel, district-coloured edge, Enter keycap ──── */
 .prompt-card {
