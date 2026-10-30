@@ -3,7 +3,7 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, ROADS, layoutStops, boardSpot } from "./content.js";
 import { LABELS } from "./data.js";
-import { roads, jumps, ROAD_HALF, terrainHeight } from "./terrain.js";
+import { roads, jumps, ROAD_HALF, terrainHeight, builderSlots } from "./terrain.js";
 import { tint, setDark } from "./colours.js";
 
 // Everything in a district lives in its group, so far-away districts can be skipped when drawing
@@ -214,6 +214,26 @@ const SHAPES = {
     g.add(box(4, 1.5, 4, M.build, 0, 0, -3));
     return 9;
   },
+  // Builders' Row: a shopfront with the project's name over the door
+  shop(g, A, stop) {
+    g.add(box(6, 4.2, 5, M.build, 0, 0, 0), box(6.4, 0.35, 5.4, M.trim, 0, 4.2, 0));
+    g.add(box(2, 2.6, 0.2, M.trim, 0, 0, 2.55));
+    const awning = box(6.2, 0.2, 1.6, A, 0, 0, 0);
+    awning.position.set(0, 3.1, 3.2);
+    awning.rotation.x = -0.25;
+    g.add(awning);
+    g.add(signBoard(stop.name, 5.6, 1.1, 0, 4.9, 2.4));
+    return 6;
+  },
+  // An empty plot waiting for a project: pegged-out ground, a sign and a cone
+  plot(g, A, stop) {
+    const ground = box(7, 0.08, 6, M.wood, 0, 0, 0);
+    g.add(ground);
+    for (const [x, z] of [[-3.3, -2.8], [3.3, -2.8], [-3.3, 2.8], [3.3, 2.8]]) g.add(cyl(0.08, 0.9, A, x, 0, z, 6));
+    g.add(cyl(0.12, 2.6, M.wood, -1.4, 0, 1.5, 6), cyl(0.12, 2.6, M.wood, 1.4, 0, 1.5, 6));
+    g.add(signBoard(stop.name, 3.6, 1.2, 0, 2.3, 1.6));
+    return 3.6;
+  },
   grid(g, A) {
     for (let i = -1; i <= 1; i++)
       for (let j = -1; j <= 1; j++) {
@@ -223,6 +243,30 @@ const SHAPES = {
     return 9;
   },
 };
+
+// A flat painted board (both faces) for names on buildings
+function signBoard(text, w, h, x, y, z) {
+  const { tex, redraw } = canvasTexture(1024, Math.round((1024 * h) / w), (ctx, cw, ch, p) => {
+    ctx.fillStyle = p.panel;
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.fillStyle = p.text;
+    ctx.font = `600 ${Math.round(ch * 0.5)}px 'Atkinson Hyperlegible Next', Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, cw / 2, ch / 2 + 2, cw - 60);
+  });
+  redraws.push(redraw);
+  const g = new THREE.Group();
+  g.position.set(x, y, z);
+  g.add(box(w + 0.2, h + 0.2, 0.15, M.trim, 0, -(h + 0.2) / 2, 0));
+  for (const [dz, ry] of [[0.09, 0], [-0.09, Math.PI]]) {
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    plane.position.z = dz;
+    plane.rotation.y = ry;
+    g.add(plane);
+  }
+  return g;
+}
 
 // ── Labels ─────────────────────────────────────────────────────────────
 function makeLabel(text, colour, y, parent) {
@@ -262,18 +306,20 @@ export function buildStops(scene) {
   STOPS.forEach((stop, i) => {
     const d = DISTRICTS[stop.district];
     if (!d) return;
-    stop.pos = stop.pos || placed.get(stop.key);
+    const slot = builderSlots.find((b) => b.key === stop.key);
+    stop.pos = stop.pos || (slot ? [slot.x, slot.z] : placed.get(stop.key));
     const shape = SHAPES[stop.shape] ? stop.shape : FALLBACK[i % FALLBACK.length];
     const A = accent(d.colour);
     const parent = groupFor(scene, stop.district);
     const g = new THREE.Group();
     g.position.set(stop.pos[0], 0, stop.pos[1]);
     // Face the open middle of the district (the hub's buildings face the spawn)
-    const fx = d.centre[0] - stop.pos[0], fz = d.centre[1] - stop.pos[1];
+    const target = slot ? slot.face : d.centre;
+    const fx = target[0] - stop.pos[0], fz = target[1] - stop.pos[1];
     const fl = Math.hypot(fx, fz) || 1;
     const toCentre = new THREE.Vector3(fx / fl, 0, fz / fl);
     g.rotation.y = Math.atan2(toCentre.x, toCentre.z);
-    const height = SHAPES[shape](g, A);
+    const height = SHAPES[shape](g, A, stop);
     parent.add(g);
     const bb = addCollider(g); // before the label, whose sprite would widen the box
     makeLabel(stop.name, d.colour, height + 2.2, g);
@@ -407,6 +453,14 @@ export function buildRoadSigns(scene) {
     buildSignpost(groupFor(scene, r.to), b.x, b.z, arms);
     buildArch(groupFor(scene, r.to), r, to);
   });
+  // Where Builders' Row begins, on the way into Developers
+  if (builderSlots.length) {
+    const r = roads.find((x) => x.kind === "spoke" && x.to === "developers");
+    const t = 0.88 - (builderSlots.length * 13 + 4) / r.len;
+    const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
+    const s = ROAD_HALF + 1.6;
+    buildSignpost(groupFor(scene, "developers"), p.x - tan.z * s, p.z + tan.x * s, [{ text: "Builders' Row", colour: DISTRICTS.developers.colour, dir: [tan.x, tan.z] }]);
+  }
   jumps.forEach((j) => {
     const r = roads[j.road];
     const t = Math.max(0, j.t - 14 / r.len);
@@ -451,6 +505,69 @@ function buildArch(parent, road, d) {
   posts.forEach((post) => addCollider(post, 0));
 }
 
+// ── Props: things to knock over (they share the crate physics in main.js) ──
+// Each prop: { m, v, spin, tilt, r (radius), h (half height), lift (height off the ground,
+// drops to 0 once hit, so stacks topple) }
+const PROP = {
+  cone: () => {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.ConeGeometry(0.38, 0.85, 14), new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.6 }), 0, 0.05, 0));
+    g.children[0].position.y = 0.43 - 0.45;
+    g.add(mesh(new THREE.CylinderGeometry(0.21, 0.27, 0.12, 14), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }), 0, 0.03, 0));
+    g.add(mesh(new THREE.BoxGeometry(0.85, 0.06, 0.85), new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.7 }), 0, -0.42, 0));
+    return { m: g, r: 0.45, h: 0.45 };
+  },
+  bale: () => {
+    const m = mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.3, 16), new THREE.MeshStandardMaterial({ color: 0xd6b25e, roughness: 1 }));
+    m.rotation.z = Math.PI / 2;
+    const g = new THREE.Group();
+    g.add(m);
+    return { m: g, r: 0.85, h: 0.7 };
+  },
+  coin: () => {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.2, 24), new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0x6b4500, emissiveIntensity: 0.35, metalness: 0.15, roughness: 0.35 })));
+    return { m: g, r: 0.8, h: 0.1 };
+  },
+};
+export function addProp(parent, kind, x, z, rotY = 0, lift = 0) {
+  const p = PROP[kind]();
+  p.m.position.set(x, terrainHeight(x, z) + p.h + lift, z);
+  p.m.rotation.y = rotY;
+  parent.add(p.m);
+  crates.push({ ...p, v: new THREE.Vector2(), spin: 0, tilt: 0, lift, redraw: () => {} });
+}
+
+export function addProps(scene) {
+  // Cones in an arc in front of the Liquidations building
+  const liq = STOPS.find((s) => s.key === "liquidations");
+  if (liq) {
+    const d = DISTRICTS.perps;
+    const [dx, dz] = [d.centre[0] - liq.pos[0], d.centre[1] - liq.pos[1]];
+    const a0 = Math.atan2(dz, dx);
+    // Down both sides of the building, clear of its pad in front
+    for (const side of [-1, 1]) for (let i = 0; i < 5; i++) {
+      const a = a0 + side * (Math.PI / 2 + (i - 2) * 0.28);
+      addProp(groupFor(scene, "perps"), "cone", liq.pos[0] + Math.cos(a) * 8, liq.pos[1] + Math.sin(a) * 8);
+    }
+  }
+  // Hay bales on the grass either side of each jump's landing
+  jumps.forEach((j) => {
+    for (const side of [-1, 1]) for (let k = 0; k < 2; k++) {
+      const u = j.length + 10 + k * 2.2;
+      const v = side * (ROAD_HALF + 2.4);
+      addProp(scene, "bale", j.ox + j.fx * u + j.rx * (v - j.side * (ROAD_HALF - j.width / 2)), j.oz + j.fz * u + j.rz * (v - j.side * (ROAD_HALF - j.width / 2)), Math.atan2(j.fx, j.fz));
+    }
+  });
+  // A tower of STRIKE coins in Token & Governance
+  const t = DISTRICTS.token;
+  if (t) {
+    const [hx, hz] = t.hubDir;
+    const cx = t.centre[0] + hx * 6, cz = t.centre[1] + hz * 6;
+    for (let i = 0; i < 14; i++) addProp(groupFor(scene, "token"), "coin", cx + (Math.random() - 0.5) * 0.08, cz + (Math.random() - 0.5) * 0.08, Math.random() * 6, i * 0.21);
+  }
+}
+
 // ── Ticker crates: one per Strike market, knock them about ─────────────
 export const crates = [];
 export function addCrates(scene, tickers, cx, cz, colour) {
@@ -477,6 +594,6 @@ export function addCrates(scene, tickers, cx, cz, colour) {
     m.position.set(cx + Math.cos(a) * r, s / 2, cz + Math.sin(a) * r);
     m.rotation.y = a;
     parent.add(m);
-    crates.push({ m, v: new THREE.Vector2(), spin: 0, tilt: 0, r: 0.9, redraw });
+    crates.push({ m, v: new THREE.Vector2(), spin: 0, tilt: 0, r: 0.9, h: 0.75, lift: 0, redraw });
   });
 }

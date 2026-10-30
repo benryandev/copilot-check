@@ -7,7 +7,7 @@ import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInf
 import { createGrass, createDust } from "./effects.js";
 import {
   M, animated, pads, crates, boards, colliders, districtGroups,
-  buildStops, buildBoard, buildRoadSigns, addCrates, recolourMaterials,
+  buildStops, buildBoard, buildRoadSigns, addCrates, addProps, recolourMaterials,
 } from "./build.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R } from "./car.js";
 
@@ -66,6 +66,7 @@ const plazaMesh = buildPlazas(pal());
 scene.add(ground, roadMesh, jumpMesh, plazaMesh);
 buildStops(scene);
 buildRoadSigns(scene);
+addProps(scene);
 
 let live = null;
 const getLive = () => live;
@@ -156,7 +157,8 @@ function stepCrates(dt) {
     const dx = p.x - s.x, dz = p.z - s.z;
     const d = Math.hypot(dx, dz);
     const minD = CAR_R + c.r;
-    if (d < minD && d > 0 && s.y < 1.5) {
+    if (d < minD && d > 0 && s.y < p.y + c.h + 1.2) {
+      c.hit = true;
       const nx = dx / d, nz = dz / d;
       p.x = s.x + nx * minD;
       p.z = s.z + nz * minD;
@@ -168,7 +170,7 @@ function stepCrates(dt) {
       s.speed *= 0.92;
     }
     for (const o of crates) {
-      if (o === c) continue;
+      if (o === c || Math.abs(p.y - o.m.position.y) > c.h + o.h) continue; // stacked, not touching sideways
       const ox = p.x - o.m.position.x, oz = p.z - o.m.position.z;
       const od = Math.hypot(ox, oz), md = c.r + o.r;
       if (od < md && od > 0) {
@@ -197,7 +199,9 @@ function stepCrates(dt) {
     c.spin *= damp;
     c.m.rotation.y += c.spin * dt;
     c.tilt *= Math.exp(-dt * 3);
-    p.y = groundHeight(p.x, p.z) + 0.75 + c.tilt * 0.9;
+    // A knocked stack falls; anything resting on a hit piece falls with it
+    if (c.hit) c.lift *= Math.exp(-dt * 7);
+    p.y = groundHeight(p.x, p.z) + c.h + c.lift + c.tilt * 0.9;
     c.m.rotation.x = c.tilt * 0.5;
   }
 }

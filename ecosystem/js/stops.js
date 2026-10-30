@@ -157,6 +157,89 @@ export const STOPS = [
     docs: `${DOCS}/bots/grid`,
     docsLabel: "Grid",
   },
+  // ── Builders' Row (Developers): projects built on Strike. Listings by request and review only.
+  {
+    key: "copilot-check",
+    district: "developers",
+    name: "Copilot Check",
+    shape: "shop",
+    row: "builders",
+    summary:
+      "Paste a Hyperliquid wallet and see whether it's worth copying on Strike: how much of its profit is on markets Strike lists, the catches in its record, and how a copy would have done at your size.",
+    points: [
+      "Paper Copy runs a trial with your own settings before you risk money.",
+      "Built by Ben Ryan, who also made this map. Independent, not affiliated with Strike.",
+    ],
+    live: null,
+    docs: "https://strike.benryan.com.au",
+    docsLabel: "Open Copilot Check",
+    site: "https://github.com/benryandev/copilot-check",
+  },
+  {
+    key: "copilot-watch",
+    district: "developers",
+    name: "Copilot Watch",
+    shape: "shop",
+    row: "builders",
+    summary:
+      "Telegram and Discord alerts for Strike copy traders: when a copy is close to liquidation, when the copied wallet has left a position your copy still holds, or when a trade wasn't copied.",
+    points: [
+      "Runs as a Telegram bot and a Discord bot, with no install and no API key.",
+      "Built by Ben Ryan, who also made this map. Independent, not affiliated with Strike.",
+    ],
+    live: null,
+    docs: "https://t.me/CopilotWatchBot",
+    docsLabel: "Open in Telegram",
+    site: "https://github.com/benryandev/copilot-watch",
+  },
+  {
+    key: "strike-copilot",
+    district: "developers",
+    name: "Strike Copilot",
+    shape: "shop",
+    row: "builders",
+    summary:
+      "Review your Strike copy-trading account, find traders worth copying and set copies up, by chatting with Claude on your own computer.",
+    points: [
+      "Its API key is made on your own computer, and Strike API keys can't withdraw funds.",
+      "Built by Ben Ryan, who also made this map. Independent, not affiliated with Strike.",
+    ],
+    live: null,
+    docs: "https://github.com/benryandev/strike-copilot",
+    docsLabel: "Strike Copilot on GitHub",
+  },
+  {
+    key: "plot-1",
+    district: "developers",
+    name: "Your project here",
+    shape: "plot",
+    row: "builders",
+    summary:
+      "Building on Strike? Apps, bots, dashboards and tools that use Strike's API or builder codes can have a spot on Builders' Row.",
+    points: [
+      "Listings are free and checked by hand before they go up.",
+      "Project submissions open soon.",
+    ],
+    live: null,
+    docs: "https://docs.strikefinance.org/api/builder-codes",
+    docsLabel: "Docs: Builder Codes",
+  },
+  {
+    key: "plot-2",
+    district: "developers",
+    name: "Your project here",
+    shape: "plot",
+    row: "builders",
+    summary:
+      "Building on Strike? Apps, bots, dashboards and tools that use Strike's API or builder codes can have a spot on Builders' Row.",
+    points: [
+      "Listings are free and checked by hand before they go up.",
+      "Project submissions open soon.",
+    ],
+    live: null,
+    docs: "https://docs.strikefinance.org/api/getting-started",
+    docsLabel: "Docs: API",
+  },
   // ── Generated districts (merge.py) ──
   {
     key: "slp",

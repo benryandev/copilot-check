@@ -79,7 +79,7 @@ const spoke = (key) => ROADS.findIndex((r) => r.kind === "spoke" && r.to === key
 export const JUMPS = [
   { road: spoke("perps"), t: 0.42, side: 1, length: 8, height: 1.9, width: 3.4 },
   { road: spoke("collateral"), t: 0.5, side: -1, length: 8, height: 1.9, width: 3.4 },
-  { road: spoke("developers"), t: 0.45, side: 1, length: 10, height: 2.4, width: 3.4 },
+  { road: spoke("developers"), t: 0.28, side: 1, length: 10, height: 2.4, width: 3.4 },
   { road: spoke("community"), t: 0.5, side: -1, length: 8, height: 1.9, width: 3.4 },
   { road: spoke("token"), t: 0.45, side: 1, length: 7, height: 1.5, width: 3.4 },
 ];
@@ -93,7 +93,7 @@ export function layoutStops() {
   const out = new Map();
   for (const d of Object.values(DISTRICTS)) {
     if (!d.hubDir) continue;
-    const stops = STOPS.filter((s) => s.district === d.key && !s.pos);
+    const stops = STOPS.filter((s) => s.district === d.key && !s.pos && !s.row);
     if (!stops.length) continue;
     const base = Math.atan2(d.hubDir[1], d.hubDir[0]); // pointing at HQ
     const outer = Math.ceil(stops.length * 0.6);

@@ -2,7 +2,7 @@
 // groundHeight(x, z) is the single source of truth for both the meshes and the car.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { DISTRICTS, ROADS, JUMPS } from "./content.js";
+import { DISTRICTS, ROADS, JUMPS, STOPS } from "./content.js";
 import { tint } from "./colours.js";
 
 export const ROAD_HALF = 3.6;
@@ -90,6 +90,22 @@ function jumpHeight(x, z) {
   return 0;
 }
 
+// ── Builders' Row: shop plots along the last stretch of the road into Developers ──
+// Alternate sides every 13 m, facing the road; each slot is flattened.
+const ROW_STOPS = STOPS.filter((s) => s.row === "builders");
+export const builderSlots = (() => {
+  const r = roads.find((x) => x.kind === "spoke" && x.to === "developers");
+  if (!r) return [];
+  return ROW_STOPS.map((stop, i) => {
+    const t = 0.88 - (i * 13) / r.len;
+    const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
+    const side = i % 2 ? 1 : -1;
+    const nx = -tan.z * side, nz = tan.x * side; // away from the road
+    const off = ROAD_HALF + 9;
+    return { key: stop.key, x: p.x + nx * off, z: p.z + nz * off, face: [p.x, p.z] };
+  });
+})();
+
 // ── Height field ───────────────────────────────────────────────────────
 const plazas = Object.values(DISTRICTS);
 function flatMask(x, z, d) {
@@ -98,6 +114,7 @@ function flatMask(x, z, d) {
     const dp = Math.hypot(x - p.centre[0], z - p.centre[1]) - p.radius;
     m *= smooth(1, 14, dp);
   }
+  for (const b of builderSlots) m *= smooth(7, 16, Math.hypot(x - b.x, z - b.z));
   return m;
 }
 function hills(x, z) {
