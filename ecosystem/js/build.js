@@ -5,6 +5,7 @@ import { DISTRICTS, STOPS, ROADS, layoutStops, boardSpot } from "./content.js";
 import { LABELS } from "./data.js";
 import { roads, jumps, ROAD_HALF, terrainHeight, builderSlots } from "./terrain.js";
 import { tint, setDark } from "./colours.js";
+import { GLTFLoader } from "../vendor/GLTFLoader.js";
 
 // Everything in a district lives in its group, so far-away districts can be skipped when drawing
 export const districtGroups = {};
@@ -300,6 +301,43 @@ function makeLabel(text, colour, y, parent) {
 export const pads = [];
 const padGeo = new THREE.RingGeometry(2.3, 3, 40);
 const discGeo = new THREE.CircleGeometry(2.3, 40);
+// ── Blender models ─────────────────────────────────────────────────────
+// Shapes with a model in /ecosystem/models replace their blockout once loaded. Material names in
+// the model pick the theme-aware materials: Accent (district colour), Building, Trim, Glass.
+// Nodes named spin_* turn slowly.
+const MODELS = { hq: "hq.glb" };
+const loader = new GLTFLoader();
+const loading = new Map();
+const loadModel = (file) => {
+  if (!loading.has(file)) loading.set(file, loader.loadAsync(`/ecosystem/models/${file}`).then((g) => g.scene));
+  return loading.get(file);
+};
+async function swapInModel(g, file, A, colliderIndex) {
+  let src;
+  try {
+    src = await loadModel(file);
+  } catch (err) {
+    console.warn("[eco] model", file, err);
+    return;
+  }
+  const model = src.clone(true);
+  model.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = o.receiveShadow = true;
+    const n = o.material?.name;
+    o.material = n === "Accent" ? A : n === "Trim" ? M.trim : n === "Glass" ? M.glass : n === "Building" ? M.build : o.material;
+    if (o.name.startsWith("spin_") && !reduceMotion) animated.push((t) => (o.rotation.y = t * 0.9));
+  });
+  // Keep the floating label; drop the blockout
+  [...g.children].filter((c) => !c.isSprite).forEach((c) => g.remove(c));
+  g.add(model);
+  // The model's footprint replaces the blockout's in the collision list
+  model.updateWorldMatrix(true, true);
+  const b = new THREE.Box3();
+  model.traverse((o) => o.isMesh && b.expandByObject(o, true));
+  colliders[colliderIndex] = { minX: b.min.x + 0.3, maxX: b.max.x - 0.3, minZ: b.min.z + 0.3, maxZ: b.max.z - 0.3 };
+}
+
 const FALLBACK = ["dome", "vault", "kiosk", "pillar", "coins", "arch", "tower", "twin", "cluster"];
 export function buildStops(scene) {
   const placed = layoutStops();
@@ -322,7 +360,9 @@ export function buildStops(scene) {
     const height = SHAPES[shape](g, A, stop);
     parent.add(g);
     const bb = addCollider(g); // before the label, whose sprite would widen the box
+    const colliderIndex = colliders.length - 1;
     makeLabel(stop.name, d.colour, height + 2.2, g);
+    if (MODELS[shape]) swapInModel(g, MODELS[shape], A, colliderIndex);
     const reach = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 + 4.5;
     const padPos = new THREE.Vector3(stop.pos[0], 0.18, stop.pos[1]).addScaledVector(toCentre, reach);
     const ring = new THREE.Mesh(padGeo, tintedBasic(d.colour, { transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
