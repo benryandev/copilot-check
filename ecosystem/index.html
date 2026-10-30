@@ -31,6 +31,13 @@
     </div>
   </header>
 
+  <div class="hud race-hud" id="race-hud" hidden>
+    <p class="br-label">RealFi Raceway</p>
+    <p class="race-time" id="race-time">0:00.00</p>
+    <p class="race-sub" id="race-sub"></p>
+    <p class="race-note" id="race-note" role="status" hidden></p>
+  </div>
+
   <div class="hud hud-prompt" id="prompt" hidden>
     <button type="button" class="prompt-card" id="prompt-btn">
       <span class="prompt-text"><span class="prompt-eyebrow" id="prompt-district"></span><span class="prompt-name" id="prompt-label">Open</span></span>
@@ -99,6 +106,26 @@
       <button type="button" class="chip" data-quality="low">Low</button>
     </fieldset>
     <div class="sheet-actions">
+      <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Back to the world</span></button>
+    </div>
+  </dialog>
+
+  <dialog id="race" class="sheet" aria-labelledby="race-title">
+    <p class="br-label">RealFi Raceway</p>
+    <h2 id="race-title">Lap complete</h2>
+    <p class="race-result" id="race-result"></p>
+    <p id="race-gap"></p>
+    <form class="race-form" id="race-form" hidden>
+      <label class="br-field-label" for="race-name">Name on the leaderboard</label>
+      <div class="race-row">
+        <input class="br-input" id="race-name" name="name" type="text" maxlength="20" autocomplete="nickname" autocapitalize="off" spellcheck="false" required>
+        <button type="submit" class="br-button"><span class="br-button-label">Post</span></button>
+      </div>
+    </form>
+    <p class="muted" id="race-status" role="status" aria-live="polite"></p>
+    <div class="sheet-actions">
+      <button type="button" class="br-button" id="race-post"><span class="br-button-label">Post to leaderboard</span></button>
+      <button type="button" class="br-button br-button--secondary" id="race-again"><span class="br-button-label">Race again</span></button>
       <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Back to the world</span></button>
     </div>
   </dialog>

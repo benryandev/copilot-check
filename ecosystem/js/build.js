@@ -76,6 +76,12 @@ export function obbOf(o, inset = 0.3) {
   const ex = Math.abs(hx * c) + Math.abs(hz * s), ez = Math.abs(hx * s) + Math.abs(hz * c);
   return { cx: w.x, cz: w.z, hx, hz, c, s, minX: w.x - ex, maxX: w.x + ex, minZ: w.z - ez, maxZ: w.z + ez, box };
 }
+// A box turned to yaw about the vertical (local x runs along (cos yaw, −sin yaw)), as obbOf makes
+export function orientedBox(cx, cz, hx, hz, yaw) {
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const ex = Math.abs(hx * c) + Math.abs(hz * s), ez = Math.abs(hx * s) + Math.abs(hz * c);
+  return { cx, cz, hx, hz, c, s, minX: cx - ex, maxX: cx + ex, minZ: cz - ez, maxZ: cz + ez };
+}
 export const aabb = (minX, maxX, minZ, maxZ) => ({
   cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, hx: (maxX - minX) / 2, hz: (maxZ - minZ) / 2, c: 1, s: 0, minX, maxX, minZ, maxZ,
 });
@@ -235,6 +241,13 @@ const SHAPES = {
     g.add(box(1.4, 7, 1.4, M.build, -3.5, 0, 0), box(1.4, 7, 1.4, M.build, 3.5, 0, 0), box(8.4, 1.2, 1.6, A, 0, 7, 0));
     g.add(box(4, 1.5, 4, M.build, 0, 0, -3));
     return 9;
+  },
+  // The raceway's race control: a booth with a glass upper floor looking over the start straight
+  pitbox(g, A) {
+    g.add(box(8, 3.4, 5, M.build, 0, 0, 0), box(8.4, 0.3, 5.4, A, 0, 3.4, 0));
+    g.add(box(7.2, 2.2, 4.4, M.glass, 0, 3.7, 0), box(8.6, 0.4, 5.6, M.trim, 0, 5.9, 0));
+    g.add(box(2, 2.6, 0.2, M.trim, 0, 0, 2.55));
+    return 6.3;
   },
   // Builders' Row: a shopfront with the project's name over the door
   shop(g, A, stop) {
@@ -486,7 +499,7 @@ export function buildStops(scene) {
     const g = new THREE.Group();
     g.position.set(stop.pos[0], 0, stop.pos[1]);
     // Face the open middle of the district (the hub's buildings face the spawn)
-    const target = slot ? slot.face : d.centre;
+    const target = slot ? slot.face : stop.face || d.centre;
     const fx = target[0] - stop.pos[0], fz = target[1] - stop.pos[1];
     const fl = Math.hypot(fx, fz) || 1;
     const toCentre = new THREE.Vector3(fx / fl, 0, fz / fl);
@@ -627,6 +640,12 @@ export function buildRoadSigns(scene) {
       const n = DISTRICTS[e.to];
       arms.push({ text: n.name, colour: n.colour, dir: unit(e.at[0] - b.x, e.at[1] - b.z) });
     }
+    // Link roads out of this district (Partners to the raceway)
+    for (const l of roads) {
+      if (l.kind !== "link" || l.from !== r.to) continue;
+      const n = DISTRICTS[l.to];
+      arms.push({ text: n.name, colour: n.colour, dir: unit(l.pts[0][0] - b.x, l.pts[0][1] - b.z) });
+    }
     buildSignpost(groupFor(scene, r.to), b.x, b.z, arms);
     buildArch(groupFor(scene, r.to), r, to);
   });
@@ -638,24 +657,33 @@ export function buildRoadSigns(scene) {
     const s = ROAD_HALF + 1.6;
     buildSignpost(groupFor(scene, "developers"), p.x - tan.z * s, p.z + tan.x * s, [{ text: "Builders' Row", colour: DISTRICTS.developers.colour, dir: [tan.x, tan.z] }]);
   }
+  // A link road: a signpost where it leaves its district, an arch where it arrives
+  roads.forEach((r) => {
+    if (r.kind !== "link") return;
+    const to = DISTRICTS[r.to];
+    const p = r.curve.getPointAt(0.04), tan = r.curve.getTangentAt(0.04);
+    const s = r.half + 1.6;
+    buildSignpost(groupFor(scene, r.from), p.x - tan.z * s, p.z + tan.x * s, [{ text: to.name, colour: to.colour, dir: [tan.x, tan.z] }]);
+    buildArch(groupFor(scene, r.to), r, to, 22);
+  });
   jumps.forEach((j) => {
     const r = roads[j.road];
-    const t = Math.max(0, j.t - 14 / r.len);
+    const t = (j.t - 14 / r.len + 1) % 1;
     const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
-    const s = j.side * (ROAD_HALF + 1.6);
+    const s = j.side * (r.half + 1.6);
     buildSignpost(scene, p.x - tan.z * s, p.z + tan.x * s, [{ text: "Jump ahead", colour: 0xf59e0b, dir: [tan.x, tan.z] }]);
   });
 }
 
 // A gateway over the road where it enters a district, with the district's name on the beam
-function buildArch(parent, road, d) {
-  const t = 1 - 5 / road.len;
+function buildArch(parent, road, d, back = 5) {
+  const t = 1 - back / road.len;
   const p = road.curve.getPointAt(t), tan = road.curve.getTangentAt(t);
   const g = new THREE.Group();
   g.position.set(p.x, 0, p.z);
   g.rotation.y = Math.atan2(tan.x, tan.z);
   const A = accent(d.colour);
-  const half = ROAD_HALF + 1.6;
+  const half = road.half + 1.6;
   const posts = [box(0.8, 6.4, 0.8, M.build, -half, 0, 0), box(0.8, 6.4, 0.8, M.build, half, 0, 0)];
   g.add(...posts, box(half * 2 + 1.4, 0.3, 1, A, 0, 6.4, 0));
   const { tex, redraw } = canvasTexture(1024, 160, (ctx, w, h, pal) => {
@@ -701,12 +729,70 @@ const PROP = {
     g.add(m);
     return { m: g, r: 0.85, h: 0.7 };
   },
+  // RealFi crates at the raceway: the logo on every face, one shared material
+  crate: () => {
+    const g = new THREE.Group();
+    g.add(mesh(crateGeo, crateMaterial()));
+    return { m: g, r: 0.8, h: 0.6 };
+  },
   coin: () => {
     const g = new THREE.Group();
     g.add(mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.2, 24), new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0x6b4500, emissiveIntensity: 0.35, metalness: 0.15, roughness: 0.35 })));
     return { m: g, r: 0.8, h: 0.1 };
   },
 };
+// ── RealFi's logo (img/realfi-logo.svg, from realfi.co) for canvases ──────
+const logoImg = new Image();
+export const realfiLogo = new Promise((res) => {
+  logoImg.onload = () => res(logoImg);
+  logoImg.onerror = () => { console.warn("[eco] RealFi logo didn't load"); res(null); };
+});
+logoImg.src = "/ecosystem/img/realfi-logo.svg";
+const logoTints = new Map();
+// The logo in one colour (it ships in RealFi's brand green), centred in the box (x, y, w, h)
+export function drawLogo(ctx, colour, x, y, w, h) {
+  if (!logoImg.complete || !logoImg.naturalWidth) return false;
+  if (!logoTints.has(colour)) {
+    const c = document.createElement("canvas");
+    c.width = 620;
+    c.height = 200;
+    const k = c.getContext("2d");
+    k.drawImage(logoImg, 0, 0, c.width, c.height);
+    k.globalCompositeOperation = "source-in";
+    k.fillStyle = colour;
+    k.fillRect(0, 0, c.width, c.height);
+    logoTints.set(colour, c);
+  }
+  const src = logoTints.get(colour);
+  const s = Math.min(w / src.width, h / src.height);
+  ctx.drawImage(src, x + (w - src.width * s) / 2, y + (h - src.height * s) / 2, src.width * s, src.height * s);
+  return true;
+}
+export const REALFI = { green: "#032327", accent: "#0fb89c", paper: "#fafafa" };
+const crateGeo = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+let crateMat = null;
+function crateMaterial() {
+  if (crateMat) return crateMat;
+  const { tex, redraw } = canvasTexture(256, 256, (ctx, w, h) => {
+    ctx.fillStyle = REALFI.paper;
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = REALFI.accent;
+    ctx.lineWidth = 16;
+    ctx.strokeRect(8, 8, w - 16, h - 16);
+    if (!drawLogo(ctx, REALFI.green, 30, 30, w - 60, h - 60)) {
+      ctx.fillStyle = REALFI.green;
+      ctx.font = "600 52px 'Atkinson Hyperlegible Next', Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("RealFi", w / 2, h / 2);
+    }
+  });
+  redraw();
+  realfiLogo.then(() => redraw());
+  crateMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7 });
+  return crateMat;
+}
+
 export function addProp(parent, kind, x, z, rotY = 0, lift = 0) {
   const p = PROP[kind]();
   p.m.position.set(x, terrainHeight(x, z) + p.h + lift, z);
@@ -730,10 +816,12 @@ export function addProps(scene) {
   }
   // Hay bales on the grass either side of each jump's landing
   jumps.forEach((j) => {
+    const half = roads[j.road].half;
+    const parent = roads[j.road].kind === "track" ? groupFor(scene, "raceway") : scene;
     for (const side of [-1, 1]) for (let k = 0; k < 2; k++) {
       const u = j.length + 10 + k * 2.2;
-      const v = side * (ROAD_HALF + 2.4);
-      addProp(scene, "bale", j.ox + j.fx * u + j.rx * (v - j.side * (ROAD_HALF - j.width / 2)), j.oz + j.fz * u + j.rz * (v - j.side * (ROAD_HALF - j.width / 2)), Math.atan2(j.fx, j.fz));
+      const v = side * (half + 2.4);
+      addProp(parent, "bale", j.ox + j.fx * u + j.rx * (v - j.side * (half - j.width / 2)), j.oz + j.fz * u + j.rz * (v - j.side * (half - j.width / 2)), Math.atan2(j.fx, j.fz));
     }
   });
   // A tower of STRIKE coins in Token & Governance

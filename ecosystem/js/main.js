@@ -3,7 +3,7 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, SPAWN } from "./content.js";
 import { fetchLive, LABELS } from "./data.js";
-import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps } from "./terrain.js";
+import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates } from "./terrain.js";
 import { createGrass, createDust } from "./effects.js";
 import {
   M, animated, pads, crates, boards, colliders, districtGroups,
@@ -11,6 +11,8 @@ import {
 } from "./build.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R } from "./car.js";
 import { tint } from "./colours.js";
+import { buildRaceway } from "./raceway.js";
+import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart } from "./race.js";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -60,7 +62,8 @@ sun.shadow.bias = -0.0005;
 scene.add(hemi, sun, sun.target);
 
 // ── World ─────────────────────────────────────────────────────────────
-let ground = buildGround(tier().ground, pal());
+// Ground segments grow with the world (it reached past Partners for the raceway), same density
+let ground = buildGround(Math.round((tier().ground * WORLD.radius) / 280), pal());
 const roadMesh = buildRoads(pal());
 const jumpMesh = buildJumps(pal());
 const plazaMesh = buildPlazas(pal());
@@ -68,6 +71,7 @@ scene.add(ground, roadMesh, jumpMesh, plazaMesh);
 buildStops(scene);
 buildRoadSigns(scene);
 addProps(scene);
+buildRaceway(scene);
 
 let live = null;
 const getLive = () => live;
@@ -263,7 +267,10 @@ function placeCamera(dt, snap = false) {
 function cullDistricts() {
   for (const [key, g] of Object.entries(districtGroups)) {
     const d = DISTRICTS[key];
-    g.visible = Math.hypot(camera.position.x - d.centre[0], camera.position.z - d.centre[1]) < 250 + d.radius;
+    // The raceway is long and thin: measure to the track itself
+    g.visible = key === "raceway"
+      ? trackDistance(camera.position.x, camera.position.z) < 250
+      : Math.hypot(camera.position.x - d.centre[0], camera.position.z - d.centre[1]) < 250 + d.radius;
   }
 }
 
@@ -273,8 +280,10 @@ function updateWhere() {
   const s = car.s;
   let text = null;
   for (const d of Object.values(DISTRICTS)) {
+    if (d.plaza === false) continue;
     if (Math.hypot(s.x - d.centre[0], s.z - d.centre[1]) < d.radius + 3) text = d.name;
   }
+  if (!text && inRaceway(s.x, s.z)) text = DISTRICTS.raceway.name;
   if (!text) {
     const info = roadInfo(s.x, s.z);
     if (info.d < 12) {
@@ -305,7 +314,7 @@ function checkPads() {
 }
 $("prompt-btn").addEventListener("click", () => activePad && openStop(activePad.stop));
 
-const dialogs = ["intro", "stop", "map"].map($);
+const dialogs = ["intro", "stop", "map", "race"].map($);
 const anyOpen = () => dialogs.some((d) => d.open);
 dialogs.forEach((d) => {
   d.addEventListener("close", () => { paused = anyOpen(); });
@@ -355,6 +364,7 @@ function openStop(stop) {
 }
 
 function teleport(stop) {
+  raceCancel("Lap cancelled: you jumped elsewhere");
   const pad = pads.find((p) => p.stop === stop);
   const dx = stop.pos[0] - pad.pos.x, dz = stop.pos[1] - pad.pos.z;
   Object.assign(car.s, { x: pad.pos.x, z: pad.pos.z, y: groundHeight(pad.pos.x, pad.pos.z), heading: Math.atan2(-dx, -dz), speed: 0, steer: 0, vy: 0, air: false });
@@ -367,6 +377,8 @@ function teleport(stop) {
 
 // Drop the car on the road just outside a district's arch, facing in
 function teleportDistrict(key) {
+  if (key === "raceway") return toStart();
+  raceCancel("Lap cancelled: you jumped elsewhere");
   const r = roads.find((x) => x.kind === "spoke" && x.to === key);
   const t = 1 - 16 / r.len;
   const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
@@ -378,7 +390,20 @@ function teleportDistrict(key) {
   updateWhere();
 }
 
+// Put the car down somewhere, stopped (the raceway's start)
+function placeCar(x, z, heading) {
+  Object.assign(car.s, { x, z, y: groundHeight(x, z), heading, speed: 0, steer: 0, vy: 0, air: false });
+  dialogs.forEach((d) => d.open && d.close());
+  stepCar(car, keys, 0);
+  placeCamera(0, true);
+  checkPads();
+  updateWhere();
+}
+initRace({ show, place: placeCar });
+
 function openMap() {
+  raceCancel("Lap cancelled: Map view");
+  if (Date.now() - raceBoard().at > 60_000) fetchTop();
   fillStats($("map-live"), ["volume24h", "openInterest", "markets", "maxLeverage"]);
   const groups = Object.entries(DISTRICTS).flatMap(([key, d]) => {
     if (!STOPS.some((s) => s.district === key)) return [];
@@ -387,8 +412,9 @@ function openMap() {
     const label = Object.assign(document.createElement("p"), { className: "map-group", textContent: d.name });
     h.append(label);
     if (key !== "hub") {
-      const go = Object.assign(document.createElement("button"), { type: "button", className: "map-read", textContent: "Drive in" });
-      go.setAttribute("aria-label", `Go to the ${d.name} entrance`);
+      const race = key === "raceway";
+      const go = Object.assign(document.createElement("button"), { type: "button", className: "map-read", textContent: race ? "Go to start" : "Drive in" });
+      go.setAttribute("aria-label", race ? `Go to the ${d.name} start line` : `Go to the ${d.name} entrance`);
       go.addEventListener("click", () => teleportDistrict(key));
       h.append(go);
     }
@@ -414,12 +440,21 @@ function openMap() {
         return li;
       }),
     );
-    return [h, ul];
+    if (key !== "raceway") return [h, ul];
+    // The raceway's top 10, kept fresh while Map view is open
+    const top = document.createElement("div");
+    top.id = "map-race-top";
+    top.append(Object.assign(document.createElement("p"), { className: "map-group", textContent: "Top 10 laps" }), topList());
+    return [h, ul, top];
   });
   $("map-groups").replaceChildren(...groups);
   show($("map"));
 }
 $("open-map").addEventListener("click", openMap);
+onBoard(() => {
+  const el = $("map-race-top");
+  if (el) el.replaceChildren(el.firstChild, topList());
+});
 $("intro-map").addEventListener("click", openMap);
 $("start").addEventListener("click", () => $("intro").close());
 document.querySelectorAll("[data-quality]").forEach((b) =>
@@ -493,7 +528,9 @@ function frame() {
   const dt = Math.min(raw, 1 / 30);
   const t = clock.elapsedTime;
   if (!paused) {
+    const px = car.s.x, pz = car.s.z;
     const info = stepCar(car, keys, dt);
+    raceTick(px, pz, car.s.x, car.s.z, dt);
     emitDust(dt, info);
     checkPads();
     updateWhere();
@@ -502,7 +539,12 @@ function frame() {
   dust?.userData.step(dt);
   grass?.userData.tick(t);
   if (!debugCam) placeCamera(dt);
-  if ((frameNo++ & 15) === 0 && !debugCam) cullDistricts();
+  if ((frameNo++ & 15) === 0) {
+    if (!debugCam) cullDistricts();
+    const here = inRaceway(car.s.x, car.s.z);
+    raceHud(here);
+    raceRefresh(here);
+  }
   animated.forEach((f) => f(t));
   if (!reduceMotion) {
     const pulse = 0.65 + Math.sin(t * 3) * 0.2;
@@ -535,4 +577,4 @@ show($("intro"));
 // Test hook for automated checks (no effect on play)
 window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, colliders,
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
-  info: () => renderer.info.render };
+  info: () => renderer.info.render, raceGates, toStart, inRaceway, renderer, scene, camera };

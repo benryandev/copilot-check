@@ -2,11 +2,11 @@
 // groundHeight(x, z) is the single source of truth for both the meshes and the car.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { DISTRICTS, ROADS, JUMPS, STOPS } from "./content.js";
+import { DISTRICTS, ROADS, JUMPS, STOPS, TRACK_ROAD, RACE_TRACK } from "./content.js";
 import { tint } from "./colours.js";
 
 export const ROAD_HALF = 3.6;
-export const WORLD = { cx: 0, cz: 0, radius: 280 };
+export const WORLD = { cx: 0, cz: 0, radius: 395 }; // 280 before the raceway went in beyond Partners
 
 const smooth = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -14,9 +14,11 @@ const smooth = (a, b, x) => {
 };
 
 // ── Roads as sampled polylines ─────────────────────────────────────────
+// A closed road (the raceway) loops back on itself; its last sample repeats the first.
 export const roads = ROADS.map((r) => {
-  const curve = new THREE.CatmullRomCurve3(r.points.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, "centripetal");
-  const n = 160;
+  const curve = new THREE.CatmullRomCurve3(r.points.map(([x, z]) => new THREE.Vector3(x, 0, z)), !!r.closed, "centripetal");
+  const n = Math.max(160, Math.ceil(curve.getLength() / 2)); // about 2 m apart on long roads
+  const half = r.half || ROAD_HALF;
   const pts = curve.getSpacedPoints(n).map((p) => [p.x, p.z]);
   let len = 0;
   const cum = [0];
@@ -24,7 +26,7 @@ export const roads = ROADS.map((r) => {
     len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
     cum.push(len);
   }
-  return { ...r, curve, pts, cum, len };
+  return { ...r, curve, pts, cum, len, half };
 });
 
 // Road segments bucketed on a grid, so lookups only check nearby segments
@@ -48,7 +50,7 @@ roads.forEach((r, ri) => {
 // Nearest point on any road within maxD: distance, road index, t (0–1), unit tangent.
 // Beyond maxD, d is Infinity.
 export function roadInfo(x, z, maxD = 26) {
-  let best = { d: Infinity, road: -1, t: 0, tx: 0, tz: 1 };
+  let best = { d: Infinity, road: -1, t: 0, tx: 0, tz: 1, half: ROAD_HALF };
   const ci = Math.floor(x / CELL), cj = Math.floor(z / CELL), n = Math.ceil(maxD / CELL);
   for (let a = ci - n; a <= ci + n; a++) for (let b = cj - n; b <= cj + n; b++) {
     const list = grid.get(cellKey(a, b));
@@ -60,7 +62,7 @@ export function roadInfo(x, z, maxD = 26) {
       const d = Math.hypot(x - (g.ax + vx * u), z - (g.az + vz * u));
       if (d < best.d && d <= maxD) {
         const l = Math.sqrt(l2), r = roads[g.ri];
-        best = { d, road: g.ri, t: (g.cum + l * u) / r.len, tx: vx / l, tz: vz / l };
+        best = { d, road: g.ri, t: (g.cum + l * u) / r.len, tx: vx / l, tz: vz / l, half: r.half };
       }
     }
   }
@@ -68,15 +70,17 @@ export function roadInfo(x, z, maxD = 26) {
 }
 
 // ── Jumps, placed in each road's local frame ───────────────────────────
-export const jumps = JUMPS.map((j) => {
-  const r = roads[j.road];
+// A jump may give `s` (metres along the road) instead of `t`.
+export const jumps = JUMPS.map((jump) => {
+  const r = roads[jump.road];
+  const j = jump.s != null ? { ...jump, t: jump.s / r.len } : jump;
   const start = r.curve.getPointAt(j.t);
   const tan = r.curve.getTangentAt(j.t);
   const tx = tan.x, tz = tan.z;
   const l = Math.hypot(tx, tz);
   // Right of travel, looking down the road (heading towards -z means right is -x... use cross product)
   const rx = -tz / l, rz = tx / l;
-  const off = j.side * (ROAD_HALF - j.width / 2 - 0.2);
+  const off = j.side * (r.half - j.width / 2 - 0.2);
   return { ...j, ox: start.x + rx * off, oz: start.z + rz * off, fx: tx / l, fz: tz / l, rx, rz };
 });
 
@@ -106,10 +110,56 @@ export const builderSlots = (() => {
   });
 })();
 
+// ── RealFi Raceway: gates and the infield ──────────────────────────────
+const track = roads[TRACK_ROAD];
+// A point `s` metres along the track: position, unit forward and right (right of travel)
+export function trackAt(s) {
+  const t = (((s / track.len) % 1) + 1) % 1;
+  const p = track.curve.getPointAt(t), tan = track.curve.getTangentAt(t);
+  const l = Math.hypot(tan.x, tan.z);
+  const fx = tan.x / l, fz = tan.z / l;
+  return { x: p.x, z: p.z, fx, fz, rx: -fz, rz: fx };
+}
+// The centreline polyline sampled at even spacing (s = 0 is the start line)
+export const trackPts = track.pts, trackCum = track.cum, trackLen = track.len, TRACK_HALF = track.half;
+// Gate 0 is the start/finish line, then each checkpoint in order. A gate is a segment across the
+// track, a little wider than it, so cutting across grass beside it doesn't count.
+export const GATE_HALF = track.half + 1.5;
+export const raceGates = [0, ...RACE_TRACK.checkpoints].map((s, i) => ({ i, s, ...trackAt(s), w: GATE_HALF }));
+{
+  const drift = Math.abs(track.len - RACE_TRACK.length);
+  if (drift > 0.5) console.warn(`[eco] raceway: lap is ${track.len.toFixed(1)} m but RACE_TRACK.length says ${RACE_TRACK.length}`);
+}
+// Inside the raceway: on or near the track, or anywhere in its infield
+const trackPoly = track.pts;
+export function inRaceway(x, z) {
+  let inside = false;
+  for (let i = 0, j = trackPoly.length - 1; i < trackPoly.length; j = i++) {
+    const [xi, zi] = trackPoly[i], [xj, zj] = trackPoly[j];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  if (inside) return true;
+  const info = roadInfo(x, z, 30);
+  return info.road === TRACK_ROAD && info.d < 30;
+}
+// Distance to the nearest point of the track (for skipping it when far away)
+export function trackDistance(x, z) {
+  let best = Infinity;
+  for (let i = 0; i < trackPoly.length; i += 4) best = Math.min(best, Math.hypot(x - trackPoly[i][0], z - trackPoly[i][1]));
+  return best;
+}
+// A gentle crest along the far side of the track: metres of lift at `s` along it
+const CREST = { from: 330, to: 425, height: 2.2 }; // over the S-bend
+const crest = (s) => (s <= CREST.from || s >= CREST.to ? 0 : CREST.height * 0.5 * (1 - Math.cos(((s - CREST.from) / (CREST.to - CREST.from)) * Math.PI * 2)));
+function trackLift(info) {
+  if (info.road !== TRACK_ROAD || !CREST.height) return 0;
+  return crest(info.t * track.len) * (1 - smooth(track.half + 3, 22, info.d));
+}
+
 // ── Height field ───────────────────────────────────────────────────────
-const plazas = Object.values(DISTRICTS);
-function flatMask(x, z, d) {
-  let m = smooth(ROAD_HALF + 2, ROAD_HALF + 16, d);
+const plazas = Object.values(DISTRICTS).filter((d) => d.plaza !== false);
+function flatMask(x, z, d, half = ROAD_HALF) {
+  let m = smooth(half + 2, half + 16, d);
   for (const p of plazas) {
     const dp = Math.hypot(x - p.centre[0], z - p.centre[1]) - p.radius;
     m *= smooth(1, 14, dp);
@@ -131,7 +181,7 @@ function edgeRise(x, z) {
 }
 
 export function terrainHeight(x, z, info = roadInfo(x, z)) {
-  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d) + edgeRise(x, z);
+  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) + trackLift(info) + edgeRise(x, z);
 }
 export function groundHeight(x, z) {
   return terrainHeight(x, z) + jumpHeight(x, z);
@@ -139,9 +189,9 @@ export function groundHeight(x, z) {
 // Grass grows where the ground isn't road or plaza
 export function grassWeight(x, z) {
   const info = roadInfo(x, z);
-  return flatMask(x, z, info.d);
+  return flatMask(x, z, info.d, info.half);
 }
-export const onDirt = (x, z) => roadInfo(x, z).d < ROAD_HALF + 0.3 || jumpHeight(x, z) > 0;
+export const onDirt = (x, z) => { const info = roadInfo(x, z); return info.d < info.half + 0.3 || jumpHeight(x, z) > 0; };
 
 // ── Meshes ─────────────────────────────────────────────────────────────
 export function buildGround(segments, palette) {
@@ -213,14 +263,17 @@ export function buildRoads(palette) {
     const verts = new Float32Array(n * 2 * 3);
     const uvs = new Float32Array(n * 2 * 2);
     const idx = [];
-    const w = ROAD_HALF + 0.6;
+    const w = r.half + 0.6;
     for (let i = 0; i < n; i++) {
       const [x, z] = r.pts[i];
-      const [ax, az] = r.pts[Math.max(0, i - 1)];
-      const [bx, bz] = r.pts[Math.min(n - 1, i + 1)];
+      // A closed road's ends meet, so its neighbours wrap round (the last sample repeats the first)
+      const [ax, az] = r.pts[i > 0 ? i - 1 : r.closed ? n - 2 : 0];
+      const [bx, bz] = r.pts[i < n - 1 ? i + 1 : r.closed ? 1 : n - 1];
       const tx = bx - ax, tz = bz - az, l = Math.hypot(tx, tz);
       const nx = -tz / l, nz = tx / l;
-      verts.set([x + nx * w, 0.14, z + nz * w, x - nx * w, 0.14, z - nz * w], i * 6);
+      // Roads sit on the ground: flat almost everywhere, over the raceway's crest where it rises
+      const lx = x + nx * w, lz = z + nz * w, qx = x - nx * w, qz = z - nz * w;
+      verts.set([lx, terrainHeight(lx, lz) + 0.14, lz, qx, terrainHeight(qx, qz) + 0.14, qz], i * 6);
       const v = r.cum[i] / 8;
       uvs.set([0, v, 1, v], i * 4);
       if (i < n - 1) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
@@ -248,7 +301,10 @@ export function buildJumps(palette) {
   for (const j of jumps) {
     const steps = 16;
     const pos = [];
-    const P = (u, v, y) => [j.ox + j.fx * u + j.rx * v, y, j.oz + j.fz * u + j.rz * v];
+    const P = (u, v, y) => {
+      const x = j.ox + j.fx * u + j.rx * v, z = j.oz + j.fz * u + j.rz * v;
+      return [x, y + terrainHeight(x, z), z];
+    };
     const hw = j.width / 2;
     const top = [];
     for (let s = 0; s <= steps; s++) {
@@ -296,7 +352,7 @@ export function buildJumps(palette) {
 export function buildPlazas(palette) {
   const group = new THREE.Group();
   const mat = new THREE.MeshLambertMaterial();
-  for (const d of Object.values(DISTRICTS)) {
+  for (const d of plazas) {
     const disc = new THREE.Mesh(new THREE.CircleGeometry(d.radius, 72), mat);
     disc.rotation.x = -Math.PI / 2;
     disc.position.set(d.centre[0], 0.08, d.centre[1]);

@@ -30,6 +30,16 @@ ORDER.forEach(([key, name, colour, board], i) => {
 });
 export const RING_KEYS = ORDER.map((o) => o[0]);
 
+// ── RealFi Raceway: a time-trial track out past Partners & Integrations ──
+// Not on the ring: placed by hand in a local frame beyond the Partners district, x along the ring
+// (clockwise), y outwards from HQ. It has no plaza; "inside" is the track and its infield (terrain.js).
+const RACE_R = 303; // HQ to the middle of the track
+const raceA = DISTRICTS.partners.angle;
+const rOut = [Math.sin(raceA), -Math.cos(raceA)], rAlong = [Math.cos(raceA), Math.sin(raceA)];
+export const raceLocal = (x, y) => [rOut[0] * (RACE_R + y) + rAlong[0] * x, rOut[1] * (RACE_R + y) + rAlong[1] * x];
+// RealFi's accent green (realfi.co's green-400); the logo itself is their brand green, 0x032327
+DISTRICTS.raceway = { key: "raceway", name: "RealFi Raceway", colour: 0x0fb89c, board: null, ring: -1, centre: raceLocal(0, 0), radius: 150, plaza: false };
+
 // Unit vector from a district's centre towards a point
 const towards = (d, x, z) => {
   const dx = x - d.centre[0], dz = z - d.centre[1], l = Math.hypot(dx, dz);
@@ -62,6 +72,34 @@ RING_KEYS.forEach((key, i) => {
   ROADS.push({ kind: "ring", from: key, to: n.key, points: [a, out(lerp(a, b, 0.25), 3.5), out(mid, 5), out(lerp(a, b, 0.75), 3.5), b] });
 });
 
+// The raceway: a closed loop that starts on the start line (a long straight nearest Partners),
+// round a hairpin, back along an S-bend and a sweeping curve, and round a second hairpin.
+// Wider than the other roads. A short link road runs from Partners' far edge to just before the
+// start line.
+ROADS.push({
+  kind: "track", from: "raceway", to: "raceway", closed: true, half: 6,
+  points: [
+    [-62, -36], [-20, -36], [20, -36], [60, -36], [100, -35], [127, -29], [141, -12], [140, 8], [125, 21],
+    [100, 26], [76, 25], [56, 33], [38, 40], [20, 35], [4, 26], [-14, 29], [-30, 38], [-55, 38], [-85, 33],
+    [-112, 23], [-134, 8], [-142, -12], [-131, -29], [-106, -36],
+  ].map(([x, y]) => raceLocal(x, y)),
+});
+ROADS.push({
+  kind: "link", from: "partners", to: "raceway",
+  points: [[0, -61], [-25, -60], [-55, -55], [-76, -48], [-86, -36]].map(([x, y]) => raceLocal(x, y)),
+});
+export const TRACK_ROAD = ROADS.findIndex((r) => r.kind === "track");
+// Race control sits in the infield by the start straight, facing it
+const raceControl = STOPS.find((s) => s.key === "raceway");
+if (raceControl) Object.assign(raceControl, { pos: raceLocal(5, -14), face: raceLocal(5, -36) });
+
+// Time trials: metres along the track's centreline from the start line to each checkpoint gate,
+// and the lap length. The leaderboard worker (copilot-watch) checks posted splits against these
+// numbers at 30 m/s, so they must match the track: terrain.js re-measures them on load and warns
+// if they drift. Change the track and these together, and give it a new id.
+// Measured 30 Oct 2026 (642.2 m a lap; 21.4 s is the fastest lap the worker accepts).
+export const RACE_TRACK = { id: "realfi-v1", checkpoints: [211, 300, 420, 500, 550], length: 642.2 };
+
 // Directions out of each district (to HQ and along the ring), kept clear of buildings
 for (const key of RING_KEYS) {
   const d = DISTRICTS[key];
@@ -82,6 +120,10 @@ export const JUMPS = [
   { road: spoke("developers"), t: 0.28, side: 1, length: 10, height: 2.4, width: 3.4 },
   { road: spoke("community"), t: 0.5, side: -1, length: 8, height: 1.9, width: 3.4 },
   { road: spoke("token"), t: 0.45, side: 1, length: 7, height: 1.5, width: 3.4 },
+  // The raceway: on the start straight, the short straight after the first hairpin, and the sweep
+  { road: TRACK_ROAD, s: 70, side: -1, length: 8, height: 1.9, width: 5.4 },
+  { road: TRACK_ROAD, s: 262, side: 1, length: 8, height: 1.9, width: 5.4 },
+  { road: TRACK_ROAD, s: 445, side: 1, length: 8, height: 1.9, width: 5.4 },
 ];
 
 export const SPAWN = { x: 0, z: 14, heading: 0 };

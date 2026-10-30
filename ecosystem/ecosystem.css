@@ -321,3 +321,36 @@ body { overflow: hidden; overscroll-behavior: none; }
 .loader-text { margin: 0; font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
 @keyframes loader-turn { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
 @media (prefers-reduced-motion: reduce) { .loader-mark { animation: none; } }
+
+/* ── RealFi Raceway: lap clock and finish sheet ─────────────────────── */
+.race-hud {
+  top: calc(max(var(--space-sm), env(safe-area-inset-top)) + 4.5rem);
+  right: max(var(--space-sm), env(safe-area-inset-right));
+  min-width: 12rem;
+  padding: var(--space-2xs) var(--space-sm);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-top: 4px solid #0fb89c;
+  background: color-mix(in srgb, var(--bg-surface) 90%, transparent);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+.race-hud[hidden], .race-note[hidden], .race-form[hidden] { display: none; }
+.race-time { font-family: var(--font-mono); font-size: 1.75rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.race-sub, .race-note { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary); }
+.race-note { margin-top: var(--space-3xs) !important; color: var(--text-primary); }
+.race-result { font-family: var(--font-mono); font-size: 2.5rem !important; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.race-form { display: flex; flex-direction: column; gap: var(--space-2xs); }
+.race-row { display: flex; gap: var(--space-2xs); }
+.race-row .br-input { flex: 1; min-width: 0; min-height: 44px; }
+.race-top { margin: var(--space-2xs) 0 0; padding-left: 1.6rem !important; }
+.race-top li { font-size: 0.95rem; }
+.race-top li::marker { font-family: var(--font-mono); color: var(--text-secondary); }
+.race-top li span:first-child { overflow-wrap: anywhere; }
+.race-top-ms { float: right; margin-left: var(--space-sm); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.race-top-empty { margin-top: var(--space-2xs) !important; }
+@media (max-width: 420px) {
+  .race-hud { min-width: 0; top: calc(max(var(--space-sm), env(safe-area-inset-top)) + 4.35rem); }
+  .race-time { font-size: 1.4rem; }
+  .race-result { font-size: 2rem !important; }
+}

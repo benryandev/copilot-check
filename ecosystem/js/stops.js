@@ -243,6 +243,23 @@ export const STOPS = [
     docs: "https://docs.strikefinance.org/api/getting-started",
     docsLabel: "Docs: API",
   },
+  // ── RealFi Raceway, out past Partners: race control by the start straight (placed in content.js)
+  {
+    key: "raceway",
+    district: "raceway",
+    name: "RealFi Raceway",
+    shape: "pitbox",
+    summary:
+      "A time-trial track in the RealFi colours, out past Partners & Integrations. Cross the start line, take every checkpoint in order and try to beat the best lap.",
+    points: [
+      "The clock starts when you cross the start line going forward and stops when you cross it again. Miss a checkpoint and the lap doesn't count.",
+      "There are three jumps, each with a flat lane beside it, and RealFi crates to knock about.",
+      "Your best lap is kept in this browser. Post it to put your name on the top 10 board by the start.",
+    ],
+    live: null,
+    docs: "https://realfi.co",
+    docsLabel: "Visit RealFi",
+  },
   // ── Generated districts (merge.py) ──
   {
     key: "slp",
