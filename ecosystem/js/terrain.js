@@ -3,6 +3,7 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, ROADS, JUMPS } from "./content.js";
+import { tint } from "./colours.js";
 
 export const ROAD_HALF = 3.6;
 export const WORLD = { cx: 0, cz: 0, radius: 250 };
@@ -285,13 +286,17 @@ export function buildPlazas(palette) {
     disc.receiveShadow = true;
     const ring = new THREE.Mesh(
       new THREE.RingGeometry(d.radius - 0.5, d.radius, 96),
-      new THREE.MeshBasicMaterial({ color: d.colour }),
+      new THREE.MeshBasicMaterial({ color: tint(d.colour) }),
     );
     ring.rotation.x = -Math.PI / 2;
     ring.position.set(d.centre[0], 0.12, d.centre[1]);
+    ring.userData.colour = d.colour;
     group.add(disc, ring);
   }
-  group.userData.recolour = (p) => mat.color.set(p.plaza);
+  group.userData.recolour = (p) => {
+    mat.color.set(p.plaza);
+    group.children.forEach((c) => c.userData.colour && c.material.color.set(tint(c.userData.colour)));
+  };
   group.userData.recolour(palette);
   return group;
 }

@@ -4,6 +4,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, ROADS, layoutStops, boardSpot } from "./content.js";
 import { LABELS } from "./data.js";
 import { roads, jumps, ROAD_HALF, terrainHeight } from "./terrain.js";
+import { tint, setDark } from "./colours.js";
 
 // Everything in a district lives in its group, so far-away districts can be skipped when drawing
 export const districtGroups = {};
@@ -21,7 +22,15 @@ export const colliders = []; // axis-aligned boxes in x/z: { minX, maxX, minZ, m
 export const animated = []; // (t) => void
 export const redraws = []; // re-paint canvas textures on theme change
 
-const hex = (n) => "#" + new THREE.Color(n).getHexString();
+const hex = (n) => "#" + new THREE.Color(tint(n)).getHexString();
+
+// Materials painted in a district colour, re-tinted on theme change
+export const tinted = [];
+const tintedBasic = (colour, opts) => {
+  const m = new THREE.MeshBasicMaterial({ color: tint(colour), ...opts });
+  tinted.push({ m, colour });
+  return m;
+};
 
 export function mesh(geo, mat, x = 0, y = 0, z = 0) {
   const m = new THREE.Mesh(geo, mat);
@@ -71,6 +80,9 @@ export function accent(colour) {
   return accents.get(colour);
 }
 export function recolourMaterials(pal, dark) {
+  setDark(dark);
+  accents.forEach((m, c) => { m.color.set(tint(c)); m.emissive.set(tint(c)); });
+  tinted.forEach(({ m, colour }) => m.color.set(tint(colour)));
   M.build.color.set(pal.build);
   M.trim.color.set(pal.trim);
   M.wood.color.set(pal.wood);
@@ -267,10 +279,10 @@ export function buildStops(scene) {
     makeLabel(stop.name, d.colour, height + 2.2, g);
     const reach = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 + 4.5;
     const padPos = new THREE.Vector3(stop.pos[0], 0.18, stop.pos[1]).addScaledVector(toCentre, reach);
-    const ring = new THREE.Mesh(padGeo, new THREE.MeshBasicMaterial({ color: d.colour, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+    const ring = new THREE.Mesh(padGeo, tintedBasic(d.colour, { transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
     ring.rotation.x = -Math.PI / 2;
     ring.position.copy(padPos);
-    const disc = new THREE.Mesh(discGeo, new THREE.MeshBasicMaterial({ color: d.colour, transparent: true, opacity: 0.14 }));
+    const disc = new THREE.Mesh(discGeo, tintedBasic(d.colour, { transparent: true, opacity: 0.14 }));
     disc.rotation.x = -Math.PI / 2;
     disc.position.copy(padPos).setY(0.16);
     parent.add(ring, disc);
@@ -461,7 +473,7 @@ export function addCrates(scene, tickers, cx, cz, colour) {
     const m = mesh(new THREE.BoxGeometry(s, s, s), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7 }));
     const ring = Math.floor(i / 12);
     const a = ((i % 12) / 12) * Math.PI * 2 + ring * 0.26;
-    const r = 7 + ring * 2.2;
+    const r = 4.5 + ring * 2.1;
     m.position.set(cx + Math.cos(a) * r, s / 2, cz + Math.sin(a) * r);
     m.rotation.y = a;
     parent.add(m);
