@@ -391,7 +391,7 @@ async function swapInModel(g, file, A, colliderIndex) {
       });
       sign.tex.flipY = false; // glTF UVs
       redraws.push(sign.redraw);
-      sign.redraw(currentPal);
+      if (currentPal) sign.redraw(currentPal); // else the first theme pass paints it
       o.material = new THREE.MeshBasicMaterial({ map: sign.tex, toneMapped: false });
       o.castShadow = false;
       return;
