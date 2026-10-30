@@ -210,3 +210,34 @@ included). "Update now" on the paper page is natural width at every size (148–
 - The verdict sentence used `text-wrap: balance`, which made short ragged prose lines; now `pretty` (balance stays
   on headings and the notice).
 - The "no hourly prices" replay note now comes before the paper-copy block, next to the replay data it qualifies.
+
+## Ecosystem world (30 Oct)
+
+```sh
+node qa/serve.mjs                           # same server; it now serves .png and .glb with their own types
+node qa/shoot-eco.mjs                       # 8 states × widths × themes → qa/shots/eco-<state>-<width>-<theme>.png
+node qa/shoot-eco.mjs --states=map,mapEnd --widths=375 --themes=dark
+```
+
+States: `loading`, `intro`, `drive` (on the Liquidations pad), `stop` (its sheet), `map`, `mapEnd` (Map view
+scrolled to the bottom), `raceway` (start line), `race` (lap-finish sheet, filled in by the script). 375 and 768 run
+as touch devices, so the driving buttons show and tap targets are checked. Exit code 1 if anything is found.
+
+Each frame is audited: sideways scroll (against the device width: a mobile viewport widens itself to fit oversized
+content), sheets past the viewport, HUD pieces off-screen or overlapping, 44px tap targets on touch, AA contrast on
+panel text (a translucent panel is tried over a black and a white scene and the worse ratio counts; text straight on
+the 3D scene is judged from the screenshot), page errors. A self-test runs first.
+
+Test-environment artifacts: the race API allows only `localhost:8766` and `strike.benryan.com.au`, so the board reads
+"Leaderboard offline" from :8080; the 3D renders in software, so frame rates are low and 3D quality isn't judged.
+
+Four rounds, then a blind re-score of 7.3 before its fixes:
+- A Builders' Row shop sign could load before the theme and throw, leaving the shop as its blockout.
+- Light theme: the HUD's grey labels on 88% panels fell to ~3.9:1 over dark scenery; panels are opaque in light.
+- Footer: a pill over the scene; hidden under sheets; driving buttons clear its two-line form at 375; the credit
+  link is 44px tall on touch.
+- Map view: figures as 2×2 (was 3 + 1) with values aligned when a label wraps; Read / Drive in / Go to start as
+  pills, centred on their card (they stretched to its height); Read under each card on phones; space above Top 10.
+- Portrait camera aims lower so the car sits above the driving buttons.
+- Below 1140px a sheet hid the corner panels behind it mid-word: they hide while a sheet is open. Darker scrim.
+  The intro's phone tip shows on touch screens only.
