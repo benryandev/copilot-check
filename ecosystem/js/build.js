@@ -57,11 +57,32 @@ export function canvasTexture(w, h, draw) {
   return { tex, redraw };
 }
 
+// Collision boxes turn with their building (oriented boxes), so an angled building doesn't grow
+// invisible corners. Each also keeps a world-aligned bound for quick rejection.
+export function obbOf(o, inset = 0.3) {
+  o.updateWorldMatrix(true, true);
+  const inv = o.matrixWorld.clone().invert();
+  const box = new THREE.Box3(), tmp = new THREE.Box3(), m = new THREE.Matrix4();
+  o.traverse((c) => {
+    if (!c.isMesh) return; // labels are sprites, so they never widen the box
+    if (!c.geometry.boundingBox) c.geometry.computeBoundingBox();
+    tmp.copy(c.geometry.boundingBox).applyMatrix4(m.multiplyMatrices(inv, c.matrixWorld));
+    box.union(tmp);
+  });
+  const yaw = new THREE.Euler().setFromRotationMatrix(o.matrixWorld, "YXZ").y;
+  const w = box.getCenter(new THREE.Vector3()).applyMatrix4(o.matrixWorld);
+  const hx = Math.max(0.15, (box.max.x - box.min.x) / 2 - inset), hz = Math.max(0.15, (box.max.z - box.min.z) / 2 - inset);
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const ex = Math.abs(hx * c) + Math.abs(hz * s), ez = Math.abs(hx * s) + Math.abs(hz * c);
+  return { cx: w.x, cz: w.z, hx, hz, c, s, minX: w.x - ex, maxX: w.x + ex, minZ: w.z - ez, maxZ: w.z + ez, box };
+}
+export const aabb = (minX, maxX, minZ, maxZ) => ({
+  cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, hx: (maxX - minX) / 2, hz: (maxZ - minZ) / 2, c: 1, s: 0, minX, maxX, minZ, maxZ,
+});
 export function addCollider(obj, inset = 0.3) {
-  obj.updateWorldMatrix(true, true); // parents too, or a child's box lands at the origin
-  const b = new THREE.Box3().setFromObject(obj, true); // precise: rotated shapes don't inflate the box
-  colliders.push({ minX: b.min.x + inset, maxX: b.max.x - inset, minZ: b.min.z + inset, maxZ: b.max.z - inset });
-  return b;
+  const o = obbOf(obj, inset);
+  colliders.push(o);
+  return o.box;
 }
 
 // ── Materials that follow the theme ────────────────────────────────────
@@ -283,11 +304,11 @@ function makeLabel(text, colour, y, parent) {
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.fillStyle = hex(colour);
-    ctx.fillRect((w - pw) / 2 + 52, 86, 20, 20);
+    ctx.fillRect((w - pw) / 2 + 56, 148, pw - 112, 8); // district colour line along the bottom
     ctx.fillStyle = p.text;
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
-    ctx.fillText(text, w / 2 + 14, 100);
+    ctx.fillText(text, w / 2, 96);
   });
   redraws.push(redraw);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
@@ -350,20 +371,21 @@ async function swapInModel(g, file, A, colliderIndex) {
       });
     }
     const n = o.material?.name;
-    o.material = n === "Accent" ? A : n === "Trim" ? M.trim : n === "Glass" ? M.glass : n === "Building" ? M.build : o.material;
+    o.material =
+      n === "Accent" ? A : n === "Trim" ? M.trim : n === "Glass" ? M.glass : n === "Building" ? M.build
+      : n === "ClockFace" ? clockFace : n === "ClockHand" ? clockHand : o.material;
   });
   // Keep the floating label; drop the blockout
   [...g.children].filter((c) => !c.isSprite).forEach((c) => g.remove(c));
   g.add(model);
   // The model's footprint replaces the blockout's in the collision list
-  model.updateWorldMatrix(true, true);
-  const b = new THREE.Box3();
-  model.traverse((o) => o.isMesh && b.expandByObject(o, true));
-  colliders[colliderIndex] = { minX: b.min.x + 0.3, maxX: b.max.x - 0.3, minZ: b.min.z + 0.3, maxZ: b.max.z - 0.3 };
+  const obb = obbOf(model, 0.3);
+  colliders[colliderIndex] = obb;
+  const b = obb.box; // in the building's own frame
   // Move the pad out to clear the model's footprint
   const pad = g.userData.pad;
   if (pad) {
-    const reach = Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2 + 3.5;
+    const reach = (b.max.z - b.min.z) / 2 + 3.5; // depth towards the pad
     pad.pos.set(g.position.x + pad.dir.x * reach, pad.pos.y, g.position.z + pad.dir.z * reach);
     pad.ring.position.set(pad.pos.x, pad.ring.position.y, pad.pos.z);
     pad.disc.position.set(pad.pos.x, pad.disc.position.y, pad.pos.z);
@@ -439,6 +461,10 @@ const code = canvasTexture(1024, 800, (ctx, w, h) => {
 code.tex.flipY = false; // glTF UVs
 const codeMaterial = new THREE.MeshBasicMaterial({ map: code.tex, toneMapped: false });
 let codeValues = {};
+
+// Clocks read the same in both themes: lit face, dark hands, unaffected by the scene lights
+const clockFace = new THREE.MeshBasicMaterial({ color: 0xf4f1e8 });
+const clockHand = new THREE.MeshBasicMaterial({ color: 0x111111 });
 
 const FALLBACK = ["dome", "vault", "kiosk", "pillar", "coins", "arch", "tower", "twin", "cluster"];
 export function buildStops(scene) {
@@ -571,7 +597,7 @@ export function buildSignpost(parent, x, z, arms) {
     g.add(arrow);
   });
   parent.add(g);
-  colliders.push({ minX: x - 0.35, maxX: x + 0.35, minZ: z - 0.35, maxZ: z + 0.35 });
+  colliders.push(aabb(x - 0.35, x + 0.35, z - 0.35, z + 0.35));
 }
 
 // Wayfinding: a sign at HQ for every spoke, a welcome arch and a junction sign where each spoke
@@ -589,7 +615,7 @@ export function buildRoadSigns(scene) {
     const a = side(0.03, ROAD_HALF + 1.6);
     buildSignpost(groupFor(scene, "hub"), a.x, a.z, [{ text: to.name, colour: to.colour, dir: [a.tx, a.tz] }]);
     // At the district: back to HQ, and along the ring road both ways
-    const b = side(0.97, -(ROAD_HALF + 1.6));
+    const b = side(0.95, -(ROAD_HALF + 3.4)); // clear of the arch posts
     const arms = [{ text: "Strike HQ", colour: DISTRICTS.hub.colour, dir: [-b.tx, -b.tz] }];
     for (const e of to.exits) {
       const n = DISTRICTS[e.to];

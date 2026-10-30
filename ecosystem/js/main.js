@@ -10,6 +10,7 @@ import {
   buildStops, buildBoard, buildRoadSigns, addCrates, addProps, recolourMaterials, setTicker,
 } from "./build.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R } from "./car.js";
+import { tint } from "./colours.js";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -294,7 +295,10 @@ function checkPads() {
     activePad = found;
     $("prompt").hidden = !found;
     if (found) {
+      const d = DISTRICTS[found.stop.district];
       $("prompt-label").textContent = `Open ${found.stop.name}`;
+      $("prompt-district").textContent = d.name;
+      $("prompt-btn").style.setProperty("--prompt-colour", "#" + new THREE.Color(tint(d.colour)).getHexString());
       $("prompt-hint").hidden = coarse;
     }
   }

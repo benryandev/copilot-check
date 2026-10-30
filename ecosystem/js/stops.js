@@ -508,8 +508,8 @@ export const STOPS = [
       "Strike's own deposits use a DEX aggregator to turn volatile tokens like ADA into a stablecoin.",
     ],
     live: null,
-    docs: "https://docs.strikefinance.org/perpetuals/deposits-and-withdrawals/exchanger",
-    docsLabel: "Exchanger",
+    docs: "https://app.dexhunter.io/swap?tokenIdSell=&tokenIdBuy=f13ac4d66b3ee19a6aa0f2a22298737bd907cc95121662fc971b5275535452494b45",
+    docsLabel: "STRIKE on DexHunter",
     site: "https://dexhunter.io",
   },
   {

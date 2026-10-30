@@ -5,7 +5,7 @@
 import { STOPS } from "./stops.js";
 export { STOPS };
 
-const RING = 165; // distance from HQ to each district's centre
+const RING = 190; // distance from HQ to each district's centre
 
 // Clockwise from north. Neighbours share themes: Earn next to Collateral (Borrow and Earn spans
 // both), Partners next to Developers, Chains next to Perpetuals.
@@ -26,7 +26,7 @@ export const DISTRICTS = {
 };
 ORDER.forEach(([key, name, colour, board], i) => {
   const a = (i / ORDER.length) * Math.PI * 2;
-  DISTRICTS[key] = { key, name, colour, board, ring: i, angle: a, centre: [Math.sin(a) * RING, -Math.cos(a) * RING], radius: 46 };
+  DISTRICTS[key] = { key, name, colour, board, ring: i, angle: a, centre: [Math.sin(a) * RING, -Math.cos(a) * RING], radius: 54 };
 });
 export const RING_KEYS = ORDER.map((o) => o[0]);
 
@@ -48,7 +48,7 @@ RING_KEYS.forEach((key, i) => {
   const at = (r, side) => [ux * r + px * side, uz * r + pz * side];
   ROADS.push({
     kind: "spoke", from: "hub", to: key,
-    points: [at(20, 0), at(40, 6 * wig), at(70, -7 * wig), at(100, 5 * wig), at(end - 8, wig), at(end, 0)],
+    points: [at(20, 0), at(42, 6 * wig), at(72, -7 * wig), at(102, 5 * wig), at(126, -4 * wig), at(end - 8, wig), at(end, 0)],
   });
   // Ring road to the next district: the chord between the two plazas, bowed slightly outwards
   const n = DISTRICTS[RING_KEYS[(i + 1) % RING_KEYS.length]];
@@ -98,8 +98,8 @@ export function layoutStops() {
     const base = Math.atan2(d.hubDir[1], d.hubDir[0]); // pointing at HQ
     const outer = Math.ceil(stops.length * 0.6);
     const rows = [
-      { n: outer, r: d.radius - 11, from: 105, to: 255 },
-      { n: stops.length - outer, r: d.radius - 27, from: 130, to: 230 },
+      { n: outer, r: d.radius - 12, from: 105, to: 255 },
+      { n: stops.length - outer, r: d.radius - 30, from: 128, to: 232 },
     ];
     let k = 0;
     for (const row of rows) {

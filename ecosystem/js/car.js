@@ -71,16 +71,28 @@ async function upgradeCar(car, colour) {
 }
 
 function pushOut(px, pz, r) {
-  for (const c of colliders) {
-    const nx = Math.max(c.minX, Math.min(px, c.maxX));
-    const nz = Math.max(c.minZ, Math.min(pz, c.maxZ));
-    const dx = px - nx, dz = pz - nz;
-    const d2 = dx * dx + dz * dz;
-    if (d2 < r * r) {
-      const d = Math.sqrt(d2) || 0.0001;
-      const ux = d2 ? dx / d : 0, uz = d2 ? dz / d : 1;
-      return { x: nx + ux * r, z: nz + uz * r, nx: ux, nz: uz };
+  for (const k of colliders) {
+    if (px < k.minX - r || px > k.maxX + r || pz < k.minZ - r || pz > k.maxZ + r) continue;
+    // Into the box's own frame
+    const dx = px - k.cx, dz = pz - k.cz;
+    const lx = dx * k.c - dz * k.s, lz = dx * k.s + dz * k.c;
+    const nx = Math.max(-k.hx, Math.min(lx, k.hx)), nz = Math.max(-k.hz, Math.min(lz, k.hz));
+    const ex = lx - nx, ez = lz - nz, d2 = ex * ex + ez * ez;
+    if (d2 >= r * r) continue;
+    let ux, uz, qx, qz;
+    if (d2 > 1e-9) {
+      const d = Math.sqrt(d2);
+      ux = ex / d; uz = ez / d; qx = nx + ux * r; qz = nz + uz * r;
+    } else if (k.hx - Math.abs(lx) < k.hz - Math.abs(lz)) {
+      // Centre inside the box: out through the nearer side
+      ux = Math.sign(lx) || 1; uz = 0; qx = ux * (k.hx + r); qz = lz;
+    } else {
+      ux = 0; uz = Math.sign(lz) || 1; qx = lx; qz = uz * (k.hz + r);
     }
+    return {
+      x: k.cx + qx * k.c + qz * k.s, z: k.cz - qx * k.s + qz * k.c,
+      nx: ux * k.c + uz * k.s, nz: -ux * k.s + uz * k.c,
+    };
   }
   return null;
 }

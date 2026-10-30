@@ -62,7 +62,7 @@ body { overflow: hidden; overscroll-behavior: none; }
 
 .hud-prompt {
   left: 50%;
-  bottom: 9.5rem;
+  bottom: 3.5rem;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
@@ -239,7 +239,6 @@ body { overflow: hidden; overscroll-behavior: none; }
   .sheet { padding: var(--space-lg); }
   .sheet h1 { font-size: 1.875rem; }
   .sheet h2 { font-size: 1.625rem; }
-  .hud-prompt { bottom: 10.5rem; }
 }
 @media (max-width: 420px) {
   .hud-title .br-label { display: none; }
@@ -269,3 +268,37 @@ body { overflow: hidden; overscroll-behavior: none; }
 .map-group-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
 .map-list + .map-group-row { margin-top: var(--space-lg); }
 .map-group-row + .map-list { margin-top: var(--space-2xs); }
+
+/* ── Open prompt: one panel, district-coloured edge, Enter keycap ──── */
+.prompt-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 56px;
+  padding: var(--space-2xs) var(--space-2xs) var(--space-2xs) var(--space-md);
+  border: 1px solid var(--border-color);
+  border-left: 6px solid var(--prompt-colour, var(--text-primary));
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--bg-surface) 92%, transparent);
+  color: var(--text-primary);
+  box-shadow: 0 8px 24px var(--shadow-heavy);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  text-align: left;
+}
+.prompt-card:hover { border-color: var(--text-primary); border-left-color: var(--prompt-colour, var(--text-primary)); }
+.prompt-text { display: flex; flex-direction: column; gap: 0.1rem; }
+.prompt-eyebrow { font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
+.prompt-name { font-family: var(--font-display); font-weight: 600; font-size: 1.125rem; line-height: 1.2; }
+.prompt-key {
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.55rem;
+  background: var(--text-primary);
+  color: var(--bg-page);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+.prompt-key[hidden] { display: none; }
+
+/* On touch screens the prompt sits above the driving buttons */
+@media (pointer: coarse) { .hud-prompt { bottom: 10.5rem; } }

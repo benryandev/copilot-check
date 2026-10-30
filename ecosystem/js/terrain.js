@@ -6,7 +6,7 @@ import { DISTRICTS, ROADS, JUMPS, STOPS } from "./content.js";
 import { tint } from "./colours.js";
 
 export const ROAD_HALF = 3.6;
-export const WORLD = { cx: 0, cz: 0, radius: 250 };
+export const WORLD = { cx: 0, cz: 0, radius: 280 };
 
 const smooth = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
