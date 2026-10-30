@@ -95,5 +95,10 @@ export async function fetchLive() {
   if (users?.daily_active_users?.length > 1) {
     values.activeTraders = int(users.daily_active_users.at(-2)[1]); // last full day
   }
-  return { tickers: list.map((m) => m.base_asset).sort(), values };
+  // Prices for the exchange's ticker board, busiest markets first
+  const quotes = (tickers || [])
+    .map((t) => ({ sym: t.symbol.replace("-USD", ""), price: Number(t.lastPrice), change: Number(t.priceChangePercent), vol: Number(t.quoteVolume) }))
+    .filter((q) => q.price > 0)
+    .sort((a, b) => b.vol - a.vol);
+  return { tickers: list.map((m) => m.base_asset).sort(), values, quotes };
 }

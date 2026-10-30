@@ -305,7 +305,7 @@ const discGeo = new THREE.CircleGeometry(2.3, 40);
 // Shapes with a model in /ecosystem/models replace their blockout once loaded. Material names in
 // the model pick the theme-aware materials: Accent (district colour), Building, Trim, Glass.
 // Nodes named spin_* turn slowly.
-const MODELS = { hq: "hq.glb" };
+const MODELS = { hq: "hq.glb", exchange: "exchange.glb" };
 const loader = new GLTFLoader();
 const loading = new Map();
 const loadModel = (file) => {
@@ -328,6 +328,11 @@ async function swapInModel(g, file, A, colliderIndex) {
     }
     if (!o.isMesh) return;
     o.castShadow = o.receiveShadow = true;
+    if (o.name.startsWith("screen_")) {
+      o.material = tickerMaterial;
+      o.castShadow = false;
+      return;
+    }
     const n = o.material?.name;
     o.material = n === "Accent" ? A : n === "Trim" ? M.trim : n === "Glass" ? M.glass : n === "Building" ? M.build : o.material;
   });
@@ -339,7 +344,45 @@ async function swapInModel(g, file, A, colliderIndex) {
   const b = new THREE.Box3();
   model.traverse((o) => o.isMesh && b.expandByObject(o, true));
   colliders[colliderIndex] = { minX: b.min.x + 0.3, maxX: b.max.x - 0.3, minZ: b.min.z + 0.3, maxZ: b.max.z - 0.3 };
+  // Float the label just above the model's top
+  const label = g.children.find((c) => c.isSprite);
+  if (label) label.position.y = b.max.y + 2.2;
 }
+
+// ── Ticker board: a scrolling strip of live prices on screen_ meshes ────
+const ticker = canvasTexture(8192, 192, (ctx, w, h, p) => {
+  ctx.fillStyle = "#07090b";
+  ctx.fillRect(0, 0, w, h);
+  if (!tickerQuotes.length) return;
+  ctx.textBaseline = "middle";
+  ctx.font = "600 92px 'Geist Mono', monospace";
+  let x = 60;
+  for (const q of tickerQuotes) {
+    const price = q.price >= 1000 ? q.price.toLocaleString("en-US", { maximumFractionDigits: 0 }) : q.price >= 1 ? q.price.toFixed(2) : q.price.toPrecision(3);
+    const chg = `${q.change >= 0 ? "+" : "−"}${Math.abs(q.change).toFixed(1)}%`;
+    const sw = ctx.measureText(q.sym + " ").width;
+    const pw = ctx.measureText(price + "  ").width;
+    const width = sw + pw + ctx.measureText(chg).width;
+    if (x + width > w - 40) break; // whatever fits, busiest markets first
+    ctx.fillStyle = "#26fab0";
+    ctx.fillText(q.sym, x, h / 2);
+    ctx.fillStyle = "#f9fafb";
+    ctx.fillText(price, x + sw, h / 2);
+    ctx.fillStyle = "#9ca3af";
+    ctx.fillText(chg, x + sw + pw, h / 2);
+    x += width + 160;
+  }
+});
+ticker.tex.wrapS = THREE.RepeatWrapping;
+ticker.tex.flipY = false; // glTF UVs run top-down, unlike canvas textures
+ticker.tex.repeat.x = 0.32; // the board shows about a third of the strip at once
+const tickerMaterial = new THREE.MeshBasicMaterial({ map: ticker.tex, toneMapped: false });
+let tickerQuotes = [];
+export function setTicker(quotes) {
+  tickerQuotes = quotes || [];
+  ticker.redraw({});
+}
+if (!reduceMotion) animated.push((t) => (ticker.tex.offset.x = (t * 0.018) % 1));
 
 const FALLBACK = ["dome", "vault", "kiosk", "pillar", "coins", "arch", "tower", "twin", "cluster"];
 export function buildStops(scene) {

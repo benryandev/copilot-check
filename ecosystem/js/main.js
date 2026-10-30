@@ -7,7 +7,7 @@ import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInf
 import { createGrass, createDust } from "./effects.js";
 import {
   M, animated, pads, crates, boards, colliders, districtGroups,
-  buildStops, buildBoard, buildRoadSigns, addCrates, addProps, recolourMaterials,
+  buildStops, buildBoard, buildRoadSigns, addCrates, addProps, recolourMaterials, setTicker,
 } from "./build.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R } from "./car.js";
 
@@ -440,6 +440,7 @@ async function refresh() {
       crates.forEach((cr) => cr.redraw(pal()));
     }
     boards.forEach((b) => b(pal()));
+    setTicker(live.quotes);
     if ($("stop").open && openKey) {
       const s = STOPS.find((x) => x.key === openKey);
       if (s.live) fillStats($("stop-live"), s.live);
