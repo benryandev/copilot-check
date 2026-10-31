@@ -5,7 +5,7 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS } from "./content.js";
 import { groundHeight, inRaceway } from "./terrain.js";
-import { accent } from "./build.js";
+import { paint as carPaint } from "./build.js";
 import { nameTag } from "./tags.js";
 import { nextSendDelay, poseAt, pickDrawn, backoff, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE } from "./peers-math.js";
 
@@ -179,7 +179,7 @@ function buildCar(p) {
     body.rotation.set(0, 0, 0);
     body.scale.set(1, 1, 1);
     const mats = [];
-    const paint = accent(colourOf(p.colour));
+    const paint = carPaint(colourOf(p.colour));
     const low = hooks.tierName() === "low";
     body.traverse((o) => {
       if (!o.isMesh) return;

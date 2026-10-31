@@ -2,7 +2,7 @@
 // falls away faster than gravity (the jump), and squashes a little on landing.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { M, accent, box, mesh, colliders } from "./build.js";
+import { M, paint, box, mesh, colliders } from "./build.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
 import { groundHeight, onDirt, WORLD } from "./terrain.js";
 
@@ -15,7 +15,7 @@ export function createCar(colour) {
   const car = new THREE.Group();
   const tilt = new THREE.Group(); // pitch, roll and squash live here
   car.add(tilt);
-  const A = accent(colour);
+  const A = paint(colour);
   const body = box(2.2, 0.8, 4, A, 0, 0.45, 0);
   const cabin = box(1.8, 0.75, 2, M.glass, 0, 1.25, 0.3);
   tilt.add(body, cabin, box(2.25, 0.12, 4.05, M.trim, 0, 1.2, 0));
@@ -52,7 +52,7 @@ async function upgradeCar(car, colour) {
     o.castShadow = true;
     o.receiveShadow = true;
     const name = o.material?.name;
-    if (name === "Accent") o.material = accent(colour);
+    if (name === "Accent") o.material = paint(colour);
     else if (name === "Tyre") o.material = M.tyre;
   });
   for (const node of [...model.children]) {

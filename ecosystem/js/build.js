@@ -1,6 +1,7 @@
 // Buildings, labels, pads, billboards, signposts and ticker crates.
 
 import * as THREE from "../vendor/three.module.min.js";
+import { glowIntensity } from "./post.js";
 import { DISTRICTS, STOPS, ROADS, layoutStops, boardSpot } from "./content.js";
 import { LABELS } from "./data.js";
 import { roads, jumps, ROAD_HALF, terrainHeight, builderSlots } from "./terrain.js";
@@ -101,7 +102,11 @@ export const M = {
   tyre: new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.9 }),
 };
 const accents = new Map();
-export function accent(colour) {
+// Car paint: the same material family, but it never joins the bloom (a glowing car is a silhouette, not a car)
+const paints = new Map();
+export const paint = (colour) => accent(colour, paints);
+export function accent(colour, into = accents) {
+  const accents = into;
   if (!accents.has(colour)) {
     const c = new THREE.Color(colour);
     const m = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.3, roughness: 0.4 });
@@ -112,15 +117,17 @@ export function accent(colour) {
 }
 let currentPal = null; // the theme's palette, for textures painted after a theme change
 export const themePalette = () => currentPal;
-export function recolourMaterials(pal, dark) {
+export function recolourMaterials(pal, dark, glow = false) {
   currentPal = pal;
   setDark(dark);
-  accents.forEach((m, c) => { m.color.set(tint(c)); m.emissive.set(tint(c)); });
+  [accents, paints].forEach((map) => map.forEach((m, c) => { m.color.set(tint(c)); m.emissive.set(tint(c)); }));
   tinted.forEach(({ m, colour }) => m.color.set(tint(colour)));
   M.build.color.set(pal.build);
   M.trim.color.set(pal.trim);
   M.wood.color.set(pal.wood);
-  accents.forEach((m) => (m.emissiveIntensity = dark ? 0.6 : 0.3));
+  // At night the accent strips are the lights; with bloom on each is pushed to the same glow luminance whatever its hue
+  accents.forEach((m) => (m.emissiveIntensity = dark ? (glow ? glowIntensity(m.emissive) : 0.6) : 0.3));
+  paints.forEach((m) => (m.emissiveIntensity = dark ? 0.6 : 0.3));
   redraws.forEach((r) => r(pal));
 }
 

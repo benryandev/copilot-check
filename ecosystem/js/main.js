@@ -17,6 +17,7 @@ import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoa
 import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
 import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers } from "./peers.js";
 import { loader, paint, wantsArrival, startArrival } from "./arrive.js";
+import { createPost, toGlow } from "./post.js";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -43,9 +44,9 @@ const pal = () => (dark ? PALETTE.dark : PALETTE.light);
 
 // ── Quality tiers ─────────────────────────────────────────────────────
 const TIERS = {
-  high: { ratio: 2, shadow: 2048, grass: 14000, ground: 200, dust: 420 },
-  medium: { ratio: 1.5, shadow: 1024, grass: 7000, ground: 150, dust: 280 },
-  low: { ratio: 1, shadow: 0, grass: 2500, ground: 110, dust: 140 },
+  high: { ratio: 2, shadow: 2048, grass: 14000, ground: 200, dust: 420, bloom: { strength: 0.28, radius: 0.22 } },
+  medium: { ratio: 1.5, shadow: 1024, grass: 7000, ground: 150, dust: 280, bloom: { strength: 0.25, radius: 0.2 } },
+  low: { ratio: 1, shadow: 0, grass: 2500, ground: 110, dust: 140, bloom: false },
 };
 const ORDER = ["high", "medium", "low"];
 let qualityPref = (() => { try { return localStorage.getItem("eco-quality") || "auto"; } catch { return "auto"; } })();
@@ -58,6 +59,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 320);
+const post = createPost(renderer, scene, camera);
 const hemi = new THREE.HemisphereLight(0xffffff, 0x8892a0, 1.1);
 const sun = new THREE.DirectionalLight(0xffffff, 1.6);
 sun.castShadow = true;
@@ -108,6 +110,7 @@ function applyTier() {
   if (dust) { scene.remove(dust); dust.geometry.dispose(); dust.material.dispose(); }
   dust = createDust(t.dust, pal());
   scene.add(dust);
+  post.enable(t.bloom);
   resize();
   document.querySelectorAll("[data-quality]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.quality === qualityPref)));
 }
@@ -128,8 +131,10 @@ function applyTheme() {
   scene.fog = new THREE.Fog(p.sky, 90, 240);
   hemi.intensity = dark ? 0.55 : 1.1;
   sun.intensity = dark ? 0.9 : 1.6;
-  recolourMaterials(p, dark);
+  recolourMaterials(p, dark, post.on);
   sky.userData.setNight(dark);
+  // With bloom on, every pad ring is pushed to the same glow luminance whatever its district colour; without it they stay as tinted
+  if (post.on) pads.forEach((pd) => toGlow(pd.ring.material.color));
   [ground, roadMesh, jumpMesh, plazaMesh, grass, dust].forEach((o) => o?.userData.recolour?.(p));
 }
 $("theme").addEventListener("click", () => {
@@ -693,6 +698,7 @@ function watchFrames(dt, t) {
 function resize() {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false);
+  post.setSize(w, h, renderer.getPixelRatio());
   camera.aspect = w / h;
   camera.fov = w < h ? 68 : 55;
   camera.updateProjectionMatrix();
@@ -737,7 +743,7 @@ function frame() {
     const pulse = 0.65 + Math.sin(t * 3) * 0.2;
     pads.forEach((p) => (p.ring.material.opacity = p === activePad ? 1 : pulse));
   }
-  renderer.render(scene, camera);
+  post.render();
   watchFrames(raw, t);
   requestAnimationFrame(frame);
 }
@@ -778,4 +784,4 @@ setTimeout(() => $("loader").remove(), 450);
 // Test hook for automated checks (no effect on play)
 window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, colliders,
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
-  info: () => renderer.info.render, arrival: () => arrival, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersState };
+  info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersState };
