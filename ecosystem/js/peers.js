@@ -241,6 +241,15 @@ export function peersTick(dt, camPos) {
 
 // ── Test hook ──────────────────────────────────────────────────────────
 // Stand a few visitors in the world without a room (null takes them away again)
+// Move a stood-in visitor (clips): one more pose sample, as if the room had sent it
+export function movePeer(id, x, z, h) {
+  const p = peers.get(id);
+  if (!p) return;
+  const now = performance.now();
+  p.samples.push({ at: now, x, z, h });
+  if (p.samples.length > 12) p.samples.shift();
+  p.lastSeen = now;
+}
 export function injectPeers(list) {
   if (!list) {
     injected = false;
@@ -256,5 +265,6 @@ export function injectPeers(list) {
   status = "on";
   for (const p of list) { add(p); const q = peers.get(p.id); if (q) q.pinned = true; }
   drawn = new Set();
+  rank = 0; // re-rank on the next tick so the stand-ins are drawn at once
   emit({ type: "inject" });
 }
