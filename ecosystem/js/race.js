@@ -4,6 +4,7 @@
 // just says so and there's no ghost.
 
 import * as THREE from "../vendor/three.module.min.js";
+import { offerBest, retryAfterMs, recordBest, markPosted } from "./race-post.js";
 import { RACE_TRACK } from "./content.js";
 import { raceGates, trackAt, trackLen, groundHeight } from "./terrain.js";
 import { setBoard, formatTime } from "./raceway.js";
@@ -125,10 +126,8 @@ function finish(t) {
   const k = Math.ceil(trace.length / TRACE_MAX);
   const path = k > 1 ? trace.filter((_, i) => i % k === 0 || i === trace.length - 1) : trace;
   const prevBest = best;
-  if (!best || ms < best.ms) {
-    best = { ms, splits };
-    save(BEST_KEY, best);
-  }
+  const nb = recordBest(best, { ms, splits, trace: path });
+  if (nb !== best) { best = nb; save(BEST_KEY, best); }
   finished = { ms, splits, trace: path, prevBest, posted: false };
   countStage("finish");
   openFinish();
@@ -176,6 +175,7 @@ function openFinish() {
   form.querySelector("button").disabled = false;
   if (!name.value) name.value = load(NAME_KEY) || "";
   $("race-status").textContent = "";
+  showOffer();
   hooks.show($("race"));
   // Put the cursor in the field on a keyboard device; on a phone that would throw the keyboard over the sheet
   if (!matchMedia("(pointer: coarse)").matches) name.focus();
@@ -196,35 +196,60 @@ const REASONS = {
   too_large: "Time rejected: too much data.",
   origin: "The leaderboard only takes times posted from this site.",
 };
-$("race-form").addEventListener("submit", async (e) => {
+// The device's best, when it beats this lap and never made the board (a 429 between two quick laps, a missed
+// tap): one button posts it from here
+function showOffer() {
+  const offer = finished ? offerBest(best, finished.ms) : null;
+  $("race-best-note").hidden = !offer;
+  if (offer) $("race-best-time").textContent = formatTime(offer.ms);
+}
+const postButtons = () => [$("race-form").querySelector("button"), $("race-best-post")];
+let retryTimer = 0;
+$("race-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const f = finished;
+  if (!f || f.posted) return;
+  postLap({ ms: f.ms, splits: f.splits, trace: f.trace });
+});
+$("race-best-post").addEventListener("click", () => {
+  const b = offerBest(best, finished ? finished.ms : Infinity);
+  if (b) postLap({ ms: b.ms, splits: b.splits, trace: b.trace });
+});
+async function postLap(entry, retried = false) {
   const status = $("race-status");
   const name = $("race-name").value.trim().slice(0, 20);
-  if (!f || f.posted) return;
   if (!name) { status.textContent = "Type a name to post your time."; return; }
   save(NAME_KEY, name);
-  const btn = $("race-form").querySelector("button");
-  btn.disabled = true;
-  status.textContent = "Posting…";
+  postButtons().forEach((b) => (b.disabled = true));
+  status.textContent = `Posting ${formatTime(entry.ms)}…`;
+  let waiting = false;
   try {
     const res = await fetch(`${API}/race/time`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ track: RACE_TRACK.id, name, ms: f.ms, splits: f.splits, trace: f.trace }),
+      body: JSON.stringify({ track: RACE_TRACK.id, name, ms: entry.ms, splits: entry.splits, trace: entry.trace }),
     });
     const body = await res.json().catch(() => ({}));
     if (res.ok && body.ok) {
-      f.posted = true;
-      $("race-form").hidden = true;
-      status.textContent = body.rank ? `Posted. You're number ${body.rank} on the board.` : "Posted. Not in the top 10 this time.";
+      if (finished && entry.ms === finished.ms) { finished.posted = true; $("race-form").hidden = true; }
+      const nb = markPosted(best, entry.ms);
+      if (nb !== best) { best = nb; save(BEST_KEY, best); }
+      showOffer();
+      const where = body.rank ? `number ${body.rank} on the board` : "not in the top 10 this time";
+      status.textContent = body.best === false && body.rank ? `${formatTime(entry.ms)} was already on the board: you're ${where}.` : `Posted ${formatTime(entry.ms)}. You're ${where}.`;
       const top = readTop(body);
       if (top) setTop({ status: "ok", top, at: Date.now() });
       else fetchTop();
       if (body.rank === 1) fetchGhost(); // the ghost is now this lap
     } else if (res.status === 429) {
-      const wait = Number(body.retryAfter) || Number(res.headers.get("Retry-After")) || 60;
-      status.textContent = `One post every 30 seconds. Try again in ${Math.ceil(wait)} s.`;
+      // Two quick laps can land inside the board's window: wait it out and post once more, by itself
+      const wait = retryAfterMs(body, res.headers.get("Retry-After"));
+      if (!retried) {
+        waiting = true;
+        status.textContent = `The board takes one post every few seconds. Posting again in ${Math.ceil(wait / 1000)} s…`;
+        clearTimeout(retryTimer);
+        retryTimer = setTimeout(() => { if ($("race").open) postLap(entry, true); else postButtons().forEach((b) => (b.disabled = false)); }, wait);
+      } else status.textContent = "The board is busy. Press Post again in a moment.";
     } else {
       const code = typeof body.error === "string" ? body.error : "";
       status.textContent = (REASONS[code] || `The leaderboard turned that down${code ? ` (${code.slice(0, 40)})` : ""}.`)
@@ -233,9 +258,9 @@ $("race-form").addEventListener("submit", async (e) => {
   } catch {
     status.textContent = "Leaderboard offline. Your best lap is still saved on this device.";
   } finally {
-    btn.disabled = false;
+    if (!waiting) postButtons().forEach((b) => (b.disabled = false));
   }
-});
+}
 
 // ── Top 10 ─────────────────────────────────────────────────────────────
 let board = { status: "loading", top: [], at: 0 };

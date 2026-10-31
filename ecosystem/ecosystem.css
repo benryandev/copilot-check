@@ -440,6 +440,9 @@ body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transitio
 .race-note { margin-top: var(--space-3xs) !important; color: var(--text-primary); }
 .race-result { font-family: var(--font-mono); font-size: 2.5rem !important; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .race-form { display: flex; flex-direction: column; gap: var(--space-2xs); }
+.race-best-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); }
+.race-best-note[hidden] { display: none; }
+.race-best-note p { margin: 0; }
 /* The name field keeps at least 12rem; on a phone the button wraps under it rather than squeezing it */
 .race-row { display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
 .race-row .br-input { flex: 1 1 12rem; min-width: 0; min-height: 44px; }

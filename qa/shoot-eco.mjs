@@ -136,7 +136,8 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       for (const i of found) console.log(`     ${state}-${tag}: ${i}`);
     };
     try {
-      await page.goto(`${base}/ecosystem/?mp=0#${theme}`, { waitUntil: 'domcontentloaded' }); // no live room in the shoot: peers are injected below
+      // No live room in the shoot (peers are injected below); the opening flight only when it is being shot
+      await page.goto(`${base}/ecosystem/?mp=0${pick.includes('arrive') ? '' : '&arrive=0'}#${theme}`, { waitUntil: 'domcontentloaded' });
       if (pick.includes('loading')) { await sleep(150); await page.screenshot({ path: `${out}eco-loading-${tag}.png` }); }
       // The opening flight: title card in, the city still high in frame (wall-clock timed, so the same moment here)
       if (pick.includes('arrive')) {
@@ -188,6 +189,8 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         document.getElementById('race-result').textContent = '0:25.853';
         document.getElementById('race-gap').textContent = 'New best, 1.417 s faster than your last best (0:27.270).';
         document.getElementById('race-form').hidden = false;
+        document.getElementById('race-best-note').hidden = false; // the device's unposted best, offered under the form
+        document.getElementById('race-best-time').textContent = '0:24.892';
         document.getElementById('race').showModal();
       });
       await shot('race');
