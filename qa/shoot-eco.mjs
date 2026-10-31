@@ -25,7 +25,7 @@ const opt = k => args.find(a => a.startsWith(`--${k}=`))?.split('=')[1]?.split('
 const HEIGHT = { 375: 812, 768: 1024, 1024: 768, 1440: 900, 1920: 1080 };
 const WIDTHS = (opt('widths') || ['375', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'intro', 'drive', 'stop', 'map', 'mapEnd', 'raceway', 'race'];
+const ALL = ['loading', 'intro', 'drive', 'stop', 'yard', 'yardSheet', 'map', 'mapEnd', 'raceway', 'race'];
 const pick = opt('states') || ALL;
 const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
@@ -144,6 +144,11 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       await shot('drive');
       await page.click('#prompt-btn');
       await shot('stop');
+      await page.evaluate(() => document.querySelector('#stop [data-close]').click());
+      await page.evaluate(() => window.__eco.teleport('fillyard'));
+      await shot('yard', 3000); // the conveyor and whatever the trade stream has sent
+      await page.click('#prompt-btn');
+      await shot('yardSheet'); // its sheet, with the three figures from the stream
       await page.evaluate(() => document.querySelector('#stop [data-close]').click());
       await page.click('#open-map');
       await shot('map');

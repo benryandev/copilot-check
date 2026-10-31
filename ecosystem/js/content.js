@@ -40,6 +40,10 @@ export const raceLocal = (x, y) => [rOut[0] * (RACE_R + y) + rAlong[0] * x, rOut
 // RealFi's accent green (realfi.co's green-400); the logo itself is their brand green, 0x032327
 DISTRICTS.raceway = { key: "raceway", name: "RealFi Raceway", colour: 0x0fb89c, board: null, ring: -1, centre: raceLocal(0, 0), radius: 150, plaza: false };
 
+// ── Fill Yard: a small plaza off the road to Perpetuals, with a short drive in from the spoke ──
+// Strike's app green; the shed and its conveyor are placed below once the roads exist.
+DISTRICTS.yard = { key: "yard", name: "Fill Yard", colour: 0x26fab0, board: null, ring: -1, centre: [-40, -98], radius: 24 };
+
 // Unit vector from a district's centre towards a point
 const towards = (d, x, z) => {
   const dx = x - d.centre[0], dz = z - d.centre[1], l = Math.hypot(dx, dz);
@@ -88,10 +92,17 @@ ROADS.push({
   kind: "link", from: "partners", to: "raceway",
   points: [[0, -61], [-25, -60], [-55, -55], [-76, -48], [-86, -36]].map(([x, y]) => raceLocal(x, y)),
 });
+// The Fill Yard's drive: off the Perpetuals spoke (through one of its control points, so it meets
+// the road) and into the yard's plaza
+ROADS.push({ kind: "drive", from: "perps", to: "yard", points: [[-5, -102], [-10, -101.5], [-16, -100.7], [-21, -99.8]] });
 export const TRACK_ROAD = ROADS.findIndex((r) => r.kind === "track");
 // Race control sits in the infield by the start straight, facing it
 const raceControl = STOPS.find((s) => s.key === "raceway");
 if (raceControl) Object.assign(raceControl, { pos: raceLocal(5, -14), face: raceLocal(5, -36) });
+// The Fill Yard's shed sits on the HQ side of its plaza facing the middle, so its belt (out of the
+// shed's side) runs across the yard and the pile lands inside the ring
+const fillYard = STOPS.find((s) => s.key === "fillyard");
+if (fillYard) Object.assign(fillYard, { pos: [-30, -84], face: [-30, -100] });
 
 // Time trials: metres along the track's centreline from the start line to each checkpoint gate,
 // and the lap length. The leaderboard worker (copilot-watch) checks posted splits against these

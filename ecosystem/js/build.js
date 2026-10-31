@@ -285,6 +285,13 @@ const SHAPES = {
     g.add(signBoard(stop.name, 3.6, 1.2, 0, 2.3, 1.6));
     return 3.6;
   },
+  // The Fill Yard's shed: the matching engine's loading dock. flow.js adds the door, belt and screen.
+  depot(g, A) {
+    g.add(box(10, 5, 6, M.build, 0, 0, 0), box(10.4, 0.4, 6.4, M.trim, 0, 5, 0));
+    g.add(box(10.4, 0.25, 0.3, A, 0, 4.55, 3.2));
+    for (const x of [-4.6, 4.6]) g.add(box(0.5, 5, 0.5, A, x, 0, 3.0));
+    return 5.4;
+  },
   grid(g, A) {
     for (let i = -1; i <= 1; i++)
       for (let j = -1; j <= 1; j++) {
@@ -573,7 +580,7 @@ export function buildStops(scene) {
     disc.rotation.x = -Math.PI / 2;
     disc.position.copy(padPos).setY(0.16);
     parent.add(ring, disc);
-    const pad = { stop, pos: padPos, ring, disc, dir: toCentre };
+    const pad = { stop, pos: padPos, ring, disc, dir: toCentre, group: g };
     pads.push(pad);
     g.userData.pad = pad;
   });
@@ -706,9 +713,9 @@ export function buildRoadSigns(scene) {
       const n = DISTRICTS[e.to];
       arms.push({ text: n.name, colour: n.colour, dir: unit(e.at[0] - b.x, e.at[1] - b.z) });
     }
-    // Link roads out of this district (Partners to the raceway)
+    // Link roads and drives out of this district (Partners to the raceway, Perps to the Fill Yard)
     for (const l of roads) {
-      if (l.kind !== "link" || l.from !== r.to) continue;
+      if ((l.kind !== "link" && l.kind !== "drive") || l.from !== r.to) continue;
       const n = DISTRICTS[l.to];
       arms.push({ text: n.name, colour: n.colour, dir: unit(l.pts[0][0] - b.x, l.pts[0][1] - b.z) });
     }
@@ -731,6 +738,24 @@ export function buildRoadSigns(scene) {
     const s = r.half + 1.6;
     buildSignpost(groupFor(scene, r.from), p.x - tan.z * s, p.z + tan.x * s, [{ text: to.name, colour: to.colour, dir: [tan.x, tan.z] }]);
     buildArch(groupFor(scene, r.to), r, to, 22);
+  });
+  // A drive off a spoke (the Fill Yard): a signpost on the spoke's verge before the turn, pointing
+  // down the drive, and an arch where the drive reaches the yard
+  roads.forEach((r) => {
+    if (r.kind !== "drive") return;
+    const to = DISTRICTS[r.to];
+    const spoke = roads.find((x) => x.kind === "spoke" && x.to === r.from);
+    if (!spoke) return;
+    const [sx, sz] = r.pts[0];
+    let best = 0, bd = Infinity;
+    spoke.pts.forEach(([x, z], i) => { const d = Math.hypot(x - sx, z - sz); if (d < bd) { bd = d; best = i; } });
+    const t = Math.max(0, (spoke.cum[best] - 12) / spoke.len); // 12 m before the turn
+    const p = spoke.curve.getPointAt(t), tan = spoke.curve.getTangentAt(t);
+    const dt = r.curve.getTangentAt(0.1);
+    const side = Math.sign(-tan.z * dt.x + tan.x * dt.z) || 1; // the verge the drive leaves from
+    const s = side * (spoke.half + 1.6);
+    buildSignpost(groupFor(scene, r.from), p.x - tan.z * s, p.z + tan.x * s, [{ text: to.name, colour: to.colour, dir: unit(dt.x, dt.z) }]);
+    buildArch(groupFor(scene, r.to), r, to, Math.min(22, r.len / 2));
   });
   jumps.forEach((j) => {
     const r = roads[j.road];
@@ -965,9 +990,9 @@ export const crates = [];
 const MARKET_LOGOS = new Set(("AAOI ADA BNB BTC COIN CRCL CXMT DOGE DRAM ETH GOOGL HYPE LIT MINIMAX MU NAS100 " +
   "NEAR NIGHT NVDA PUMP SKHYNIX SNDK SOL SP500 SPCX SUI TSLA UNITREE WTI XAG XAU XRP ZEC ZHIPU").split(" "));
 // The app puts these three on a text-colour disc (no "noBg"); the rest draw straight
-const LOGO_DISC = new Set(["ADA", "NEAR", "NIGHT"]);
+export const LOGO_DISC = new Set(["ADA", "NEAR", "NIGHT"]);
 const marketLogos = new Map(); // symbol -> Image, loaded once and reused by every redraw
-function marketLogo(sym, onReady) {
+export function marketLogo(sym, onReady) {
   if (!MARKET_LOGOS.has(sym)) return null;
   let img = marketLogos.get(sym);
   if (!img) {

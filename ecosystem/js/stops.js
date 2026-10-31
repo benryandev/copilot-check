@@ -270,6 +270,23 @@ export const STOPS = [
     docs: "https://realfi.co",
     docsLabel: "Visit RealFi",
   },
+  // ── Fill Yard, off the road to Perpetuals: the matching engine's loading dock (placed in content.js)
+  {
+    key: "fillyard",
+    district: "yard",
+    name: "Fill Yard",
+    shape: "depot",
+    summary:
+      "Every trade filled on Strike's order books, as it happens. Each crate is one order: the market's icon, buy or sell, and its size in dollars. Bigger orders, bigger crates.",
+    points: [
+      "The crates come from Strike's public trade stream, the same feed the trading app listens to, so one appears within about a second of the fill.",
+      "The belt runs at a fixed pace. When fills arrive faster than it can carry them they wait at the door, and past six waiting they spill over the side.",
+      "Quiet spells are shown as quiet; nothing is invented. When you arrive the yard holds the most recent fills, and the pile keeps the last forty. Drive into it.",
+    ],
+    live: ["fillsPerMin", "usd10m", "busiest"],
+    docs: `${DOCS}/api/market/websocket`,
+    docsLabel: "Market websocket",
+  },
   // ── Generated districts (merge.py) ──
   {
     key: "slp",

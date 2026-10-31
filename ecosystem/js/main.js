@@ -13,6 +13,7 @@ import { createCar, stepCar, pushOut, keepInWorld, CAR_R } from "./car.js";
 import { tint } from "./colours.js";
 import { buildRaceway } from "./raceway.js";
 import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart } from "./race.js";
+import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -72,6 +73,7 @@ buildStops(scene);
 buildRoadSigns(scene);
 addProps(scene);
 buildRaceway(scene);
+buildYard();
 
 let live = null;
 const getLive = () => live;
@@ -370,7 +372,7 @@ function fillStats(dl, ks) {
       const div = document.createElement("div");
       div.append(
         Object.assign(document.createElement("dt"), { textContent: LABELS[k] }),
-        Object.assign(document.createElement("dd"), { textContent: live ? live.values[k] ?? "Not available" : "Loading" }),
+        Object.assign(document.createElement("dd"), { textContent: yardValues()[k] ?? (live ? live.values[k] ?? "Not available" : "Loading") }),
       );
       return div;
     }),
@@ -415,8 +417,8 @@ function teleport(stop) {
 function teleportDistrict(key) {
   if (key === "raceway") return toStart();
   raceCancel("Lap cancelled: you jumped elsewhere");
-  const r = roads.find((x) => x.kind === "spoke" && x.to === key);
-  const t = 1 - 16 / r.len;
+  const r = roads.find((x) => (x.kind === "spoke" || x.kind === "drive") && x.to === key);
+  const t = Math.max(0, 1 - 16 / r.len);
   const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
   Object.assign(car.s, { x: p.x, z: p.z, y: groundHeight(p.x, p.z), heading: Math.atan2(-tan.x, -tan.z), speed: 0, steer: 0, vy: 0, air: false });
   dialogs.forEach((d) => d.open && d.close());
@@ -488,6 +490,8 @@ function openMap() {
   show($("map"));
 }
 $("open-map").addEventListener("click", openMap);
+// The Fill Yard's figures tick every second while its sheet is open
+onYardStats(() => { if ($("stop").open && openKey === "fillyard") fillStats($("stop-live"), ["fillsPerMin", "usd10m", "busiest"]); });
 onBoard(() => {
   const el = $("map-race-top");
   if (el) el.replaceChildren(el.firstChild, topList());
@@ -574,6 +578,7 @@ function frame() {
     updateWhere();
   }
   stepCrates(dt);
+  flowTick(dt);
   dust?.userData.step(dt);
   grass?.userData.tick(t);
   if (!debugCam) placeCamera(dt);
@@ -615,4 +620,4 @@ show($("intro"));
 // Test hook for automated checks (no effect on play)
 window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, colliders,
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
-  info: () => renderer.info.render, raceGates, toStart, inRaceway, renderer, scene, camera };
+  info: () => renderer.info.render, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills };

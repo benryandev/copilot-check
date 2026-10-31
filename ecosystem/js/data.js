@@ -35,6 +35,10 @@ export const LABELS = {
   referralCodes: "Referral codes",
   referredVolume: "Referred volume",
   activeTraders: "Active traders, yesterday",
+  // The Fill Yard's own figures (flow.js), from the trade stream rather than the REST calls below
+  fillsPerMin: "Fills, last minute",
+  usd10m: "Traded, last 10 min",
+  busiest: "Busiest market, 10 min",
 };
 // Per-collateral credit lines get their labels from the asset name
 export const lineKey = (asset) => `lines:${asset}`;
