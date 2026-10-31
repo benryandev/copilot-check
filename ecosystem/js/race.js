@@ -79,7 +79,7 @@ function crossed(g, forward, t) {
   }
 }
 
-const gap = (d) => `${d <= 0 ? "−" : "+"}${(Math.abs(d) / 1000).toFixed(2)} s`;
+const gap = (d) => `${d <= 0 ? "−" : "+"}${(Math.abs(d) / 1000).toFixed(3)} s`;
 
 // Called every frame the game runs, with where the car was and is. A crossing is the car's path
 // this frame against each gate's segment, so a fast car can't skip one between frames, and the
@@ -122,7 +122,7 @@ export function raceHud(visible) {
 }
 function drawHud() {
   if (!shown) return;
-  const time = lap.running ? formatTime(Math.max(0, (clock - lap.start) * 1000)) : finished ? formatTime(finished.ms) : "0:00.00";
+  const time = lap.running ? formatTime(Math.max(0, (clock - lap.start) * 1000), 2) : finished ? formatTime(finished.ms, 2) : "0:00.00";
   const sub = `Best ${best ? formatTime(best.ms) : "none yet"}${lap.running ? `  ·  Checkpoint ${Math.min(lap.next, N + 1) - 1} of ${N}` : "  ·  Cross the start line"}`;
   if (time !== lastTime) { lastTime = time; $("race-time").textContent = time; }
   if (sub !== lastSub) { lastSub = sub; $("race-sub").textContent = sub; }

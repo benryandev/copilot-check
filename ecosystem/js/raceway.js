@@ -150,9 +150,11 @@ function buildTyreWalls(parent) {
 }
 
 // ── The top 10 board ───────────────────────────────────────────────────
-const fmt = (ms) => {
+// Thousandths by default (the clock places a crossing within the frame, so they are real);
+// the running HUD clock asks for hundredths so its last digit doesn't blur.
+const fmt = (ms, digits = 3) => {
   const m = Math.floor(ms / 60000), s = (ms % 60000) / 1000;
-  return `${m}:${s.toFixed(2).padStart(5, "0")}`;
+  return `${m}:${s.toFixed(digits).padStart(digits + 3, "0")}`;
 };
 export const formatTime = fmt;
 let boardState = { status: "loading", top: [] };

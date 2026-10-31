@@ -154,8 +154,8 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       await shot('raceway', 3000); // the race HUD updates every 16 frames
       // The lap-finish sheet, filled in as openFinish() fills it
       await page.evaluate(() => {
-        document.getElementById('race-result').textContent = '0:25.85';
-        document.getElementById('race-gap').textContent = 'New best, 1.42 s faster than your last best (0:27.27).';
+        document.getElementById('race-result').textContent = '0:25.853';
+        document.getElementById('race-gap').textContent = 'New best, 1.417 s faster than your last best (0:27.270).';
         document.getElementById('race-form').hidden = false;
         document.getElementById('race-post').hidden = true;
         document.getElementById('race').showModal();
