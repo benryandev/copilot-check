@@ -182,6 +182,21 @@ export const STOPS = [
     docs: `${DOCS}/bots/grid`,
     docsLabel: "Grid",
   },
+  {
+    key: "scale",
+    district: "perps",
+    name: "Scale Orders",
+    shape: "tower",
+    summary:
+      "Splits one order into a ladder of up to 100 limit orders across a price range you set, instead of one order at one price.",
+    points: [
+      "Choose where the ladder starts and ends; Size Skew puts more of the size toward either end.",
+      "Live since 31 October 2026 (announced in the app); not in Strike's docs yet, so the link goes to the order types page.",
+    ],
+    live: null,
+    docs: `${DOCS}/perpetuals/order-types`,
+    docsLabel: "Order types",
+  },
   // ── Builders' Row (Developers): projects built on Strike. Listings by request and review only.
   {
     key: "copilot-check",
