@@ -198,6 +198,7 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .sheet li { font-size: 1rem; line-height: 1.5; }
 .sheet li + li { margin-top: var(--space-2xs); }
 .sheet .muted { color: var(--text-secondary); font-size: 0.95rem; }
+.sheet .muted a { color: inherit; text-decoration: underline; text-underline-offset: 0.15em; } /* the kit's link colour fails contrast on the dark sheet */
 .sheet-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 .sheet-actions .br-button { text-decoration: none; }
 
@@ -312,6 +313,7 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
   .keys { display: none; }
   /* A 44px tap height for the credit link without moving the text */
   .hud-foot a { display: inline-block; padding-block: 17px; margin-block: -17px; }
+  .sheet .muted a { display: inline-block; padding-block: 13px; margin-block: -13px; } /* the sheet's inline links too */
 }
 
 /* ── Graphics setting (in Map view) ─────────────────────────────────── */
