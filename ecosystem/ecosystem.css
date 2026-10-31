@@ -77,6 +77,24 @@ body { overflow: hidden; overscroll-behavior: none; }
   text-shadow: 0 0 6px var(--bg-page);
 }
 
+/* Who's driving: the chip carries a coloured dot per live visitor state; the note under the top bar says who arrived */
+.chip-peers::before { content: ""; display: inline-block; width: 0.5rem; height: 0.5rem; margin-right: 0.45rem; border-radius: 50%; background: var(--peers-dot, var(--text-secondary)); vertical-align: 0.05rem; }
+.chip-peers[data-status="on"] { --peers-dot: #16a34a; }
+.chip-peers[data-status="offline"] { --peers-dot: #dc2626; }
+.chip-short { display: none; }
+@media (max-width: 480px) { /* three chips beside the title: the count alone keeps them on one row */
+  .chip-peers .chip-long { display: none; }
+  .chip-peers .chip-short { display: inline; }
+}
+.peers-note { position: absolute; right: var(--space-sm); top: calc(100% + 0.25rem); margin: 0; pointer-events: none; }
+.peers-note[hidden] { display: none; }
+.peers-list { list-style: none; padding: 0 !important; margin: 0; }
+.peers-item { display: flex; align-items: baseline; gap: var(--space-2xs); font-size: 1rem; line-height: 1.5; }
+.peers-item + .peers-item { margin-top: var(--space-3xs); }
+.peers-dot { flex: 0 0 auto; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--c); align-self: center; }
+.peers-item span { color: var(--text-secondary); font-size: 0.875rem; }
+.peers-item strong { font-family: var(--font-body); font-weight: 600; }
+
 .hud-foot {
   left: 50%;
   transform: translateX(-50%);

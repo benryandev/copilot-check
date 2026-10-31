@@ -25,7 +25,7 @@ const opt = k => args.find(a => a.startsWith(`--${k}=`))?.split('=')[1]?.split('
 const HEIGHT = { 375: 812, 768: 1024, 1024: 768, 1440: 900, 1920: 1080 };
 const WIDTHS = (opt('widths') || ['375', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'intro', 'drive', 'stop', 'yard', 'yardSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'race'];
+const ALL = ['loading', 'intro', 'drive', 'stop', 'yard', 'yardSheet', 'peers', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'race'];
 const pick = opt('states') || ALL;
 const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
@@ -44,7 +44,7 @@ function audit() {
     if (r.left < 0 || r.right > W + 0.5 || r.top < 0 || r.bottom > H + 0.5) issues.push(`sheet #${d.id} past the viewport`);
     if (d.scrollWidth > d.clientWidth + 1) issues.push(`sheet #${d.id} scrolls sideways (${d.scrollWidth} > ${d.clientWidth})`);
   }
-  for (const el of document.querySelectorAll('.hud, .touch')) {
+  for (const el of document.querySelectorAll('.hud, .touch, .chip')) { // chips too: a third chip can push its neighbour off the right edge
     if (!vis(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.left < -0.5 || r.right > W + 0.5 || r.top < -0.5 || r.bottom > H + 0.5) issues.push(`${el.id || el.className} outside the viewport`);
@@ -134,7 +134,7 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       for (const i of found) console.log(`     ${state}-${tag}: ${i}`);
     };
     try {
-      await page.goto(`${base}/ecosystem/#${theme}`, { waitUntil: 'domcontentloaded' });
+      await page.goto(`${base}/ecosystem/?mp=0#${theme}`, { waitUntil: 'domcontentloaded' }); // no live room in the shoot: peers are injected below
       if (pick.includes('loading')) { await sleep(150); await page.screenshot({ path: `${out}eco-loading-${tag}.png` }); }
       await page.waitForFunction(() => window.__eco && document.getElementById('intro').open, null, { timeout: 60000 });
       await page.evaluate(() => document.fonts.ready);
@@ -150,6 +150,21 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       await page.click('#prompt-btn');
       await shot('yardSheet'); // its sheet, with the three figures from the stream
       await page.evaluate(() => document.querySelector('#stop [data-close]').click());
+      // Three other visitors stood around the car (no room needed), then the who's-here sheet
+      await page.evaluate(() => {
+        const c = window.__eco.car.s, sin = Math.sin(c.heading), cos = Math.cos(c.heading);
+        // f metres ahead of the car and r to its right, so they sit in the camera's view whichever way it faces
+        const at = (f, r) => ({ x: c.x - sin * f + cos * r, z: c.z - cos * f - sin * r });
+        window.__eco.peersInject([
+          { id: 'p1', name: 'Aveli', colour: '#22d3ee', ...at(4, -6), h: c.heading + 0.4 },
+          { id: 'p2', name: 'ADA_ACE', colour: '#facc15', ...at(6, 6), h: c.heading - 0.3 },
+          { id: 'p3', name: 'Driver 07', colour: '#ec4899', ...at(13, -10), h: c.heading + 3 },
+        ]);
+      });
+      await shot('peers', 2500);
+      await page.click('#peers-chip');
+      await shot('peersSheet');
+      await page.evaluate(() => document.querySelector('#peers [data-close]').click());
       await page.click('#open-map');
       await shot('map');
       await page.evaluate(() => { const d = document.getElementById('map'); d.scrollTop = d.scrollHeight; });

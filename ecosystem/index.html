@@ -38,8 +38,10 @@
     </div>
     <div class="hud-actions">
       <button type="button" class="chip" id="open-map">Map view</button>
+      <button type="button" class="chip chip-peers" id="peers-chip" hidden aria-label="Who's driving now"><span class="chip-long">Just you</span><span class="chip-short">1</span></button>
       <button type="button" class="chip" id="theme" aria-label="Switch to dark theme">Dark</button>
     </div>
+    <p class="hud-hint peers-note" id="peers-note" role="status" aria-live="polite" hidden></p>
   </header>
 
   <div class="hud race-hud" id="race-hud" hidden>
@@ -83,7 +85,7 @@
       <li><span class="key">← → A D</span> steer</li>
       <li><span class="key">Enter</span> open a pad</li>
     </ul>
-    <p class="muted"><span class="touch-tip">On a phone, use the buttons at the bottom of the screen. </span>Looking for something? Map view jumps you straight there. Race a lap puts you on the RealFi Raceway start line, with a live top 10. The Fill Yard, off the road to Perpetuals, shows every trade on Strike as it happens.</p>
+    <p class="muted"><span class="touch-tip">On a phone, use the buttons at the bottom of the screen. </span>Looking for something? Map view jumps you straight there. Race a lap puts you on the RealFi Raceway start line, with a live top 10. The Fill Yard, off the road to Perpetuals, shows every trade on Strike as it happens. Other visitors can see your car and the name you chose.</p>
     <div class="sheet-actions">
       <button type="button" class="br-button" id="start"><span class="br-button-label">Start driving</span></button>
       <button type="button" class="br-button br-button--secondary" id="intro-race"><span class="br-button-label">Race a lap</span></button>
@@ -117,6 +119,23 @@
       <button type="button" class="chip" data-quality="medium">Medium</button>
       <button type="button" class="chip" data-quality="low">Low</button>
     </fieldset>
+    <div class="sheet-actions">
+      <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Back to the world</span></button>
+    </div>
+  </dialog>
+
+  <dialog id="peers" class="sheet" aria-labelledby="peers-title">
+    <p class="br-label">Driving now</p>
+    <h2 id="peers-title">Who's here</h2>
+    <form class="race-form" id="peers-form">
+      <label class="br-field-label" for="peers-name">Your name on the car</label>
+      <div class="race-row">
+        <input class="br-input" id="peers-name" name="name" type="text" maxlength="20" placeholder="Your name" autocomplete="nickname" autocapitalize="off" spellcheck="false">
+        <button type="submit" class="br-button"><span class="br-button-label">Save</span></button>
+      </div>
+    </form>
+    <ul class="peers-list" id="peers-list"></ul>
+    <p class="muted" id="peers-status" role="status" aria-live="polite"></p>
     <div class="sheet-actions">
       <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Back to the world</span></button>
     </div>

@@ -1,7 +1,7 @@
 // Strike ecosystem world: scene assembly, input, camera, sheets and the frame loop.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { DISTRICTS, STOPS, SPAWN } from "./content.js";
+import { DISTRICTS, STOPS, SPAWN, MULTIPLAYER } from "./content.js";
 import { fetchLive, LABELS } from "./data.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates } from "./terrain.js";
 import { createGrass, createDust } from "./effects.js";
@@ -15,6 +15,7 @@ import { tint } from "./colours.js";
 import { buildRaceway } from "./raceway.js";
 import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview } from "./race.js";
 import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
+import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers } from "./peers.js";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -357,7 +358,7 @@ function checkPads() {
 }
 $("prompt-btn").addEventListener("click", () => activePad && openStop(activePad.stop));
 
-const dialogs = ["intro", "stop", "map", "race"].map($);
+const dialogs = ["intro", "stop", "map", "race", "peers"].map($);
 const anyOpen = () => dialogs.some((d) => d.open);
 dialogs.forEach((d) => {
   d.addEventListener("close", () => { paused = anyOpen(); });
@@ -406,8 +407,10 @@ function openStop(stop) {
   show($("stop"));
 }
 
+let jumped = false; // the car was put down somewhere else this frame: tell the room so others see a snap, not a slide
 function teleport(stop) {
   raceCancel("Lap cancelled: you jumped elsewhere");
+  jumped = true;
   const pad = pads.find((p) => p.stop === stop);
   const dx = stop.pos[0] - pad.pos.x, dz = stop.pos[1] - pad.pos.z;
   Object.assign(car.s, { x: pad.pos.x, z: pad.pos.z, y: groundHeight(pad.pos.x, pad.pos.z), heading: Math.atan2(-dx, -dz), speed: 0, steer: 0, vy: 0, air: false });
@@ -422,6 +425,7 @@ function teleport(stop) {
 function teleportDistrict(key) {
   if (key === "raceway") return toStart();
   raceCancel("Lap cancelled: you jumped elsewhere");
+  jumped = true;
   const r = roads.find((x) => (x.kind === "spoke" || x.kind === "drive") && x.to === key);
   const t = Math.max(0, 1 - 16 / r.len);
   const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
@@ -435,6 +439,7 @@ function teleportDistrict(key) {
 
 // Put the car down somewhere, stopped (the raceway's start)
 function placeCar(x, z, heading) {
+  jumped = true;
   Object.assign(car.s, { x, z, y: groundHeight(x, z), heading, speed: 0, steer: 0, vy: 0, air: false });
   dialogs.forEach((d) => d.open && d.close());
   stepCar(car, keys, 0);
@@ -443,6 +448,68 @@ function placeCar(x, z, heading) {
   updateWhere();
 }
 initRace({ show, place: placeCar, car, scene });
+
+// ── Other visitors ────────────────────────────────────────────────────
+initPeers({ scene, car, tierName: () => tierName, enabled: MULTIPLAYER && new URLSearchParams(location.search).get("mp") !== "0" });
+const peerItem = (p) => {
+  const li = document.createElement("li");
+  li.className = "peers-item";
+  const dot = document.createElement("i");
+  dot.className = "peers-dot";
+  dot.style.setProperty("--c", p.colour);
+  li.append(dot, Object.assign(document.createElement("strong"), { textContent: p.name }), Object.assign(document.createElement("span"), { textContent: p.district }));
+  return li;
+};
+let noteTimer = null;
+function peersNote(text) {
+  if (anyOpen()) return;
+  const el = $("peers-note");
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(noteTimer);
+  noteTimer = setTimeout(() => { el.hidden = true; }, 2200);
+}
+function drawPeers(state) {
+  const chip = $("peers-chip"), n = state.peers.length;
+  chip.dataset.status = state.status;
+  const label = (long, short) => { chip.querySelector(".chip-long").textContent = long; chip.querySelector(".chip-short").textContent = short; };
+  if (state.status === "on") { chip.hidden = false; label(n ? `${n + 1} driving` : "Just you", String(n + 1)); }
+  else if (state.status === "offline") { chip.hidden = false; label("Offline", "Off"); }
+  else chip.hidden = true;
+  chip.setAttribute("aria-label", state.status === "on" ? `${n + 1} driving now, open the list` : "Who's driving now");
+  if ($("peers").open) fillPeersSheet(state);
+  if ($("map").open) fillMapPeers(state);
+}
+function fillPeersSheet(state) {
+  const list = $("peers-list"), st = $("peers-status");
+  list.replaceChildren(...[...(state.me ? [{ ...state.me, district: `you · ${whereText}` }] : []), ...state.peers].map(peerItem));
+  st.textContent = state.status === "on" ? (state.peers.length ? "" : "Nobody else right now. Send a friend the link.") : state.status === "offline" ? "The room is away. Reconnecting." : "Multiplayer is off for this session.";
+  if (document.activeElement !== $("peers-name")) $("peers-name").value = state.me?.name || "";
+}
+function fillMapPeers(state) {
+  const old = $("map-peers");
+  if (old) old.remove();
+  if (!state.peers.length) return;
+  const wrap = document.createElement("div");
+  wrap.id = "map-peers";
+  const ul = document.createElement("ul");
+  ul.className = "peers-list";
+  ul.append(...state.peers.map(peerItem));
+  wrap.append(Object.assign(document.createElement("p"), { className: "map-group", textContent: `Driving now: ${state.peers.length + 1}` }), ul);
+  $("map-live").after(wrap);
+}
+onPeers((state, event) => {
+  drawPeers(state);
+  if (event?.type === "join" && event.name) peersNote(`${event.name} just arrived`);
+  if (event?.type === "named") $("peers-status").textContent = `You're ${event.name} on the road.`;
+  if (event?.type === "err" && event.error === "rate") $("peers-status").textContent = "One name change every 10 seconds.";
+});
+$("peers-chip").addEventListener("click", () => { fillPeersSheet(peersState()); show($("peers")); });
+$("peers-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  setPeerName($("peers-name").value);
+  $("peers-status").textContent = "Saving…";
+});
 
 function openMap() {
   raceCancel("Lap cancelled: Map view");
@@ -493,6 +560,7 @@ function openMap() {
   });
   $("map-groups").replaceChildren(...groups);
   show($("map"));
+  fillMapPeers(peersState());
 }
 $("open-map").addEventListener("click", openMap);
 // The Fill Yard's figures tick every second while its sheet is open
@@ -578,12 +646,15 @@ function frame() {
     const px = car.s.x, pz = car.s.z;
     const info = stepCar(car, keys, dt);
     raceTick(px, pz, car.s.x, car.s.z, car.s.heading, dt);
+    sendPose(car.s, jumped, performance.now());
+    jumped = false;
     emitDust(dt, info);
     checkPads();
     updateWhere();
   }
   stepCrates(dt);
   flowTick(dt);
+  peersTick(dt, camera.position);
   dust?.userData.step(dt);
   grass?.userData.tick(t);
   sky.userData.tick(t, dt, camera.position);
@@ -626,4 +697,4 @@ show($("intro"));
 // Test hook for automated checks (no effect on play)
 window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, colliders,
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
-  info: () => renderer.info.render, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview };
+  info: () => renderer.info.render, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersState };
