@@ -12,8 +12,11 @@ body { overflow: hidden; overscroll-behavior: none; }
   touch-action: none;
 }
 
+/* A game, not a document: no double-tap zoom anywhere (a second tap just off a driving button zoomed the page on
+   iOS, with no way back short of a reload). Pinch is off too; the sheets are sized for phones. */
+html, body { touch-action: manipulation; }
 /* ── HUD ─────────────────────────────────────────────────────────────── */
-.hud { position: fixed; z-index: 10; }
+.hud { position: fixed; z-index: 10; touch-action: manipulation; }
 .hud p { margin: 0; }
 
 .hud-top {
@@ -134,6 +137,7 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .touch {
   position: fixed;
   z-index: 10;
+  touch-action: manipulation;
   left: max(var(--space-sm), env(safe-area-inset-left));
   right: max(var(--space-sm), env(safe-area-inset-right));
   bottom: calc(max(var(--space-2xs), env(safe-area-inset-bottom)) + 1.75rem);
