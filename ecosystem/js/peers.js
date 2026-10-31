@@ -138,6 +138,9 @@ export function initPeers({ scene, car, tierName, enabled: on = true, wsUrl, soc
   hooks = { scene, car, tierName: tierName || (() => "high"), socket };
   enabled = on;
   if (!enabled) { status = "off"; emit({ type: "off" }); return; }
+  // Ben's owner token can arrive as #owner=… (easier than a console on a phone); it's stored and the hash is cleared
+  const tok = new URLSearchParams(location.hash.slice(1)).get("owner");
+  if (tok) { write(OWNER_KEY, tok); history.replaceState(null, "", location.pathname + location.search); }
   // The frame loop stops while a sheet is open or the tab is hidden; the room must still hear from us once a second or
   // everyone else puts our car away. Browsers slow background timers to about once a second, which is exactly this rate.
   if (!heartbeat) heartbeat = setInterval(() => { if (hooks.car?.s && performance.now() - lastSent >= IDLE_MS) sendPose(hooks.car.s, false, performance.now()); }, IDLE_MS);
