@@ -54,7 +54,8 @@ try {
   const b = await open('Smoke B');
   await until(async () => (await state(b)).status === 'on', 'B never joined the room');
   await until(async () => (await state(b)).peers.some((p) => p.name === 'Smoke A'), 'B does not see Smoke A');
-  await until(async () => (await chip(b)) === '2 driving', `B's chip should read "2 driving", reads "${await chip(b)}"`);
+  // Others may be in a live room too: the chip must agree with the list, not with an exact count
+  await until(async () => { const n = (await state(b)).peers.length; return n >= 1 && (await chip(b)) === `${n + 1} driving`; }, `B's chip should read "<peers+1> driving", reads "${await chip(b)}"`);
   await a.evaluate(() => window.__eco.teleport('liquidations'));
   await until(async () => { const d = (await state(b)).peers.find((p) => p.name === 'Smoke A')?.district; return d && d !== 'Just arrived' && d !== 'Strike HQ'; }, 'B never saw A arrive at Liquidations');
   const before = await until(async () => { const p = await peerPos(b, 'Smoke A'); return p && p.visible ? p : null; }, "A's car never drawn in B");
@@ -85,8 +86,8 @@ try {
   if (!k.closed?.length) fail(`kick closed nobody: ${JSON.stringify(k)}`);
   await until(async () => !(await state(b)).peers.some((p) => p.name === 'Smoke A'), 'B still lists Smoke A after the kick');
   await until(async () => (await chip(a)) === 'Offline', `A's chip should read Offline after the kick, reads "${await chip(a)}"`, 4000);
-  // Blocked for a minute: A stays offline (reconnects are refused), B is alone
-  await until(async () => (await chip(b)) === 'Just you', `B's chip should read "Just you", reads "${await chip(b)}"`);
+  // Blocked for a minute: A stays offline (reconnects are refused); B's chip agrees with its shorter list
+  await until(async () => { const n = (await state(b)).peers.length; return (await chip(b)) === (n ? `${n + 1} driving` : 'Just you'); }, `B's chip disagrees with its list, reads "${await chip(b)}"`);
   console.log('ok   peers smoke');
   await browser.close();
 } catch (e) {
