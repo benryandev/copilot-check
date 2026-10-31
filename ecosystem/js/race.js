@@ -136,6 +136,7 @@ function finish(t) {
 
 // ── HUD ────────────────────────────────────────────────────────────────
 let shown = false, lastTime = "", lastSub = "";
+const narrow = matchMedia("(max-width: 600px)");
 export function raceHud(visible) {
   visible = visible || lap.running;
   if (visible !== shown) { shown = visible; $("race-hud").hidden = !visible; }
@@ -143,7 +144,11 @@ export function raceHud(visible) {
 function drawHud() {
   if (!shown) return;
   const time = lap.running ? formatTime(Math.max(0, (clock - lap.start) * 1000), 2) : finished ? formatTime(finished.ms, 2) : "0:00.00";
-  const sub = `Best ${best ? formatTime(best.ms) : "none yet"}${lap.running ? `  ·  Checkpoint ${Math.min(lap.next, N + 1) - 1} of ${N}` : "  ·  Cross the start line"}`;
+  // Phones get the short form: the panel sits where the title was, beside the chips, and must not cover the track ahead
+  const cp = Math.min(lap.next, N + 1) - 1;
+  const sub = narrow.matches
+    ? (lap.running ? `CP ${cp}/${N}${best ? `  ·  best ${formatTime(best.ms, 2)}` : ""}` : best ? `Best ${formatTime(best.ms)}` : "Cross the line to start")
+    : `Best ${best ? formatTime(best.ms) : "none yet"}${lap.running ? `  ·  Checkpoint ${cp} of ${N}` : "  ·  Cross the start line"}`;
   if (time !== lastTime) { lastTime = time; $("race-time").textContent = time; }
   if (sub !== lastSub) { lastSub = sub; $("race-sub").textContent = sub; }
 }

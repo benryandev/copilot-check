@@ -41,7 +41,9 @@ body { overflow: hidden; overscroll-behavior: none; }
   font-size: 1.125rem;
   line-height: 1.2;
 }
-.hud-actions { display: flex; gap: var(--space-2xs); }
+.hud-actions { display: flex; gap: var(--space-2xs); margin-left: auto; }
+/* During a lap the race panel takes the title's corner: the district name is noise while you're driving */
+body:has(#race-hud:not([hidden])) .hud-title { display: none; }
 
 .chip {
   min-height: 44px;
@@ -282,21 +284,30 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
   .sheet h1 { font-size: 1.875rem; }
   .sheet h2 { font-size: 1.625rem; }
 }
-@media (max-width: 420px) {
+@media (max-width: 600px), (max-height: 500px) {
   .hud-title .br-label { display: none; }
+  /* One short line that cannot wrap, and the driving buttons sit clear above it (a wrapped footer once covered them) */
   .hud-foot span:nth-child(1) { display: none; }
-  /* The disclosure and credit wrap to two lines here: lift the driving buttons clear of them */
-  .hud-foot { border-radius: 0.75rem; }
-  .touch { bottom: calc(max(var(--space-2xs), env(safe-area-inset-bottom)) + 3.75rem); }
-
+  .hud-foot { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.65rem; gap: var(--space-xs); max-width: calc(100vw - 1rem); }
+  .touch { bottom: calc(max(var(--space-2xs), env(safe-area-inset-bottom)) + 2.5rem); }
   .pad-btn { width: 4rem; height: 4rem; }
   .pad-gas { width: 4.75rem; height: 4.75rem; }
+}
+.foot-short { display: none; }
+@media (max-width: 400px) { /* the smallest phones: the shorter disclosure keeps the credit on screen */
+  .foot-long { display: none; }
+  .foot-short { display: inline; }
+}
+@media (max-height: 500px) { /* a phone on its side: less height to spend */
+  .pad-btn { width: 3.5rem; height: 3.5rem; }
+  .pad-gas { width: 4rem; height: 4rem; }
+  .hud-prompt { bottom: 7rem; }
 }
 
 @media (pointer: coarse) {
   .keys { display: none; }
   /* A 44px tap height for the credit link without moving the text */
-  .hud-foot a { display: inline-block; padding-block: 15px; margin-block: -15px; }
+  .hud-foot a { display: inline-block; padding-block: 17px; margin-block: -17px; }
 }
 
 /* ── Graphics setting (in Map view) ─────────────────────────────────── */
@@ -379,8 +390,8 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 
 /* ── RealFi Raceway: lap clock and finish sheet ─────────────────────── */
 .race-hud {
-  top: calc(max(var(--space-sm), env(safe-area-inset-top)) + 4.5rem);
-  right: max(var(--space-sm), env(safe-area-inset-right));
+  top: max(var(--space-sm), env(safe-area-inset-top));
+  left: max(var(--space-sm), env(safe-area-inset-left));
   min-width: 12rem;
   padding: var(--space-2xs) var(--space-sm);
   border-radius: 0.75rem;
@@ -406,8 +417,12 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .race-top li span:first-child { overflow-wrap: anywhere; }
 .race-top-ms { float: right; margin-left: var(--space-sm); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .race-top-empty { margin-top: var(--space-2xs) !important; }
-@media (max-width: 420px) {
-  .race-hud { min-width: 0; left: max(var(--space-sm), env(safe-area-inset-left)); top: calc(max(var(--space-sm), env(safe-area-inset-top)) + 4.35rem); }
-  .race-time { font-size: 1.4rem; }
+/* Phones (portrait up to the Pro Max at 430 px): a compact strip beside the chips, and the theme chip steps aside while
+   racing so the row fits a 360 px screen */
+@media (max-width: 600px) {
+  .race-hud { min-width: 0; padding: 0.3rem 0.7rem; border-top-width: 3px; }
+  .race-time { font-size: 1.25rem; line-height: 1.15; }
+  .race-sub { font-size: 0.65rem; }
   .race-result { font-size: 2rem !important; }
+  body:has(#race-hud:not([hidden])) #theme { display: none; }
 }

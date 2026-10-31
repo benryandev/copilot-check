@@ -22,8 +22,10 @@ try { ({ chromium } = await import('playwright')); } catch {
 const args = process.argv.slice(2);
 const base = (args.find(a => !a.startsWith('--')) || 'http://localhost:8080').replace(/\/$/, '');
 const opt = k => args.find(a => a.startsWith(`--${k}=`))?.split('=')[1]?.split(',');
-const HEIGHT = { 375: 812, 768: 1024, 1024: 768, 1440: 900, 1920: 1080 };
-const WIDTHS = (opt('widths') || ['375', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
+// Phones: 360 (small Android), 375 (iPhone SE/mini), 390 (iPhone 14/15), 430 (Pro Max, which a 420 px breakpoint misses), 844 = a phone on its side
+const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 1024: 768, 1440: 900, 1920: 1080 };
+const PHONE = new Set([360, 375, 390, 430, 844]);
+const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
 const ALL = ['loading', 'intro', 'drive', 'stop', 'yard', 'yardSheet', 'peers', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'race'];
 const pick = opt('states') || ALL;
@@ -120,7 +122,7 @@ let problems = 0;
 for (const w of WIDTHS) for (const theme of THEMES) {
   const tag = `${w}-${theme}`;
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const touch = w <= 768;
+    const touch = w <= 768 || PHONE.has(w);
     const ctx = await browser.newContext({ viewport: { width: w, height: HEIGHT[w] || 800 }, hasTouch: touch, isMobile: touch, deviceScaleFactor: 1, colorScheme: theme });
     const page = await ctx.newPage();
     const errors = [];
