@@ -138,6 +138,8 @@ export const JUMPS = [
 ];
 
 export const SPAWN = { x: 0, z: 14, heading: 0 };
+// Other visitors as cars (peers.js). Off here, or with ?mp=0, the world is single-player as before.
+export const MULTIPLAYER = true;
 
 // ── Stop layout ────────────────────────────────────────────────────────
 // Stops without a fixed `pos` go round the far side of their district in two rows, which keeps

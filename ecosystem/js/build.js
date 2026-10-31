@@ -104,7 +104,9 @@ const accents = new Map();
 export function accent(colour) {
   if (!accents.has(colour)) {
     const c = new THREE.Color(colour);
-    accents.set(colour, new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.3, roughness: 0.4 }));
+    const m = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.3, roughness: 0.4 });
+    m.userData.accent = true; // so a clone of the car can find its paint and change it
+    accents.set(colour, m);
   }
   return accents.get(colour);
 }
