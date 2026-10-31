@@ -501,7 +501,11 @@ function fillMapPeers(state) {
 onPeers((state, event) => {
   drawPeers(state);
   if (event?.type === "join" && event.name) peersNote(`${event.name} just arrived`);
-  if (event?.type === "named") $("peers-status").textContent = `You're ${event.name} on the road.`;
+  if (event?.type === "named") {
+    const why = { reserved: `"${event.asked}" is reserved here, so you're ${event.name}.`, rude: `That name won't do here, so you're ${event.name}.`,
+      bad: `That name won't work (1 to 20 ordinary characters), so you're ${event.name}.`, taken: `Someone here is already ${event.asked}, so you're ${event.name}.` };
+    $("peers-status").textContent = why[event.reason] || `You're ${event.name} on the road.`;
+  }
   if (event?.type === "err" && event.error === "rate") $("peers-status").textContent = "One name change every 10 seconds.";
 });
 $("peers-chip").addEventListener("click", () => { fillPeersSheet(peersState()); show($("peers")); });

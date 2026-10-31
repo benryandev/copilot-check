@@ -83,7 +83,7 @@ function handle(m) {
     case "join": add(m); emit({ type: "join", name: m.name }); break;
     case "leave": remove(m.id); emit({ type: "leave" }); break;
     case "rename": { const p = peers.get(m.id); if (p) { p.name = m.name; p.car?.tag.redraw(); emit({ type: "rename" }); } break; }
-    case "named": if (me) { me.name = m.name; emit({ type: "named", name: m.name }); } break; // the typed name stays in storage; the room's rendering ("Aveli (2)") is shown, not kept
+    case "named": if (me) { me.name = m.name; emit({ type: "named", name: m.name, reason: m.reason, asked: m.asked }); } break; // the typed name stays in storage; the room's rendering ("Aveli (2)") is shown, not kept
     case "s": {
       const now = performance.now();
       for (const [id, x, z, h, , j] of m.p || []) {
