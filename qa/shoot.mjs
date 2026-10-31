@@ -31,6 +31,10 @@ const STATES = {
   paper: '/paper/dmlPU88K0egpF3IdPV3Pvg',
   paperGone: '/paper/AAAAAAAAAAAAAAAAAAAAAA',
   paperBad: '/paper/x',
+  // Project submission form (ecosystem): blank, every field flagged, and the thank-you panel (worker mocked)
+  submit: '/ecosystem/submit/',
+  submitErrors: '/ecosystem/submit/',
+  submitDone: '/ecosystem/submit/',
 };
 const pick = opt('states') || Object.keys(STATES);
 const out = new URL('./shots/', import.meta.url).pathname;
@@ -127,7 +131,14 @@ for (const state of pick) {
   const errs = [];
   page.on('console', m => { if (m.type() === 'error' && !(state === 'paperGone' && /status of 404/.test(m.text()))) errs.push(m.text()); }); // a 404 is that state's expected reply
   page.on('pageerror', e => errs.push(String(e)));
+  if (state === 'submitDone') await page.route('https://copilot-watch.benryan.workers.dev/submit', r => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '{"ok":true,"id":"Qa7xK2mP9w"}' }));
   await page.goto(base + STATES[state], { waitUntil: 'load' });
+  if (state === 'submitErrors') { await page.click('#send'); }
+  if (state === 'submitDone') {
+    for (const [id, v] of [['name', 'Argus'], ['tagline', 'Telegram alerts for Strike traders'], ['description', 'Watches Strike positions through the public API and sends alerts before liquidation.'], ['site', 'argus.example.com'], ['contact', '@argus_dev']]) await page.fill(`#${id}`, v);
+    await page.selectOption('#category', 'Bot'); await page.check('[name="uses"][value="API"]'); await page.check('#permission');
+    await page.evaluate(() => new Promise(r => setTimeout(r, 3100))); await page.click('#send'); await page.waitForSelector('#done:not([hidden])');
+  }
   if (state.startsWith('paper')) {
     await page.waitForFunction(() => { const t = document.querySelector('#paper h1')?.textContent; return t && t !== 'Paper copy'; }, null, { timeout: 120_000 });
   }

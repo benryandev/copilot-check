@@ -393,15 +393,30 @@ async function swapInModel(g, file, A, colliderIndex) {
     // Builders' Row: paint the project's name on the shop's fascia board
     if (o.name === "sign_board") {
       const name = g.userData.pad?.stop.name ?? "";
+      // A listed project's logo sits left of its name once it has loaded
+      const logoSrc = g.userData.pad?.stop.logo;
+      const logo = logoSrc ? new Image() : null;
       const sign = canvasTexture(1024, 200, (ctx, w, h, p) => {
         ctx.fillStyle = p.panel;
         ctx.fillRect(0, 0, w, h);
         ctx.fillStyle = p.text;
         ctx.font = "600 104px 'Atkinson Hyperlegible Next', Arial, sans-serif";
-        ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(name, w / 2, h / 2 + 4, w - 80);
+        if (logo?.complete && logo.naturalWidth) {
+          const s = h - 48, room = w - 80 - s - 32;
+          const tw = Math.min(ctx.measureText(name).width, room), x0 = (w - (s + 32 + tw)) / 2;
+          ctx.drawImage(logo, x0, 24, s, s);
+          ctx.textAlign = "left";
+          ctx.fillText(name, x0 + s + 32, h / 2 + 4, room);
+        } else {
+          ctx.textAlign = "center";
+          ctx.fillText(name, w / 2, h / 2 + 4, w - 80);
+        }
       });
+      if (logo) {
+        logo.onload = () => currentPal && sign.redraw(currentPal);
+        logo.src = new URL(`../${logoSrc}`, import.meta.url).href;
+      }
       sign.tex.flipY = false; // glTF UVs
       redraws.push(sign.redraw);
       if (currentPal) sign.redraw(currentPal); // else the first theme pass paints it

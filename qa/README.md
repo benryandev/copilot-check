@@ -217,6 +217,7 @@ included). "Update now" on the paper page is natural width at every size (148–
 node qa/serve.mjs                           # same server; it now serves .png and .glb with their own types
 node qa/shoot-eco.mjs                       # 8 states × widths × themes → qa/shots/eco-<state>-<width>-<theme>.png
 node qa/shoot-eco.mjs --states=map,mapEnd --widths=375 --themes=dark
+node qa/shoot.mjs --states=submit,submitErrors,submitDone   # the project submission form (31 Oct); submitDone mocks the worker
 ```
 
 States: `loading`, `intro`, `drive` (on the Liquidations pad), `stop` (its sheet), `map`, `mapEnd` (Map view

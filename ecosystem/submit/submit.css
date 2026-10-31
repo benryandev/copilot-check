@@ -1,0 +1,47 @@
+/* Project submission page, on top of the BR design kit and the Copilot Check page frame (css/app.css). */
+.home { color: inherit; text-decoration: none; }
+.home:hover, .home:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+.submit-layout { display: grid; gap: var(--space-2xl); padding-block: var(--space-2xl) 4rem; align-items: start; }
+@media (min-width: 1024px) { .submit-layout { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } .submit-intro { position: sticky; top: var(--space-xl); } }
+
+.submit-intro { display: flex; flex-direction: column; gap: var(--space-sm); min-width: 0; }
+.submit-intro h1 { font-size: clamp(1.6rem, 3vw, 2.1rem); line-height: 1.12; }
+.submit-intro .lede { max-width: var(--measure-lede); color: var(--text-secondary); font-size: 1.05rem; line-height: 1.5; }
+.submit-intro a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.intro-h { margin-top: var(--space-xs); font-size: 1.05rem; }
+.intro-list { display: flex; flex-direction: column; gap: var(--space-3xs, 0.25rem); padding-left: 1.2rem; line-height: 1.5; max-width: var(--measure); }
+.intro-p { line-height: 1.55; max-width: var(--measure); }
+
+.submit-form { min-width: 0; }
+/* Words, not addresses: the body face, not the kit's mono */
+.br-input.text { font-family: var(--font-body); }
+textarea.br-input { resize: vertical; min-height: 6rem; line-height: 1.5; }
+select.br-input { appearance: auto; }
+.choice { border: 0; padding: 0; margin: 0; min-width: 0; }
+.choice legend { padding: 0; margin-bottom: var(--space-2xs); }
+.opts { display: flex; flex-wrap: wrap; gap: var(--space-2xs) var(--space-md); }
+.choice > .opt { display: flex; }
+.opt { display: inline-flex; align-items: center; gap: var(--space-2xs); min-height: 44px; cursor: pointer; line-height: 1.4; }
+.opt input { width: 1.15rem; height: 1.15rem; flex: none; accent-color: var(--text-primary); }
+.opt.consent { align-items: flex-start; }
+.opt.consent input { margin-top: 0.15rem; }
+.opt-tag { font-weight: 400; font-size: 0.85rem; color: var(--text-secondary); }
+.pair-fields { display: grid; gap: var(--space-lg); }
+@media (min-width: 560px) { .pair-fields { grid-template-columns: 1fr 1fr; } }
+
+.field-error { font-size: 0.875rem; line-height: 1.4; font-weight: 600; color: var(--text-primary); border-left: 3px solid var(--color-base-500); padding-left: var(--space-2xs); }
+.choice[aria-invalid="true"] legend, .consent:has(input[aria-invalid="true"]) { text-decoration: underline; text-decoration-color: var(--color-base-500); text-underline-offset: 4px; }
+
+/* Honeypot: clipped away for people (and hidden from screen readers), still in the form for bots */
+.hp { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.send { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); }
+.status { line-height: 1.4; min-height: 1.4em; }
+.done h2 { font-size: 1.4rem; }
+.done p { line-height: 1.55; max-width: var(--measure); }
+.done .br-button { text-decoration: none; }
+/* The kit's orange invalid border is 2.8:1 on white (under the 3:1 for field borders): mark it in ink, thicker */
+.br-input[aria-invalid="true"] { border-color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--text-primary); }
+/* Body copy at the page's reading size (the kit's bare <p> is larger) */
+.intro-p, .status, .done p { font-size: 1rem; }
+.intro-list li { font-size: 1rem; }

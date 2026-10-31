@@ -2,7 +2,29 @@
 // source page. Stops without `pos` are placed automatically round their district (content.js).
 // Rules: no APR or yield figures, no SLP loss cover, nothing called "recommended".
 
+import { PROJECTS } from "./projects.js";
+
 const DOCS = "https://docs.strikefinance.org";
+
+// A Builders' Row shop for an approved third-party project
+function projectStop(p) {
+  const more = p.github || (p.x ? `https://x.com/${p.x}` : null);
+  return {
+    key: `project-${p.key}`,
+    district: "developers",
+    name: p.name,
+    shape: "shop",
+    row: "builders",
+    logo: p.logo ? `img/projects/${p.key}.png` : null,
+    summary: p.summary,
+    points: [...p.points, "Third-party project, listed after a basic check. Not an endorsement: look into it before you connect a wallet or an API key."],
+    live: null,
+    docs: p.site,
+    docsLabel: `Visit ${p.name}`,
+    site: more,
+    siteLabel: p.github ? "GitHub" : "On X",
+  };
+}
 
 export const STOPS = [
   {
@@ -211,8 +233,10 @@ export const STOPS = [
     docs: "https://github.com/benryandev/strike-copilot",
     docsLabel: "Strike Copilot on GitHub",
   },
-  {
-    key: "plot-1",
+  // Approved third-party projects (projects.js), then two open plots that lead to the submission form
+  ...PROJECTS.map(projectStop),
+  ...[["plot-1", "api/builder-codes", "Docs: Builder Codes"], ["plot-2", "api/getting-started", "Docs: API"]].map(([key, page, label]) => ({
+    key,
     district: "developers",
     name: "Your project here",
     shape: "plot",
@@ -221,28 +245,14 @@ export const STOPS = [
       "Building on Strike? Apps, bots, dashboards and tools that use Strike's API or builder codes can have a spot on Builders' Row.",
     points: [
       "Listings are free and checked by hand before they go up.",
-      "Project submissions open soon.",
+      "Send your project through the form. Changes to a listing use the same form.",
     ],
     live: null,
-    docs: "https://docs.strikefinance.org/api/builder-codes",
-    docsLabel: "Docs: Builder Codes",
-  },
-  {
-    key: "plot-2",
-    district: "developers",
-    name: "Your project here",
-    shape: "plot",
-    row: "builders",
-    summary:
-      "Building on Strike? Apps, bots, dashboards and tools that use Strike's API or builder codes can have a spot on Builders' Row.",
-    points: [
-      "Listings are free and checked by hand before they go up.",
-      "Project submissions open soon.",
-    ],
-    live: null,
-    docs: "https://docs.strikefinance.org/api/getting-started",
-    docsLabel: "Docs: API",
-  },
+    docs: "/ecosystem/submit/",
+    docsLabel: "Submit your project",
+    site: `${DOCS}/${page}`,
+    siteLabel: label,
+  })),
   // ── RealFi Raceway, out past Partners: race control by the start straight (placed in content.js)
   {
     key: "raceway",

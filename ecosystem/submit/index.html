@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Submit a project · Strike Ecosystem</title>
+  <meta name="description" content="Building on Strike Finance? Send your project for a spot on Builders' Row in the drivable Strike ecosystem map." />
+  <meta name="color-scheme" content="light dark" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Strike Ecosystem" />
+  <meta property="og:title" content="List your project on Builders' Row" />
+  <meta property="og:description" content="Building on Strike Finance? Send your project for a spot on Builders' Row in the drivable Strike ecosystem map." />
+  <meta property="og:url" content="https://strike.benryan.com.au/ecosystem/submit/" />
+  <meta property="og:image" content="https://strike.benryan.com.au/ecosystem/img/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Strike Ecosystem: an aerial view of Strike HQ and the dirt roads out to its districts." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <script src="/src/theme.js"></script>
+  <link rel="stylesheet" href="/css/br.css" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/ecosystem/submit/submit.css" />
+  <link rel="icon" href="/img/favicon.svg" type="image/svg+xml" />
+  <script type="module" src="/ecosystem/submit/submit.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <p class="sm"><a class="home" href="/ecosystem/">Strike ecosystem</a> · submit a project</p>
+      <button class="theme-toggle" type="button" aria-label="Switch to dark mode" id="theme-toggle">
+        <svg class="theme-toggle-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <g class="theme-toggle-rays">
+            <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </g>
+          <path class="theme-toggle-path" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
+        </svg>
+      </button>
+    </div>
+
+    <main class="submit-layout">
+      <section class="submit-intro" aria-labelledby="title">
+        <p class="br-label">Builders' Row</p>
+        <h1 id="title">List your project on the Strike map</h1>
+        <p class="lede">Building on Strike? Apps, bots, dashboards and tools that use Strike's API, builder codes or vaults can have a shop on Builders' Row, in the Developers district of the <a href="/ecosystem/">drivable Strike ecosystem map</a>.</p>
+        <h2 class="intro-h">What gets checked</h2>
+        <ul class="intro-list">
+          <li>It's live and works.</li>
+          <li>It really uses Strike.</li>
+          <li>It isn't posing as someone else.</li>
+          <li>Its claims hold up.</li>
+          <li>It never asks for a seed phrase, and doesn't hold people's funds without saying so.</li>
+        </ul>
+        <h2 class="intro-h">What happens next</h2>
+        <p class="intro-p">Ben Ryan reads every submission. If it passes, your shop goes up with your name and logo, and its sheet links your site. Listings are free. To change a listing later, send this form again and pick "Update a listing".</p>
+        <p class="intro-p muted">This map is independent and not affiliated with Strike Finance. A listing isn't an endorsement by Strike or by Ben.</p>
+      </section>
+
+      <form class="br-form submit-form" id="submit-form" novalidate>
+        <fieldset class="br-field choice" id="f-type">
+          <legend class="br-field-label">This is</legend>
+          <label class="opt"><input type="radio" name="type" value="new" checked /> A new listing</label>
+          <label class="opt"><input type="radio" name="type" value="update" /> An update to a listing</label>
+        </fieldset>
+
+        <div class="br-field" id="f-listing" hidden>
+          <label class="br-field-label" for="listing">Which listing?</label>
+          <input class="br-input text" id="listing" name="listing" maxlength="40" autocomplete="off" aria-describedby="listing-hint" />
+          <p class="br-field-hint" id="listing-hint">The name it's listed under now.</p>
+        </div>
+
+        <div class="br-field" id="f-name">
+          <label class="br-field-label" for="name">Project name</label>
+          <input class="br-input text" id="name" name="name" maxlength="40" autocomplete="organization" required />
+        </div>
+
+        <div class="br-field" id="f-tagline">
+          <label class="br-field-label" for="tagline">What it does, in one line</label>
+          <input class="br-input text" id="tagline" name="tagline" maxlength="100" required aria-describedby="tagline-hint" />
+          <p class="br-field-hint" id="tagline-hint">10 to 100 characters. For example: "Telegram alerts when a Strike position nears liquidation."</p>
+        </div>
+
+        <div class="br-field" id="f-category">
+          <label class="br-field-label" for="category">Category</label>
+          <select class="br-input text" id="category" name="category" required>
+            <option value="">Choose one</option>
+            <option>Trading tool</option>
+            <option>Bot</option>
+            <option>Analytics</option>
+            <option>Wallet or app</option>
+            <option>Vault</option>
+            <option>Education</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <fieldset class="br-field choice" id="f-uses">
+          <legend class="br-field-label">How it uses Strike</legend>
+          <div class="opts">
+            <label class="opt"><input type="checkbox" name="uses" value="API" /> API</label>
+            <label class="opt"><input type="checkbox" name="uses" value="Builder code" /> Builder code</label>
+            <label class="opt"><input type="checkbox" name="uses" value="Vault" /> Vault</label>
+            <label class="opt"><input type="checkbox" name="uses" value="Copy trading" /> Copy trading</label>
+            <label class="opt"><input type="checkbox" name="uses" value="Referral link" /> Referral link</label>
+            <label class="opt"><input type="checkbox" name="uses" value="Other" /> Other</label>
+          </div>
+        </fieldset>
+
+        <div class="br-field" id="f-description">
+          <label class="br-field-label" for="description">How it works</label>
+          <textarea class="br-input text" id="description" name="description" rows="5" maxlength="800" required aria-describedby="description-hint"></textarea>
+          <p class="br-field-hint" id="description-hint">30 to 800 characters. What it does, how it uses Strike, and who runs it.</p>
+        </div>
+
+        <div class="br-field" id="f-site">
+          <label class="br-field-label" for="site">Website</label>
+          <input class="br-input text" id="site" name="site" inputmode="url" autocomplete="url" placeholder="https://" maxlength="200" required />
+        </div>
+
+        <div class="pair-fields">
+          <div class="br-field" id="f-x">
+            <label class="br-field-label" for="x">X handle <span class="opt-tag">optional</span></label>
+            <input class="br-input text" id="x" name="x" maxlength="60" autocomplete="off" placeholder="@" />
+          </div>
+          <div class="br-field" id="f-github">
+            <label class="br-field-label" for="github">GitHub <span class="opt-tag">optional</span></label>
+            <input class="br-input text" id="github" name="github" inputmode="url" maxlength="200" placeholder="https://github.com/" />
+          </div>
+        </div>
+
+        <div class="br-field" id="f-logo">
+          <label class="br-field-label" for="logo">Link to your logo <span class="opt-tag">optional</span></label>
+          <input class="br-input text" id="logo" name="logo" inputmode="url" maxlength="200" placeholder="https://" aria-describedby="logo-hint" />
+          <p class="br-field-hint" id="logo-hint">A square PNG or SVG. Leave it blank to use your X profile picture.</p>
+        </div>
+
+        <div class="br-field" id="f-contact">
+          <label class="br-field-label" for="contact">How to reach you</label>
+          <input class="br-input text" id="contact" name="contact" maxlength="100" required aria-describedby="contact-hint" />
+          <p class="br-field-hint" id="contact-hint">Telegram, X or email, in case there are questions. Never shown on the map.</p>
+        </div>
+
+        <div class="br-field" id="f-notes">
+          <label class="br-field-label" for="notes">Anything else <span class="opt-tag">optional</span></label>
+          <textarea class="br-input text" id="notes" name="notes" rows="3" maxlength="400" aria-describedby="notes-hint"></textarea>
+          <p class="br-field-hint" id="notes-hint">For an update, say what's changed.</p>
+        </div>
+
+        <div class="hp sr-only" aria-hidden="true">
+          <label for="company">Company</label>
+          <input id="company" name="company" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <div class="br-field" id="f-permission">
+          <label class="opt consent"><input type="checkbox" id="permission" name="permission" /> I run this project or have permission to list it, and I'm happy for it to be shown on the Strike ecosystem map.</label>
+        </div>
+
+        <div class="send">
+          <button type="submit" class="br-button" id="send"><span class="br-button-label">Send for review</span></button>
+          <p class="status" id="status" role="status" aria-live="polite"></p>
+        </div>
+      </form>
+
+      <section class="br-panel done" id="done" hidden tabindex="-1" aria-labelledby="done-title">
+        <h2 id="done-title">Thanks, it's in</h2>
+        <p>Ben will read it and get in touch through the contact you gave if there are questions. Nothing goes on the map until it's been checked.</p>
+        <p class="muted" id="done-ref"></p>
+        <p><a class="br-button br-button--secondary" href="/ecosystem/"><span class="br-button-label">Back to the map</span></a></p>
+      </section>
+    </main>
+  </div>
+  <footer class="br-band-dark">
+    <div class="wrap">
+      <p class="foot-note">What you send is stored privately and seen only by Ben Ryan. Your contact details are never shown on the map. Independent, not affiliated with Strike Finance.</p>
+      <p class="foot-note foot-credit"><img src="/img/br-logo-white.svg" alt="" width="32" height="15" /> <span>Built by <a href="https://benryan.com.au">Ben Ryan</a>.</span></p>
+    </div>
+  </footer>
+</body>
+</html>
