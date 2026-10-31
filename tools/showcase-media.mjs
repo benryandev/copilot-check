@@ -16,7 +16,7 @@ try { ({ chromium } = await import('playwright')); } catch {
 const base = process.argv[2] || 'http://localhost:8766';
 const here = (p) => new URL(p, import.meta.url).pathname;
 const OUT = here('./out/showcase/'), FR = `${OUT}frames/`;
-rmSync(OUT, { recursive: true, force: true });
+if (!process.argv.includes('--hero')) rmSync(OUT, { recursive: true, force: true });
 mkdirSync(FR, { recursive: true });
 const STILL = [1920, 1080], CLIP = [1280, 720], FPS = 30, DT = 1000 / FPS;
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
@@ -61,16 +61,20 @@ const titleAt = (page, t) => page.evaluate((t) => {
 let frame = 0;
 const shoot = (page) => page.screenshot({ path: `${FR}f${String(frame++).padStart(4, '0')}.png` });
 
-// ── Hero still: the arrival's held overview with the title card ──────────────────────────────────────────────
+// ── Hero stills: the arrival's held overview with the title card, and a closer one on the way down ──────────
+const HERO_ONLY = process.argv.includes('--hero');
 {
   const page = await open(STILL, { arrive: true });
   let t = 0;
-  while (t < 1.6) { await step(page); t += DT / 1000; }
-  await titleAt(page, 1.0);
-  await step(page, 0);
-  await page.screenshot({ path: `${OUT}hero-arrival.png` });
+  for (const [until, name] of [[1.6, 'hero-arrival.png'], [2.9, 'hero-arrival-close.png']]) {
+    while (t < until) { await step(page); t += DT / 1000; }
+    await titleAt(page, 1.5); // the card fully in
+    await step(page, 0);
+    await page.screenshot({ path: `${OUT}${name}` });
+    console.log(name);
+  }
   await page.context().close();
-  console.log('hero-arrival.png');
+  if (HERO_ONLY) { await browser.close(); process.exit(0); }
 }
 
 // ── Clip part 1: the arrival (6 s) ───────────────────────────────────────────────────────────────────────────
