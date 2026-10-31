@@ -25,6 +25,32 @@ From a report, or with `/paper <wallet>` in [Copilot Watch](https://t.me/Copilot
 
 ![A Paper Copy trial page: paper equity, open paper positions, every lead trade and what the copy did, and the same trades under other settings](docs/img/paper-copy.png)
 
+## The ecosystem world
+
+[strike.benryan.com.au/ecosystem](https://strike.benryan.com.au/ecosystem/) is a drivable 3D map of Strike's features: nine districts on a ring of dirt roads around Strike HQ, a pad at every feature that opens a sheet with live figures, a timed raceway with a shared leaderboard and the leader's ghost, a yard where every trade on Strike arrives as a crate, and other visitors driving around you as named cars. It is a fan-built map on live data, not affiliated with Strike. It lives in `ecosystem/` and shares nothing with the report above except the design kit.
+
+### How it is built
+
+- **three.js r170, no bundler, no build step.** Twenty-one hand-written ES modules (about 270 KB unminified) loaded straight by the browser under a strict Content Security Policy (`script-src 'self'`, so no inline scripts and no import map; the vendored addons import three by relative path). The only vendored code is three itself, GLTFLoader, and the r170 post-processing addons.
+- **The world is generated, not downloaded.** Terrain is an analytic height field (summed hills, flattened under roads and plazas, lifted along the raceway); roads are Catmull-Rom curves swept into ribbons with the terrain sampled underneath; plazas are cobbled with a seamless sett tile painted on a canvas (colour and bump) in world-metre UVs; signs, boards, tickers and labels are canvas textures drawn from the same content file that drives the sheets. Twenty-five low-poly landmark models (HQ, vaults, the arch, the observatory, the car and so on) were made in Blender and arrive as glTF after the first frame; the world is playable before them, with box stand-ins swapped out as each loads.
+- **The car.** Arcade physics in one module: throttle, grip that comes in with speed, slope pitch and roll, jumps with a squash on landing, dust from the wheels on dirt, a chase camera that pulls in when a building is behind the car and rises when there is no room. Everything runs on the game's own clock, which stops while a sheet is open.
+- **Live data.** Strike's public API for markets, volumes, funding and the figures on each sheet; Strike's public trade stream for the Fill Yard, where each fill becomes a crate sized by its notional that rides a conveyor, falls off the end, tumbles, slides and stacks (a small rigid-ish crate simulation written for the purpose). Nothing is stored about a visitor; the only requests go to Strike and to the two Cloudflare Workers below.
+- **The raceway.** Gates crossed in order, splits per checkpoint, and a trace of the lap at ten samples a second. A Worker validates every posted lap: a top-speed ceiling for the whole lap and a looser one per segment (a good line cuts corners), per-sample speed on the trace with rounding slack, one row per name and one per player on the board, a post window per address. The fastest lap's trace is served back as a ghost that drives beside you with its name over it.
+- **Multiplayer presence.** A second Worker with a Durable Object holds one room for the whole world over the WebSocket Hibernation API. Clients send a pose ten times a second while moving and once a second when still; the room fans out snapshots at most every 100 ms; clients interpolate 150 ms behind and snap on teleports. Names are checked for look-alike characters and rude words, duplicates get a number, idle sockets are reaped by an alarm, and a KV key is the kill switch. Cars are built only for the nearest few peers and parked after ten seconds out of range.
+- **Rendering.** Three quality tiers (pixel ratio, shadow map size, grass and dust counts, bloom) chosen by pointer type and dropped a step when frames run slow. Bloom is selective by luminance rather than by layer: the scene renders to a half-float target with 4× MSAA, a threshold of 1.05 that lit surfaces and labels stay under, and glow sources scaled to the same brightness whatever their hue. Day has clouds of instanced low-poly puffs that drift with the wind and wrap round the camera; night has a dome of twinkling points and the odd shooting star.
+- **The arrival.** A loader that reports the build in five real steps, then a six-second flight from high over HQ that banks in behind the car as it drops onto the road. Any key skips it; it plays once per tab; reduced motion goes straight to the sheet.
+- **Phones.** Touch pads, a HUD that collapses to one line, sheets sized for 360 px, no double-tap zoom, landscape handled. The QA harness shoots twelve widths in both themes (360 to 1920, including the quantisation probes at 1001 and 1279) and audits each shot for overlaps, sideways scroll, tap targets under 44 px, contrast against both a black and a white scene, and page errors.
+
+### Run the world locally
+
+```sh
+node qa/serve.mjs                          # http://localhost:8080, production headers
+node qa/shoot-eco.mjs http://localhost:8080  # 24 screenshots + audits into qa/shots/
+node --test qa/peers-unit.mjs qa/race-unit.mjs
+```
+
+`?arrive=0` skips the opening flight, `?arrive=1` forces it, `?mp=0` stays out of the multiplayer room.
+
 ## How it uses Strike
 
 The report runs in the browser against public APIs; there is no server of ours and nothing about a report is stored. Paper Copy stores only the wallet and settings, with Copilot Watch's Worker, for 30 days.
