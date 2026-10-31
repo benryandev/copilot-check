@@ -7,7 +7,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { RACE_TRACK } from "./content.js";
 import { raceGates, trackAt, trackLen, groundHeight } from "./terrain.js";
 import { setBoard, formatTime } from "./raceway.js";
-import { canvasTexture, redraws, themePalette } from "./build.js";
+import { nameTag } from "./tags.js";
 
 const API = "https://copilot-watch.benryan.workers.dev";
 const N = RACE_TRACK.checkpoints.length;
@@ -376,38 +376,11 @@ function buildGhost() {
     body.traverse((o) => { if (o.isMesh) { o.material = mat; o.castShadow = o.receiveShadow = false; o.renderOrder = 3; } });
     group.add(body);
     // The name tag: who you're racing and their time
-    const tag = canvasTexture(1024, 192, (ctx, w, h, p) => {
-      ctx.clearRect(0, 0, w, h);
-      const text = ghostData ? `${ghostData.name}  ${formatTime(ghostData.ms)}` : "";
-      ctx.font = "600 84px 'Atkinson Hyperlegible Next', Arial, sans-serif";
-      const tw = Math.min(w - 120, ctx.measureText(text).width);
-      const pw = tw + 96;
-      ctx.fillStyle = p.panel;
-      ctx.globalAlpha = 0.96;
-      ctx.beginPath();
-      ctx.roundRect((w - pw) / 2, 30, pw, 132, 66);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "#" + new THREE.Color(GHOST_COLOUR).getHexString();
-      ctx.fillRect((w - pw) / 2 + 56, 148, pw - 112, 8);
-      ctx.fillStyle = p.text;
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.fillText(text, w / 2, 96, w - 120);
-    });
-    // The theme pass ran before this was built: paint with the palette it used, then follow theme changes
-    let pal = themePalette();
-    const draw = () => pal && tag.redraw(pal);
-    redraws.push((p) => { pal = p; tag.redraw(p); });
-    if (pal) tag.redraw(pal);
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tag.tex, depthWrite: false, transparent: true }));
-    sprite.scale.set(8, 1.5, 1);
-    sprite.position.y = 3.2;
-    sprite.renderOrder = 4;
-    group.add(sprite);
+    const tag = nameTag(() => (ghostData ? `${ghostData.name}  ${formatTime(ghostData.ms)}` : ""), { colour: GHOST_COLOUR });
+    group.add(tag.sprite);
     group.visible = false;
     hooks.scene?.add(group);
-    ghost = { group, draw, tag };
+    ghost = { group, draw: tag.redraw, tag };
   })();
   return building;
 }

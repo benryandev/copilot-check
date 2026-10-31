@@ -7,3 +7,4 @@ node_modules/
 qa/shots/
 qa/private-words.txt
 tools/out/
+.superpowers/
