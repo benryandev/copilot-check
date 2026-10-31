@@ -19,7 +19,7 @@ const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 // The belt, in the shed's own frame: local +x runs out through the door
 const BELT = { x0: 4.6, x1: 19.2, top: 1.1, width: 1.6, speed: 1.7 };
 const SPAWN_X = 3.4;
-const LIP = { len: 1.8, rise: 0.5 }; // the belt's last stretch rises, so crates are thrown off rather than rolled off
+const LIP = { len: 4.2, rise: 1.0 }; // the belt's last stretch rises, so crates are thrown off rather than rolled off
 LIP.angle = Math.atan2(LIP.rise, LIP.len); // just inside the door, so a crate comes out through it
 const QUEUE_MAX = 6; // more than this waiting at the door and the next crate spills over the side
 const MERGE_MS = 500; // partial fills of one order, this close together, make one crate
@@ -67,13 +67,23 @@ export function buildYard() {
   const len = BELT.x1 - BELT.x0, mid = (BELT.x0 + BELT.x1) / 2, half = BELT.width / 2;
   // The opening the belt comes out of, in the shed's +x wall
   g.add(box(0.24, 3.2, 3.0, doorMat, 5.0, 0.1, 0));
-  // Rails, legs and the rollers at each end
-  for (const z of [-1, 1]) g.add(box(len, 0.14, 0.1, M.trim, mid, BELT.top - 0.2, z * (half + 0.08)));
-  for (let x = BELT.x0 + 1.4; x < BELT.x1; x += 3.6) for (const z of [-1, 1]) g.add(cyl(0.08, BELT.top - 0.25, M.trim, x, 0, z * (half - 0.1), 8));
+  // Rails, legs and the rollers at each end. The frame follows the belt up its lip: flat rails to the knee, sloped
+  // rails over the rise, legs under both, the end roller at the top.
+  const knee = BELT.x1 - LIP.len, flatLen = knee - BELT.x0;
+  const liftAt = (x) => (x > knee ? LIP.rise * ((x - knee) / LIP.len) : 0); // how far the belt has risen at x
+  for (const z of [-1, 1]) {
+    g.add(box(flatLen, 0.14, 0.1, M.trim, BELT.x0 + flatLen / 2, BELT.top - 0.2, z * (half + 0.08)));
+    const rail = mesh(new THREE.BoxGeometry(LIP.len / Math.cos(LIP.angle), 0.14, 0.1), M.trim, knee + LIP.len / 2, BELT.top - 0.13 + LIP.rise / 2, z * (half + 0.08));
+    rail.rotation.z = LIP.angle;
+    g.add(rail);
+  }
+  for (const x of [...Array.from({ length: Math.ceil(flatLen / 3.6) }, (_, i) => BELT.x0 + 1.4 + i * 3.6).filter((x) => x < knee - 0.4), knee + LIP.len * 0.45, BELT.x1 - 0.35]) {
+    for (const z of [-1, 1]) g.add(cyl(0.08, BELT.top - 0.25 + liftAt(x), M.trim, x, 0, z * (half - 0.1), 8));
+  }
   for (const x of [BELT.x0 + 0.2, BELT.x1 - 0.2]) {
     const roller = cyl(0.22, BELT.width + 0.1, M.trim, x, 0, 0, 14);
     roller.rotation.x = Math.PI / 2;
-    roller.position.y = BELT.top - 0.2 + (x > BELT.x1 - LIP.len ? LIP.rise * (1 - 0.2 / LIP.len) : 0);
+    roller.position.y = BELT.top - 0.2 + liftAt(x);
     g.add(roller);
   }
   // The belt: chevrons that scroll towards the end
