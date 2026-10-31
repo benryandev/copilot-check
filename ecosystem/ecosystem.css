@@ -82,9 +82,9 @@ body { overflow: hidden; overscroll-behavior: none; }
 .chip-peers[data-status="on"] { --peers-dot: #16a34a; }
 .chip-peers[data-status="offline"] { --peers-dot: #dc2626; }
 .chip-short { display: none; }
-@media (max-width: 480px) { /* three chips beside the title: the count alone keeps them on one row */
-  .chip-peers .chip-long { display: none; }
-  .chip-peers .chip-short { display: inline; }
+@media (max-width: 480px) { /* three chips beside a two-line title: short labels keep them on one row */
+  .hud-actions .chip-long { display: none; }
+  .hud-actions .chip-short { display: inline; }
 }
 .peers-note { position: absolute; right: var(--space-sm); top: calc(100% + 0.25rem); margin: 0; pointer-events: none; }
 .peers-note[hidden] { display: none; }

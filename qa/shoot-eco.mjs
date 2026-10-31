@@ -44,7 +44,7 @@ function audit() {
     if (r.left < 0 || r.right > W + 0.5 || r.top < 0 || r.bottom > H + 0.5) issues.push(`sheet #${d.id} past the viewport`);
     if (d.scrollWidth > d.clientWidth + 1) issues.push(`sheet #${d.id} scrolls sideways (${d.scrollWidth} > ${d.clientWidth})`);
   }
-  for (const el of document.querySelectorAll('.hud, .touch, .chip')) { // chips too: a third chip can push its neighbour off the right edge
+  for (const el of document.querySelectorAll('.hud, .touch, .hud .chip')) { // HUD chips too: a third chip can push its neighbour off the right edge (chips inside a scrolling sheet are allowed below the fold)
     if (!vis(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.left < -0.5 || r.right > W + 0.5 || r.top < -0.5 || r.bottom > H + 0.5) issues.push(`${el.id || el.className} outside the viewport`);

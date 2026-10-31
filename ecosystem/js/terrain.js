@@ -2,6 +2,7 @@
 // groundHeight(x, z) is the single source of truth for both the meshes and the car.
 
 import * as THREE from "../vendor/three.module.min.js";
+import { createCobbles, metreUVs } from "./cobbles.js";
 import { DISTRICTS, ROADS, JUMPS, STOPS, TRACK_ROAD, RACE_TRACK } from "./content.js";
 import { tint } from "./colours.js";
 
@@ -351,9 +352,13 @@ export function buildJumps(palette) {
 
 export function buildPlazas(palette) {
   const group = new THREE.Group();
-  const mat = new THREE.MeshLambertMaterial();
+  // Cobbled: one seamless sett tile repeated in world metres, with a relief map so the sun picks out the joints
+  const cobbles = createCobbles(palette);
+  const mat = new THREE.MeshStandardMaterial({ map: cobbles.map, bumpMap: cobbles.bump, bumpScale: 0.06, roughness: 0.95, metalness: 0 });
   for (const d of plazas) {
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(d.radius, 72), mat);
+    const geo = new THREE.CircleGeometry(d.radius, 72);
+    metreUVs(geo);
+    const disc = new THREE.Mesh(geo, mat);
     disc.rotation.x = -Math.PI / 2;
     disc.position.set(d.centre[0], 0.08, d.centre[1]);
     disc.receiveShadow = true;
@@ -367,7 +372,7 @@ export function buildPlazas(palette) {
     group.add(disc, ring);
   }
   group.userData.recolour = (p) => {
-    mat.color.set(p.plaza);
+    cobbles.repaint(p);
     group.children.forEach((c) => c.userData.colour && c.material.color.set(tint(c.userData.colour)));
   };
   group.userData.recolour(palette);
