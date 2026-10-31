@@ -7,7 +7,7 @@ import { DISTRICTS } from "./content.js";
 import { groundHeight, inRaceway } from "./terrain.js";
 import { accent } from "./build.js";
 import { nameTag } from "./tags.js";
-import { nextSendDelay, poseAt, pickDrawn, backoff, DELAY_MS, QUIET_MS, GONE_MS, DRAW_CAP, DRAW_RANGE } from "./peers-math.js";
+import { nextSendDelay, poseAt, pickDrawn, backoff, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE } from "./peers-math.js";
 
 const WS_DEFAULT = "wss://copilot-world.benryan.workers.dev/ws";
 const NAME_KEY = "eco-race-name", OWNER_KEY = "eco-owner";
@@ -50,17 +50,24 @@ function add(p) {
   if (!me || p.id === me.id || peers.has(p.id)) return;
   const now = performance.now();
   const samples = Number.isFinite(p.x) ? [{ at: now, x: p.x, z: p.z, h: p.h || 0 }] : [];
-  peers.set(p.id, { id: p.id, name: p.name, colour: p.colour, samples, lastSeen: now, car: null, building: null, pinned: false });
+  peers.set(p.id, { id: p.id, name: p.name, colour: p.colour, samples, lastSeen: now, car: null, building: null, pinned: false, parkedAt: null });
 }
-function remove(id) {
-  const p = peers.get(id);
-  if (!p) return;
-  peers.delete(id);
+function disposeCar(p) {
   if (p.car) {
     hooks.scene?.remove(p.car.group);
     p.car.tag.dispose();
     p.car.mats.forEach((m) => m.dispose());
   }
+  p.car = null;
+  p.building = null;
+  p.parkedAt = null;
+}
+// Only the room decides who has left (leave, a fresh ok, or our socket closing); a quiet spell parks the car, nothing more
+function remove(id) {
+  const p = peers.get(id);
+  if (!p) return;
+  peers.delete(id);
+  disposeCar(p);
 }
 function clearAll() { for (const id of [...peers.keys()]) remove(id); }
 
@@ -76,7 +83,7 @@ function handle(m) {
     case "join": add(m); emit({ type: "join", name: m.name }); break;
     case "leave": remove(m.id); emit({ type: "leave" }); break;
     case "rename": { const p = peers.get(m.id); if (p) { p.name = m.name; p.car?.tag.redraw(); emit({ type: "rename" }); } break; }
-    case "named": if (me) { me.name = m.name; write(NAME_KEY, m.name); emit({ type: "named", name: m.name }); } break;
+    case "named": if (me) { me.name = m.name; emit({ type: "named", name: m.name }); } break; // the typed name stays in storage; the room's rendering ("Aveli (2)") is shown, not kept
     case "s": {
       const now = performance.now();
       for (const [id, x, z, h, , j] of m.p || []) {
@@ -126,10 +133,14 @@ function scheduleRetry() {
   retry = setTimeout(() => { retry = null; connect(); }, backoff(attempt++));
 }
 
+let heartbeat = null;
 export function initPeers({ scene, car, tierName, enabled: on = true, wsUrl, socket }) {
   hooks = { scene, car, tierName: tierName || (() => "high"), socket };
   enabled = on;
   if (!enabled) { status = "off"; emit({ type: "off" }); return; }
+  // The frame loop stops while a sheet is open or the tab is hidden; the room must still hear from us once a second or
+  // everyone else puts our car away. Browsers slow background timers to about once a second, which is exactly this rate.
+  if (!heartbeat) heartbeat = setInterval(() => { if (hooks.car?.s && performance.now() - lastSent >= IDLE_MS) sendPose(hooks.car.s, false, performance.now()); }, IDLE_MS);
   const local = ["localhost", "127.0.0.1"].includes(location.hostname);
   url = wsUrl || (local && new URLSearchParams(location.search).get("ws")) || WS_DEFAULT;
   connect();
@@ -149,16 +160,17 @@ export function setPeerName(name) {
   const n = String(name || "").trim();
   if (!n) return;
   write(NAME_KEY, n); // used by the next hi even if the room is away
-  if (status === "on" && ws?.readyState === 1) ws.send(JSON.stringify({ t: "name", name: n }));
+  const owner = read(OWNER_KEY);
+  if (status === "on" && ws?.readyState === 1) ws.send(JSON.stringify({ t: "name", name: n, ...(owner ? { owner } : {}) }));
 }
 
 // ── Their cars, in ─────────────────────────────────────────────────────
 const colourOf = (hex) => parseInt(String(hex).replace("#", ""), 16);
 function buildCar(p) {
   if (p.building) return p.building;
-  p.building = (async () => {
+  const job = (async () => {
     await hooks.car?.ready;
-    if (!peers.has(p.id)) return; // left while the model loaded
+    if (peers.get(p.id) !== p || p.building !== job) return; // left, or put away, while the model loaded
     const group = new THREE.Group();
     const body = hooks.car.tilt.clone(true);
     body.rotation.set(0, 0, 0);
@@ -181,7 +193,16 @@ function buildCar(p) {
     hooks.scene?.add(group);
     p.car = { group, tag, mats, faded: false };
   })();
-  return p.building;
+  p.building = job;
+  return job;
+}
+
+// Out of the drawn set (too far, over the cap, or quiet too long): hide the car, and after a while let it go
+function park(p, now) {
+  if (!p.car) { p.building = null; return; }
+  p.car.group.visible = false;
+  p.parkedAt ??= now;
+  if (now - p.parkedAt > PARK_MS) disposeCar(p);
 }
 
 function fade(p, on) {
@@ -194,23 +215,25 @@ let rank = 0, drawn = new Set();
 export function peersTick(dt, camPos) {
   if (!peers.size) return;
   const now = performance.now(), at = now - DELAY_MS;
-  const placed = [];
-  for (const p of [...peers.values()]) {
-    if (!p.pinned && now - p.lastSeen > GONE_MS) { remove(p.id); emit({ type: "leave" }); continue; }
-    const pose = poseAt(p.samples, at);
-    if (!pose) continue;
+  // Who could be drawn: a known pose, not gone quiet, within range of the camera
+  const cands = [];
+  for (const p of peers.values()) {
+    const gone = !p.pinned && now - p.lastSeen > GONE_MS;
+    const pose = gone ? null : poseAt(p.samples, at);
+    if (!pose || Math.hypot(pose.x - camPos.x, pose.z - camPos.z) > DRAW_RANGE) { park(p, now); continue; }
+    cands.push({ p, x: pose.x, z: pose.z, h: pose.h });
+  }
+  // The nearest few of them, re-ranked once a second or so; cars are built only for these and put away otherwise
+  if ((rank++ % 60) === 0) drawn = new Set(pickDrawn(cands, camPos, DRAW_CAP[hooks.tierName()] ?? 24).map((e) => e.p.id));
+  for (const { p, x, z, h } of cands) {
+    if (!drawn.has(p.id)) { park(p, now); continue; }
     if (!p.car) { buildCar(p); continue; }
-    p.car.group.position.set(pose.x, groundHeight(pose.x, pose.z), pose.z);
-    p.car.group.rotation.y = pose.h;
+    p.parkedAt = null;
+    p.car.group.visible = true;
+    p.car.group.position.set(x, groundHeight(x, z), z);
+    p.car.group.rotation.y = h;
     fade(p, !p.pinned && now - p.lastSeen > QUIET_MS);
-    placed.push({ p, x: pose.x, z: pose.z });
   }
-  // Which of them to draw: the nearest few within range, re-ranked once a second or so
-  if ((rank++ % 60) === 0 || drawn.size === 0) {
-    const cap = DRAW_CAP[hooks.tierName()] ?? 24;
-    drawn = new Set(pickDrawn(placed.filter((e) => Math.hypot(e.x - camPos.x, e.z - camPos.z) < DRAW_RANGE), camPos, cap).map((e) => e.p.id));
-  }
-  for (const { p } of placed) p.car.group.visible = drawn.has(p.id);
 }
 
 // ── Test hook ──────────────────────────────────────────────────────────

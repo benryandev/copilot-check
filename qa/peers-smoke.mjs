@@ -13,7 +13,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 async function open(name) {
-  const ctx = await browser.newContext({ viewport: { width: 1000, height: 700 } });
+  const ctx = await browser.newContext({ viewport: { width: 800, height: 520 } });
   await ctx.addInitScript((n) => localStorage.setItem('eco-race-name', JSON.stringify(n)), name);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log(`  [${name}] page error`, String(e).split('\n')[0]));
@@ -29,9 +29,14 @@ async function until(fn, what, ms = 6000) {
   for (;;) {
     const v = await fn();
     if (v) return v;
-    if (Date.now() - t0 > ms) fail(`${what} (waited ${ms} ms)`);
+    if (Date.now() - t0 > ms) { fail(`${what} (waited ${ms} ms)`); }
     await sleep(150);
   }
+}
+// Move a page's own car a few metres sideways without the physics (software rendering runs a frame or two a second
+// here, so holding the throttle is no measure of distance); the next pose goes out within a second
+async function drive(page, metres = 5) {
+  await page.evaluate((m) => { window.__eco.car.s.x += m; }, metres);
 }
 // Position of a peer's car in a page: the tagged group at the peer's interpolated pose. Exposed via peers state + scene.
 const peerPos = (page, name) => page.evaluate((n) => {
@@ -53,11 +58,19 @@ try {
   await a.evaluate(() => window.__eco.teleport('liquidations'));
   await until(async () => { const d = (await state(b)).peers.find((p) => p.name === 'Smoke A')?.district; return d && d !== 'Just arrived' && d !== 'Strike HQ'; }, 'B never saw A arrive at Liquidations');
   const before = await until(async () => { const p = await peerPos(b, 'Smoke A'); return p && p.visible ? p : null; }, "A's car never drawn in B");
-  // Drive A forward for a second; B's copy of A must move
-  await a.evaluate(() => { window.__eco.keys.forward = true; });
-  await sleep(1200);
-  await a.evaluate(() => { window.__eco.keys.forward = false; });
+  // Drive A forward a few metres; B's copy of A must move
+  await drive(a);
   const after = await until(async () => { const p = await peerPos(b, 'Smoke A'); return p && Math.hypot(p.x - before.x, p.z - before.z) > 3 ? p : null; }, "A's car did not move > 3 m in B's world");
+  // A reads a sheet for longer than the 15 s "gone" window, then drives on: B must still see A move (the roster survives
+  // a quiet spell and the 1 Hz heartbeat runs while the game is paused behind a sheet)
+  await a.click('#open-map');
+  await sleep(16500);
+  await a.evaluate(() => document.querySelector('#map [data-close]').click());
+  const parked = await peerPos(b, 'Smoke A');
+  const fromX = parked ? parked.x : after.x, fromZ = parked ? parked.z : after.z;
+  await drive(a);
+  const resumed = await until(async () => { const p = await peerPos(b, 'Smoke A'); return p && Math.hypot(p.x - fromX, p.z - fromZ) > 3 ? p : null; }, "after A sat in a sheet for 16 s, B no longer sees A move");
+  Object.assign(after, resumed);
   // Teleport A far away: B's copy must land there within a couple of seconds (software rendering runs a few frames
   // a second here, so this checks the jump arrives, not that it arrived in one frame; the snap itself is one line in
   // peers.js and the server's j flag is unit-tested)
