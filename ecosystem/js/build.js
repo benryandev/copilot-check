@@ -109,6 +109,7 @@ export function accent(colour) {
   return accents.get(colour);
 }
 let currentPal = null; // the theme's palette, for textures painted after a theme change
+export const themePalette = () => currentPal;
 export function recolourMaterials(pal, dark) {
   currentPal = pal;
   setDark(dark);

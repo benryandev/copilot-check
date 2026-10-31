@@ -7,7 +7,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { RACE_TRACK } from "./content.js";
 import { raceGates, trackAt, trackLen, groundHeight } from "./terrain.js";
 import { setBoard, formatTime } from "./raceway.js";
-import { canvasTexture, redraws } from "./build.js";
+import { canvasTexture, redraws, themePalette } from "./build.js";
 
 const API = "https://copilot-watch.benryan.workers.dev";
 const N = RACE_TRACK.checkpoints.length;
@@ -370,7 +370,8 @@ function buildGhost() {
   building = (async () => {
     await hooks.car?.ready;
     const group = new THREE.Group();
-    const mat = new THREE.MeshStandardMaterial({ color: GHOST_COLOUR, emissive: GHOST_COLOUR, emissiveIntensity: 0.35, transparent: true, opacity: 0.42, depthWrite: false, roughness: 0.5 });
+    // Writes depth, so the car's inner parts don't show through each other as a stack of cars
+    const mat = new THREE.MeshStandardMaterial({ color: GHOST_COLOUR, emissive: GHOST_COLOUR, emissiveIntensity: 0.35, transparent: true, opacity: 0.55, roughness: 0.5 });
     const body = hooks.car.tilt.clone(true);
     body.rotation.set(0, 0, 0);
     body.scale.set(1, 1, 1);
@@ -380,11 +381,11 @@ function buildGhost() {
     const tag = canvasTexture(1024, 192, (ctx, w, h, p) => {
       ctx.clearRect(0, 0, w, h);
       const text = ghostData ? `${ghostData.name}  ${formatTime(ghostData.ms)}` : "";
-      ctx.font = "600 80px 'Atkinson Hyperlegible Next', Arial, sans-serif";
+      ctx.font = "600 84px 'Atkinson Hyperlegible Next', Arial, sans-serif";
       const tw = Math.min(w - 120, ctx.measureText(text).width);
       const pw = tw + 96;
       ctx.fillStyle = p.panel;
-      ctx.globalAlpha = 0.92;
+      ctx.globalAlpha = 0.96;
       ctx.beginPath();
       ctx.roundRect((w - pw) / 2, 30, pw, 132, 66);
       ctx.fill();
@@ -396,19 +397,19 @@ function buildGhost() {
       ctx.textAlign = "center";
       ctx.fillText(text, w / 2, 96, w - 120);
     });
-    let pal = null;
+    // The theme pass ran before this was built: paint with the palette it used, then follow theme changes
+    let pal = themePalette();
     const draw = () => pal && tag.redraw(pal);
     redraws.push((p) => { pal = p; tag.redraw(p); });
+    if (pal) tag.redraw(pal);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tag.tex, depthWrite: false, transparent: true }));
-    sprite.scale.set(7, 1.3125, 1);
-    sprite.position.y = 3.1;
+    sprite.scale.set(8, 1.5, 1);
+    sprite.position.y = 3.2;
     sprite.renderOrder = 4;
     group.add(sprite);
     group.visible = false;
     hooks.scene?.add(group);
     ghost = { group, draw, tag };
-    // The theme pass may have run before this; paint with the palette the pads were painted with
-    if (!pal) { const panel = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim(); pal = { panel: panel || "#ffffff", text: getComputedStyle(document.body).color || "#0d0d0d" }; tag.redraw(pal); }
   })();
   return building;
 }
