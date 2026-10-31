@@ -46,3 +46,21 @@ export function pickDrawn(peers, cam, cap) {
 
 /** Reconnect delay for the n-th attempt: 1 s doubling, capped at 30 s. */
 export const backoff = (n) => Math.min(30000, 1000 * 2 ** Math.max(0, n));
+
+export const FLY_G = 30; // m/s², the car's gravity
+/** Vertical motion for a car whose ground height is known each frame but not its height (other visitors, the
+ * ghost): it rides the ground, and when the ground drops away faster than it can fall (a ramp's end) it flies on
+ * under gravity until it meets the ground again. `st` is { y, vy, air }, updated in place; returns the y to draw. */
+export function flyY(st, g, dt) {
+  if (!(dt > 0)) { st.y = g; return g; }
+  if (st.air) {
+    st.vy -= FLY_G * dt;
+    st.y += st.vy * dt;
+    if (st.y <= g) { st.y = g; st.vy = 0; st.air = false; }
+    return st.y;
+  }
+  const vyGround = (g - st.y) / dt;
+  if (st.y - g > FLY_G * dt * dt * 2 && st.vy > 2) { st.air = true; st.y += st.vy * dt; } // the same rule as the car
+  else { st.y = g; st.vy = vyGround; }
+  return st.y;
+}

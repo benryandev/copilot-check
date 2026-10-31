@@ -10,7 +10,7 @@ import {
   M, animated, pads, crates, boards, colliders, districtGroups,
   buildStops, buildBoard, buildRoadSigns, addCrates, addProps, recolourMaterials, setTicker, modelsReady,
 } from "./build.js";
-import { createCar, stepCar, pushOut, keepInWorld, CAR_R } from "./car.js";
+import { createCar, stepCar, pushOut, keepInWorld, CAR_R, brakeLights } from "./car.js";
 import { tint } from "./colours.js";
 import { buildRaceway } from "./raceway.js";
 import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview } from "./race.js";
@@ -718,6 +718,7 @@ function frame() {
   if (!paused) {
     const px = car.s.x, pz = car.s.z;
     const info = stepCar(car, keys, dt);
+    brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on);
     raceTick(px, pz, car.s.x, car.s.z, car.s.heading, dt);
     sendPose(car.s, jumped, performance.now());
     jumped = false;

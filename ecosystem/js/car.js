@@ -6,6 +6,8 @@ import { M, paint, box, mesh, colliders } from "./build.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
 import { groundHeight, onDirt, WORLD } from "./terrain.js";
 
+import { glowIntensity } from "./post.js";
+
 export const CAR_R = 1.6;
 const MAX_F = 24, MAX_R = 9, ACCEL = 16, BRAKE = 34, ROLL = 5, TURN = 2.2, GRAVITY = 30;
 const OFF_ROAD = 0.8; // top speed share on grass
@@ -54,6 +56,12 @@ async function upgradeCar(car, colour) {
     const name = o.material?.name;
     if (name === "Accent") o.material = paint(colour);
     else if (name === "Tyre") o.material = M.tyre;
+    else if (name === "Tail") { // brake lights: lit by brakeLights() while the brake is on
+      o.material = o.material.clone();
+      o.material.emissive = new THREE.Color(TAIL);
+      o.material.emissiveIntensity = 0;
+      car.tail = o.material;
+    }
   });
   for (const node of [...model.children]) {
     if (!node.name.startsWith("wheel_")) continue;
@@ -68,6 +76,15 @@ async function upgradeCar(car, colour) {
   car.tilt.clear();
   car.tilt.add(model);
   car.wheels = wheels;
+}
+
+// Tail lamps on while braking (and off again), eased over a few frames; through the bloom at night they glow
+const TAIL = 0xff3b30;
+export function brakeLights(car, on, glow) {
+  const m = car.tail;
+  if (!m) return;
+  const want = on ? (glow ? glowIntensity(m.emissive) : 1.4) : 0;
+  m.emissiveIntensity += (want - m.emissiveIntensity) * 0.5;
 }
 
 function pushOut(px, pz, r) {

@@ -9,6 +9,7 @@ import { RACE_TRACK } from "./content.js";
 import { raceGates, trackAt, trackLen, groundHeight } from "./terrain.js";
 import { setBoard, formatTime } from "./raceway.js";
 import { nameTag } from "./tags.js";
+import { flyY } from "./peers-math.js";
 
 const API = "https://copilot-watch.benryan.workers.dev";
 const N = RACE_TRACK.checkpoints.length;
@@ -113,7 +114,7 @@ export function raceTick(px, pz, x, z, heading, dt) {
     const e = (clock - lap.start) * 1000;
     if (e - trace[trace.length - 1][0] >= TRACE_MS) trace.push([Math.round(e), round1(x), round1(z), round2(heading)]);
   }
-  ghostTick();
+  ghostTick(dt);
   drawHud();
 }
 
@@ -416,14 +417,18 @@ function buildGhost() {
   return building;
 }
 
-function ghostTick() {
+let ghostFly = null;
+function ghostTick(dt = 0) {
   if (!ghost || !ghostData) return;
   const e = previewMs ?? (lap.running ? (clock - lap.start) * 1000 : null);
   const on = e != null && e <= ghostData.ms + 2000;
+  if (!on) ghostFly = null;
   ghost.group.visible = on;
   if (!on) return;
   const p = ghostPose(Math.min(e, ghostData.ms));
-  ghost.group.position.set(p.x, groundHeight(p.x, p.z), p.z);
+  const g = groundHeight(p.x, p.z);
+  ghostFly ||= { y: g, vy: 0, air: false };
+  ghost.group.position.set(p.x, flyY(ghostFly, g, dt), p.z); // the ghost takes the jumps in the air, as its driver did
   ghost.group.rotation.y = p.h;
 }
 

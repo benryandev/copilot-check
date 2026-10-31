@@ -69,7 +69,9 @@ async function RUNTIME() {
   const frame = (p, tan) => { const l = Math.hypot(tan.x, tan.z), fx = tan.x / l, fz = tan.z / l; return { x: p.x, z: p.z, fx, fz, rx: -fz, rz: fx }; };
   const track = { at: (s) => T.trackAt(s), len: T.trackLen, half: T.TRACK_HALF };
   const spoke = (key) => T.roads.find((x) => x.kind === 'spoke' && x.to === key);
-  const road = (key) => { const r = spoke(key); return { at: (s) => { const u = Math.min(0.999, Math.max(0, s / r.len)); return frame(r.curve.getPointAt(u), r.curve.getTangentAt(u)); }, len: r.len, half: r.half }; };
+  // Past either end a road carries straight on along its last tangent, so a shot can run off the end without stalling
+  const road = (key) => { const r = spoke(key); return { at: (s) => { const u = Math.min(0.999, Math.max(0, s / r.len)), p = r.curve.getPointAt(u), tan = r.curve.getTangentAt(u), f = frame(p, tan), over = s - u * r.len; return { ...f, x: f.x + f.fx * over, z: f.z + f.fz * over }; }, len: r.len, half: r.half }; };
+  const sm = (lo, hi, x) => { const u = Math.min(1, Math.max(0, (x - lo) / (hi - lo))); return u * u * (3 - 2 * u); };
   const lanePt = (path, s, v) => { const p = path.at(s); return { x: p.x + p.rx * v, z: p.z + p.rz * v, fx: p.fx, fz: p.fz, rx: p.rx, rz: p.rz, h: heading(p.fx, p.fz) }; };
   const trackJump = (s) => { const j = T.jumps.find((q) => q.s === s); return { s, v: j.side * (track.half - j.width / 2 - 0.2), length: j.length }; };
   const jumpOn = (key) => { const r = spoke(key), j = T.jumps.find((q) => T.roads[q.road] === r); return { s: j.t * r.len, v: j.side * (r.half - j.width / 2 - 0.2), length: j.length }; };
@@ -86,12 +88,33 @@ async function RUNTIME() {
     const near = (q, c) => Math.hypot(q.x - c.x, q.z - c.z);
     drive = () => {
       const c = e.car.s;
-      for (let k = 0; k < 80; k++) { if (near(lanePt(path, s + 0.5, vAt(s + 0.5)), c) < near(lanePt(path, s, vAt(s)), c)) s += 0.5; else break; }
+      // Progress along the centreline (not the offset lane, which can jump sideways and leave the marker behind)
+      for (let k = 0; k < 80; k++) { if (near(path.at(s + 0.5), c) < near(path.at(s), c)) s += 0.5; else break; }
       const aim = lanePt(path, s + 9, vAt(s + 9));
       let d = Math.atan2(-(aim.x - c.x), -(aim.z - c.z)) - c.heading;
       d = Math.atan2(Math.sin(d), Math.cos(d));
       if (!c.air) { c.heading += d * 0.3; const q = lanePt(path, s, vAt(s)); c.x += (q.x - c.x) * 0.15; c.z += (q.z - c.z) * 0.15; }
-      for (const f of friends) { const p = lanePt(path, s + f.ds, f.dv); e.peersMove(f.id, p.x, p.z, p.h); }
+      for (const f of friends) {
+        const fs = s + f.ds;
+        if (f.peel && fs >= f.peel.at) {
+          // Off the road on its own line: a steady turn to the peel angle, then straight. Offsetting the road's
+          // frame by metres folds back on itself around a bend, so a peeling car keeps its own heading instead.
+          if (!f.st) { const p = lanePt(path, fs, f.dv); f.st = { x: p.x, z: p.z, h: p.h, prev: fs }; }
+          const step = Math.max(0, fs - f.st.prev); f.st.prev = fs;
+          const base = path.at(f.peel.at), target = heading(base.fx, base.fz) + f.peel.angle;
+          let dh = target - f.st.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+          f.st.h += dh * (1 - Math.exp(-step / 7));
+          f.st.x -= Math.sin(f.st.h) * step; f.st.z -= Math.cos(f.st.h) * step;
+          f.log = `${f.id} s${fs.toFixed(1)} peel h${f.st.h.toFixed(2)}`;
+          e.peersMove(f.id, f.st.x, f.st.z, f.st.h);
+          continue;
+        }
+        const p = lanePt(path, fs, f.dv), ahead = lanePt(path, fs + 2, f.dv);
+        const fh = Math.atan2(-(ahead.x - p.x), -(ahead.z - p.z));
+        f.log = `${f.id} s${fs.toFixed(1)} h${fh.toFixed(2)}`;
+        e.peersMove(f.id, p.x, p.z, fh);
+      }
+      drive.friends = friends;
       drive.s = s;
     };
     drive.s = s;
@@ -120,7 +143,7 @@ async function RUNTIME() {
   };
   const fixed = (x, y, z, { lk = 8, lift = 1 } = {}) => (c) => ({ px: x, py: y, pz: z, lx: c.x, ly: c.y + lift, lz: c.z, k: 60, lk });
   const ground = (x, z) => e.groundHeight(x, z);
-  window.__cine = { T, e, track, road, lanePt, jumpOn, trackJump, place, follow, cam, chase, fixed, rel, ground, heading, s: () => drive?.s?.toFixed(1), stop: () => { drive = null; e.keys.up = false; camFn = null; } };
+  window.__cine = { T, e, track, road, lanePt, sm, jumpOn, trackJump, place, follow, cam, chase, fixed, rel, ground, heading, s: () => drive?.s?.toFixed(1), friends: () => (drive?.friends || []).map((f) => f.log), stop: () => { drive = null; e.keys.up = false; camFn = null; } };
 }
 
 const step = (page, ms = DT) => page.evaluate((ms) => { window.__auto?.(); window.__step(ms); }, ms);
@@ -140,9 +163,9 @@ const holdNote = (page, t) => page.evaluate((t) => {
 let dir = '', frame = 0;
 const shoot = (page) => page.screenshot({ path: `${dir}f${String(frame++).padStart(4, '0')}.png` });
 const TRACE = process.env.TRACE === '1';
-const trace = (page, i) => page.evaluate((i) => { const e = window.__eco, c = e.car.s, p = e.camera.position; console.log(`  f${i} car ${c.x.toFixed(1)},${c.z.toFixed(1)} y${c.y.toFixed(1)} v${c.speed.toFixed(1)} air:${c.air} s:${window.__cine?.s?.()} cam ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`); }, i);
+const trace = (page, i) => page.evaluate((i) => { const e = window.__eco, c = e.car.s, p = e.camera.position; console.log(`  f${i} car ${c.x.toFixed(1)},${c.z.toFixed(1)} y${c.y.toFixed(1)} v${c.speed.toFixed(1)} air:${c.air} s:${window.__cine?.s?.()} ${(window.__cine?.friends?.() || []).join(' | ')} cam ${p.x.toFixed(1)},${p.y.toFixed(1)},${p.z.toFixed(1)}`); }, i);
 async function rec(page, secs, perFrame) {
-  for (let i = 0; i < Math.round(secs * FPS); i++) { const t = i / FPS; if (perFrame) await perFrame(t, i); await step(page); await shoot(page); if (TRACE && i % 15 === 0) await trace(page, i); }
+  for (let i = 0; i < Math.round(secs * FPS); i++) { const t = i / FPS; if (perFrame) await perFrame(t, i); await step(page); await shoot(page); if (TRACE && i % 5 === 0) await trace(page, i); }
 }
 async function skip(page, secs, perFrame) { for (let i = 0; i < Math.round(secs * FPS); i++) { if (perFrame) await perFrame(i / FPS, i); await step(page); } }
 
@@ -159,12 +182,16 @@ const SHOTS = [
   ['02-convoy', async () => {
     const page = await dayPage();
     await page.evaluate(() => {
-      const C = window.__cine, e = C.e, r = C.road('perps'), j = C.jumpOn('perps');
-      const s0 = j.s + 14;
-      e.peersInject([{ id: 'p1', name: 'Aveli', colour: '#22d3ee' }, { id: 'p2', name: 'ADA_ACE', colour: '#facc15' }]);
-      C.place(r, s0, -0.4, 20);
-      C.follow(r, s0, -0.4, [{ id: 'p1', ds: 12, dv: -2.4 }, { id: 'p2', ds: -2.5, dv: 2.5 }]);
-      const k = C.lanePt(r, s0 + 30, 8.8);
+      const C = window.__cine, e = C.e, r = C.road('perps');
+      const end = r.len - 12, s0 = end - 70; // the shot ends short of the arch
+      e.peersInject([{ id: 'p1', name: 'Juno', colour: '#22d3ee' }, { id: 'p2', name: 'Rook', colour: '#facc15' }]);
+      C.place(r, s0, -0.6, 20);
+      // Over the last 30 m the two of them peel off either side (Rook takes the jump on the way); our car keeps the road
+      C.follow(r, s0, -0.6, [
+        { id: 'p1', ds: 12, dv: -2.4, peel: { at: end - 34, angle: 0.42 } },
+        { id: 'p2', ds: -2.5, dv: 2.5, peel: { at: end - 24, angle: -0.42 } },
+      ]);
+      const k = C.lanePt(r, s0 + 37, 8.8);
       C.cam(C.fixed(k.x, C.ground(k.x, k.z) + 1.7, k.z, { lk: 7, lift: 0.9 }));
       console.log(`convoy: spoke ${r.len.toFixed(0)} m, from s=${s0.toFixed(0)}`);
     });
@@ -203,7 +230,7 @@ const SHOTS = [
     const page = await dayPage();
     await page.evaluate(() => {
       const C = window.__cine, tr = C.track;
-      const v = (s) => (s < 363 ? -3.2 : s < 385 ? 3.2 : -3.2);
+      const v = (s) => -3.2 + 6.4 * (C.sm(356, 368, s) - C.sm(378, 390, s));
       C.place(tr, 334, -3.2, 24);
       C.follow(tr, 334, v);
       C.cam(C.chase(8.5, 2.6, 0, { ahead: 6, lift: 1.2, k: 7 }));
@@ -236,7 +263,7 @@ const SHOTS = [
       const C = window.__cine, e = C.e; e.teleport('fillyard');
       const c = e.car.s, sin = Math.sin(c.heading), cos = Math.cos(c.heading);
       const at = (f, r) => ({ x: c.x - sin * f + cos * r, z: c.z - cos * f - sin * r });
-      e.peersInject([{ id: 'p1', name: 'Aveli', colour: '#22d3ee', ...at(5, -6), h: c.heading + 0.5 }, { id: 'p2', name: 'ADA_ACE', colour: '#facc15', ...at(7, 6), h: c.heading - 0.4 }]);
+      e.peersInject([{ id: 'p1', name: 'Juno', colour: '#22d3ee', ...at(5, -6), h: c.heading + 0.5 }, { id: 'p2', name: 'Rook', colour: '#facc15', ...at(1, 6.5), h: c.heading - 0.3 }]);
       C.cam((car, t) => { const p = C.rel(car, 10, 3.4, -7 + t * 4.4); return { px: p.x, py: p.y, pz: p.z, lx: car.x, ly: car.y + 1.4, lz: car.z, k: 60, lk: 60 }; });
     });
     await fills(page, 6);

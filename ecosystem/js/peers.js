@@ -7,7 +7,7 @@ import { DISTRICTS } from "./content.js";
 import { groundHeight, inRaceway } from "./terrain.js";
 import { paint as carPaint } from "./build.js";
 import { nameTag } from "./tags.js";
-import { nextSendDelay, poseAt, pickDrawn, backoff, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE } from "./peers-math.js";
+import { nextSendDelay, poseAt, pickDrawn, backoff, flyY, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE } from "./peers-math.js";
 
 const WS_DEFAULT = "wss://copilot-world.benryan.workers.dev/ws";
 const NAME_KEY = "eco-race-name", OWNER_KEY = "eco-owner";
@@ -90,7 +90,7 @@ function handle(m) {
         const p = peers.get(id);
         if (!p) continue;
         const sample = { at: now, x, z, h };
-        if (j) p.samples = [sample]; // a teleport: snap, don't slide across the map
+        if (j) { p.samples = [sample]; p.fly = null; } // a teleport: snap, don't slide across the map
         else { p.samples.push(sample); if (p.samples.length > 12) p.samples.shift(); }
         p.lastSeen = now;
       }
@@ -233,7 +233,9 @@ export function peersTick(dt, camPos) {
     if (!p.car) { buildCar(p); continue; }
     p.parkedAt = null;
     p.car.group.visible = true;
-    p.car.group.position.set(x, groundHeight(x, z), z);
+    const g = groundHeight(x, z);
+    p.fly ||= { y: g, vy: 0, air: false };
+    p.car.group.position.set(x, flyY(p.fly, g, dt), z); // off a ramp the car flies rather than snapping to the ground
     p.car.group.rotation.y = h;
     fade(p, !p.pinned && now - p.lastSeen > QUIET_MS);
   }

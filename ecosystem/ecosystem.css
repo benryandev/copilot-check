@@ -289,12 +289,17 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
   .sheet h1 { font-size: 1.875rem; }
   .sheet h2 { font-size: 1.625rem; }
 }
+/* Below ~820px the full footer no longer fits one line (the three.js credit tipped a 768 tablet into two, under the
+   driving buttons): drop the live-data note, forbid wrapping, and sit the driving buttons clear above it */
+@media (max-width: 820px), (max-height: 500px) {
+  .foot-live { display: none; }
+  .hud-foot { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; gap: var(--space-xs); max-width: calc(100vw - 1rem); }
+  .touch { bottom: calc(max(var(--space-2xs), env(safe-area-inset-bottom)) + 2.5rem); }
+}
 @media (max-width: 600px), (max-height: 500px) {
   .hud-title .br-label { display: none; }
-  /* One short line that cannot wrap, and the driving buttons sit clear above it (a wrapped footer once covered them) */
-  .hud-foot > span:nth-child(1) { display: none; }
-  .hud-foot { flex-wrap: nowrap; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.65rem; gap: var(--space-xs); max-width: calc(100vw - 1rem); }
-  .touch { bottom: calc(max(var(--space-2xs), env(safe-area-inset-bottom)) + 2.5rem); }
+  .foot-credit { display: none; } /* phones: the disclosure and the credit link are what fit */
+  .hud-foot { font-size: 0.65rem; }
   .pad-btn { width: 4rem; height: 4rem; }
   .pad-gas { width: 4.75rem; height: 4.75rem; }
 }
