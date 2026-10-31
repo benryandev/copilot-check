@@ -5,6 +5,7 @@ import { DISTRICTS, STOPS, SPAWN } from "./content.js";
 import { fetchLive, LABELS } from "./data.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates } from "./terrain.js";
 import { createGrass, createDust } from "./effects.js";
+import { createSky } from "./sky.js";
 import {
   M, animated, pads, crates, boards, colliders, districtGroups,
   buildStops, buildBoard, buildRoadSigns, addCrates, addProps, recolourMaterials, setTicker, modelsReady,
@@ -69,6 +70,8 @@ const roadMesh = buildRoads(pal());
 const jumpMesh = buildJumps(pal());
 const plazaMesh = buildPlazas(pal());
 scene.add(ground, roadMesh, jumpMesh, plazaMesh);
+const sky = createSky({ reduceMotion });
+scene.add(sky);
 buildStops(scene);
 buildRoadSigns(scene);
 addProps(scene);
@@ -83,6 +86,7 @@ let grass = null, dust = null;
 function applyTier() {
   const t = tier();
   renderer.setPixelRatio(Math.min(devicePixelRatio, t.ratio));
+  sky.userData.setScale(Math.min(devicePixelRatio, t.ratio));
   renderer.shadowMap.enabled = t.shadow > 0;
   sun.castShadow = t.shadow > 0;
   if (t.shadow) {
@@ -118,6 +122,7 @@ function applyTheme() {
   hemi.intensity = dark ? 0.55 : 1.1;
   sun.intensity = dark ? 0.9 : 1.6;
   recolourMaterials(p, dark);
+  sky.userData.setNight(dark);
   [ground, roadMesh, jumpMesh, plazaMesh, grass, dust].forEach((o) => o?.userData.recolour?.(p));
 }
 $("theme").addEventListener("click", () => {
@@ -581,6 +586,7 @@ function frame() {
   flowTick(dt);
   dust?.userData.step(dt);
   grass?.userData.tick(t);
+  sky.userData.tick(t, dt, camera.position);
   if (!debugCam) placeCamera(dt);
   if ((frameNo++ & 15) === 0) {
     if (!debugCam) cullDistricts();
