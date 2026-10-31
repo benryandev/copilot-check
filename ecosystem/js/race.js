@@ -221,7 +221,7 @@ $("race-form").addEventListener("submit", async (e) => {
       if (body.rank === 1) fetchGhost(); // the ghost is now this lap
     } else if (res.status === 429) {
       const wait = Number(body.retryAfter) || Number(res.headers.get("Retry-After")) || 60;
-      status.textContent = `One post a minute. Try again in ${Math.ceil(wait)} s.`;
+      status.textContent = `One post every 30 seconds. Try again in ${Math.ceil(wait)} s.`;
     } else {
       const code = typeof body.error === "string" ? body.error : "";
       status.textContent = REASONS[code] || `The leaderboard turned that down${code ? ` (${code.slice(0, 40)})` : ""}.`;
