@@ -74,7 +74,21 @@ function buildClouds(reduceMotion) {
     }
     if (moved) place();
   }
-  return { mesh, tick };
+  // Move every cloud within r of the segment a→b to the far side of b, out of a camera's path (the arrival flies
+  // in above the cloud layer and would otherwise look down through a cloud)
+  function clear(ax, az, bx, bz, r) {
+    const vx = bx - ax, vz = bz - az, len2 = vx * vx + vz * vz || 1;
+    for (const c of clouds) {
+      const t = Math.max(0, Math.min(1, ((c.x - ax) * vx + (c.z - az) * vz) / len2));
+      const dx = c.x - (ax + vx * t), dz = c.z - (az + vz * t);
+      if (dx * dx + dz * dz > r * r) continue;
+      const a = Math.atan2(vz, vx) + rand(-0.9, 0.9), far = rand(r * 1.2, CLOUD_RANGE * 0.9);
+      c.x = bx + Math.cos(a) * far;
+      c.z = bz + Math.sin(a) * far;
+    }
+    place();
+  }
+  return { mesh, tick, clear };
 }
 
 // ── Stars ──────────────────────────────────────────────────────────────
@@ -216,6 +230,7 @@ export function createSky({ reduceMotion = false } = {}) {
   apply();
   group.userData = {
     setNight(v) { night = v; apply(); },
+    clearClouds: clouds.clear,
     // Point sizes are in pixels: scale them with the device pixel ratio so stars match on a phone
     setScale(ratio) { stars.uniforms.uScale.value = ratio; if (shooter) shooter.uniforms.uScale.value = ratio; },
     tick(t, dt, cam) {

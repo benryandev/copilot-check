@@ -27,7 +27,7 @@ const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 10
 const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'intro', 'drive', 'stop', 'yard', 'yardSheet', 'peers', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'race'];
+const ALL = ['loading', 'arrive', 'intro', 'drive', 'stop', 'yard', 'yardSheet', 'peers', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'race'];
 const pick = opt('states') || ALL;
 const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
@@ -138,6 +138,11 @@ for (const w of WIDTHS) for (const theme of THEMES) {
     try {
       await page.goto(`${base}/ecosystem/?mp=0#${theme}`, { waitUntil: 'domcontentloaded' }); // no live room in the shoot: peers are injected below
       if (pick.includes('loading')) { await sleep(150); await page.screenshot({ path: `${out}eco-loading-${tag}.png` }); }
+      // The opening flight: title card in, the city still high in frame (wall-clock timed, so the same moment here)
+      if (pick.includes('arrive')) {
+        await page.waitForFunction(() => document.body.classList.contains('is-arriving'), null, { timeout: 60000 });
+        await shot('arrive', 1900);
+      }
       await page.waitForFunction(() => window.__eco && document.getElementById('intro').open, null, { timeout: 60000 });
       await page.evaluate(() => document.fonts.ready);
       await shot('intro', 2500);

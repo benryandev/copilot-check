@@ -17,7 +17,7 @@ async function open(name) {
   await ctx.addInitScript((n) => localStorage.setItem('eco-race-name', JSON.stringify(n)), name);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log(`  [${name}] page error`, String(e).split('\n')[0]));
-  await page.goto(`${base}/ecosystem/?ws=${encodeURIComponent(wsUrl)}`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${base}/ecosystem/?arrive=0&ws=${encodeURIComponent(wsUrl)}`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.__eco && document.getElementById('intro').open, null, { timeout: 60000 });
   await page.click('#start');
   return page;

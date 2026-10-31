@@ -387,6 +387,35 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
   perspective: 600px;
 }
 .loader.is-done { opacity: 0; pointer-events: none; }
+.loader-bar { width: min(16rem, 60vw); height: 2px; border-radius: 1px; background: var(--border-color); overflow: hidden; }
+.loader-bar::after { content: ""; display: block; height: 100%; background: var(--text-primary); transform: scaleX(var(--p, 0)); transform-origin: left; transition: transform 350ms ease; }
+
+/* ── The arrival: title card over the opening flight; the HUD waits until the car has landed ──────── */
+.arrive {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  align-content: end;
+  justify-items: center;
+  text-align: center;
+  padding: 0 var(--space-md) max(16vh, env(safe-area-inset-bottom));
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 900ms ease, transform 900ms ease;
+}
+.arrive.is-in { opacity: 1; transform: none; }
+.arrive p { margin: 0; text-shadow: 0 0 10px var(--bg-page), 0 0 2px var(--bg-page); }
+.arrive .br-label { color: var(--text-secondary); margin-bottom: var(--space-xs); }
+.arrive-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(2.25rem, 7vw, 5rem); line-height: 1; letter-spacing: -0.02em; color: var(--text-primary); text-shadow: 0 2px 28px var(--bg-page), 0 0 2px var(--bg-page); }
+.arrive-hint { margin-top: var(--space-md); font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08rem; text-transform: uppercase; color: var(--text-secondary); }
+.arrive-tap { display: none; }
+body:has(#touch:not([hidden])) .arrive-tap { display: inline; }
+body:has(#touch:not([hidden])) .arrive-key { display: none; }
+.hud, .touch { transition: opacity 700ms ease; }
+body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transition: none; } /* gone at once; they fade back in */
+@media (prefers-reduced-motion: reduce) { .arrive, .hud, .touch { transition: none; } }
 .loader-mark { width: 7.5rem; height: 7.5rem; animation: loader-turn 2.4s linear infinite; }
 .loader-text { margin: 0; font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
 @keyframes loader-turn { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }

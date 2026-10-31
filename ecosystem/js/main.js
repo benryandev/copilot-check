@@ -16,6 +16,7 @@ import { buildRaceway } from "./raceway.js";
 import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview } from "./race.js";
 import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
 import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers } from "./peers.js";
+import { loader, paint, wantsArrival, startArrival } from "./arrive.js";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -65,6 +66,9 @@ sun.shadow.bias = -0.0005;
 scene.add(hemi, sun, sun.target);
 
 // ── World ─────────────────────────────────────────────────────────────
+// Built in steps with a painted frame between them, so the loader reports real progress
+const load = loader(5);
+await load.step("Laying the roads");
 // Ground segments grow with the world (it reached past Partners for the raceway), same density
 let ground = buildGround(Math.round((tier().ground * WORLD.radius) / 280), pal());
 const roadMesh = buildRoads(pal());
@@ -73,9 +77,11 @@ const plazaMesh = buildPlazas(pal());
 scene.add(ground, roadMesh, jumpMesh, plazaMesh);
 const sky = createSky({ reduceMotion });
 scene.add(sky);
+await load.step("Raising the districts");
 buildStops(scene);
 buildRoadSigns(scene);
 addProps(scene);
+await load.step("Marking out the raceway");
 buildRaceway(scene);
 buildYard();
 
@@ -697,6 +703,7 @@ addEventListener("resize", resize);
 const clock = new THREE.Clock();
 let frameNo = 0;
 let debugCam = false; // test hook: hold the camera still for overview shots
+let arrival = null; // the opening flight owns the camera until it lands
 function frame() {
   const raw = clock.getDelta();
   const dt = Math.min(raw, 1 / 30);
@@ -717,7 +724,8 @@ function frame() {
   dust?.userData.step(dt);
   grass?.userData.tick(t);
   sky.userData.tick(t, dt, camera.position);
-  if (!debugCam) placeCamera(dt);
+  if (arrival?.active) arrival.tick(dt);
+  else if (!debugCam) placeCamera(dt);
   if ((frameNo++ & 15) === 0) {
     if (!debugCam) cullDistricts();
     const here = inRaceway(car.s.x, car.s.z);
@@ -735,6 +743,7 @@ function frame() {
 }
 
 await document.fonts.ready;
+await load.step("Painting the grass");
 applyTier();
 applyTheme();
 stepCar(car, keys, 0);
@@ -744,16 +753,29 @@ refresh();
 setInterval(refresh, 30_000);
 requestAnimationFrame(frame);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+await load.step("Fetching the car and live figures");
 await Promise.all([
   sleep(700), // long enough to read as a moment, not a flicker
   Promise.race([Promise.allSettled([modelsReady(), car.ready]), sleep(8000)]),
 ]);
-await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); // a drawn frame behind it
+load.done();
+await paint();
+await paint(); // a drawn frame behind it
+// The flight starts under the loader, so the first frame anyone sees is already moving
+if (wantsArrival()) {
+  const fx = -Math.sin(car.s.heading), fz = -Math.cos(car.s.heading);
+  arrival = startArrival({
+    camera, scene, sky, car, hq: DISTRICTS.hub.centre, stepCar,
+    chase: { pos: camera.position.clone(), look: camLook.clone() },
+    settle: () => { placeCamera(0, true); checkPads(); updateWhere(); },
+    landed: () => { car.s.squash = 0.32; emitDust(0, { event: { landed: 10 }, fx, fz, dirt: false }); },
+    onDone: () => show($("intro")),
+  });
+} else show($("intro"));
 $("loader").classList.add("is-done");
 setTimeout(() => $("loader").remove(), 450);
-show($("intro"));
 
 // Test hook for automated checks (no effect on play)
 window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, colliders,
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
-  info: () => renderer.info.render, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersState };
+  info: () => renderer.info.render, arrival: () => arrival, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersState };
