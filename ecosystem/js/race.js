@@ -183,12 +183,12 @@ const REASONS = {
   unknown_track: "The leaderboard doesn't know this track yet.",
   bad_name: "That name can't be used. Try another, up to 20 characters.",
   rude_name: "Please pick a different name.",
-  bad_splits: "Time rejected.",
-  bad_ms: "Time rejected.",
-  bad_trace: "Time rejected.",
-  lap_too_fast: "Time rejected.",
-  segment_too_fast: "Time rejected.",
-  too_large: "Time rejected.",
+  bad_splits: "Time rejected: the checkpoint times didn't add up.",
+  bad_ms: "Time rejected: the lap time didn't add up.",
+  bad_trace: "Time rejected: the lap's path didn't add up.",
+  lap_too_fast: "Time rejected: faster than the car can go over a whole lap.",
+  segment_too_fast: "Time rejected: one stretch between checkpoints was faster than the car can go.",
+  too_large: "Time rejected: too much data.",
   origin: "The leaderboard only takes times posted from this site.",
 };
 $("race-form").addEventListener("submit", async (e) => {
@@ -222,7 +222,8 @@ $("race-form").addEventListener("submit", async (e) => {
       status.textContent = `One post every 30 seconds. Try again in ${Math.ceil(wait)} s.`;
     } else {
       const code = typeof body.error === "string" ? body.error : "";
-      status.textContent = REASONS[code] || `The leaderboard turned that down${code ? ` (${code.slice(0, 40)})` : ""}.`;
+      status.textContent = (REASONS[code] || `The leaderboard turned that down${code ? ` (${code.slice(0, 40)})` : ""}.`)
+        + (code === "segment_too_fast" && Number.isInteger(body?.segment) ? ` (stretch ${body.segment + 1})` : "");
     }
   } catch {
     status.textContent = "Leaderboard offline. Your best lap is still saved on this device.";

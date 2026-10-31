@@ -162,15 +162,37 @@ function releaseKeys() {
 }
 
 // ── Crates ────────────────────────────────────────────────────────────
+// Crates: a 2D slide for the knock-about, plus real falling. A crate's floor is the ground or the top of whatever
+// it overlaps enough, so they land on each other; knock the one underneath away and the rest drop; land on an edge
+// and it slides off, which is what makes a heap rather than a tower. In the air it tumbles; at rest it settles onto
+// a face.
+const CRATE_G = 22, CRATE_BOUNCE = 0.28, QUARTER = Math.PI / 2;
+const faceSnap = (a, dt) => { const t = Math.round(a / QUARTER) * QUARTER; return t + (a - t) * Math.exp(-dt * 10); };
+function crateFloor(c) {
+  const p = c.m.position;
+  let floor = groundHeight(p.x, p.z), on = null, off = 0;
+  const bottom = p.y - c.h;
+  for (const o of crates) {
+    if (o === c || o.dying != null) continue;
+    const q = o.m.position, top = q.y + o.h;
+    if (top > bottom + 0.3) continue; // beside us, not under us
+    const span = (c.r + o.r) * 0.62; // the square-ish footprints overlap
+    const dx = Math.abs(p.x - q.x), dz = Math.abs(p.z - q.z);
+    if (dx > span || dz > span) continue;
+    if (top > floor) { floor = top; on = o; off = Math.max(dx, dz) / span; }
+  }
+  return { floor, on, off };
+}
 function stepCrates(dt) {
   const s = car.s;
   const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
   for (const c of crates) {
     const p = c.m.position;
+    if (c.vy === undefined) { c.vy = 0; c.air = false; c.ang = new THREE.Vector3(); }
     const dx = p.x - s.x, dz = p.z - s.z;
     const d = Math.hypot(dx, dz);
     const minD = CAR_R + c.r;
-    if (d < minD && d > 0 && s.y < p.y + c.h + 1.2) {
+    if (d < minD && d > 0 && s.y < p.y + c.h + 1.2 && p.y - c.h < s.y + 1.4) {
       c.hit = true;
       const nx = dx / d, nz = dz / d;
       p.x = s.x + nx * minD;
@@ -179,11 +201,15 @@ function stepCrates(dt) {
       c.v.x += nx * (along * 1.3 + 1);
       c.v.y += nz * (along * 1.3 + 1);
       c.spin += (Math.random() - 0.5) * along * 1.2;
-      c.tilt = Math.min(1, c.tilt + along * 0.08);
+      if (along > 5) { // a proper hit tosses it
+        c.vy = Math.max(c.vy, 1.5 + along * 0.18);
+        c.air = true;
+        c.ang.set((Math.random() - 0.5) * along * 0.6, 0, (Math.random() - 0.5) * along * 0.6);
+      }
       s.speed *= 0.92;
     }
     for (const o of crates) {
-      if (o === c || Math.abs(p.y - o.m.position.y) > c.h + o.h) continue; // stacked, not touching sideways
+      if (o === c || Math.abs(p.y - o.m.position.y) >= c.h + o.h - 0.08) continue; // one on top of the other: not a sideways touch
       const ox = p.x - o.m.position.x, oz = p.z - o.m.position.z;
       const od = Math.hypot(ox, oz), md = c.r + o.r;
       if (od < md && od > 0) {
@@ -207,15 +233,34 @@ function stepCrates(dt) {
     }
     const o = { x: p.x, z: p.z };
     if (keepInWorld(o, c.r)) { p.x = o.x; p.z = o.z; c.v.multiplyScalar(-0.4); }
-    const damp = Math.exp(-dt * 2.2);
+    const damp = Math.exp(-dt * (c.air ? 0.4 : 2.2));
     c.v.multiplyScalar(damp);
     c.spin *= damp;
     c.m.rotation.y += c.spin * dt;
-    c.tilt *= Math.exp(-dt * 3);
-    // A knocked stack falls; anything resting on a hit piece falls with it
-    if (c.hit) c.lift *= Math.exp(-dt * 7);
-    p.y = groundHeight(p.x, p.z) + c.h + c.lift + c.tilt * 0.9;
-    c.m.rotation.x = c.tilt * 0.5;
+    // Up and down
+    const { floor, on, off } = crateFloor(c);
+    if (c.air || p.y - c.h > floor + 0.02) {
+      c.air = true;
+      c.vy -= CRATE_G * dt;
+      p.y += c.vy * dt;
+      c.m.rotation.x += c.ang.x * dt;
+      c.m.rotation.z += c.ang.z * dt;
+      if (p.y - c.h <= floor) {
+        p.y = floor + c.h;
+        if (c.vy < -3) { c.vy = -c.vy * CRATE_BOUNCE; c.ang.multiplyScalar(0.5); }
+        else {
+          c.vy = 0; c.air = false; c.ang.set(0, 0, 0);
+          if (on && off > 0.55) { // caught the edge of the one below: slide off it
+            const ex = p.x - on.m.position.x, ez = p.z - on.m.position.z, ed = Math.hypot(ex, ez) || 1;
+            c.v.x += (ex / ed) * 1.8; c.v.y += (ez / ed) * 1.8;
+          }
+        }
+      }
+    } else {
+      p.y = floor + c.h;
+      c.m.rotation.x = faceSnap(c.m.rotation.x, dt);
+      c.m.rotation.z = faceSnap(c.m.rotation.z, dt);
+    }
   }
 }
 

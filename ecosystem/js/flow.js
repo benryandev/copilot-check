@@ -18,7 +18,9 @@ const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // The belt, in the shed's own frame: local +x runs out through the door
 const BELT = { x0: 4.6, x1: 19.2, top: 1.1, width: 1.6, speed: 1.7 };
-const SPAWN_X = 3.4; // just inside the door, so a crate comes out through it
+const SPAWN_X = 3.4;
+const LIP = { len: 1.8, rise: 0.5 }; // the belt's last stretch rises, so crates are thrown off rather than rolled off
+LIP.angle = Math.atan2(LIP.rise, LIP.len); // just inside the door, so a crate comes out through it
 const QUEUE_MAX = 6; // more than this waiting at the door and the next crate spills over the side
 const MERGE_MS = 500; // partial fills of one order, this close together, make one crate
 const MAX_LANDED = 44; // crates in the yard before the oldest is cleared
@@ -71,7 +73,7 @@ export function buildYard() {
   for (const x of [BELT.x0 + 0.2, BELT.x1 - 0.2]) {
     const roller = cyl(0.22, BELT.width + 0.1, M.trim, x, 0, 0, 14);
     roller.rotation.x = Math.PI / 2;
-    roller.position.y = BELT.top - 0.2;
+    roller.position.y = BELT.top - 0.2 + (x > BELT.x1 - LIP.len ? LIP.rise * (1 - 0.2 / LIP.len) : 0);
     g.add(roller);
   }
   // The belt: chevrons that scroll towards the end
@@ -89,7 +91,13 @@ export function buildYard() {
   stripes.redraw();
   stripes.tex.wrapS = THREE.RepeatWrapping;
   stripes.tex.repeat.set(len / 1.6, 1);
-  g.add(mesh(new THREE.BoxGeometry(len, 0.1, BELT.width), new THREE.MeshStandardMaterial({ map: stripes.tex, roughness: 0.9 }), mid, BELT.top - 0.05, 0));
+  // The belt, then a lip that rises over the last stretch so crates leave it with a throw and heap up below
+  const beltMat = new THREE.MeshStandardMaterial({ map: stripes.tex, roughness: 0.9 });
+  const flat = len - LIP.len;
+  g.add(mesh(new THREE.BoxGeometry(flat, 0.1, BELT.width), beltMat, BELT.x0 + flat / 2, BELT.top - 0.05, 0));
+  const lip = mesh(new THREE.BoxGeometry(LIP.len / Math.cos(LIP.angle), 0.1, BELT.width), beltMat, BELT.x1 - LIP.len / 2, BELT.top - 0.05 + LIP.rise / 2, 0);
+  lip.rotation.z = LIP.angle;
+  g.add(lip);
   // The screen over the front door
   const screen = canvasTexture(1200, 480, drawScreen);
   screen.redraw();
@@ -164,14 +172,16 @@ function spawn(f) {
 }
 
 // A crate becomes part of the yard: world space, knockable, counted towards the limit
-function land(rec, x, y, z, rotY, vx, vz) {
+function land(rec, x, y, z, rotY, vx, vz, vy = 0, tumble = 0) {
   const m = rec.m;
   m.position.set(x, y, z);
   m.rotation.set(0, rotY, 0);
   districtGroups.yard.add(m);
   rec.v.set(vx, vz);
-  rec.lift = Math.max(0, y - rec.h - groundHeight(x, z));
-  rec.hit = rec.lift > 0.05;
+  rec.vy = vy;
+  rec.air = y - rec.h > groundHeight(x, z) + 0.05;
+  rec.ang = new THREE.Vector3((Math.random() - 0.5) * tumble, 0, (Math.random() - 0.5) * tumble);
+  rec.hit = rec.air;
   crates.push(rec);
   state.landed.push(rec);
   while (state.landed.length > MAX_LANDED) {
@@ -185,10 +195,10 @@ function drop(b) {
   const w = new THREE.Vector3();
   b.rec.m.getWorldPosition(w);
   yard.g.remove(b.rec.m);
-  const k = BELT.speed + 0.6;
-  land(b.rec, w.x, w.y, w.z, yard.g.rotation.y, yard.dirX.x * k, yard.dirX.z * k);
+  // Thrown off the lip: forward at belt speed, up at the lip's pitch, tumbling
+  const k = BELT.speed * Math.cos(LIP.angle) + 0.5, up = BELT.speed * Math.sin(LIP.angle) * 1.3 + 0.6;
+  land(b.rec, w.x, w.y, w.z, yard.g.rotation.y + (Math.random() - 0.5) * 0.3, yard.dirX.x * k, yard.dirX.z * k, up, 3);
   b.rec.spin = (Math.random() - 0.5) * 2.5;
-  b.rec.tilt = 0.35;
 }
 
 // Too many waiting at the door: this one tumbles off the side, beside the belt
@@ -196,7 +206,7 @@ function spill(f) {
   const rec = makeCrate(f);
   const side = Math.random() < 0.5 ? -1 : 1;
   const p = yard.g.localToWorld(new THREE.Vector3(5.6, BELT.top + rec.h + 0.4, side * (BELT.width / 2 + rec.h + 0.3)));
-  land(rec, p.x, p.y, p.z, yard.g.rotation.y + (Math.random() - 0.5) * 0.6, yard.dirZ.x * side * 2.4, yard.dirZ.z * side * 2.4);
+  land(rec, p.x, p.y, p.z, yard.g.rotation.y + (Math.random() - 0.5) * 0.6, yard.dirZ.x * side * 2.4, yard.dirZ.z * side * 2.4, 0.4, 4);
   rec.spin = (Math.random() - 0.5) * 4;
   rec.tilt = 0.6;
   state.lastSpill = performance.now();
@@ -232,6 +242,8 @@ export function flowTick(dt) {
   for (const b of state.belt) {
     b.x += BELT.speed * dt;
     b.rec.m.position.x = b.x;
+    const u = (b.x - (BELT.x1 - LIP.len)) / LIP.len; // 0 at the foot of the lip, 1 at its end
+    if (u > 0) { b.rec.m.position.y = BELT.top + b.rec.h + u * LIP.rise + Math.sin(LIP.angle) * b.rec.h * 0.4; b.rec.m.rotation.z = LIP.angle; }
   }
   while (state.belt.length && state.belt[0].x >= BELT.x1 - 0.05) drop(state.belt.shift());
   // The next crate waiting steps on once there's room behind the last
