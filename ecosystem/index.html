@@ -127,16 +127,15 @@
     <h2 id="race-title">Lap complete</h2>
     <p class="race-result" id="race-result"></p>
     <p id="race-gap"></p>
-    <form class="race-form" id="race-form" hidden>
-      <label class="br-field-label" for="race-name">Name on the leaderboard</label>
+    <form class="race-form" id="race-form">
+      <label class="br-field-label" for="race-name">Your name for the leaderboard</label>
       <div class="race-row">
-        <input class="br-input" id="race-name" name="name" type="text" maxlength="20" autocomplete="nickname" autocapitalize="off" spellcheck="false" required>
-        <button type="submit" class="br-button"><span class="br-button-label">Post</span></button>
+        <input class="br-input" id="race-name" name="name" type="text" maxlength="20" placeholder="Your name" autocomplete="nickname" autocapitalize="off" spellcheck="false" required>
+        <button type="submit" class="br-button"><span class="br-button-label">Post to leaderboard</span></button>
       </div>
     </form>
     <p class="muted" id="race-status" role="status" aria-live="polite"></p>
     <div class="sheet-actions">
-      <button type="button" class="br-button" id="race-post"><span class="br-button-label">Post to leaderboard</span></button>
       <button type="button" class="br-button br-button--secondary" id="race-again"><span class="br-button-label">Race again</span></button>
       <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Back to the world</span></button>
     </div>

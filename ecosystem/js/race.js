@@ -164,20 +164,18 @@ function openFinish() {
       : ` ${gap(d).slice(1)} behind ${ghostData.name}'s ${formatTime(ghostData.ms)}.`;
   }
   $("race-gap").textContent = text;
-  $("race-form").hidden = true;
-  $("race-post").hidden = false;
-  $("race-post").disabled = false;
+  // The name field is right there, like an arcade high-score screen (a visitor couldn't find it
+  // behind a "Post" button, 31 Oct), filled in with the last name used on this device
+  const form = $("race-form"), name = $("race-name");
+  form.hidden = false;
+  form.querySelector("button").disabled = false;
+  if (!name.value) name.value = load(NAME_KEY) || "";
   $("race-status").textContent = "";
   hooks.show($("race"));
+  // Put the cursor in the field on a keyboard device; on a phone that would throw the keyboard over the sheet
+  if (!matchMedia("(pointer: coarse)").matches) name.focus();
 }
 
-$("race-post").addEventListener("click", () => {
-  $("race-post").hidden = true;
-  $("race-form").hidden = false;
-  const name = $("race-name");
-  if (!name.value) name.value = load(NAME_KEY) || "";
-  name.focus();
-});
 $("race-again").addEventListener("click", () => toStart());
 
 // Error codes from the worker, in words

@@ -166,7 +166,6 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         document.getElementById('race-result').textContent = '0:25.853';
         document.getElementById('race-gap').textContent = 'New best, 1.417 s faster than your last best (0:27.270).';
         document.getElementById('race-form').hidden = false;
-        document.getElementById('race-post').hidden = true;
         document.getElementById('race').showModal();
       });
       await shot('race');
