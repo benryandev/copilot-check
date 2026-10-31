@@ -1,10 +1,13 @@
 // RealFi Raceway time trials: gates crossed in order, the lap clock, the visitor's best lap (kept in
-// this browser) and the shared top 10 from the copilot-watch worker. The game works the same when
-// the worker can't be reached; the board just says so.
+// this browser), the shared top 10 from the copilot-watch worker, and the ghost: the fastest lap on
+// the board driven beside you. The game works the same when the worker can't be reached; the board
+// just says so and there's no ghost.
 
+import * as THREE from "../vendor/three.module.min.js";
 import { RACE_TRACK } from "./content.js";
-import { raceGates, trackAt, trackLen } from "./terrain.js";
+import { raceGates, trackAt, trackLen, groundHeight } from "./terrain.js";
 import { setBoard, formatTime } from "./raceway.js";
+import { canvasTexture, redraws } from "./build.js";
 
 const API = "https://copilot-watch.benryan.workers.dev";
 const N = RACE_TRACK.checkpoints.length;
@@ -36,8 +39,12 @@ let best = (() => {
 // the car can: 24 m/s at most, under the worker's 30 m/s check.
 let clock = 0;
 const lap = { running: false, start: 0, next: 1, splits: [] };
-let finished = null; // { ms, splits, prevBest } for the finish sheet
+let finished = null; // { ms, splits, trace, prevBest } for the finish sheet
 let hooks = {};
+// The lap's path, for the ghost: [t ms, x, z, heading] ten times a second, thinned to the worker's cap
+const TRACE_MS = 100, TRACE_MAX = 400;
+let trace = [];
+let here = { x: 0, z: 0, h: 0 };
 
 function note(text, ms = 3000) {
   const el = $("race-note");
@@ -50,6 +57,8 @@ function note(text, ms = 3000) {
 function startLap(t) {
   countStage("start");
   Object.assign(lap, { running: true, start: t, next: 1, splits: [] });
+  trace = [[0, round1(here.x), round1(here.z), round2(here.h)]];
+  if (ghostData) note(`Ghost: ${ghostData.name}, ${formatTime(ghostData.ms)}`, 2600);
 }
 export function raceCancel(why) {
   if (!lap.running) return;
@@ -80,13 +89,15 @@ function crossed(g, forward, t) {
 }
 
 const gap = (d) => `${d <= 0 ? "−" : "+"}${(Math.abs(d) / 1000).toFixed(3)} s`;
+const round1 = (v) => Math.round(v * 10) / 10, round2 = (v) => Math.round(v * 100) / 100;
 
 // Called every frame the game runs, with where the car was and is. A crossing is the car's path
 // this frame against each gate's segment, so a fast car can't skip one between frames, and the
 // moment is placed within the frame.
-export function raceTick(px, pz, x, z, dt) {
+export function raceTick(px, pz, x, z, heading, dt) {
   const t0 = clock;
   clock += dt;
+  here = { x, z, h: heading };
   if (px !== x || pz !== z) {
     for (const g of raceGates) {
       const a = (px - g.x) * g.fx + (pz - g.z) * g.fz, b = (x - g.x) * g.fx + (z - g.z) * g.fz;
@@ -97,6 +108,11 @@ export function raceTick(px, pz, x, z, dt) {
       crossed(g, b > a, t0 + dt * u);
     }
   }
+  if (lap.running) {
+    const e = (clock - lap.start) * 1000;
+    if (e - trace[trace.length - 1][0] >= TRACE_MS) trace.push([Math.round(e), round1(x), round1(z), round2(heading)]);
+  }
+  ghostTick();
   drawHud();
 }
 
@@ -104,12 +120,16 @@ function finish(t) {
   const ms = Math.round((t - lap.start) * 1000);
   const splits = lap.splits.slice();
   lap.running = false;
+  // Close the trace on the line, then thin it to the worker's cap (every k-th sample, the last one kept)
+  trace.push([ms, round1(here.x), round1(here.z), round2(here.h)]);
+  const k = Math.ceil(trace.length / TRACE_MAX);
+  const path = k > 1 ? trace.filter((_, i) => i % k === 0 || i === trace.length - 1) : trace;
   const prevBest = best;
   if (!best || ms < best.ms) {
     best = { ms, splits };
     save(BEST_KEY, best);
   }
-  finished = { ms, splits, prevBest, posted: false };
+  finished = { ms, splits, trace: path, prevBest, posted: false };
   countStage("finish");
   openFinish();
 }
@@ -132,11 +152,18 @@ function drawHud() {
 function openFinish() {
   const f = finished;
   $("race-result").textContent = formatTime(f.ms);
-  $("race-gap").textContent =
+  let text =
     !f.prevBest ? "Your first full lap. It's your best so far."
     : f.ms < f.prevBest.ms ? `New best, ${gap(f.ms - f.prevBest.ms).slice(1)} faster than your last best (${formatTime(f.prevBest.ms)}).`
     : f.ms === f.prevBest.ms ? "Exactly your best lap."
     : `${gap(f.ms - f.prevBest.ms).slice(1)} slower than your best (${formatTime(f.prevBest.ms)}).`;
+  if (ghostData) {
+    const d = f.ms - ghostData.ms;
+    text += d < 0 ? ` You beat ${ghostData.name}'s ${formatTime(ghostData.ms)} by ${gap(d).slice(1)}. Post it to take the top spot.`
+      : d === 0 ? ` Dead level with ${ghostData.name}'s ${formatTime(ghostData.ms)}.`
+      : ` ${gap(d).slice(1)} behind ${ghostData.name}'s ${formatTime(ghostData.ms)}.`;
+  }
+  $("race-gap").textContent = text;
   $("race-form").hidden = true;
   $("race-post").hidden = false;
   $("race-post").disabled = false;
@@ -160,6 +187,7 @@ const REASONS = {
   rude_name: "Please pick a different name.",
   bad_splits: "Time rejected.",
   bad_ms: "Time rejected.",
+  bad_trace: "Time rejected.",
   lap_too_fast: "Time rejected.",
   segment_too_fast: "Time rejected.",
   too_large: "Time rejected.",
@@ -180,7 +208,7 @@ $("race-form").addEventListener("submit", async (e) => {
     const res = await fetch(`${API}/race/time`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ track: RACE_TRACK.id, name, ms: f.ms, splits: f.splits }),
+      body: JSON.stringify({ track: RACE_TRACK.id, name, ms: f.ms, splits: f.splits, trace: f.trace }),
     });
     const body = await res.json().catch(() => ({}));
     if (res.ok && body.ok) {
@@ -190,6 +218,7 @@ $("race-form").addEventListener("submit", async (e) => {
       const top = readTop(body);
       if (top) setTop({ status: "ok", top, at: Date.now() });
       else fetchTop();
+      if (body.rank === 1) fetchGhost(); // the ghost is now this lap
     } else if (res.status === 429) {
       const wait = Number(body.retryAfter) || Number(res.headers.get("Retry-After")) || 60;
       status.textContent = `One post a minute. Try again in ${Math.ceil(wait)} s.`;
@@ -245,7 +274,7 @@ export const onBoard = (f) => listeners.add(f);
 // While on the raceway: fetch on arrival, then every 60 s
 export function raceRefresh(onRaceway) {
   if (onRaceway) countStage("found");
-  if (onRaceway && Date.now() - board.at > 60_000) fetchTop();
+  if (onRaceway && Date.now() - board.at > 60_000) { fetchTop(); fetchGhost(); }
 }
 
 // The top 10 as a list (names as text only)
@@ -264,6 +293,144 @@ export function topList(b = board) {
     ol.append(li);
   }
   return ol;
+}
+
+// ── The ghost ──────────────────────────────────────────────────────────
+// The fastest lap on the board, driven beside you from the moment you cross the line, with the
+// leader's name over it. A lap posted with a trace replays exactly. A lap from before traces (or
+// one that failed to record) has only its checkpoint times, so its ghost follows the track's
+// centreline and reaches each checkpoint when they did: their pace, not their line.
+let ghostData = null; // { name, ms, splits, trace|null, synth }
+let ghost = null; // { group, draw }
+let ghostAt = 0, fetchingGhost = false;
+let previewMs = null; // test hook: hold the ghost at this point of its lap
+const GHOST_COLOUR = 0x26fab0;
+
+function readGhost(body) {
+  const g = body?.ghost;
+  if (!g || typeof g !== "object") return null;
+  const ms = Number(g.ms), name = String(g.name ?? "").slice(0, 20);
+  if (!name || !Number.isFinite(ms) || ms <= 0) return null;
+  const splits = Array.isArray(g.splits) && g.splits.length === N && g.splits.every((v) => Number.isFinite(v)) ? g.splits.map(Number) : null;
+  const tr = Array.isArray(g.trace) && g.trace.length >= 2 && g.trace.every((s) => Array.isArray(s) && s.length === 4 && s.every(Number.isFinite)) ? g.trace : null;
+  if (!tr && !splits) return null;
+  return { name, ms, splits, trace: tr, synth: !tr };
+}
+async function fetchGhost() {
+  if (fetchingGhost) return;
+  fetchingGhost = true;
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 8000);
+    const res = await fetch(`${API}/race/ghost?track=${encodeURIComponent(RACE_TRACK.id)}`, { cache: "no-store", signal: ctl.signal });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`race/ghost: ${res.status}`);
+    setGhost(readGhost(await res.json()));
+  } catch (err) {
+    console.info("[eco] ghost unavailable:", err.message);
+  } finally {
+    ghostAt = Date.now();
+    fetchingGhost = false;
+  }
+}
+function setGhost(g) {
+  ghostData = g;
+  if (g) buildGhost().then(() => ghost?.draw());
+  else if (ghost) ghost.group.visible = false;
+}
+
+// Where the ghost is `e` ms into its lap: a recorded path interpolated, or the centreline at the
+// splits' pace
+function ghostPose(e) {
+  const g = ghostData;
+  if (g.trace) {
+    const tr = g.trace;
+    if (e <= tr[0][0]) return { x: tr[0][1], z: tr[0][2], h: tr[0][3] };
+    let lo = 0, hi = tr.length - 1;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (tr[mid][0] <= e) lo = mid; else hi = mid; }
+    const a = tr[lo], b = tr[hi];
+    const u = b[0] > a[0] ? Math.min(1, (e - a[0]) / (b[0] - a[0])) : 1;
+    let dh = b[3] - a[3];
+    dh = Math.atan2(Math.sin(dh), Math.cos(dh)); // the short way round
+    return { x: a[1] + (b[1] - a[1]) * u, z: a[2] + (b[2] - a[2]) * u, h: a[3] + dh * u };
+  }
+  const times = [0, ...g.splits, g.ms], dist = [0, ...RACE_TRACK.checkpoints, trackLen];
+  let i = 1;
+  while (i < times.length - 1 && e > times[i]) i++;
+  const u = Math.max(0, Math.min(1, (e - times[i - 1]) / (times[i] - times[i - 1])));
+  const s = dist[i - 1] + (dist[i] - dist[i - 1]) * u;
+  const p = trackAt(s);
+  return { x: p.x, z: p.z, h: Math.atan2(-p.fx, -p.fz) };
+}
+
+// A see-through copy of the car, with a name tag; built once the car model is in
+let building = null;
+function buildGhost() {
+  if (building) return building;
+  building = (async () => {
+    await hooks.car?.ready;
+    const group = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: GHOST_COLOUR, emissive: GHOST_COLOUR, emissiveIntensity: 0.35, transparent: true, opacity: 0.42, depthWrite: false, roughness: 0.5 });
+    const body = hooks.car.tilt.clone(true);
+    body.rotation.set(0, 0, 0);
+    body.scale.set(1, 1, 1);
+    body.traverse((o) => { if (o.isMesh) { o.material = mat; o.castShadow = o.receiveShadow = false; o.renderOrder = 3; } });
+    group.add(body);
+    // The name tag: who you're racing and their time
+    const tag = canvasTexture(1024, 192, (ctx, w, h, p) => {
+      ctx.clearRect(0, 0, w, h);
+      const text = ghostData ? `${ghostData.name}  ${formatTime(ghostData.ms)}` : "";
+      ctx.font = "600 80px 'Atkinson Hyperlegible Next', Arial, sans-serif";
+      const tw = Math.min(w - 120, ctx.measureText(text).width);
+      const pw = tw + 96;
+      ctx.fillStyle = p.panel;
+      ctx.globalAlpha = 0.92;
+      ctx.beginPath();
+      ctx.roundRect((w - pw) / 2, 30, pw, 132, 66);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#" + new THREE.Color(GHOST_COLOUR).getHexString();
+      ctx.fillRect((w - pw) / 2 + 56, 148, pw - 112, 8);
+      ctx.fillStyle = p.text;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText(text, w / 2, 96, w - 120);
+    });
+    let pal = null;
+    const draw = () => pal && tag.redraw(pal);
+    redraws.push((p) => { pal = p; tag.redraw(p); });
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tag.tex, depthWrite: false, transparent: true }));
+    sprite.scale.set(7, 1.3125, 1);
+    sprite.position.y = 3.1;
+    sprite.renderOrder = 4;
+    group.add(sprite);
+    group.visible = false;
+    hooks.scene?.add(group);
+    ghost = { group, draw, tag };
+    // The theme pass may have run before this; paint with the palette the pads were painted with
+    if (!pal) { const panel = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim(); pal = { panel: panel || "#ffffff", text: getComputedStyle(document.body).color || "#0d0d0d" }; tag.redraw(pal); }
+  })();
+  return building;
+}
+
+function ghostTick() {
+  if (!ghost || !ghostData) return;
+  const e = previewMs ?? (lap.running ? (clock - lap.start) * 1000 : null);
+  const on = e != null && e <= ghostData.ms + 2000;
+  ghost.group.visible = on;
+  if (!on) return;
+  const p = ghostPose(Math.min(e, ghostData.ms));
+  ghost.group.position.set(p.x, groundHeight(p.x, p.z), p.z);
+  ghost.group.rotation.y = p.h;
+}
+
+// Test hook: hold the ghost `sec` seconds into its lap (null to release); `stub` stands in for the
+// board's leader when the worker can't be reached ({name, ms, splits})
+export function ghostPreview(sec, stub) {
+  if (stub) setGhost(readGhost({ ghost: stub }));
+  previewMs = sec == null ? null : sec * 1000;
+  if (previewMs != null) buildGhost().then(ghostTick);
+  else if (ghost) ghost.group.visible = false;
 }
 
 // ── To the start ───────────────────────────────────────────────────────

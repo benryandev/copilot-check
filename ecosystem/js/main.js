@@ -12,7 +12,7 @@ import {
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R } from "./car.js";
 import { tint } from "./colours.js";
 import { buildRaceway } from "./raceway.js";
-import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart } from "./race.js";
+import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview } from "./race.js";
 import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
 
 const $ = (id) => document.getElementById(id);
@@ -437,7 +437,7 @@ function placeCar(x, z, heading) {
   checkPads();
   updateWhere();
 }
-initRace({ show, place: placeCar });
+initRace({ show, place: placeCar, car, scene });
 
 function openMap() {
   raceCancel("Lap cancelled: Map view");
@@ -572,7 +572,7 @@ function frame() {
   if (!paused) {
     const px = car.s.x, pz = car.s.z;
     const info = stepCar(car, keys, dt);
-    raceTick(px, pz, car.s.x, car.s.z, dt);
+    raceTick(px, pz, car.s.x, car.s.z, car.s.heading, dt);
     emitDust(dt, info);
     checkPads();
     updateWhere();
@@ -620,4 +620,4 @@ show($("intro"));
 // Test hook for automated checks (no effect on play)
 window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, colliders,
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
-  info: () => renderer.info.render, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills };
+  info: () => renderer.info.render, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview };

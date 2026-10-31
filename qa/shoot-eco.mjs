@@ -25,7 +25,7 @@ const opt = k => args.find(a => a.startsWith(`--${k}=`))?.split('=')[1]?.split('
 const HEIGHT = { 375: 812, 768: 1024, 1024: 768, 1440: 900, 1920: 1080 };
 const WIDTHS = (opt('widths') || ['375', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'intro', 'drive', 'stop', 'yard', 'yardSheet', 'map', 'mapEnd', 'raceway', 'race'];
+const ALL = ['loading', 'intro', 'drive', 'stop', 'yard', 'yardSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'race'];
 const pick = opt('states') || ALL;
 const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
@@ -157,6 +157,10 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       await page.evaluate(() => document.querySelector('#map [data-close]').click());
       await page.evaluate(() => window.__eco.toStart());
       await shot('raceway', 3000); // the race HUD updates every 16 frames
+      // The ghost, held 1.4 s into a stand-in leader's lap so it sits just ahead of the car (the real board may be offline here)
+      await page.evaluate(() => window.__eco.ghostPreview(1.4, { name: 'Ben', ms: 25449, splits: [8570, 11900, 16630, 19950, 21840] }));
+      await shot('ghost', 1500);
+      await page.evaluate(() => window.__eco.ghostPreview(null));
       // The lap-finish sheet, filled in as openFinish() fills it
       await page.evaluate(() => {
         document.getElementById('race-result').textContent = '0:25.853';
