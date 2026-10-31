@@ -146,6 +146,16 @@ addEventListener("keyup", (e) => { const k = KEYMAP[e.code]; if (k) keys[k] = fa
 addEventListener("blur", releaseKeys);
 
 if (coarse || "ontouchstart" in window) $("touch").hidden = false;
+// iOS: a second tap within 300 ms anywhere is a double-tap zoom, and there is no gesture back from it. The CSS hint
+// (touch-action) should stop it; this is the belt to those braces. Only the second tap is swallowed, so single taps,
+// clicks and links still work. Pinch is refused too.
+let lastTap = 0;
+document.addEventListener("touchend", (e) => {
+  const now = performance.now();
+  if (now - lastTap < 300 && e.touches.length === 0) e.preventDefault();
+  lastTap = now;
+}, { passive: false, capture: true });
+for (const ev of ["gesturestart", "gesturechange", "gestureend"]) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
 document.querySelectorAll(".pad-btn").forEach((btn) => {
   const k = btn.dataset.key;
   const on = (e) => { e.preventDefault(); btn.setPointerCapture?.(e.pointerId); keys[k] = true; btn.classList.add("is-down"); };
