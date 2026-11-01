@@ -4,11 +4,11 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { M, paint, box, mesh, colliders } from "./build.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
-import { groundHeight, onDirt, racewayWeight, WORLD } from "./terrain.js";
+import { groundHeight, onDirt, onWater, racewayWeight, WORLD } from "./terrain.js";
 
 import { glowIntensity } from "./post.js";
 import { boostFor, boostedTop } from "./boost-math.js";
-import { topShare } from "./car-math.js";
+import { topShare, accelShare } from "./car-math.js";
 
 export const CAR_R = 1.6;
 const MAX_F = 24, MAX_R = 9, ACCEL = 16, BRAKE = 34, ROLL = 5, TURN = 2.2, GRAVITY = 30;
@@ -134,15 +134,15 @@ export function keepInWorld(o, r) {
 // Returns events for effects: { landed: impact speed } or null
 export function stepCar(car, keys, dt) {
   const s = car.s;
-  const dirt = onDirt(s.x, s.z);
-  // A jump boost (boost-math.js) raises the top speed for a moment and drives the car there; the brake ends it
-  if (s.boost > 0 && keys.down) s.boost = 0;
+  const dirt = onDirt(s.x, s.z), wet = onWater(s.x, s.z);
+  // A jump boost (boost-math.js) raises the top speed for a moment and drives the car there; the brake or the river ends it
+  if (s.boost > 0 && (keys.down || wet)) s.boost = 0;
   const boosting = s.boost > 0;
-  let top = MAX_F * topShare(dirt, dirt ? 1 : racewayWeight(s.x, s.z)); // grass is slow only at the Raceway (car-math.js)
+  let top = MAX_F * topShare(dirt, dirt ? 1 : racewayWeight(s.x, s.z), wet); // grass is slow only at the Raceway; water always (car-math.js)
   if (boosting) top = boostedTop(top);
   const throttle = s.air ? 0 : (keys.up ? 1 : 0) - (keys.down ? 1 : 0);
   if (boosting && !s.air && throttle > 0) s.speed = Math.min(top, s.speed + ACCEL * 1.6 * dt); // the boost pays while you are on the throttle
-  if (throttle > 0) s.speed += (s.speed < 0 ? BRAKE : ACCEL) * dt;
+  if (throttle > 0) s.speed += (s.speed < 0 ? BRAKE : ACCEL * accelShare(wet)) * dt;
   else if (throttle < 0) s.speed -= (s.speed > 0 ? BRAKE : ACCEL * 0.7) * dt;
   else if (!s.air) s.speed -= Math.sign(s.speed) * Math.min(Math.abs(s.speed), ROLL * dt);
   if (s.speed > top) s.speed = Math.max(top, s.speed - BRAKE * 0.5 * dt); // ease down when leaving the road or as a boost ends (must out-pull ACCEL, or the throttle creeps past top)
@@ -171,6 +171,10 @@ export function stepCar(car, keys, dt) {
   const hit = pushOut(s.x, s.z, CAR_R);
   if (hit) { s.x = hit.x; s.z = hit.z; s.speed *= 0.35; }
   if (keepInWorld(s, CAR_R)) s.speed *= 0.6;
+  // Into the river at speed: a splash (the effects and the sound read it)
+  const nowWet = !s.air && onWater(s.x, s.z); // flying over the channel is not in it; the landing frame sets this next time round
+  if (nowWet && !s.wet && Math.abs(s.speed) > 3) event = { ...(event || {}), splash: Math.abs(s.speed) };
+  s.wet = nowWet;
 
   const g = groundHeight(s.x, s.z);
   if (s.air) {
@@ -179,7 +183,7 @@ export function stepCar(car, keys, dt) {
     s.airTime += dt;
     if (s.y <= g) {
       event = { landed: -s.vy, airTime: s.airTime };
-      const b = boostFor(s.airTime, onDirt(s.x, s.z), s.airHit); // a clean jump pays on landing
+      const b = boostFor(s.airTime, onDirt(s.x, s.z) && !onWater(s.x, s.z), s.airHit); // a clean jump pays on landing; not into the river
       if (b > 0) { s.boost = b; event.boost = b; }
       s.airHit = false;
       s.squash = Math.min(0.35, -s.vy * 0.03);
@@ -222,5 +226,5 @@ export function stepCar(car, keys, dt) {
     if (front) hub.rotation.y = s.steer * 0.45;
     w.rotation.x -= (s.speed * dt) / 0.45;
   });
-  return { event, dirt, fx, fz, boost: s.boost };
+  return { event, dirt, wet: s.wet, fx, fz, boost: s.boost };
 }
