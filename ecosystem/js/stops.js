@@ -278,7 +278,7 @@ export const STOPS = [
       "A time-trial track in the RealFi colours, out past Partners & Integrations. Cross the start line, take every checkpoint in order and try to beat the best lap.",
     points: [
       "The clock starts when you cross the start line going forward and stops when you cross it again. Miss a checkpoint and the lap doesn't count.",
-      "There are three jumps, each with a flat lane beside it, and RealFi crates to knock about.",
+      "There are three jumps, each with a flat lane beside it, and RealFi crates to knock about. Land a clean jump on the track and the car gets a short speed boost; clip a crate or a bale in the air and it doesn't.",
       "Your best lap is kept in this browser. Post it to put your name on the top 10 board by the start.",
       "The fastest lap on the board drives beside you as a ghost, with the leader's name over it. Laps posted before ghosts existed are rebuilt from their checkpoint times, so that ghost follows the centreline at the right pace.",
     ],

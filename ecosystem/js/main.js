@@ -237,6 +237,7 @@ function stepCrates(dt) {
       p.z = s.z + nz * minD;
       const along = Math.max(0, (fx * nx + fz * nz) * s.speed);
       if (along > 2 && performance.now() - (c.hitAt || 0) > 250) { c.hitAt = performance.now(); sound.hit(c.kind || "crate", along / 24); }
+      if (s.air) s.airHit = true; // a clipped crate or bale spoils the jump's boost
       c.v.x += nx * (along * 1.3 + 1);
       c.v.y += nz * (along * 1.3 + 1);
       c.spin += (Math.random() - 0.5) * along * 1.2;
@@ -304,7 +305,7 @@ function stepCrates(dt) {
 }
 
 // ── Dust ──────────────────────────────────────────────────────────────
-let dustCarry = 0;
+let dustCarry = 0, baseFov = 55;
 function emitDust(dt, info) {
   if (reduceMotion || !dust) return;
   const s = car.s;
@@ -320,7 +321,7 @@ function emitDust(dt, info) {
   if (s.air || !info.dirt) return;
   const v = Math.abs(s.speed);
   if (v < 3) return;
-  dustCarry += dt * (v * 2 + Math.abs(s.steer) * v * 2.2);
+  dustCarry += dt * (v * 2 + Math.abs(s.steer) * v * 2.2) * (s.boost > 0 ? 2.5 : 1); // a boost throws up more
   while (dustCarry >= 1) {
     dustCarry -= 1;
     for (const side of [-1, 1]) {
@@ -790,7 +791,8 @@ function resize() {
   renderer.setSize(w, h, false);
   post.setSize(w, h, renderer.getPixelRatio());
   camera.aspect = w / h;
-  camera.fov = w < h ? 68 : 55;
+  baseFov = w < h ? 68 : 55;
+  camera.fov = baseFov;
   camera.updateProjectionMatrix();
   dust?.userData.setScale(h * renderer.getPixelRatio());
   fireworks?.userData.setScale(h * renderer.getPixelRatio());
@@ -809,9 +811,13 @@ function frame() {
   if (!paused) {
     const px = car.s.x, pz = car.s.z;
     const info = stepCar(car, raceLocked() ? NO_KEYS : keys, dt);
-    brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on);
-    sound.tick(dt, { speed: car.s.speed, throttle: (keys.up ? 1 : 0) - (keys.down ? 1 : 0), surface: car.s.air ? "air" : info.dirt ? "dirt" : onCobbles(car.s.x, car.s.z) ? "cobble" : "grass" });
+    brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on, info.boost > 0);
+    sound.tick(dt, { speed: car.s.speed, throttle: (keys.up ? 1 : 0) - (keys.down ? 1 : 0), surface: car.s.air ? "air" : info.dirt ? "dirt" : onCobbles(car.s.x, car.s.z) ? "cobble" : "grass", boost: info.boost > 0 });
     if (info.event?.landed > 4) sound.land(Math.min(1, info.event.landed / 14));
+    if (info.event?.boost) { sound.boost(); if (inRaceway(car.s.x, car.s.z)) raceNote("Boost!", 900); }
+    // The chase camera widens a little while boosting, and comes back
+    const wantFov = baseFov + (info.boost > 0 ? 7 : 0);
+    if (Math.abs(camera.fov - wantFov) > 0.05) { camera.fov += (wantFov - camera.fov) * (1 - Math.exp(-dt * 6)); camera.updateProjectionMatrix(); }
     raceTick(px, pz, car.s.x, car.s.z, car.s.heading, dt);
     raceLiveTick();
     sendPose(car.s, jumped, performance.now());
@@ -885,4 +891,4 @@ window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === ke
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
   info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState,
   cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks, sound,
-  raceLive: raceLiveState, raceLap: onLap, raceLiveInject: injectRaceLive };
+  raceLive: raceLiveState, raceLap: onLap, raceLiveInject: injectRaceLive, boost: (secs = 1.4) => { car.s.boost = secs; } };

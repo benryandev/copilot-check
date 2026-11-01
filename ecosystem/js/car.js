@@ -7,6 +7,7 @@ import { GLTFLoader } from "../vendor/GLTFLoader.js";
 import { groundHeight, onDirt, WORLD } from "./terrain.js";
 
 import { glowIntensity } from "./post.js";
+import { boostFor, boostedTop } from "./boost-math.js";
 
 export const CAR_R = 1.6;
 const MAX_F = 24, MAX_R = 9, ACCEL = 16, BRAKE = 34, ROLL = 5, TURN = 2.2, GRAVITY = 30;
@@ -31,7 +32,7 @@ export function createCar(colour) {
     tilt.add(hub);
     wheels.push({ hub, w, front: z < 0 });
   }
-  const s = { x: 0, y: 0, z: 0, heading: 0, speed: 0, steer: 0, vy: 0, air: false, squash: 0, pitch: 0, roll: 0, airTime: 0 };
+  const s = { x: 0, y: 0, z: 0, heading: 0, speed: 0, steer: 0, vy: 0, air: false, squash: 0, pitch: 0, roll: 0, airTime: 0, boost: 0, airHit: false };
   const out = { group: car, tilt, body, wheels, s };
   out.ready = upgradeCar(out, colour);
   return out;
@@ -80,10 +81,13 @@ async function upgradeCar(car, colour) {
 
 // Tail lamps on while braking (and off again), eased over a few frames; through the bloom at night they glow
 const TAIL = 0xff3b30;
-export function brakeLights(car, on, glow) {
+const BOOST_FLAME = 0xffa23a;
+export function brakeLights(car, on, glow, boosting = false) {
   const m = car.tail;
   if (!m) return;
-  const want = on ? (glow ? glowIntensity(m.emissive) : 1.4) : 0;
+  const colour = boosting ? BOOST_FLAME : TAIL;
+  if (m.emissive.getHex() !== colour) m.emissive.setHex(colour);
+  const want = boosting ? (glow ? glowIntensity(m.emissive) * 1.3 : 2) : on ? (glow ? glowIntensity(m.emissive) : 1.4) : 0;
   m.emissiveIntensity += (want - m.emissiveIntensity) * 0.5;
 }
 
@@ -131,12 +135,18 @@ export function keepInWorld(o, r) {
 export function stepCar(car, keys, dt) {
   const s = car.s;
   const dirt = onDirt(s.x, s.z);
-  const top = MAX_F * (dirt ? 1 : OFF_ROAD);
+  // A jump boost (boost-math.js) raises the top speed for a moment and drives the car there; the brake ends it
+  if (s.boost > 0 && keys.down) s.boost = 0;
+  const boosting = s.boost > 0;
+  let top = MAX_F * (dirt ? 1 : OFF_ROAD);
+  if (boosting) top = boostedTop(top);
   const throttle = s.air ? 0 : (keys.up ? 1 : 0) - (keys.down ? 1 : 0);
+  if (boosting && !s.air) s.speed = Math.min(top, s.speed + ACCEL * 1.6 * dt);
   if (throttle > 0) s.speed += (s.speed < 0 ? BRAKE : ACCEL) * dt;
   else if (throttle < 0) s.speed -= (s.speed > 0 ? BRAKE : ACCEL * 0.7) * dt;
   else if (!s.air) s.speed -= Math.sign(s.speed) * Math.min(Math.abs(s.speed), ROLL * dt);
-  if (s.speed > top) s.speed = Math.max(top, s.speed - BRAKE * 0.5 * dt); // ease down when leaving the road
+  if (s.speed > top) s.speed = Math.max(top, s.speed - BRAKE * 0.5 * dt); // ease down when leaving the road or as a boost ends (must out-pull ACCEL, or the throttle creeps past top)
+  s.boost = Math.max(0, s.boost - dt);
   s.speed = Math.max(-MAX_R, s.speed);
 
   const steerIn = (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
@@ -169,6 +179,9 @@ export function stepCar(car, keys, dt) {
     s.airTime += dt;
     if (s.y <= g) {
       event = { landed: -s.vy, airTime: s.airTime };
+      const b = boostFor(s.airTime, onDirt(s.x, s.z), s.airHit); // a clean jump pays on landing
+      if (b > 0) { s.boost = b; event.boost = b; }
+      s.airHit = false;
       s.squash = Math.min(0.35, -s.vy * 0.03);
       s.y = g;
       s.vy = 0;
@@ -180,6 +193,7 @@ export function stepCar(car, keys, dt) {
     if (s.y - g > GRAVITY * dt * dt * 2 && s.vy > 2) {
       s.air = true;
       s.airTime = 0;
+      s.airHit = false;
       s.y += s.vy * dt;
     } else {
       s.vy = vyGround;
@@ -208,5 +222,5 @@ export function stepCar(car, keys, dt) {
     if (front) hub.rotation.y = s.steer * 0.45;
     w.rotation.x -= (s.speed * dt) / 0.45;
   });
-  return { event, dirt, fx, fz };
+  return { event, dirt, fx, fz, boost: s.boost };
 }

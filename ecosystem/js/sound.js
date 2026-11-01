@@ -77,8 +77,9 @@ export function createSound({ enabled = true } = {}) {
     const wiSrc = ctx.createBufferSource(); wiSrc.buffer = noise(); wiSrc.loop = true; wiSrc.connect(wiF); wiSrc.start();
     engine = { g, f, a, b, sub, ex, exF, exG, cmG, cmF, am, amG, wh, whG, wiG, wobG, popAt: 0 };
   }
-  function engineTick(now, dt, speed, throttle) {
+  function engineTick(now, dt, speed, throttle, boost = false) {
     const e = engineParams(speed, throttle), v = Math.min(1, Math.abs(speed) / 24), load = Math.max(0, throttle);
+    if (boost) { e.exhaust = Math.max(e.exhaust, 0.07) * 1.5; e.filter += 700; }
     const k = 0.09;
     engine.a.frequency.setTargetAtTime(e.freq, now, k);
     engine.b.frequency.setTargetAtTime(e.freq, now, k);
@@ -142,11 +143,11 @@ export function createSound({ enabled = true } = {}) {
   }
 
   /** Every frame: the car's speed (m/s), throttle (-1..1), and the surface under it ('dirt' | 'grass' | 'cobble' | 'air'). */
-  function tick(dt, { speed = 0, throttle = 0, surface = "dirt" } = {}) {
+  function tick(dt, { speed = 0, throttle = 0, surface = "dirt", boost = false } = {}) {
     if (!ctx || !on || ctx.state !== "running") return;
     const now = ctx.currentTime;
     engineOff = false;
-    engineTick(now, dt, speed, throttle);
+    engineTick(now, dt, speed, throttle, boost);
     roll.phase += dt * (surface === "cobble" ? 22 : 0);
     const trem = surface === "cobble" ? 0.6 + 0.4 * Math.max(0, Math.sin(roll.phase)) : 1;
     roll.g.gain.setTargetAtTime(surfaceGain(surface, speed) * trem * trim.road, now, 0.05);
@@ -209,6 +210,19 @@ export function createSound({ enabled = true } = {}) {
     lapFinish() { if (!live()) return; [660, 880, 1320].forEach((f, i) => cueNote(f, { at: i * 0.1, dur: 0.18, gain: 0.1, type: "triangle" })); },
     /** n: 3, 2, 1 beep the same; 0 is Go */
     countdown(n) { if (!live()) return; n > 0 ? cueNote(660, { dur: 0.12, gain: 0.14, type: "square" }) : cueNote(990, { dur: 0.45, gain: 0.14, type: "square" }); },
+    /** A clean jump landed: a rising whoosh and a swell */
+    boost() {
+      if (!live()) return;
+      const t = ctx.currentTime, g = gainNode(0, master), f = filter("bandpass", 260, g, 0.9);
+      const src = ctx.createBufferSource(); src.buffer = noise(); src.connect(f);
+      f.frequency.setValueAtTime(260, t); f.frequency.exponentialRampToValueAtTime(2600, t + 0.45);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.28 * CUES * trim.cues, t + 0.08); g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+      src.start(t); src.stop(t + 0.65);
+      const o = osc("sine", 170, null), og = gainNode(0, master); o.connect(og);
+      o.frequency.setValueAtTime(170, t); o.frequency.exponentialRampToValueAtTime(360, t + 0.4);
+      og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.1 * CUES * trim.cues, t + 0.1); og.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      o.stop(t + 0.55);
+    },
     clunk() { if (!live()) return; cueThump({ from: 140, to: 70, dur: 0.09, gain: 0.22, type: "square" }); cueBurst({ dur: 0.05, freq: 1800, q: 1, gain: 0.08 }); },
     /** A new #1: a short fanfare, then pops and crackle as the rockets go up and burst */
     fanfare() {

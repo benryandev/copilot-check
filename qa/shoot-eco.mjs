@@ -27,7 +27,7 @@ const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 10
 const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'arrive', 'intro', 'drive', 'stop', 'yard', 'yardSheet', 'peers', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
+const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'stop', 'yard', 'yardSheet', 'peers', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
 const pick = opt('states') || ALL;
 const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
@@ -150,6 +150,8 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       await page.click('#start');
       await page.evaluate(() => window.__eco.teleport('liquidations'));
       await shot('drive');
+      await page.evaluate(() => window.__eco.boost(1.4)); // a jump just landed: afterburner lamps, wider camera, more dust
+      await shot('boost', 350);
       await page.click('#prompt-btn');
       await shot('stop');
       await page.evaluate(() => document.querySelector('#stop [data-close]').click());
