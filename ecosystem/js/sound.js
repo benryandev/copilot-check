@@ -8,7 +8,9 @@ const MASTER = 0.85; // Ben's mix
 const read = (k, dflt) => { try { const v = localStorage.getItem(k); return v == null ? dflt : v === "on"; } catch { return dflt; } };
 const write = (k, v) => { try { localStorage.setItem(k, v ? "on" : "off"); } catch {} };
 
-export function createSound({ enabled = true } = {}) {
+/** `context`: a factory for the AudioContext (an OfflineAudioContext when a clip is being scored offline, in which case
+ *  `offline` is set and the engine runs whenever it is ticked, with no resume calls and no page visibility handling). */
+export function createSound({ enabled = true, context = null, offline = false } = {}) {
   let ctx = null, master = null, out = null, unlocked = false;
   // Per-layer trims (1 = as designed), for tuning by ear with the ?mix=1 panel; kept in localStorage under eco-mix
   const TRIM_KEYS = ["block", "exhaust", "chug", "whine", "wind", "road", "pops", "cues", "bed", "master"];
@@ -33,9 +35,9 @@ export function createSound({ enabled = true } = {}) {
 
   /** Create (or resume) the context. Call from a user gesture. */
   function unlock() {
-    if (!enabled || typeof AudioContext === "undefined") return;
+    if (!enabled || (!context && typeof AudioContext === "undefined")) return;
     if (!ctx) {
-      ctx = new AudioContext();
+      ctx = context ? context() : new AudioContext();
       out = ctx.createDynamicsCompressor();
       out.threshold.value = -18; out.knee.value = 12; out.ratio.value = 6; out.attack.value = 0.003; out.release.value = 0.12;
       out.connect(ctx.destination);
@@ -43,9 +45,9 @@ export function createSound({ enabled = true } = {}) {
       buildEngine();
       buildRoll();
       if (music) buildBed();
-      document.addEventListener("visibilitychange", () => { if (!ctx) return; if (document.hidden) ctx.suspend(); else if (on) ctx.resume(); });
+      if (!offline) document.addEventListener("visibilitychange", () => { if (!ctx) return; if (document.hidden) ctx.suspend(); else if (on) ctx.resume(); });
     }
-    if (ctx.state === "suspended" && on) ctx.resume();
+    if (!offline && ctx.state === "suspended" && on) ctx.resume();
     if (!unlocked) { unlocked = true; emit(); } // once: later unlocks (every click and key) change nothing listeners care about
   }
 
@@ -144,7 +146,7 @@ export function createSound({ enabled = true } = {}) {
 
   /** Every frame: the car's speed (m/s), throttle (-1..1), and the surface under it ('dirt' | 'grass' | 'cobble' | 'air'). */
   function tick(dt, { speed = 0, throttle = 0, surface = "dirt", boost = false } = {}) {
-    if (!ctx || !on || ctx.state !== "running") return;
+    if (!live()) return;
     const now = ctx.currentTime;
     engineOff = false;
     engineTick(now, dt, speed, throttle, boost);
@@ -155,6 +157,8 @@ export function createSound({ enabled = true } = {}) {
     if (bed) { bed.t += dt; tuneBed(); }
   }
 
+  /** Only the bed moves (a clip's opening flight, scored offline): the chord walk advances without the engine. */
+  function ambient(dt) { if (bed) { bed.t += dt; tuneBed(); } }
   /** A sheet is open and the game is paused: switch the engine and the road off (the bed plays on). tick() brings
    * them back when the game resumes. */
   let engineOff = false;
@@ -188,7 +192,7 @@ export function createSound({ enabled = true } = {}) {
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     o.stop(t + dur + 0.02);
   }
-  const live = () => ctx && on && ctx.state === "running";
+  const live = () => !!ctx && on && (offline || ctx.state === "running");
   // One-shots called from the cues below are trimmed by `cues`; the overrun pops carry their own trim
   const CUES = 0.5; // Ben's mix: cues at half the first cut
   const cueBurst = (o) => burst({ ...o, gain: (o.gain ?? 0.3) * CUES * trim.cues });
@@ -239,7 +243,7 @@ export function createSound({ enabled = true } = {}) {
 
   function setOn(v) {
     on = !!v; write(SOUND_KEY, on);
-    if (ctx) { if (on && ctx.state === "suspended") ctx.resume(); master.gain.setTargetAtTime(on ? MASTER * trim.master : 0, ctx.currentTime, 0.05); }
+    if (ctx) { if (on && !offline && ctx.state === "suspended") ctx.resume(); master.gain.setTargetAtTime(on ? MASTER * trim.master : 0, ctx.currentTime, 0.05); }
     emit();
   }
   function setMusic(v) {
@@ -255,5 +259,5 @@ export function createSound({ enabled = true } = {}) {
     if (bed) bed.g.gain.setTargetAtTime(bedLevel(), ctx.currentTime, 0.8);
   }
   const setTrim = (k, v) => { if (!(k in trim)) return; trim[k] = Math.max(0, Math.min(3, Number(v) || 0)); try { localStorage.setItem(MIX_KEY, JSON.stringify(trim)); } catch {} if (k === "master" && ctx && on) master.gain.setTargetAtTime(MASTER * trim.master, ctx.currentTime, 0.05); if (k === "bed" && bed) bed.g.gain.setTargetAtTime(bedLevel(), ctx.currentTime, 0.3); };
-  return { unlock, tick, pauseEngine, state, setOn, setMusic, duck, trims: () => ({ ...trim }), setTrim, TRIM_KEYS, setNight: (v) => { night = !!v; if (bed) bed.chord = -1; }, onChange: (f) => listeners.add(f), ...cues };
+  return { unlock, tick, ambient, pauseEngine, state, setOn, setMusic, duck, trims: () => ({ ...trim }), setTrim, TRIM_KEYS, setNight: (v) => { night = !!v; if (bed) bed.chord = -1; }, onChange: (f) => listeners.add(f), ...cues };
 }
