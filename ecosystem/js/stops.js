@@ -766,6 +766,22 @@ export const STOPS = [
     site: "https://cardano.org/apps",
   },
   {
+    key: "arcade-flappy-coin",
+    district: "community",
+    name: "Flappy Coin arcade",
+    shape: "cabinet",
+    arcade: { slug: "flappy-coin", title: "Flappy Coin", maker: "IBuyTheTop", controls: "Tap or press Space to flap, F to fire." },
+    summary:
+      "An arcade cabinet from the community. Flappy Coin by IBuyTheTop: you're a leveraged long with wings, dodging candles and the Strike ecosystem's ships through ten levels.",
+    points: [
+      "Scores post to this cabinet's own board, under the name you race with.",
+      "Made by IBuyTheTop in the Strike Discord. Got a game of your own? Send it through the submission form.",
+    ],
+    live: null,
+    docs: "/ecosystem/arcade/flappy-coin/",
+    docsLabel: "Open the game full screen",
+  },
+  {
     key: "referrals",
     district: "community",
     name: "Referrals",

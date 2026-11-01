@@ -202,6 +202,26 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .sheet-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 .sheet-actions .br-button { text-decoration: none; }
 
+/* The arcade cabinet's sheet: the game in a frame, Keep driving above it so it stays reachable on a phone */
+.sheet--arcade { width: min(40rem, calc(100vw - 2rem)); padding: var(--space-md); }
+.sheet--arcade > * + * { margin-top: var(--space-sm); }
+.arcade-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-sm); }
+.arcade-head h2 { font-size: 1.5rem; }
+.arcade-head .br-button { flex: none; }
+.arcade-credit { font-size: 0.9rem !important; }
+.arcade-frame { height: clamp(240px, 68dvh, 640px); border-radius: 0.75rem; overflow: hidden; background: #170f38; }
+.arcade-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
+.arcade-board h3 { margin: 0; font-size: 1rem; }
+@media (max-width: 480px) { .sheet--arcade { width: calc(100vw - 1rem); padding: var(--space-sm); } .arcade-head h2 { font-size: 1.25rem; } }
+.arcade-frame:focus { outline: none; }
+/* A phone on its side: the sheet takes the height and the frame takes what the header leaves */
+@media (max-height: 520px) {
+  .sheet--arcade { display: flex; flex-direction: column; height: calc(100dvh - 1rem); max-height: none; width: min(40rem, calc(100vw - 1rem)); padding: var(--space-xs) var(--space-sm); }
+  .sheet--arcade > * + * { margin-top: var(--space-2xs); }
+  .sheet--arcade .arcade-credit, .sheet--arcade .arcade-board { display: none; }
+  .arcade-frame { flex: 1; min-height: 0; height: auto; }
+}
+
 .keys { list-style: none; padding: 0 !important; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2xs); }
 .keys li + li { margin-top: 0; }
 .key {
@@ -336,6 +356,8 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .quality button[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-page); border-color: var(--text-primary); }
 .chip-sound { min-width: 44px; justify-content: center; } /* the short "♪" label alone is narrower than a tap target */
 @media (max-width: 400px) { .chip-sound { display: none; } } /* the smallest phones: four chips do not fit beside the title; mute lives in Map view too */
+/* The smallest phones with the longest district name (Community & Channels) and the who's-here chip: the title gives way, breaking a word only when it must */
+@media (max-width: 480px) { .hud-title { min-width: 0; } .hud-district { overflow-wrap: anywhere; } }
 .chip-sound[aria-pressed="false"] { text-decoration: line-through; color: var(--text-secondary); }
 .map-group { font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
 .map-group-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }

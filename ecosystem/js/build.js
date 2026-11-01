@@ -364,6 +364,57 @@ function makeLabel(text, colour, y, parent) {
   parent.add(sprite);
 }
 
+// ── Arcade cabinets ────────────────────────────────────────────────────
+// A cabinet is a landmark-sized blockout (no Blender model yet): body, side art, control deck with a stick and two
+// buttons, a lit screen and a marquee whose second line is the board's top score (setMarquee, from arcade.js).
+export const marquees = new Map(); // stop key → redraw(line)
+export function setMarquee(key, line) { marquees.get(key)?.(line); }
+const lit = (tex) => new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
+function cabinetScreen(title) {
+  return canvasTexture(512, 400, (ctx, w, h) => {
+    ctx.fillStyle = "#170F38"; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(180,160,255,.12)"; ctx.lineWidth = 2;
+    for (let x = 0; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (let y = 0; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    const candle = (x, top, bot) => { ctx.fillStyle = "#23CDA8"; ctx.fillRect(x, 0, 46, top); ctx.fillStyle = "#FF5C70"; ctx.fillRect(x, bot, 46, h - bot); };
+    candle(300, 110, 250); candle(440, 170, 310);
+    ctx.fillStyle = "#0B6E5B"; ctx.beginPath(); ctx.arc(150, 190, 34, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#23CDA8"; ctx.beginPath(); ctx.arc(146, 186, 34, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#6D3BF5"; ctx.beginPath(); ctx.moveTo(150, 166); ctx.lineTo(136, 190); ctx.lineTo(147, 190); ctx.lineTo(142, 208); ctx.lineTo(158, 184); ctx.lineTo(147, 184); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#F1ECFF"; ctx.font = "700 44px Impact, 'Arial Black', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+    ctx.fillText(title.toUpperCase(), w / 2, 22);
+    ctx.font = "600 24px 'Atkinson Hyperlegible Next', Arial, sans-serif"; ctx.fillStyle = "#B3A6E6";
+    ctx.fillText("Pull onto the pad to play", w / 2, h - 50);
+  });
+}
+function cabinetMarquee(title) {
+  return canvasTexture(768, 180, (ctx, w, h, line) => {
+    ctx.fillStyle = "#0E0A2A"; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "#FFD400"; ctx.lineWidth = 8; ctx.strokeRect(4, 4, w - 8, h - 8);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "#FFD400"; ctx.font = "700 74px Impact, 'Arial Black', sans-serif"; ctx.fillText(title.toUpperCase(), w / 2, 62, w - 60);
+    ctx.fillStyle = "#7CFF6B"; ctx.font = "700 44px 'Courier New', monospace"; ctx.fillText(line || "INSERT COIN", w / 2, 136, w - 60);
+  });
+}
+SHAPES.cabinet = (g, A, stop) => {
+  const title = stop.arcade?.title || stop.name;
+  g.add(box(3.2, 5.4, 2.4, M.build, 0, 0, -0.2)); // body; its front is the +z face, toward the pad
+  for (const sx of [-1, 1]) g.add(box(0.06, 4.6, 1.8, A, sx * 1.62, 0.4, -0.3)); // side art
+  g.add(box(3.2, 0.5, 1.4, M.trim, 0, 2.4, 0.9)); // control deck
+  g.add(cyl(0.07, 0.5, M.trim, -0.7, 2.9, 1.1, 8));
+  g.add(mesh(new THREE.SphereGeometry(0.17, 12, 8), A, -0.7, 3.55, 1.1));
+  for (const [x, z] of [[0.45, 1.0], [0.95, 1.25]]) g.add(cyl(0.16, 0.08, A, x, 2.9, z, 16));
+  g.add(box(3.4, 0.9, 2.0, A, 0, 5.4, -0.4)); // marquee housing
+  const screen = cabinetScreen(title); screen.redraw();
+  const sc = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.0), lit(screen.tex));
+  sc.position.set(0, 4.1, 1.01); sc.rotation.x = -0.1; g.add(sc);
+  const sign = cabinetMarquee(title); sign.redraw("INSERT COIN");
+  const sg = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 0.7), lit(sign.tex));
+  sg.position.set(0, 5.85, 0.61); g.add(sg);
+  marquees.set(stop.key, (line) => sign.redraw(line));
+  return 6.3;
+};
+
 // ── Stops: building + label + pad ──────────────────────────────────────
 export const pads = [];
 const padGeo = new THREE.RingGeometry(2.3, 3, 40);

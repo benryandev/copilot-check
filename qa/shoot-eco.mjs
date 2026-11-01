@@ -27,7 +27,7 @@ const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 10
 const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'stop', 'yard', 'yardSheet', 'peers', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
+const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'stop', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
 const pick = opt('states') || ALL;
 const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
@@ -160,6 +160,15 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       await page.click('#prompt-btn');
       await shot('yardSheet'); // its sheet, with the three figures from the stream
       await page.evaluate(() => document.querySelector('#stop [data-close]').click());
+      // The arcade cabinet from its pad, then its sheet with the game running in the frame and an injected board
+      await page.evaluate(() => { const e = window.__eco; e.arcadeBoard([{ name: 'Juno', score: 640, level: 7, won: false }, { name: 'Rook', score: 410, level: 5, won: false }, { name: 'Aveli', score: 230, level: 3, won: false }]); e.teleport('arcade-flappy-coin'); });
+      await shot('cabinet', 1200);
+      if (pick.includes('arcade')) {
+        await page.click('#prompt-btn');
+        await page.waitForFunction(() => { const f = document.querySelector('#arcade iframe'); return !!f?.contentDocument?.getElementById('c') && f.contentDocument.readyState === 'complete'; }, null, { timeout: 20000 });
+        await shot('arcade', 1500);
+        await page.evaluate(() => document.querySelector('#arcade [data-close]').click());
+      }
       // Three other visitors stood around the car (no room needed), then the who's-here sheet
       await page.evaluate(() => {
         const c = window.__eco.car.s, sin = Math.sin(c.heading), cos = Math.cos(c.heading);

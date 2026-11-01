@@ -125,7 +125,7 @@ export function createSound({ enabled = true } = {}) {
       voices.push({ vg, oscs: [o1, o2, o3] });
     }
     bed = { g, f, voices, t: 0, chord: -1 };
-    g.gain.setTargetAtTime(0.028 * trim.bed, ctx.currentTime, 2);
+    g.gain.setTargetAtTime(bedLevel(), ctx.currentTime, 2);
   }
   function tuneBed() {
     if (!bed) return;
@@ -244,9 +244,16 @@ export function createSound({ enabled = true } = {}) {
   }
   function setMusic(v) {
     music = !!v; write(MUSIC_KEY, music);
-    if (ctx) { if (music && !bed) buildBed(); else if (bed) bed.g.gain.setTargetAtTime(music ? 0.028 * trim.bed : 0, ctx.currentTime, 0.8); }
+    if (ctx) { if (music && !bed) buildBed(); else if (bed) bed.g.gain.setTargetAtTime(bedLevel(), ctx.currentTime, 0.8); }
     emit();
   }
-  const setTrim = (k, v) => { if (!(k in trim)) return; trim[k] = Math.max(0, Math.min(3, Number(v) || 0)); try { localStorage.setItem(MIX_KEY, JSON.stringify(trim)); } catch {} if (k === "master" && ctx && on) master.gain.setTargetAtTime(MASTER * trim.master, ctx.currentTime, 0.05); if (k === "bed" && bed && music) bed.g.gain.setTargetAtTime(0.028 * trim.bed, ctx.currentTime, 0.3); };
-  return { unlock, tick, pauseEngine, state, setOn, setMusic, trims: () => ({ ...trim }), setTrim, TRIM_KEYS, setNight: (v) => { night = !!v; if (bed) bed.chord = -1; }, onChange: (f) => listeners.add(f), ...cues };
+  /** The bed steps aside (an arcade game has its own music) without changing the saved Music preference. */
+  let ducked = false;
+  const bedLevel = () => (music && !ducked ? 0.028 * trim.bed : 0);
+  function duck(v) {
+    ducked = !!v;
+    if (bed) bed.g.gain.setTargetAtTime(bedLevel(), ctx.currentTime, 0.8);
+  }
+  const setTrim = (k, v) => { if (!(k in trim)) return; trim[k] = Math.max(0, Math.min(3, Number(v) || 0)); try { localStorage.setItem(MIX_KEY, JSON.stringify(trim)); } catch {} if (k === "master" && ctx && on) master.gain.setTargetAtTime(MASTER * trim.master, ctx.currentTime, 0.05); if (k === "bed" && bed) bed.g.gain.setTargetAtTime(bedLevel(), ctx.currentTime, 0.3); };
+  return { unlock, tick, pauseEngine, state, setOn, setMusic, duck, trims: () => ({ ...trim }), setTrim, TRIM_KEYS, setNight: (v) => { night = !!v; if (bed) bed.chord = -1; }, onChange: (f) => listeners.add(f), ...cues };
 }

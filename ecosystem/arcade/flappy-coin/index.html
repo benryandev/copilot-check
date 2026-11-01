@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Flappy Coin</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="game.css">
+</head>
+<body>
+<div id="wrap">
+  <button id="mute" aria-label="Toggle music">♪ On</button>
+  <button id="fire" aria-label="Fire laser">FIRE</button>
+  <canvas id="c" aria-label="Flappy Coin game. Tap or press space to flap."></canvas>
+
+  <div id="start" class="overlay" data-tap="start">
+    <h1>Flappy<br>Coin</h1>
+    <div class="card">
+      <p>You’re a leveraged long with wings. Tap to pump. Hit a candle or the floor and you’re liquidated.</p>
+      <p class="muted">10 levels, 8 candles each (12 on the last). Every level raises your leverage, tightens the gaps and releases a new hurdle from the Strike ecosystem into the air.</p>
+      <p class="muted">Hit FIRE (or F on a keyboard) to blast ships out of your way for +5.</p>
+      <p class="cta">Tap to open a position</p>
+    </div>
+    <div class="card" id="boardStart">
+      <h2>TOP DEGENS</h2>
+      <ol class="board" id="boardListStart"><li><span class="nm muted">Loading leaderboard…</span></li></ol>
+    </div>
+  </div>
+
+  <div id="over" class="overlay hidden">
+    <div class="stamp"><div class="ko">LIQUIDATED</div><div class="ko-sub">Rekt</div></div>
+    <div class="card">
+      <p class="big" id="final"></p>
+      <p class="muted" id="quip"></p>
+      <div id="saveBox">
+        <div class="row">
+          <input type="text" id="nameIn" maxlength="20" placeholder="Your name" autocomplete="nickname" aria-label="Name for the leaderboard">
+          <button id="saveBtn">Save score</button>
+        </div>
+        <p class="note" id="saveNote"></p>
+      </div>
+      <div class="buttons">
+        <button id="againBtn">Play again</button>
+        <button class="ghost" id="shareBtn">Share score</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>TOP DEGENS</h2>
+      <ol class="board" id="boardListOver"></ol>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>

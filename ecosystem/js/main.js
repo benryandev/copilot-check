@@ -21,6 +21,7 @@ import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flo
 import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer } from "./peers.js";
 import { loader, paint, wantsArrival, startArrival } from "./arrive.js";
 import { createPost, toGlow } from "./post.js";
+import { initArcade, openArcade, arcadeOpen, injectArcadeBoard } from "./arcade.js";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -445,7 +446,7 @@ function checkPads() {
 }
 $("prompt-btn").addEventListener("click", () => activePad && openStop(activePad.stop));
 
-const dialogs = ["intro", "stop", "map", "race", "peers"].map($);
+const dialogs = ["intro", "stop", "map", "race", "peers", "arcade"].map($);
 const anyOpen = () => dialogs.some((d) => d.open);
 dialogs.forEach((d) => {
   d.addEventListener("close", () => {
@@ -453,7 +454,13 @@ dialogs.forEach((d) => {
     if (celebrationPending && !paused) { const c = celebrationPending; celebrationPending = null; showCelebration(c); }
   });
   d.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => d.close()));
-  d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
+  // A click on the backdrop closes the sheet. The dialog is also the target for clicks on its own padding (and the gaps
+  // between its children), which on the arcade sheet sit right next to the game: only a click outside its box counts.
+  d.addEventListener("click", (e) => {
+    if (e.target !== d) return;
+    const r = d.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) d.close();
+  });
 });
 function show(d) {
   dialogs.forEach((o) => o !== d && o.open && o.close());
@@ -478,6 +485,7 @@ function fillStats(dl, ks) {
 let openKey = null;
 function openStop(stop) {
   openKey = stop.key;
+  if (stop.arcade) { openArcade(stop); return; } // a cabinet: the game in its own sheet
   $("stop-eyebrow").textContent = DISTRICTS[stop.district].name;
   $("stop-title").textContent = stop.name;
   $("stop-summary").textContent = stop.summary;
@@ -548,6 +556,7 @@ function placeCar(x, z, heading) {
   updateWhere();
 }
 initRace({ show, place: placeCar, car, scene, record: (rec) => celebrate(rec, { self: true }), sound: (cue) => sound[cue]?.(), live: onLap });
+initArcade({ show, sound, isDark: () => dark });
 initRaceLive({ place: placeCar, note: raceNote, cancelLap: () => raceCancel("Lap cancelled: on the grid"), closeSheets: () => dialogs.forEach((d) => d.open && d.close()), sound, onRaceway: () => inRaceway(car.s.x, car.s.z) });
 
 // ── A new #1 on the Raceway: fireworks for everyone here, a note, the board and ghost refreshed ──
@@ -796,6 +805,7 @@ function resize() {
   camera.updateProjectionMatrix();
   dust?.userData.setScale(h * renderer.getPixelRatio());
   fireworks?.userData.setScale(h * renderer.getPixelRatio());
+  if (arcadeOpen()) post.render(); // the loop isn't drawing behind the arcade sheet; setSize cleared the canvas, so draw once
 }
 addEventListener("resize", resize);
 
@@ -848,7 +858,7 @@ function frame() {
     const pulse = 0.65 + Math.sin(t * 3) * 0.2;
     pads.forEach((p) => (p.ring.material.opacity = p === activePad ? 1 : pulse));
   }
-  post.render();
+  if (!arcadeOpen()) post.render(); // the game in the arcade sheet gets the GPU; the world holds its last frame behind it
   watchFrames(raw, t);
   requestAnimationFrame(frame);
 }
@@ -891,4 +901,5 @@ window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === ke
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
   info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState,
   cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks, sound,
-  raceLive: raceLiveState, raceLap: onLap, raceLiveInject: injectRaceLive, boost: (secs = 1.4) => { car.s.boost = secs; } };
+  raceLive: raceLiveState, raceLap: onLap, raceLiveInject: injectRaceLive, boost: (secs = 1.4) => { car.s.boost = secs; },
+  arcade: (key = "arcade-flappy-coin") => openStop(STOPS.find((s) => s.key === key)), arcadeBoard: injectArcadeBoard };
