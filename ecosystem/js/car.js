@@ -4,14 +4,14 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { M, paint, box, mesh, colliders } from "./build.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
-import { groundHeight, onDirt, WORLD } from "./terrain.js";
+import { groundHeight, onDirt, racewayWeight, WORLD } from "./terrain.js";
 
 import { glowIntensity } from "./post.js";
 import { boostFor, boostedTop } from "./boost-math.js";
+import { topShare } from "./car-math.js";
 
 export const CAR_R = 1.6;
 const MAX_F = 24, MAX_R = 9, ACCEL = 16, BRAKE = 34, ROLL = 5, TURN = 2.2, GRAVITY = 30;
-const OFF_ROAD = 0.8; // top speed share on grass
 const MAX_CLIMB = 0.9; // steepest slope (rise per unit) the car can drive up
 
 export function createCar(colour) {
@@ -138,7 +138,7 @@ export function stepCar(car, keys, dt) {
   // A jump boost (boost-math.js) raises the top speed for a moment and drives the car there; the brake ends it
   if (s.boost > 0 && keys.down) s.boost = 0;
   const boosting = s.boost > 0;
-  let top = MAX_F * (dirt ? 1 : OFF_ROAD);
+  let top = MAX_F * topShare(dirt, dirt ? 1 : racewayWeight(s.x, s.z)); // grass is slow only at the Raceway (car-math.js)
   if (boosting) top = boostedTop(top);
   const throttle = s.air ? 0 : (keys.up ? 1 : 0) - (keys.down ? 1 : 0);
   if (boosting && !s.air && throttle > 0) s.speed = Math.min(top, s.speed + ACCEL * 1.6 * dt); // the boost pays while you are on the throttle

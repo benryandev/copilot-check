@@ -148,6 +148,15 @@ export function inRaceway(x, z) {
   const info = roadInfo(x, z, 30);
   return info.road === TRACK_ROAD && info.d < 30;
 }
+// How much a point counts as raceway for the car's grass rule: 1 on or inside it, 0 in open country, and a
+// 10 m fade past the 30 m margin so the top speed changes on a slope rather than at an invisible line.
+export const RACEWAY_FADE = 10;
+export function racewayWeight(x, z) {
+  if (inRaceway(x, z)) return 1;
+  const info = roadInfo(x, z, 30 + RACEWAY_FADE);
+  if (info.road !== TRACK_ROAD) return 0;
+  return Math.max(0, Math.min(1, (30 + RACEWAY_FADE - info.d) / RACEWAY_FADE));
+}
 // Distance to the nearest point of the track (for skipping it when far away)
 export function trackDistance(x, z) {
   let best = Infinity;
