@@ -140,12 +140,25 @@ export function createSound({ enabled = true } = {}) {
   function tick(dt, { speed = 0, throttle = 0, surface = "dirt" } = {}) {
     if (!ctx || !on || ctx.state !== "running") return;
     const now = ctx.currentTime;
+    engineOff = false;
     engineTick(now, dt, speed, throttle);
     roll.phase += dt * (surface === "cobble" ? 22 : 0);
     const trem = surface === "cobble" ? 0.6 + 0.4 * Math.max(0, Math.sin(roll.phase)) : 1;
     roll.g.gain.setTargetAtTime(surfaceGain(surface, speed) * trem, now, 0.05);
     roll.f.frequency.setTargetAtTime(surface === "grass" ? 520 : surface === "cobble" ? 1100 : 760, now, 0.1);
     if (bed) { bed.t += dt; tuneBed(); }
+  }
+
+  /** A sheet is open and the game is paused: switch the engine and the road off (the bed plays on). tick() brings
+   * them back when the game resumes. */
+  let engineOff = false;
+  function pauseEngine() {
+    if (!ctx || !engine || engineOff) return;
+    engineOff = true;
+    const now = ctx.currentTime;
+    for (const g of [engine.g, engine.exG, engine.cmG, engine.amG, engine.whG, engine.wiG, roll.g]) g.gain.setTargetAtTime(0, now, 0.12);
+    engine.a.frequency.setTargetAtTime(48, now, 0.25); // the revs die away
+    engine.b.frequency.setTargetAtTime(48, now, 0.25);
   }
 
   // ── One-shots ──
@@ -210,5 +223,5 @@ export function createSound({ enabled = true } = {}) {
     if (ctx) { if (music && !bed) buildBed(); else if (bed) bed.g.gain.setTargetAtTime(music ? 0.028 : 0, ctx.currentTime, 0.8); }
     emit();
   }
-  return { unlock, tick, state, setOn, setMusic, setNight: (v) => { night = !!v; if (bed) bed.chord = -1; }, onChange: (f) => listeners.add(f), ...cues };
+  return { unlock, tick, pauseEngine, state, setOn, setMusic, setNight: (v) => { night = !!v; if (bed) bed.chord = -1; }, onChange: (f) => listeners.add(f), ...cues };
 }

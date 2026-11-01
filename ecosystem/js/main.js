@@ -819,6 +819,7 @@ function frame() {
     checkPads();
     updateWhere();
   }
+  if (paused) sound.pauseEngine(); // a sheet is open: engine off, not idling behind the text
   stepCrates(dt);
   flowTick(dt);
   peersTick(dt, camera.position);
