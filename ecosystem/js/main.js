@@ -18,7 +18,8 @@ import { createSound } from "./sound.js";
 import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive, raceReset } from "./race-live.js";
 import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview, refreshGhost } from "./race.js";
 import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
-import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer } from "./peers.js";
+import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer, sendEmote, peerGroup } from "./peers.js";
+import { initEmotes, openEmotes, closeEmotes, toggleEmotes, emoteKeydown, showBubble, emoteTick, activeEmotes } from "./emote.js";
 import { loader, paint, wantsArrival, startArrival } from "./arrive.js";
 import { createPost, toGlow } from "./post.js";
 import { initArcade, openArcade, arcadeOpen, injectArcadeBoard } from "./arcade.js";
@@ -167,6 +168,9 @@ addEventListener("keydown", (e) => {
     if (!anyOpen() || $("intro").open) { e.preventDefault(); openMap(); return; }
   }
   if (anyOpen()) return;
+  // Emotes: E opens the row; while it is open the digits, arrows, Enter and Escape are its
+  if (emoteKeydown(e)) { e.preventDefault(); return; }
+  if (e.code === "KeyE" && !e.metaKey && !e.ctrlKey && !e.altKey && !["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) { e.preventDefault(); toggleEmotes(); return; }
   const k = KEYMAP[e.code];
   if (k) { keys[k] = true; e.preventDefault(); }
   if ((e.code === "Enter" || e.code === "Space") && activePad) { e.preventDefault(); openStop(activePad.stop); }
@@ -465,6 +469,7 @@ dialogs.forEach((d) => {
 function show(d) {
   dialogs.forEach((o) => o !== d && o.open && o.close());
   releaseKeys();
+  closeEmotes();
   paused = true;
   d.showModal();
 }
@@ -557,6 +562,7 @@ function placeCar(x, z, heading) {
 }
 initRace({ show, place: placeCar, car, scene, record: (rec) => celebrate(rec, { self: true }), sound: (cue) => sound[cue]?.(), live: onLap });
 initArcade({ show, sound, isDark: () => dark });
+initEmotes({ send: sendEmote, myGroup: car.group, groupFor: peerGroup });
 initRaceLive({ place: placeCar, note: raceNote, cancelLap: () => raceCancel("Lap cancelled: on the grid"), closeSheets: () => dialogs.forEach((d) => d.open && d.close()), sound, onRaceway: () => inRaceway(car.s.x, car.s.z) });
 
 // ── A new #1 on the Raceway: fireworks for everyone here, a note, the board and ghost refreshed ──
@@ -636,6 +642,7 @@ onPeers((state, event) => {
   drawPeers(state);
   if (event?.type === "join" && event.name) peersNote(`${event.name} just arrived`);
   if (event?.type === "record") celebrate(event);
+  if (event?.type === "emote") showBubble(event.id, event.e);
   if (event?.type === "race") raceEvent(event.m);
   if (event?.type === "offline" || event?.type === "on") raceReset(); // a new socket is a new identity: any race is over for us
   if (event?.type === "err") {
@@ -840,6 +847,7 @@ function frame() {
   stepCrates(dt);
   flowTick(dt);
   peersTick(dt, camera.position);
+  emoteTick();
   dust?.userData.step(dt);
   fireworks?.userData.step(dt);
   grass?.userData.tick(t);
@@ -902,4 +910,5 @@ window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === ke
   info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState,
   cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks, sound,
   raceLive: raceLiveState, raceLap: onLap, raceLiveInject: injectRaceLive, boost: (secs = 1.4) => { car.s.boost = secs; },
-  arcade: (key = "arcade-flappy-coin") => openStop(STOPS.find((s) => s.key === key)), arcadeBoard: injectArcadeBoard };
+  arcade: (key = "arcade-flappy-coin") => openStop(STOPS.find((s) => s.key === key)), arcadeBoard: injectArcadeBoard,
+  emote: { open: openEmotes, close: closeEmotes, show: showBubble, send: (e) => { showBubble("me", e); sendEmote(e); }, active: activeEmotes }, peerGroup };

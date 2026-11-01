@@ -74,10 +74,15 @@
     </div>
   </div>
 
+  <div class="hud emote-row" id="emote-row" role="toolbar" aria-label="Emotes: pick one to show over your car" hidden></div>
+
   <div class="touch" id="touch" hidden>
     <div class="touch-group">
       <button type="button" class="pad-btn" data-key="left" aria-label="Steer left"><span class="tri tri-left"></span></button>
       <button type="button" class="pad-btn" data-key="right" aria-label="Steer right"><span class="tri tri-right"></span></button>
+    </div>
+    <div class="touch-group touch-mid">
+      <button type="button" class="emote-btn" id="emote-chip" aria-label="Emotes">🙂</button>
     </div>
     <div class="touch-group">
       <button type="button" class="pad-btn" data-key="down" aria-label="Brake and reverse"><span class="tri tri-down"></span></button>
@@ -102,6 +107,7 @@
       <li><span class="key">← → A D</span> steer</li>
       <li><span class="key">Enter</span> open a pad</li>
       <li><span class="key">M</span> map view</li>
+      <li><span class="key">E</span> wave at someone</li>
     </ul>
     <p class="muted"><span class="touch-tip">On a phone, use the buttons at the bottom of the screen. </span>Looking for something? Map view jumps you straight there. Race a lap puts you on the RealFi Raceway start line, with a live top 10. The Fill Yard, off the road to Perpetuals, shows every trade on Strike as it happens. Other visitors can see your car and the name you chose. Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>; the code is <a href="https://github.com/benryandev/copilot-check" target="_blank" rel="noopener">on GitHub</a>.</p>
     <div class="sheet-actions">

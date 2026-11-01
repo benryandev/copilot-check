@@ -27,7 +27,7 @@ const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 10
 const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'stop', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
+const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'stop', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
 const pick = opt('states') || ALL;
 const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
@@ -89,6 +89,7 @@ function audit() {
     if (!vis(el)) continue;
     const text = [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join('');
     if (!text) continue;
+    if (/^[\p{Extended_Pictographic}\p{Emoji_Modifier}\uFE0F\u200D\s]+$/u.test(text)) continue; // colour emoji ignore `color`: the emote row and chip
     const s = getComputedStyle(el), fg = parse(s.color), bgs = backings(el);
     if (!fg || !bgs) continue;
     const ratio = Math.min(...bgs.map(bg => { const A = lum(blend(fg, bg)), B = lum(bg); return (Math.max(A, B) + 0.05) / (Math.min(A, B) + 0.05); }));
@@ -181,6 +182,10 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         ]);
       });
       await shot('peers', 2500);
+      // Emotes: the row open, a wave over our car and a flag over Aveli's
+      await page.evaluate(() => { const e = window.__eco.emote; e.open(); e.show('me', 0); e.show('p1', 3); });
+      await shot('emote', 500);
+      await page.evaluate(() => window.__eco.emote.close());
       await page.click('#peers-chip');
       await shot('peersSheet');
       await page.evaluate(() => document.querySelector('#peers [data-close]').click());

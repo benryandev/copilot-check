@@ -222,6 +222,29 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
   .arcade-frame { flex: 1; min-height: 0; height: auto; }
 }
 
+/* Emotes: the row of five above the controls, and the smiley on the touch bar */
+.emote-row {
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(max(var(--space-2xs), env(safe-area-inset-bottom)) + 2.5rem);
+  display: flex; gap: var(--space-3xs); padding: var(--space-3xs);
+  border-radius: 999px; border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-surface) 90%, transparent); backdrop-filter: blur(6px);
+}
+.emote-row[hidden] { display: none; }
+.emote-row button {
+  width: 3rem; height: 3rem; border-radius: 50%; border: 1px solid transparent; background: transparent;
+  font-size: 1.5rem; line-height: 1; display: grid; place-items: center; cursor: pointer;
+}
+.emote-row button.is-selected { border-color: var(--text-primary); background: color-mix(in srgb, var(--text-primary) 12%, transparent); }
+body:has(#emote-row:not([hidden])) #prompt { visibility: hidden; } /* the row takes the prompt's spot while it is open */
+body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), env(safe-area-inset-bottom)) + 8rem); } /* above the touch controls */
+.touch-mid { align-self: center; }
+.emote-btn {
+  width: 3rem; height: 3rem; border-radius: 50%; border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
+  font-size: 1.3rem; line-height: 1; display: grid; place-items: center; touch-action: manipulation;
+}
+
 .keys { list-style: none; padding: 0 !important; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2xs); }
 .keys li + li { margin-top: 0; }
 .key {

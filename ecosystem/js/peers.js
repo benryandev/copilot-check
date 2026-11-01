@@ -100,6 +100,7 @@ function handle(m) {
       break;
     }
     case "record": emit({ type: "record", name: String(m.name ?? "").slice(0, 20), ms: Number(m.ms), track: m.track }); break; // a new #1 on the Raceway
+    case "emote": emit({ type: "emote", id: String(m.id), e: Number(m.e) }); break; // someone waved (emote.js draws it)
     case "err": emit({ type: "err", error: m.error }); break;
     case "pong": { pings = pingSample(pings, { sentAt: Number(m.echo), receivedAt: performance.now(), serverNow: Number(m.now) }); offset = clockOffset(pings); break; }
     default: if (typeof m.t === "string" && m.t.startsWith("race.")) emit({ type: "race", m }); break;
@@ -186,6 +187,13 @@ export function sendPose(s, jumped, now) {
   if (jumped) m.j = 1;
   ws.send(JSON.stringify(m));
 }
+
+/** An emote (0 to 4) to everyone in the room. */
+export function sendEmote(e) {
+  if (status === "on" && ws?.readyState === 1) ws.send(JSON.stringify({ t: "emote", e }));
+}
+/** A peer's car group, when it is built (for a bubble over it). */
+export const peerGroup = (id) => peers.get(id)?.car?.group ?? null;
 
 export function setPeerName(name) {
   const n = String(name || "").trim();
