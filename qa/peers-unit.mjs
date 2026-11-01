@@ -64,3 +64,17 @@ test('flyY: driving down a slope or standing still keeps the car on the ground',
   // dt 0 (a paused frame) just holds the ground
   assert.equal(flyY(st, 1, 0), 1);
 });
+
+test('opacityFor: quiet cars 0.4, racers on track 0.7, everyone else 1', async () => {
+  const { opacityFor } = await import('../ecosystem/js/peers-math.js');
+  assert.equal(opacityFor(false, false), 1); assert.equal(opacityFor(false, true), 0.7);
+  assert.equal(opacityFor(true, false), 0.4); assert.equal(opacityFor(true, true), 0.4, 'quiet wins');
+});
+
+test('pingSample: keeps the last five samples, newest last', async () => {
+  const { pingSample } = await import('../ecosystem/js/peers-math.js');
+  let s = [];
+  for (let i = 0; i < 7; i++) s = pingSample(s, { sentAt: i, receivedAt: i + 1, serverNow: 1000 + i });
+  assert.equal(s.length, 5); assert.equal(s[0].sentAt, 2); assert.equal(s[4].sentAt, 6);
+  assert.deepEqual(pingSample([], { sentAt: 1, receivedAt: 2, serverNow: 3 }), [{ sentAt: 1, receivedAt: 2, serverNow: 3 }]);
+});

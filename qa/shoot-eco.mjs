@@ -27,7 +27,7 @@ const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 10
 const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'arrive', 'intro', 'drive', 'stop', 'yard', 'yardSheet', 'peers', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'race'];
+const ALL = ['loading', 'arrive', 'intro', 'drive', 'stop', 'yard', 'yardSheet', 'peers', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
 const pick = opt('states') || ALL;
 const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
@@ -187,6 +187,19 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       // A new #1 just announced by the room: the note, and the fireworks run ahead to their first bursts
       await page.evaluate(() => window.__eco.celebrate({ name: 'Aveli', ms: 24650 }, 1.9));
       await shot('fireworks', 400);
+      // Live racing: on the grid with two others and the countdown up; mid-race with the position line; the invite
+      await page.evaluate(() => { document.getElementById('peers-note').hidden = true; const e = window.__eco; e.toStart(); e.peersInject([{ id: 'p1', name: 'Juno', colour: '#22d3ee' }, { id: 'p2', name: 'Rook', colour: '#facc15' }]); e.raceLiveInject('grid'); });
+      await page.evaluate(async () => {
+        const { trackAt, trackLen } = await import('/ecosystem/js/terrain.js');
+        const { gridSlot } = await import('/ecosystem/js/race-live-math.js');
+        for (const [id, k] of [['p1', 2], ['p2', 3]]) { const g = gridSlot(k), p = trackAt(trackLen - g.back); window.__eco.peersMove(id, p.x + p.rx * g.v, p.z + p.rz * g.v, Math.atan2(-p.fx, -p.fz)); }
+      });
+      await shot('raceGrid', 3000); // the race HUD updates every 16 frames
+      await page.evaluate(() => window.__eco.raceLiveInject('pos'));
+      await shot('racePos', 800);
+      await page.evaluate(() => { window.__eco.raceLiveInject('invite'); window.__eco.peersInject(null); });
+      await shot('raceInvite', 400);
+      await page.evaluate(() => document.getElementById('race-invite').hidden = true);
       // The lap-finish sheet, filled in as openFinish() fills it
       await page.evaluate(() => {
         document.getElementById('race-result').textContent = '0:25.853';

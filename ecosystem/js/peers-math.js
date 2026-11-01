@@ -64,3 +64,8 @@ export function flyY(st, g, dt) {
   else { st.y = g; st.vy = vyGround; }
   return st.y;
 }
+
+/** Opacity of another car: quiet (no pose for a while) 0.4, a racer on the track 0.7, otherwise solid. */
+export const opacityFor = (quiet, racer) => (quiet ? 0.4 : racer ? 0.7 : 1);
+/** Keep the last `max` ping samples, newest last. */
+export const pingSample = (samples, s, max = 5) => [...samples, s].slice(-max);

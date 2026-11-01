@@ -7,7 +7,8 @@ import { DISTRICTS } from "./content.js";
 import { groundHeight, inRaceway } from "./terrain.js";
 import { paint as carPaint } from "./build.js";
 import { nameTag } from "./tags.js";
-import { nextSendDelay, poseAt, pickDrawn, backoff, flyY, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE } from "./peers-math.js";
+import { clockOffset } from "./race-live-math.js";
+import { nextSendDelay, poseAt, pickDrawn, backoff, flyY, opacityFor, pingSample, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE } from "./peers-math.js";
 
 const WS_DEFAULT = "wss://copilot-world.benryan.workers.dev/ws";
 const NAME_KEY = "eco-race-name", OWNER_KEY = "eco-owner";
@@ -79,6 +80,7 @@ function handle(m) {
       clearAll();
       (m.peers || []).forEach(add);
       emit({ type: "on" });
+      ping(); // the server clock, for race countdowns
       break;
     case "join": add(m); emit({ type: "join", name: m.name }); break;
     case "leave": remove(m.id); emit({ type: "leave" }); break;
@@ -98,7 +100,8 @@ function handle(m) {
     }
     case "record": emit({ type: "record", name: String(m.name ?? "").slice(0, 20), ms: Number(m.ms), track: m.track }); break; // a new #1 on the Raceway
     case "err": emit({ type: "err", error: m.error }); break;
-    default: break;
+    case "pong": { pings = pingSample(pings, { sentAt: Number(m.echo), receivedAt: performance.now(), serverNow: Number(m.now) }); offset = clockOffset(pings); break; }
+    default: if (typeof m.t === "string" && m.t.startsWith("race.")) emit({ type: "race", m }); break;
   }
 }
 
@@ -134,6 +137,29 @@ function scheduleRetry() {
   retry = setTimeout(() => { retry = null; connect(); }, backoff(attempt++));
 }
 
+// ── Live races ride the same socket: race.* messages out and in, and a server clock from the pings ──
+let racers = new Set(), pings = [], offset = 0, lastPing = -Infinity;
+const PING_MS = 10_000;
+function ping() {
+  if (!ws || ws.readyState !== 1) return;
+  lastPing = performance.now();
+  ws.send(JSON.stringify({ t: "ping", echo: lastPing }));
+}
+/** Server time now (ms, the room's Date.now()); the wall clock until the first pong has answered. */
+export const serverNow = () => (pings.length ? performance.now() + offset : Date.now());
+export const clockReady = () => pings.length > 0;
+export function sendRace(m) {
+  if (status !== "on" || !ws || ws.readyState !== 1) return false;
+  ws.send(JSON.stringify(m));
+  return true;
+}
+/** The cars in a live race are drawn at 70 % on the track so the apex shows through the one ahead. */
+export function setRacers(ids) {
+  racers = new Set(ids);
+  const now = performance.now();
+  for (const p of peers.values()) if (p.car) fade(p, !p.pinned && now - p.lastSeen > QUIET_MS);
+}
+
 let heartbeat = null;
 export function initPeers({ scene, car, tierName, enabled: on = true, wsUrl, socket }) {
   hooks = { scene, car, tierName: tierName || (() => "high"), socket };
@@ -144,7 +170,7 @@ export function initPeers({ scene, car, tierName, enabled: on = true, wsUrl, soc
   if (tok) { write(OWNER_KEY, tok); history.replaceState(null, "", location.pathname + location.search); }
   // The frame loop stops while a sheet is open or the tab is hidden; the room must still hear from us once a second or
   // everyone else puts our car away. Browsers slow background timers to about once a second, which is exactly this rate.
-  if (!heartbeat) heartbeat = setInterval(() => { if (hooks.car?.s && performance.now() - lastSent >= IDLE_MS) sendPose(hooks.car.s, false, performance.now()); }, IDLE_MS);
+  if (!heartbeat) heartbeat = setInterval(() => { if (hooks.car?.s && performance.now() - lastSent >= IDLE_MS) sendPose(hooks.car.s, false, performance.now()); if (performance.now() - lastPing >= PING_MS) ping(); }, IDLE_MS);
   const local = ["localhost", "127.0.0.1"].includes(location.hostname);
   url = wsUrl || (local && new URLSearchParams(location.search).get("ws")) || WS_DEFAULT;
   connect();
@@ -195,7 +221,7 @@ function buildCar(p) {
     group.add(tag.sprite);
     group.visible = false;
     hooks.scene?.add(group);
-    p.car = { group, tag, mats, faded: false };
+    p.car = { group, tag, mats, opacity: 1 };
   })();
   p.building = job;
   return job;
@@ -209,10 +235,12 @@ function park(p, now) {
   if (now - p.parkedAt > PARK_MS) disposeCar(p);
 }
 
-function fade(p, on) {
-  if (!p.car || p.car.faded === on) return;
-  p.car.faded = on;
-  for (const m of p.car.mats) { m.transparent = on; m.opacity = on ? 0.4 : 1; m.needsUpdate = true; }
+function fade(p, quiet) {
+  if (!p.car) return;
+  const o = opacityFor(quiet, racers.has(p.id));
+  if (p.car.opacity === o) return;
+  p.car.opacity = o;
+  for (const m of p.car.mats) { m.transparent = o < 1; m.opacity = o; m.needsUpdate = true; }
 }
 
 let rank = 0, drawn = new Set();
