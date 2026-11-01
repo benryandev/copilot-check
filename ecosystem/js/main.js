@@ -148,6 +148,12 @@ const keys = { up: false, down: false, left: false, right: false };
 const KEYMAP = { ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right" };
 let paused = true;
 addEventListener("keydown", (e) => {
+  // M toggles Map view (asked for on the forum); not while typing, and not over another sheet
+  if (e.code === "KeyM" && !e.metaKey && !e.ctrlKey && !e.altKey && !["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) {
+    const map = $("map");
+    if (map.open) { e.preventDefault(); map.close(); return; }
+    if (!anyOpen() || $("intro").open) { e.preventDefault(); openMap(); return; }
+  }
   if (anyOpen()) return;
   const k = KEYMAP[e.code];
   if (k) { keys[k] = true; e.preventDefault(); }
