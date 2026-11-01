@@ -357,7 +357,8 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .chip-sound { min-width: 44px; justify-content: center; } /* the short "♪" label alone is narrower than a tap target */
 @media (max-width: 400px) { .chip-sound { display: none; } } /* the smallest phones: four chips do not fit beside the title; mute lives in Map view too */
 /* The smallest phones with the longest district name (Community & Channels) and the who's-here chip: the title gives way, breaking a word only when it must */
-@media (max-width: 480px) { .hud-title { min-width: 0; } .hud-district { overflow-wrap: anywhere; } }
+@media (max-width: 480px) { .hud-title { min-width: 0; } .hud-district { hyphens: auto; } }
+@media (max-width: 400px) { .hud-district { font-size: 1rem; } }
 .chip-sound[aria-pressed="false"] { text-decoration: line-through; color: var(--text-secondary); }
 .map-group { font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
 .map-group-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
