@@ -241,7 +241,7 @@ async function postLap(entry, retried = false) {
       const top = readTop(body);
       if (top) setTop({ status: "ok", top, at: Date.now() });
       else fetchTop();
-      if (body.rank === 1) fetchGhost(); // the ghost is now this lap
+      if (body.rank === 1) { fetchGhost(); if (body.best !== false) hooks.record?.({ name, ms: entry.ms }); } // the ghost is now this lap; fireworks
     } else if (res.status === 429) {
       // Two quick laps can land inside the board's window: wait it out and post once more, by itself
       const wait = retryAfterMs(body, res.headers.get("Retry-After"));
@@ -448,6 +448,8 @@ export function toStart() {
   const p = trackAt(trackLen - 14);
   hooks.place(p.x, p.z, Math.atan2(-p.fx, -p.fz));
 }
+
+export const refreshGhost = () => fetchGhost(); // the board's leader changed (a record announced by the room)
 
 export function initRace(h) {
   hooks = h;

@@ -96,6 +96,7 @@ function handle(m) {
       }
       break;
     }
+    case "record": emit({ type: "record", name: String(m.name ?? "").slice(0, 20), ms: Number(m.ms), track: m.track }); break; // a new #1 on the Raceway
     case "err": emit({ type: "err", error: m.error }); break;
     default: break;
   }

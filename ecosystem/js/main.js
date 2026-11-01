@@ -4,7 +4,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, SPAWN, MULTIPLAYER } from "./content.js";
 import { fetchLive, LABELS } from "./data.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates } from "./terrain.js";
-import { createGrass, createDust } from "./effects.js";
+import { createGrass, createDust, createFireworks } from "./effects.js";
 import { createSky } from "./sky.js";
 import {
   M, animated, pads, crates, boards, colliders, districtGroups,
@@ -12,8 +12,9 @@ import {
 } from "./build.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R, brakeLights } from "./car.js";
 import { tint } from "./colours.js";
-import { buildRaceway } from "./raceway.js";
-import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview } from "./race.js";
+import { buildRaceway, formatTime } from "./raceway.js";
+import { celebrateOnce } from "./race-post.js";
+import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview, refreshGhost } from "./race.js";
 import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
 import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer } from "./peers.js";
 import { loader, paint, wantsArrival, startArrival } from "./arrive.js";
@@ -92,6 +93,8 @@ const getLive = () => live;
 Object.keys(DISTRICTS).forEach((k) => buildBoard(scene, k, getLive));
 
 let grass = null, dust = null;
+const fireworks = reduceMotion ? null : createFireworks(); // a new #1 on the Raceway
+if (fireworks) scene.add(fireworks);
 function applyTier() {
   const t = tier();
   renderer.setPixelRatio(Math.min(devicePixelRatio, t.ratio));
@@ -369,7 +372,8 @@ function placeCamera(dt, snap = false) {
     want.y += (1 - keep) * 6;
   }
   // Portrait: aim nearer and lower so the car sits above the driving buttons, not under them
-  const ahead = camera.aspect < 1 ? 1 : 4, lift = camera.aspect < 1 ? 0.6 : 2.2;
+  // While fireworks are up the camera looks up a little to take them in (the look target eases, so it tilts gently)
+  const ahead = camera.aspect < 1 ? 1 : 4, lift = (camera.aspect < 1 ? 0.6 : 2.2) + (fireworks?.userData.active() ? 3.5 : 0);
   const look = new THREE.Vector3(s.x + fx * ahead, s.y + lift, s.z + fz * ahead);
   camPos.lerp(want, snap ? 1 : 1 - Math.exp(-dt * (t < 1 ? 20 : 5)));
   camLook.lerp(look, snap ? 1 : 1 - Math.exp(-dt * 8));
@@ -433,7 +437,10 @@ $("prompt-btn").addEventListener("click", () => activePad && openStop(activePad.
 const dialogs = ["intro", "stop", "map", "race", "peers"].map($);
 const anyOpen = () => dialogs.some((d) => d.open);
 dialogs.forEach((d) => {
-  d.addEventListener("close", () => { paused = anyOpen(); });
+  d.addEventListener("close", () => {
+    paused = anyOpen();
+    if (celebrationPending && !paused) { const c = celebrationPending; celebrationPending = null; showCelebration(c); }
+  });
   d.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => d.close()));
   d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
 });
@@ -519,7 +526,30 @@ function placeCar(x, z, heading) {
   checkPads();
   updateWhere();
 }
-initRace({ show, place: placeCar, car, scene });
+initRace({ show, place: placeCar, car, scene, record: (rec) => celebrate(rec, { self: true }) });
+
+// ── A new #1 on the Raceway: fireworks for everyone here, a note, the board and ghost refreshed ──
+// The setter hears it from their own post (while the finish sheet is up, so it waits for the sheet to close); everyone
+// else hears it from the room. celebrateOnce keeps the two from doubling up.
+let celebrated = null, celebrationPending = null;
+function launchFireworks() {
+  if (!fireworks) return;
+  const s = car.s, fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
+  fireworks.userData.launch(s.x + fx * 70, s.y, s.z + fz * 70, { rx: -fz, rz: fx }); // in the sky ahead, whichever way you face
+}
+function showCelebration({ rec, self }) {
+  peersNote(self ? `You're #1 on the Raceway with ${formatTime(rec.ms)}` : `${rec.name} just took #1 on the Raceway with ${formatTime(rec.ms)}`, 6000);
+  launchFireworks();
+}
+function celebrate(rec, { self = false } = {}) {
+  if (!rec || !Number.isFinite(rec.ms)) return;
+  const r = celebrateOnce(celebrated, rec, Date.now());
+  celebrated = r.seen;
+  if (!r.fire) return;
+  if (!self) { fetchTop(); refreshGhost(); }
+  if (anyOpen()) celebrationPending = { rec, self };
+  else showCelebration({ rec, self });
+}
 
 // ── Other visitors ────────────────────────────────────────────────────
 initPeers({ scene, car, tierName: () => tierName, enabled: MULTIPLAYER && new URLSearchParams(location.search).get("mp") !== "0" });
@@ -533,13 +563,13 @@ const peerItem = (p) => {
   return li;
 };
 let noteTimer = null;
-function peersNote(text) {
+function peersNote(text, ms = 2200) {
   if (anyOpen()) return;
   const el = $("peers-note");
   el.textContent = text;
   el.hidden = false;
   clearTimeout(noteTimer);
-  noteTimer = setTimeout(() => { el.hidden = true; }, 2200);
+  noteTimer = setTimeout(() => { el.hidden = true; }, ms);
 }
 function drawPeers(state) {
   const chip = $("peers-chip"), n = state.peers.length;
@@ -573,6 +603,7 @@ function fillMapPeers(state) {
 onPeers((state, event) => {
   drawPeers(state);
   if (event?.type === "join" && event.name) peersNote(`${event.name} just arrived`);
+  if (event?.type === "record") celebrate(event);
   if (event?.type === "named") {
     const why = { reserved: `"${event.asked}" is reserved here, so you're ${event.name}.`, rude: `That name won't do here, so you're ${event.name}.`,
       bad: `That name won't work (1 to 20 ordinary characters), so you're ${event.name}.`, taken: `Someone here is already ${event.asked}, so you're ${event.name}.` };
@@ -709,6 +740,7 @@ function resize() {
   camera.fov = w < h ? 68 : 55;
   camera.updateProjectionMatrix();
   dust?.userData.setScale(h * renderer.getPixelRatio());
+  fireworks?.userData.setScale(h * renderer.getPixelRatio());
 }
 addEventListener("resize", resize);
 
@@ -736,6 +768,7 @@ function frame() {
   flowTick(dt);
   peersTick(dt, camera.position);
   dust?.userData.step(dt);
+  fireworks?.userData.step(dt);
   grass?.userData.tick(t);
   sky.userData.tick(t, dt, camera.position);
   if (arrival?.active) arrival.tick(dt);
@@ -793,4 +826,4 @@ setTimeout(() => $("loader").remove(), 450);
 window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, colliders,
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
   info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState,
-  cine: (fn) => { cineCam = fn; } };
+  cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks };

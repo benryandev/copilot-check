@@ -32,3 +32,15 @@ test('retryAfterMs: the worker\'s wait plus a little, capped, and a floor when i
   assert.equal(retryAfterMs({}, null), 10500);
   assert.equal(retryAfterMs({ retryAfter: 900 }, null), 30500);
 });
+
+test('celebrateOnce: one set of fireworks per record, however many ways the news arrives', async () => {
+  const { celebrateOnce } = await import('../ecosystem/js/race-post.js');
+  let r = celebrateOnce(null, { name: 'Aveli', ms: 24700 }, 1000);
+  assert.equal(r.fire, true);
+  r = celebrateOnce(r.seen, { name: 'Aveli', ms: 24700 }, 3000); // the room echoes the setter's own post
+  assert.equal(r.fire, false);
+  r = celebrateOnce(r.seen, { name: 'Aveli', ms: 24650 }, 4000); // a better one straight after: fire again
+  assert.equal(r.fire, true);
+  r = celebrateOnce(r.seen, { name: 'Aveli', ms: 24650 }, 4000 + 21_000); // the same news much later (a reconnect replay): fire
+  assert.equal(r.fire, true);
+});

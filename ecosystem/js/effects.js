@@ -171,3 +171,118 @@ export function createDust(max, palette) {
   points.userData.recolour(palette);
   return points;
 }
+
+// ── Fireworks: a new #1 on the Raceway ───────────────────────────────
+// Rockets rise from around a point in the distance and burst into coloured sparks that drift down. Points with a
+// per-particle colour; no fog, so they read from far off. Nothing is drawn until launch() is called.
+const FIREWORK_COLOURS = [0xffd166, 0x26fab0, 0xff6b9d, 0x5ad8ff, 0xffffff, 0xff9f43];
+const FW_G = 10; // m/s²: slower than real gravity, so the sparks hang
+export function createFireworks(max = 1400) {
+  const pos = new Float32Array(max * 3), size = new Float32Array(max), alpha = new Float32Array(max), col = new Float32Array(max * 3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("aSize", new THREE.BufferAttribute(size, 1));
+  geo.setAttribute("aAlpha", new THREE.BufferAttribute(alpha, 1));
+  geo.setAttribute("aColour", new THREE.BufferAttribute(col, 3));
+  const uniforms = { uMap: { value: puffTexture() }, uScale: { value: 300 } };
+  const mat = new THREE.ShaderMaterial({
+    uniforms, transparent: true, depthWrite: false,
+    vertexShader: `
+      attribute float aSize; attribute float aAlpha; attribute vec3 aColour; uniform float uScale; varying float vA; varying vec3 vC;
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = aSize * uScale / -mv.z;
+        gl_Position = projectionMatrix * mv;
+        vA = aAlpha; vC = aColour;
+      }`,
+    fragmentShader: `
+      uniform sampler2D uMap; varying float vA; varying vec3 vC;
+      void main() {
+        vec4 t = texture2D(uMap, gl_PointCoord);
+        gl_FragColor = vec4(vC, t.a * vA);
+        if (gl_FragColor.a < 0.01) discard;
+      }`,
+  });
+  const points = new THREE.Points(geo, mat);
+  points.frustumCulled = false;
+  points.renderOrder = 4;
+  const parts = Array.from({ length: max }, () => ({ life: 0, max: 1, x: 0, y: -99, z: 0, vx: 0, vy: 0, vz: 0, s: 1, r: 1, g: 1, b: 1, rocket: false, drag: 1, flicker: 0 }));
+  let next = 0, rockets = [], anyLive = false;
+  const tmp = new THREE.Color();
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  function emit(o) {
+    const p = parts[next];
+    next = (next + 1) % max;
+    Object.assign(p, { rocket: false, drag: 1, flicker: 0, ...o, max: o.life });
+    anyLive = true;
+  }
+  function burst(p) {
+    const n = Math.round(rnd(80, 110));
+    for (let i = 0; i < n; i++) {
+      // Even over the sphere, with a little bias upward so the shape opens
+      const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u), v = rnd(8, 16);
+      const white = Math.random() < 0.18;
+      emit({ x: p.x, y: p.y, z: p.z, vx: r * Math.cos(a) * v, vy: u * v + 2, vz: r * Math.sin(a) * v, s: rnd(1.4, 2.2), life: rnd(1.5, 2.3),
+        r: white ? 1 : p.r, g: white ? 1 : p.g, b: white ? 1 : p.b, drag: 1.1, flicker: rnd(6, 11) });
+    }
+  }
+  /** Rockets from around (cx, cz) at ground height cy, spread along the right vector (rx, rz) and its normal. */
+  function launch(cx, cy, cz, { rx = 1, rz = 0, count = 6 } = {}) {
+    const delays = [0, 0.55, 0.95, 1.5, 1.95, 2.6, 3.1, 3.5];
+    for (let i = 0; i < count; i++) {
+      const side = rnd(-30, 30), along = rnd(-14, 14);
+      rockets.push({ at: delays[i % delays.length] + (i >= delays.length ? 3.8 : 0), x: cx + rx * side - rz * along, y: cy, z: cz + rz * side + rx * along, colour: FIREWORK_COLOURS[(Math.random() * FIREWORK_COLOURS.length) | 0] });
+    }
+    anyLive = true;
+  }
+  let clock = 0;
+  function step(dt) {
+    if (!anyLive) return;
+    clock += dt;
+    if (rockets.length) {
+      const due = rockets.filter((k) => k.at <= clock);
+      if (due.length) {
+        rockets = rockets.filter((k) => k.at > clock);
+        for (const k of due) {
+          tmp.set(k.colour);
+          emit({ x: k.x, y: k.y, z: k.z, vx: rnd(-1.5, 1.5), vy: rnd(25, 28), vz: rnd(-1.5, 1.5), s: 1.1, life: rnd(1.4, 1.6), r: tmp.r, g: tmp.g, b: tmp.b, rocket: true, drag: 0 });
+        }
+      }
+      if (!rockets.length) clock = 0;
+    }
+    let live = rockets.length > 0;
+    for (let i = 0; i < max; i++) {
+      const p = parts[i];
+      if (p.life <= 0) { alpha[i] = 0; pos[i * 3 + 1] = -99; continue; }
+      p.life -= dt;
+      if (p.rocket) {
+        // A faint trail, then the burst when the fuse runs out
+        if (Math.random() < 0.6) emit({ x: p.x, y: p.y, z: p.z, vx: rnd(-0.6, 0.6), vy: rnd(-2, 0), vz: rnd(-0.6, 0.6), s: 0.55, life: 0.35, r: 1, g: 0.9, b: 0.7 });
+        if (p.life <= 0) { burst(p); alpha[i] = 0; pos[i * 3 + 1] = -99; continue; }
+      }
+      live = true;
+      const k = Math.exp(-dt * p.drag);
+      p.vx *= k; p.vz *= k; p.vy = p.vy * k - FW_G * dt * (p.rocket ? 1 : 0.7);
+      p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+      const age = 1 - p.life / p.max;
+      pos.set([p.x, p.y, p.z], i * 3);
+      col.set([p.r, p.g, p.b], i * 3);
+      size[i] = p.rocket ? p.s : p.s * (1 - age * 0.5);
+      const tw = p.flicker ? 0.75 + 0.25 * Math.sin(clock * p.flicker + i) : 1;
+      alpha[i] = (p.rocket ? 0.9 : Math.min(1, age * 8) * (1 - age * age)) * tw;
+    }
+    anyLive = live;
+    geo.attributes.position.needsUpdate = true;
+    geo.attributes.aSize.needsUpdate = true;
+    geo.attributes.aAlpha.needsUpdate = true;
+    geo.attributes.aColour.needsUpdate = true;
+  }
+  points.userData = {
+    launch, step,
+    active: () => anyLive,
+    skip: (sec) => { for (let t = 0; t < sec; t += 1 / 30) step(1 / 30); }, // test hook: run ahead so a still shows the bursts
+    setScale: (h) => (uniforms.uScale.value = h * 0.6),
+  };
+  return points;
+}

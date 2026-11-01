@@ -19,3 +19,11 @@ export function retryAfterMs(body, header) {
   const s = Number(body?.retryAfter) || Number(header) || 10;
   return Math.min(30, Math.max(1, s)) * 1000 + 500;
 }
+
+/** One set of fireworks per record, however many ways the news arrives (the setter's own post, then the room's
+ * echo of it). `seen` is the last celebration {key, at}; returns {fire, seen}. */
+export function celebrateOnce(seen, { name, ms }, now, windowMs = 20_000) {
+  const key = `${name}|${ms}`;
+  if (seen && seen.key === key && now - seen.at < windowMs) return { fire: false, seen };
+  return { fire: true, seen: { key, at: now } };
+}
