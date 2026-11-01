@@ -335,6 +335,7 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .quality button { min-height: 44px; }
 .quality button[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-page); border-color: var(--text-primary); }
 .chip-sound { min-width: 44px; justify-content: center; } /* the short "♪" label alone is narrower than a tap target */
+@media (max-width: 400px) { .chip-sound { display: none; } } /* the smallest phones: four chips do not fit beside the title; mute lives in Map view too */
 .chip-sound[aria-pressed="false"] { text-decoration: line-through; color: var(--text-secondary); }
 .map-group { font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
 .map-group-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
