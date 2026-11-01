@@ -1,5 +1,5 @@
 // Tuning panel for the sound layers, for Ben's ear: on with ?mix=1, never otherwise. Sliders are trims on each
-// layer (1 = as designed) and are remembered in localStorage (eco-mix); Copy puts the values on the clipboard.
+// layer (1 = as designed) and are remembered in localStorage (eco-mix-2); Copy puts the values on the clipboard.
 export function mountMixer(sound) {
   const box = document.createElement("div");
   box.id = "mix";

@@ -25,12 +25,12 @@ export function engineParams(speed, throttle) {
     gear, rpm,
     freq: 58 + rpm * 125,
     filter: 300 + rpm * 420 + load * 1000,
-    gain: 0.035 + rpm * 0.03 + load * 0.035,
-    exhaust: load * (0.05 + rpm * 0.08),
+    gain: 0.014 + rpm * 0.012 + load * 0.014, // Ben's mix, 1 Nov: block 0.4 of the first cut
+    exhaust: load * (0.035 + rpm * 0.056), // exhaust 0.7
   };
 }
 
-const SURFACE = { dirt: 0.022, grass: 0.06, cobble: 0.05, air: 0 };
+const SURFACE = { dirt: 0.01, grass: 0.027, cobble: 0.0225, air: 0 }; // road 0.45 of the first cut (Ben's mix)
 /** Level of the rolling noise for a surface and speed (m/s). */
 export function surfaceGain(surface, speed) {
   const base = SURFACE[surface] ?? SURFACE.dirt;

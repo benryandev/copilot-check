@@ -3,7 +3,8 @@
 // a click (the browser's autoplay rule), and nothing here throws if the page has no AudioContext.
 import { engineParams, surfaceGain, chordAt, CHORD_SEC } from "./sound-math.js";
 
-const SOUND_KEY = "eco-sound", MUSIC_KEY = "eco-music";
+const SOUND_KEY = "eco-sound", MUSIC_KEY = "eco-music", MIX_KEY = "eco-mix-2"; // key bumped when the defaults took Ben's first mix
+const MASTER = 0.85; // Ben's mix
 const read = (k, dflt) => { try { const v = localStorage.getItem(k); return v == null ? dflt : v === "on"; } catch { return dflt; } };
 const write = (k, v) => { try { localStorage.setItem(k, v ? "on" : "off"); } catch {} };
 
@@ -12,7 +13,7 @@ export function createSound({ enabled = true } = {}) {
   // Per-layer trims (1 = as designed), for tuning by ear with the ?mix=1 panel; kept in localStorage under eco-mix
   const TRIM_KEYS = ["block", "exhaust", "chug", "whine", "wind", "road", "pops", "cues", "bed", "master"];
   const trim = Object.fromEntries(TRIM_KEYS.map((k) => [k, 1]));
-  try { Object.assign(trim, Object.fromEntries(Object.entries(JSON.parse(localStorage.getItem("eco-mix") || "{}")).filter(([k, v]) => TRIM_KEYS.includes(k) && Number.isFinite(v)))); } catch {}
+  try { Object.assign(trim, Object.fromEntries(Object.entries(JSON.parse(localStorage.getItem(MIX_KEY) || "{}")).filter(([k, v]) => TRIM_KEYS.includes(k) && Number.isFinite(v)))); } catch {}
   let on = read(SOUND_KEY, true), music = read(MUSIC_KEY, true), night = false;
   let engine = null, roll = null, bed = null, noiseBuf = null;
   const listeners = new Set();
@@ -38,7 +39,7 @@ export function createSound({ enabled = true } = {}) {
       out = ctx.createDynamicsCompressor();
       out.threshold.value = -18; out.knee.value = 12; out.ratio.value = 6; out.attack.value = 0.003; out.release.value = 0.12;
       out.connect(ctx.destination);
-      master = gainNode(on ? trim.master : 0, out);
+      master = gainNode(on ? MASTER * trim.master : 0, out);
       buildEngine();
       buildRoll();
       if (music) buildBed();
@@ -89,14 +90,14 @@ export function createSound({ enabled = true } = {}) {
     engine.exF.frequency.setTargetAtTime(480 + e.rpm * 800, now, 0.1);
     engine.exG.gain.setTargetAtTime(e.exhaust * trim.exhaust, now, 0.08);
     // Chug: deep and slow at idle, shallow and fast when revving
-    const fire = 7 + e.rpm * 38, depth = 0.85 - e.rpm * 0.72, base = 0.016 + e.rpm * 0.016 + load * 0.02;
+    const fire = 7 + e.rpm * 38, depth = 0.85 - e.rpm * 0.72, base = 0.004 + e.rpm * 0.004 + load * 0.005; // chug 0.25
     engine.am.frequency.setTargetAtTime(fire, now, 0.1);
     engine.cmG.gain.setTargetAtTime(base * (1 - depth) * trim.chug, now, 0.08);
     engine.amG.gain.setTargetAtTime(base * depth * trim.chug, now, 0.08);
     engine.cmF.frequency.setTargetAtTime(1100 + load * 900, now, 0.1);
     engine.wh.frequency.setTargetAtTime(420 + v * 1500, now, 0.1);
-    engine.whG.gain.setTargetAtTime(0.004 * v * v * trim.whine, now, 0.1);
-    engine.wiG.gain.setTargetAtTime(0.025 * v * v * trim.wind, now, 0.15);
+    engine.whG.gain.setTargetAtTime(0.001 * v * v * trim.whine, now, 0.1); // whine 0.25
+    engine.wiG.gain.setTargetAtTime(0.015 * v * v * trim.wind, now, 0.15); // wind 0.6
     // Overrun: lifting off at speed pops and crackles, a few a second, fading as the car slows
     if (throttle <= 0 && Math.abs(speed) > 7 && ctx.currentTime - engine.popAt > 0.12 && Math.random() < dt * (3 + v * 6)) {
       engine.popAt = ctx.currentTime;
@@ -188,9 +189,10 @@ export function createSound({ enabled = true } = {}) {
   }
   const live = () => ctx && on && ctx.state === "running";
   // One-shots called from the cues below are trimmed by `cues`; the overrun pops carry their own trim
-  const cueBurst = (o) => burst({ ...o, gain: (o.gain ?? 0.3) * trim.cues });
-  const cueThump = (o) => thump({ ...o, gain: (o.gain ?? 0.5) * trim.cues });
-  const cueNote = (f, o = {}) => note(f, { ...o, gain: (o.gain ?? 0.12) * trim.cues });
+  const CUES = 0.5; // Ben's mix: cues at half the first cut
+  const cueBurst = (o) => burst({ ...o, gain: (o.gain ?? 0.3) * CUES * trim.cues });
+  const cueThump = (o) => thump({ ...o, gain: (o.gain ?? 0.5) * CUES * trim.cues });
+  const cueNote = (f, o = {}) => note(f, { ...o, gain: (o.gain ?? 0.12) * CUES * trim.cues });
   const cues = {
     /** kind 'crate' | 'bale' | 'cone', strength 0..1 (closing speed over the top speed) */
     hit(kind, strength = 0.5) {
@@ -223,7 +225,7 @@ export function createSound({ enabled = true } = {}) {
 
   function setOn(v) {
     on = !!v; write(SOUND_KEY, on);
-    if (ctx) { if (on && ctx.state === "suspended") ctx.resume(); master.gain.setTargetAtTime(on ? trim.master : 0, ctx.currentTime, 0.05); }
+    if (ctx) { if (on && ctx.state === "suspended") ctx.resume(); master.gain.setTargetAtTime(on ? MASTER * trim.master : 0, ctx.currentTime, 0.05); }
     emit();
   }
   function setMusic(v) {
@@ -231,6 +233,6 @@ export function createSound({ enabled = true } = {}) {
     if (ctx) { if (music && !bed) buildBed(); else if (bed) bed.g.gain.setTargetAtTime(music ? 0.028 * trim.bed : 0, ctx.currentTime, 0.8); }
     emit();
   }
-  const setTrim = (k, v) => { if (!(k in trim)) return; trim[k] = Math.max(0, Math.min(3, Number(v) || 0)); try { localStorage.setItem("eco-mix", JSON.stringify(trim)); } catch {} if (k === "master" && ctx && on) master.gain.setTargetAtTime(trim.master, ctx.currentTime, 0.05); if (k === "bed" && bed && music) bed.g.gain.setTargetAtTime(0.028 * trim.bed, ctx.currentTime, 0.3); };
+  const setTrim = (k, v) => { if (!(k in trim)) return; trim[k] = Math.max(0, Math.min(3, Number(v) || 0)); try { localStorage.setItem(MIX_KEY, JSON.stringify(trim)); } catch {} if (k === "master" && ctx && on) master.gain.setTargetAtTime(MASTER * trim.master, ctx.currentTime, 0.05); if (k === "bed" && bed && music) bed.g.gain.setTargetAtTime(0.028 * trim.bed, ctx.currentTime, 0.3); };
   return { unlock, tick, pauseEngine, state, setOn, setMusic, trims: () => ({ ...trim }), setTrim, TRIM_KEYS, setNight: (v) => { night = !!v; if (bed) bed.chord = -1; }, onChange: (f) => listeners.add(f), ...cues };
 }
