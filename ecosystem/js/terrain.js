@@ -3,7 +3,7 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { createCobbles, metreUVs } from "./cobbles.js";
-import { DISTRICTS, ROADS, JUMPS, STOPS, TRACK_ROAD, RACE_TRACK } from "./content.js";
+import { DISTRICTS, ROADS, JUMPS, STOPS, TRACK_ROAD, RACE_TRACK, RIVER } from "./content.js";
 import { tint } from "./colours.js";
 
 export const ROAD_HALF = 3.6;
@@ -16,7 +16,8 @@ const smooth = (a, b, x) => {
 
 // ── Roads as sampled polylines ─────────────────────────────────────────
 // A closed road (the raceway) loops back on itself; its last sample repeats the first.
-export const roads = ROADS.map((r) => {
+// A curve through `points`, sampled about 2 m apart, with cumulative distances
+function sampled(r) {
   const curve = new THREE.CatmullRomCurve3(r.points.map(([x, z]) => new THREE.Vector3(x, 0, z)), !!r.closed, "centripetal");
   const n = Math.max(160, Math.ceil(curve.getLength() / 2)); // about 2 m apart on long roads
   const half = r.half || ROAD_HALF;
@@ -28,25 +29,30 @@ export const roads = ROADS.map((r) => {
     cum.push(len);
   }
   return { ...r, curve, pts, cum, len, half };
-});
+}
+export const roads = ROADS.map(sampled);
 
-// Road segments bucketed on a grid, so lookups only check nearby segments
+// Segments bucketed on a grid, so lookups only check nearby segments
 const CELL = 12;
-const grid = new Map();
 const cellKey = (i, j) => i * 100003 + j;
-roads.forEach((r, ri) => {
-  for (let i = 0; i < r.pts.length - 1; i++) {
-    const [ax, az] = r.pts[i], [bx, bz] = r.pts[i + 1];
-    const seg = { ax, az, bx, bz, ri, cum: r.cum[i] };
-    const i0 = Math.floor(Math.min(ax, bx) / CELL), i1 = Math.floor(Math.max(ax, bx) / CELL);
-    const j0 = Math.floor(Math.min(az, bz) / CELL), j1 = Math.floor(Math.max(az, bz) / CELL);
-    for (let a = i0; a <= i1; a++) for (let b = j0; b <= j1; b++) {
-      const k = cellKey(a, b);
-      if (!grid.has(k)) grid.set(k, []);
-      grid.get(k).push(seg);
+function bucket(list) {
+  const grid = new Map();
+  list.forEach((r, ri) => {
+    for (let i = 0; i < r.pts.length - 1; i++) {
+      const [ax, az] = r.pts[i], [bx, bz] = r.pts[i + 1];
+      const seg = { ax, az, bx, bz, ri, cum: r.cum[i] };
+      const i0 = Math.floor(Math.min(ax, bx) / CELL), i1 = Math.floor(Math.max(ax, bx) / CELL);
+      const j0 = Math.floor(Math.min(az, bz) / CELL), j1 = Math.floor(Math.max(az, bz) / CELL);
+      for (let a = i0; a <= i1; a++) for (let b = j0; b <= j1; b++) {
+        const k = cellKey(a, b);
+        if (!grid.has(k)) grid.set(k, []);
+        grid.get(k).push(seg);
+      }
     }
-  }
-});
+  });
+  return grid;
+}
+const grid = bucket(roads);
 
 // Nearest point on any road within maxD: distance, road index, t (0–1), unit tangent.
 // Beyond maxD, d is Infinity.
@@ -74,6 +80,70 @@ export function roadInfo(x, z, maxD = 26) {
   }
   return best;
 }
+
+// ── The river ──────────────────────────────────────────────────────────
+// Sampled like a road. riverInfo gives the distance to its centreline, how far along (s) and the unit tangent.
+export const river = sampled(RIVER);
+const riverGrid = bucket([river]);
+export const WATER_LEVEL = RIVER.level;
+export function riverInfo(x, z, maxD = 20) {
+  let best = { d: Infinity, s: 0, tx: 0, tz: 1 };
+  const ci = Math.floor(x / CELL), cj = Math.floor(z / CELL), n = Math.ceil(maxD / CELL);
+  for (let a = ci - n; a <= ci + n; a++) for (let b = cj - n; b <= cj + n; b++) {
+    const list = riverGrid.get(cellKey(a, b));
+    if (!list) continue;
+    for (const g of list) {
+      const vx = g.bx - g.ax, vz = g.bz - g.az, l2 = vx * vx + vz * vz;
+      const u = Math.max(0, Math.min(1, ((x - g.ax) * vx + (z - g.az) * vz) / l2));
+      const d = Math.hypot(x - (g.ax + vx * u), z - (g.az + vz * u));
+      if (d < best.d && d <= maxD) { const l = Math.sqrt(l2); best = { d, s: g.cum + l * u, tx: vx / l, tz: vz / l }; }
+    }
+  }
+  return best;
+}
+// The channel: a parabola `depth` deep at the centre, back to ground level at `half`
+const riverChannel = (d) => (d >= RIVER.half ? 0 : RIVER.depth * (1 - (d / RIVER.half) ** 2));
+// Hills flatten towards the river like they do towards a road, and the rim opens where it leaves
+const riverFlat = (d) => smooth(RIVER.half + 2, RIVER.half + 10, d);
+const rimOpen = (d) => smooth(RIVER.half + 1, RIVER.half + 8, d);
+
+// Where roads cross the river: one entry per crossing, with the road's heading there (local +z along the road,
+// so fx = sin(yaw), fz = cos(yaw)), the crossing angle, and whether it gets a bridge or a ford.
+export const DECK_Y = 0.18; // deck top
+export const DECK_RAMP = 0.8; // metres of ramp past each deck end (0.18 over 0.8: slope 0.23, well under the car's climb limit)
+export const crossings = (() => {
+  const out = [];
+  roads.forEach((r, ri) => {
+    if (ri === TRACK_ROAD) return;
+    for (let i = 0; i < river.pts.length - 1; i++) for (let j = 0; j < r.pts.length - 1; j++) {
+      const [ax, az] = river.pts[i], [bx, bz] = river.pts[i + 1], [cx, cz] = r.pts[j], [dx, dz] = r.pts[j + 1];
+      const den = (bx - ax) * (dz - cz) - (bz - az) * (dx - cx);
+      if (Math.abs(den) < 1e-9) continue;
+      const u = ((cx - ax) * (dz - cz) - (cz - az) * (dx - cx)) / den, v = ((cx - ax) * (bz - az) - (cz - az) * (bx - ax)) / den;
+      if (u < 0 || u > 1 || v < 0 || v > 1) continue;
+      const tx = dx - cx, tz = dz - cz, l = Math.hypot(tx, tz), rx = bx - ax, rz = bz - az, rl = Math.hypot(rx, rz);
+      const angle = (Math.acos(Math.min(1, Math.abs((tx * rx + tz * rz) / (l * rl)))) * 180) / Math.PI;
+      const bridge = !RIVER.fords.includes(r.to);
+      const halfLen = (RIVER.half + 2) / Math.sin((angle * Math.PI) / 180) + 0.5; // the deck covers the channel and both banks
+      out.push({ road: ri, x: ax + (bx - ax) * u, z: az + (bz - az) * u, yaw: Math.atan2(tx / l, tz / l), angle, bridge, half: r.half, halfLen, halfW: r.half + 0.5 });
+    }
+  });
+  return out;
+})();
+// Height of a bridge deck at a point: DECK_Y on the deck, a ramp past each end, -Infinity off every bridge
+export function bridgeHeight(x, z) {
+  let h = -Infinity;
+  for (const c of crossings) {
+    if (!c.bridge) continue;
+    const dx = x - c.x, dz = z - c.z, fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+    const u = Math.abs(dx * fx + dz * fz), v = Math.abs(dx * fz - dz * fx);
+    if (v > c.halfW || u > c.halfLen + DECK_RAMP) continue;
+    h = Math.max(h, u <= c.halfLen ? DECK_Y : DECK_Y * (1 - (u - c.halfLen) / DECK_RAMP));
+  }
+  return h;
+}
+export const onBridge = (x, z) => bridgeHeight(x, z) > -Infinity;
+export const onWater = (x, z) => riverInfo(x, z, 6).d < RIVER.half - 0.3 && !onBridge(x, z);
 
 // ── Jumps, placed in each road's local frame ───────────────────────────
 // A jump may give `s` (metres along the road) instead of `t`.
@@ -196,15 +266,17 @@ function edgeRise(x, z) {
 }
 
 export function terrainHeight(x, z, info = roadInfo(x, z)) {
-  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) + trackLift(info) + edgeRise(x, z);
+  const rd = riverInfo(x, z).d;
+  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) * riverFlat(rd) + trackLift(info) + edgeRise(x, z) * rimOpen(rd) - riverChannel(rd);
 }
+// The one truth for where the ground is: terrain and jumps, or a bridge deck where one spans the river
 export function groundHeight(x, z) {
-  return terrainHeight(x, z) + jumpHeight(x, z);
+  return Math.max(terrainHeight(x, z) + jumpHeight(x, z), bridgeHeight(x, z));
 }
-// Grass grows where the ground isn't road or plaza
+// Grass grows where the ground isn't road, plaza or river
 export function grassWeight(x, z) {
   const info = roadInfo(x, z);
-  return flatMask(x, z, info.d, info.half);
+  return flatMask(x, z, info.d, info.half) * smooth(RIVER.half + 0.5, RIVER.half + 3, riverInfo(x, z, 8).d);
 }
 export const onDirt = (x, z) => { const info = roadInfo(x, z); return info.d < info.half + 0.3 || jumpHeight(x, z) > 0; };
 

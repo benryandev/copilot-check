@@ -137,6 +137,17 @@ export const JUMPS = [
   { road: TRACK_ROAD, s: 445, side: 1, length: 8, height: 1.9, width: 5.4 },
 ];
 
+// ── The river (2 Nov 2026, Ben) ────────────────────────────────────────
+// One polyline from the north-west hills to the south-west rim, kept between HQ and the ring plazas on the
+// west side. It crosses five roads (terrain.js finds them): wooden bridges on all but the Token spoke, which
+// fords it. `half` is the channel's half-width, `depth` the bed under the banks at the centre, `level` the
+// water surface (under every road and plaza, which never go below 0), `flow` the texture's speed in m/s.
+export const RIVER = {
+  points: [[-150, -360], [-110, -290], [-75, -225], [-58, -172], [-62, -140], [-72, -112], [-82, -88], [-100, -55], [-108, -25], [-100, 20], [-100, 95], [-118, 138], [-138, 195], [-170, 260], [-215, 330]],
+  half: 3.5, depth: 0.45, level: -0.06, flow: 0.7,
+  fords: ["token"], // roads (by their `to`) that cross without a bridge
+};
+
 export const SPAWN = { x: 0, z: 14, heading: 0 };
 // Other visitors as cars (peers.js). Off here, or with ?mp=0, the world is single-player as before.
 export const MULTIPLAYER = true;
