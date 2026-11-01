@@ -1,6 +1,6 @@
 // Pure parts of the sound module (no AudioContext): node --test qa/sound-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { engineParams, surfaceGain, chordAt, CHORDS } from '../ecosystem/js/sound-math.js';
+import { engineParams, surfaceGain, chordAt, CHORDS, idleGain, IDLE_AFTER, IDLE_FADE, IDLE_FLOOR } from '../ecosystem/js/sound-math.js';
 
 test('engineParams: four virtual gears, pitch climbs within a gear and drops at the shift, throttle opens and loads', () => {
   const idle = engineParams(0, 0);
@@ -41,4 +41,11 @@ test('chordAt: the bed walks through its chords, one every 12 s, and knows night
   const day = chordAt(5, false), night = chordAt(5, true);
   assert.ok(night.filter < day.filter, 'night is darker');
   for (const f of day.notes) assert.ok(f > 60 && f < 400, `voiced low: ${f}`);
+});
+
+test('idleGain: full while moving or for the first 3 s at rest, then down to half over the next 2 s', () => {
+  assert.equal(idleGain(0), 1); assert.equal(idleGain(2.9), 1); assert.equal(idleGain(3), 1);
+  assert.ok(Math.abs(idleGain(4) - 0.75) < 1e-9, 'halfway down at 4 s');
+  assert.equal(idleGain(5), 0.5); assert.equal(idleGain(60), 0.5);
+  assert.equal(IDLE_AFTER, 3); assert.equal(IDLE_FADE, 2); assert.equal(IDLE_FLOOR, 0.5);
 });

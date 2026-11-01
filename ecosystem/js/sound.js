@@ -2,7 +2,7 @@
 // cues for hits, landings, pads, the race and a new #1; background music (music.js, the sprint sketch) whose layers follow
 // the car's speed and which slows and darkens at night. Nothing exists until unlock() runs from
 // a click (the browser's autoplay rule), and nothing here throws if the page has no AudioContext.
-import { engineParams, surfaceGain } from "./sound-math.js";
+import { engineParams, surfaceGain, idleGain } from "./sound-math.js";
 import { createPlayer } from "./music.js";
 import { eventsFor, barsOf } from "./music-math.js";
 
@@ -123,6 +123,7 @@ export function createSound({ enabled = true, context = null, offline = false } 
   // timer so it carries on while a sheet is open. Its layers follow the car's speed (tick); at night it is rebuilt
   // slower and darker. Not in offline renders: a clip scores its own music.
   let musicNode = null; // { player, g, events, loopBeats, cursor, nextT, level, timer }
+  let idleFor = 0; // seconds the car has sat still (the music eases to half after 3 s; Ben, 2 Nov)
   function buildMusic() {
     if (!ctx || offline || musicNode) return;
     const g = gainNode(0, master);
@@ -160,7 +161,13 @@ export function createSound({ enabled = true, context = null, offline = false } 
     const trem = surface === "cobble" ? 0.6 + 0.4 * Math.max(0, Math.sin(roll.phase)) : 1;
     roll.g.gain.setTargetAtTime(surfaceGain(surface, speed) * trem * trim.road, now, 0.05);
     roll.f.frequency.setTargetAtTime(surface === "grass" ? 520 : surface === "cobble" ? 1100 : 760, now, 0.1);
-    if (musicNode) { const want = Math.max(0.15, Math.min(1, Math.abs(speed) / 22)); musicNode.level += (want - musicNode.level) * 0.06; musicNode.player.setIntensity(musicNode.level, now, 0.4); }
+    idleFor = Math.abs(speed) > 0.3 || throttle > 0 ? 0 : idleFor + dt;
+    if (musicNode) {
+      const want = Math.max(0.15, Math.min(1, Math.abs(speed) / 22));
+      musicNode.level += (want - musicNode.level) * 0.06;
+      musicNode.player.setIntensity(musicNode.level, now, 0.4);
+      musicNode.g.gain.setTargetAtTime(musicLevel() * idleGain(idleFor), now, 0.3); // sits at half after 3 s still; back up over about a second when moving
+    }
   }
 
   /** A sheet is open and the game is paused: switch the engine and the road off and let the music settle (it plays on). tick() brings

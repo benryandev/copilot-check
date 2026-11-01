@@ -50,3 +50,12 @@ export function chordAt(t, night = false) {
   const index = Math.floor(t / CHORD_SEC) % CHORDS.length;
   return { index, notes: CHORDS[index], filter: night ? 360 : 520 };
 }
+
+// ── Music at idle: after 3 s sitting still the music eases to half over 2 s; moving again brings it back ──
+export const IDLE_AFTER = 3, IDLE_FADE = 2, IDLE_FLOOR = 0.5;
+/** The music's gain factor after `idleSeconds` at rest: 1 until IDLE_AFTER, then linearly down to IDLE_FLOOR by IDLE_AFTER + IDLE_FADE. */
+export function idleGain(idleSeconds) {
+  if (idleSeconds <= IDLE_AFTER) return 1;
+  const u = Math.min(1, (idleSeconds - IDLE_AFTER) / IDLE_FADE);
+  return 1 - (1 - IDLE_FLOOR) * u;
+}
