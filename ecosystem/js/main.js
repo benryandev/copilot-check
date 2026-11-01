@@ -728,6 +728,7 @@ function drawSound() {
 }
 sound.onChange(drawSound);
 drawSound();
+if (new URLSearchParams(location.search).get("mix") === "1") import("./mix.js").then((m) => m.mountMixer(sound)); // tuning panel, by request only
 soundChip.addEventListener("click", () => sound.setOn(!sound.state().on));
 document.querySelectorAll("[data-sound]").forEach((b) => b.addEventListener("click", () => { sound.unlock(); sound.setOn(b.dataset.sound === "on"); }));
 document.querySelectorAll("[data-music]").forEach((b) => b.addEventListener("click", () => { sound.unlock(); sound.setMusic(b.dataset.music === "on"); }));

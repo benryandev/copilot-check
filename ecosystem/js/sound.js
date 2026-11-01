@@ -9,6 +9,10 @@ const write = (k, v) => { try { localStorage.setItem(k, v ? "on" : "off"); } cat
 
 export function createSound({ enabled = true } = {}) {
   let ctx = null, master = null, out = null, unlocked = false;
+  // Per-layer trims (1 = as designed), for tuning by ear with the ?mix=1 panel; kept in localStorage under eco-mix
+  const TRIM_KEYS = ["block", "exhaust", "chug", "whine", "wind", "road", "pops", "cues", "bed", "master"];
+  const trim = Object.fromEntries(TRIM_KEYS.map((k) => [k, 1]));
+  try { Object.assign(trim, Object.fromEntries(Object.entries(JSON.parse(localStorage.getItem("eco-mix") || "{}")).filter(([k, v]) => TRIM_KEYS.includes(k) && Number.isFinite(v)))); } catch {}
   let on = read(SOUND_KEY, true), music = read(MUSIC_KEY, true), night = false;
   let engine = null, roll = null, bed = null, noiseBuf = null;
   const listeners = new Set();
@@ -34,7 +38,7 @@ export function createSound({ enabled = true } = {}) {
       out = ctx.createDynamicsCompressor();
       out.threshold.value = -18; out.knee.value = 12; out.ratio.value = 6; out.attack.value = 0.003; out.release.value = 0.12;
       out.connect(ctx.destination);
-      master = gainNode(on ? 1 : 0, out);
+      master = gainNode(on ? trim.master : 0, out);
       buildEngine();
       buildRoll();
       if (music) buildBed();
@@ -80,24 +84,24 @@ export function createSound({ enabled = true } = {}) {
     engine.wobG.gain.setTargetAtTime(2 + 10 * (1 - e.rpm), now, 0.2);
     engine.sub.frequency.setTargetAtTime(e.freq / 2, now, k);
     engine.f.frequency.setTargetAtTime(e.filter, now, 0.1);
-    engine.g.gain.setTargetAtTime(e.gain, now, 0.08);
+    engine.g.gain.setTargetAtTime(e.gain * trim.block, now, 0.08);
     engine.ex.frequency.setTargetAtTime(e.freq / 2, now, k);
     engine.exF.frequency.setTargetAtTime(480 + e.rpm * 800, now, 0.1);
-    engine.exG.gain.setTargetAtTime(e.exhaust, now, 0.08);
+    engine.exG.gain.setTargetAtTime(e.exhaust * trim.exhaust, now, 0.08);
     // Chug: deep and slow at idle, shallow and fast when revving
     const fire = 7 + e.rpm * 38, depth = 0.85 - e.rpm * 0.72, base = 0.016 + e.rpm * 0.016 + load * 0.02;
     engine.am.frequency.setTargetAtTime(fire, now, 0.1);
-    engine.cmG.gain.setTargetAtTime(base * (1 - depth), now, 0.08);
-    engine.amG.gain.setTargetAtTime(base * depth, now, 0.08);
+    engine.cmG.gain.setTargetAtTime(base * (1 - depth) * trim.chug, now, 0.08);
+    engine.amG.gain.setTargetAtTime(base * depth * trim.chug, now, 0.08);
     engine.cmF.frequency.setTargetAtTime(1100 + load * 900, now, 0.1);
     engine.wh.frequency.setTargetAtTime(420 + v * 1500, now, 0.1);
-    engine.whG.gain.setTargetAtTime(0.004 * v * v, now, 0.1);
-    engine.wiG.gain.setTargetAtTime(0.025 * v * v, now, 0.15);
+    engine.whG.gain.setTargetAtTime(0.004 * v * v * trim.whine, now, 0.1);
+    engine.wiG.gain.setTargetAtTime(0.025 * v * v * trim.wind, now, 0.15);
     // Overrun: lifting off at speed pops and crackles, a few a second, fading as the car slows
     if (throttle <= 0 && Math.abs(speed) > 7 && ctx.currentTime - engine.popAt > 0.12 && Math.random() < dt * (3 + v * 6)) {
       engine.popAt = ctx.currentTime;
-      thump({ from: 70, to: 38, dur: 0.07, gain: 0.12 + v * 0.1 });
-      burst({ dur: 0.03, freq: 1500 + Math.random() * 1500, q: 1.5, gain: 0.06 });
+      thump({ from: 70, to: 38, dur: 0.07, gain: (0.12 + v * 0.1) * trim.pops });
+      burst({ dur: 0.03, freq: 1500 + Math.random() * 1500, q: 1.5, gain: 0.06 * trim.pops });
     }
   }
   // ── The ground: band-passed noise whose level follows speed and surface, with a cobble tremolo ──
@@ -119,7 +123,7 @@ export function createSound({ enabled = true } = {}) {
       voices.push({ vg, oscs: [o1, o2, o3] });
     }
     bed = { g, f, voices, t: 0, chord: -1 };
-    g.gain.setTargetAtTime(0.028, ctx.currentTime, 2);
+    g.gain.setTargetAtTime(0.028 * trim.bed, ctx.currentTime, 2);
   }
   function tuneBed() {
     if (!bed) return;
@@ -144,7 +148,7 @@ export function createSound({ enabled = true } = {}) {
     engineTick(now, dt, speed, throttle);
     roll.phase += dt * (surface === "cobble" ? 22 : 0);
     const trem = surface === "cobble" ? 0.6 + 0.4 * Math.max(0, Math.sin(roll.phase)) : 1;
-    roll.g.gain.setTargetAtTime(surfaceGain(surface, speed) * trem, now, 0.05);
+    roll.g.gain.setTargetAtTime(surfaceGain(surface, speed) * trem * trim.road, now, 0.05);
     roll.f.frequency.setTargetAtTime(surface === "grass" ? 520 : surface === "cobble" ? 1100 : 760, now, 0.1);
     if (bed) { bed.t += dt; tuneBed(); }
   }
@@ -183,45 +187,50 @@ export function createSound({ enabled = true } = {}) {
     o.stop(t + dur + 0.02);
   }
   const live = () => ctx && on && ctx.state === "running";
+  // One-shots called from the cues below are trimmed by `cues`; the overrun pops carry their own trim
+  const cueBurst = (o) => burst({ ...o, gain: (o.gain ?? 0.3) * trim.cues });
+  const cueThump = (o) => thump({ ...o, gain: (o.gain ?? 0.5) * trim.cues });
+  const cueNote = (f, o = {}) => note(f, { ...o, gain: (o.gain ?? 0.12) * trim.cues });
   const cues = {
     /** kind 'crate' | 'bale' | 'cone', strength 0..1 (closing speed over the top speed) */
     hit(kind, strength = 0.5) {
       if (!live()) return;
       const s = Math.min(1, Math.max(0.15, strength));
-      if (kind === "crate") { burst({ dur: 0.14, freq: 900, q: 0.6, gain: 0.35 * s }); thump({ from: 110, to: 45, dur: 0.18, gain: 0.5 * s }); }
-      else if (kind === "bale") { burst({ dur: 0.2, freq: 380, q: 0.5, gain: 0.3 * s }); thump({ from: 70, to: 35, dur: 0.22, gain: 0.35 * s }); }
-      else { burst({ dur: 0.06, freq: 2400, q: 1.2, gain: 0.25 * s }); thump({ from: 420, to: 180, dur: 0.05, gain: 0.12 * s, type: "square" }); }
+      if (kind === "crate") { cueBurst({ dur: 0.14, freq: 900, q: 0.6, gain: 0.35 * s }); cueThump({ from: 110, to: 45, dur: 0.18, gain: 0.5 * s }); }
+      else if (kind === "bale") { cueBurst({ dur: 0.2, freq: 380, q: 0.5, gain: 0.3 * s }); cueThump({ from: 70, to: 35, dur: 0.22, gain: 0.35 * s }); }
+      else { cueBurst({ dur: 0.06, freq: 2400, q: 1.2, gain: 0.25 * s }); cueThump({ from: 420, to: 180, dur: 0.05, gain: 0.12 * s, type: "square" }); }
     },
-    land(strength = 0.5) { if (!live()) return; const s = Math.min(1, strength); thump({ from: 80, to: 32, dur: 0.2, gain: 0.45 * s }); burst({ dur: 0.1, freq: 500, q: 0.5, gain: 0.15 * s }); },
-    chime() { if (!live()) return; note(659.25, { dur: 0.3, gain: 0.1 }); note(987.77, { at: 0.12, dur: 0.4, gain: 0.08 }); },
-    blip() { if (!live()) return; note(880, { dur: 0.09, gain: 0.1, type: "triangle" }); },
-    lapStart() { if (!live()) return; note(660, { dur: 0.1, gain: 0.1, type: "triangle" }); note(880, { at: 0.11, dur: 0.16, gain: 0.1, type: "triangle" }); },
-    lapFinish() { if (!live()) return; [660, 880, 1320].forEach((f, i) => note(f, { at: i * 0.1, dur: 0.18, gain: 0.1, type: "triangle" })); },
+    land(strength = 0.5) { if (!live()) return; const s = Math.min(1, strength); cueThump({ from: 80, to: 32, dur: 0.2, gain: 0.45 * s }); cueBurst({ dur: 0.1, freq: 500, q: 0.5, gain: 0.15 * s }); },
+    chime() { if (!live()) return; cueNote(659.25, { dur: 0.3, gain: 0.1 }); cueNote(987.77, { at: 0.12, dur: 0.4, gain: 0.08 }); },
+    blip() { if (!live()) return; cueNote(880, { dur: 0.09, gain: 0.1, type: "triangle" }); },
+    lapStart() { if (!live()) return; cueNote(660, { dur: 0.1, gain: 0.1, type: "triangle" }); cueNote(880, { at: 0.11, dur: 0.16, gain: 0.1, type: "triangle" }); },
+    lapFinish() { if (!live()) return; [660, 880, 1320].forEach((f, i) => cueNote(f, { at: i * 0.1, dur: 0.18, gain: 0.1, type: "triangle" })); },
     /** n: 3, 2, 1 beep the same; 0 is Go */
-    countdown(n) { if (!live()) return; n > 0 ? note(660, { dur: 0.12, gain: 0.14, type: "square" }) : note(990, { dur: 0.45, gain: 0.14, type: "square" }); },
-    clunk() { if (!live()) return; thump({ from: 140, to: 70, dur: 0.09, gain: 0.22, type: "square" }); burst({ dur: 0.05, freq: 1800, q: 1, gain: 0.08 }); },
+    countdown(n) { if (!live()) return; n > 0 ? cueNote(660, { dur: 0.12, gain: 0.14, type: "square" }) : cueNote(990, { dur: 0.45, gain: 0.14, type: "square" }); },
+    clunk() { if (!live()) return; cueThump({ from: 140, to: 70, dur: 0.09, gain: 0.22, type: "square" }); cueBurst({ dur: 0.05, freq: 1800, q: 1, gain: 0.08 }); },
     /** A new #1: a short fanfare, then pops and crackle as the rockets go up and burst */
     fanfare() {
       if (!live()) return;
-      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => note(f, { at: i * 0.11, dur: 0.5, gain: 0.11, type: "triangle" }));
-      note(1046.5, { at: 0.6, dur: 1.1, gain: 0.08, type: "triangle" }); note(1318.5, { at: 0.6, dur: 1.1, gain: 0.06, type: "triangle" });
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => cueNote(f, { at: i * 0.11, dur: 0.5, gain: 0.11, type: "triangle" }));
+      cueNote(1046.5, { at: 0.6, dur: 1.1, gain: 0.08, type: "triangle" }); cueNote(1318.5, { at: 0.6, dur: 1.1, gain: 0.06, type: "triangle" });
       const delays = [1.4, 1.95, 2.35, 2.9, 3.35, 4.0];
       for (const d of delays) {
-        burst({ at: d, dur: 0.25, freq: 300, q: 0.4, gain: 0.35 }); thump({ at: d, from: 120, to: 40, dur: 0.3, gain: 0.3 });
-        for (let k = 0; k < 7; k++) burst({ at: d + 0.1 + Math.random() * 0.9, dur: 0.03, freq: 2500 + Math.random() * 2500, q: 2, gain: 0.08 });
+        cueBurst({ at: d, dur: 0.25, freq: 300, q: 0.4, gain: 0.35 }); cueThump({ at: d, from: 120, to: 40, dur: 0.3, gain: 0.3 });
+        for (let k = 0; k < 7; k++) cueBurst({ at: d + 0.1 + Math.random() * 0.9, dur: 0.03, freq: 2500 + Math.random() * 2500, q: 2, gain: 0.08 });
       }
     },
   };
 
   function setOn(v) {
     on = !!v; write(SOUND_KEY, on);
-    if (ctx) { if (on && ctx.state === "suspended") ctx.resume(); master.gain.setTargetAtTime(on ? 1 : 0, ctx.currentTime, 0.05); }
+    if (ctx) { if (on && ctx.state === "suspended") ctx.resume(); master.gain.setTargetAtTime(on ? trim.master : 0, ctx.currentTime, 0.05); }
     emit();
   }
   function setMusic(v) {
     music = !!v; write(MUSIC_KEY, music);
-    if (ctx) { if (music && !bed) buildBed(); else if (bed) bed.g.gain.setTargetAtTime(music ? 0.028 : 0, ctx.currentTime, 0.8); }
+    if (ctx) { if (music && !bed) buildBed(); else if (bed) bed.g.gain.setTargetAtTime(music ? 0.028 * trim.bed : 0, ctx.currentTime, 0.8); }
     emit();
   }
-  return { unlock, tick, pauseEngine, state, setOn, setMusic, setNight: (v) => { night = !!v; if (bed) bed.chord = -1; }, onChange: (f) => listeners.add(f), ...cues };
+  const setTrim = (k, v) => { if (!(k in trim)) return; trim[k] = Math.max(0, Math.min(3, Number(v) || 0)); try { localStorage.setItem("eco-mix", JSON.stringify(trim)); } catch {} if (k === "master" && ctx && on) master.gain.setTargetAtTime(trim.master, ctx.currentTime, 0.05); if (k === "bed" && bed && music) bed.g.gain.setTargetAtTime(0.028 * trim.bed, ctx.currentTime, 0.3); };
+  return { unlock, tick, pauseEngine, state, setOn, setMusic, trims: () => ({ ...trim }), setTrim, TRIM_KEYS, setNight: (v) => { night = !!v; if (bed) bed.chord = -1; }, onChange: (f) => listeners.add(f), ...cues };
 }
