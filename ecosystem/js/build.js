@@ -410,7 +410,7 @@ SHAPES.cabinet = (g, A, stop) => {
   const screen = cabinetScreen(title); screen.redraw();
   strikeMark.then(() => screen.redraw());
   const sc = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.0), lit(screen.tex));
-  sc.position.set(0, 4.1, 1.01); sc.rotation.x = -0.1; g.add(sc);
+  sc.position.set(0, 4.1, 1.02); g.add(sc); // flat on the front face: a tilt put its top half inside the body (Ben, 1 Nov)
   const sign = cabinetMarquee(title); sign.redraw("INSERT COIN");
   const sg = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 0.7), lit(sign.tex));
   sg.position.set(0, 5.85, 0.61); g.add(sg);
