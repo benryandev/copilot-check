@@ -35,7 +35,7 @@ const T = {
     ],
   },
   sprint: {
-    name: 'B. Arcade sprint', bpm: 140, swing: 0.5, chordVoice: 'pad', leadVoice: 'pulse', arp: true, bars: 24,
+    name: 'B. Arcade sprint', bpm: 140, swing: 0.5, chordVoice: 'pad', leadVoice: 'round', arp: true, bars: 24, // round lead (Ben, 1 Nov); 'pulse' is the chiptune alternative
     // A (1-8) in A minor, B (9-16) climbs, C (17-24) is A lifted a whole step with a turnaround home in the last bar
     chords: [[57, 60, 64], [57, 60, 65], [55, 60, 64], [55, 59, 62], [57, 60, 64], [57, 60, 65], [55, 60, 64], [56, 59, 62, 64],
       [57, 60, 65], [55, 59, 62], [57, 60, 64], [57, 60, 64], [57, 60, 65], [55, 59, 62], [55, 60, 64], [56, 59, 62, 64],

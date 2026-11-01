@@ -422,7 +422,7 @@ if (!NO_AUDIO) {
     for (const [k, v] of Object.entries({ block: 0.22, exhaust: 0.35, chug: 0.12, whine: 0.12, wind: 0.3, road: 0.3, pops: 0.9, cues: 0.75, bed: 0 })) sound.setTrim(k, v);
     // The music: the sprint sketch under the whole cut, its layers following the car's speed (bass and hats at rest, drums, arpeggio and lead with speed)
     const musicGain = ctx.createGain(); musicGain.gain.value = 0.9; musicGain.connect(ctx.destination);
-    const music = createPlayer(ctx, musicGain, 'sprint');
+    const music = createPlayer(ctx, musicGain, 'sprint'); // the sketch's own lead (round, Ben's pick)
     const t0 = PRE * dt - 0.05; // bar one lands on frame one
     music.schedule(eventsFor('sprint', Math.ceil((frames * dt) / loopSeconds('sprint')) + 1), t0, 0, (frames * dt) / music.spb + 8);
     let level = 0.15; // smoothed intensity

@@ -1,7 +1,10 @@
 // Sound, all synthesised in Web Audio (no files): the engine and the ground under the wheels follow the car; one-shot
-// cues for hits, landings, pads, the race and a new #1; a quiet ambient bed. Nothing exists until unlock() runs from
+// cues for hits, landings, pads, the race and a new #1; background music (music.js, the sprint sketch) whose layers follow
+// the car's speed and which slows and darkens at night. Nothing exists until unlock() runs from
 // a click (the browser's autoplay rule), and nothing here throws if the page has no AudioContext.
-import { engineParams, surfaceGain, chordAt, CHORD_SEC } from "./sound-math.js";
+import { engineParams, surfaceGain } from "./sound-math.js";
+import { createPlayer } from "./music.js";
+import { eventsFor, barsOf } from "./music-math.js";
 
 const SOUND_KEY = "eco-sound", MUSIC_KEY = "eco-music", MIX_KEY = "eco-mix-2"; // key bumped when the defaults took Ben's first mix
 const MASTER = 0.85; // Ben's mix
@@ -17,7 +20,8 @@ export function createSound({ enabled = true, context = null, offline = false } 
   const trim = Object.fromEntries(TRIM_KEYS.map((k) => [k, 1]));
   try { Object.assign(trim, Object.fromEntries(Object.entries(JSON.parse(localStorage.getItem(MIX_KEY) || "{}")).filter(([k, v]) => TRIM_KEYS.includes(k) && Number.isFinite(v)))); } catch {}
   let on = read(SOUND_KEY, true), music = read(MUSIC_KEY, true), night = false;
-  let engine = null, roll = null, bed = null, noiseBuf = null;
+  let engine = null, roll = null, noiseBuf = null;
+  const MUSIC_TRACK = "sprint", MUSIC_LEVEL = 0.5; // the music under the engine; its trim keeps the old key "bed" for the mix panel
   const listeners = new Set();
   const emit = () => listeners.forEach((f) => f(state()));
   const state = () => ({ on, music, ready: !!ctx });
@@ -44,7 +48,7 @@ export function createSound({ enabled = true, context = null, offline = false } 
       master = gainNode(on ? MASTER * trim.master : 0, out);
       buildEngine();
       buildRoll();
-      if (music) buildBed();
+      if (music) buildMusic();
       if (!offline) document.addEventListener("visibilitychange", () => { if (!ctx) return; if (document.hidden) ctx.suspend(); else if (on) ctx.resume(); });
     }
     if (!offline && ctx.state === "suspended" && on) ctx.resume();
@@ -115,33 +119,35 @@ export function createSound({ enabled = true, context = null, offline = false } 
     const trem = gainNode(1, g); // unused path kept simple: tremolo is applied to g.gain in tick
     roll = { g, f, src, trem, phase: 0 };
   }
-  // ── The bed: a slow chord walk, three detuned saws per note, through a gently moving low-pass ──
-  function buildBed() {
-    const g = gainNode(0, master), f = filter("lowpass", 520, g, 0.6);
-    const lfo = osc("sine", 0.07, null); const lfoGain = gainNode(90, f.frequency); lfo.connect(lfoGain);
-    const voices = [];
-    for (let i = 0; i < 4; i++) {
-      const vg = gainNode(0, f);
-      const o1 = osc("sawtooth", 130, vg), o2 = osc("sawtooth", 130, vg), o3 = osc("triangle", 130, vg);
-      o1.detune.value = -6; o2.detune.value = 6;
-      voices.push({ vg, oscs: [o1, o2, o3] });
-    }
-    bed = { g, f, voices, t: 0, chord: -1 };
-    g.gain.setTargetAtTime(bedLevel(), ctx.currentTime, 2);
+  // ── The music: the sprint sketch (music-math.js) played live by music.js, scheduled a third of a second ahead on a
+  // timer so it carries on while a sheet is open. Its layers follow the car's speed (tick); at night it is rebuilt
+  // slower and darker. Not in offline renders: a clip scores its own music.
+  let musicNode = null; // { player, g, events, loopBeats, cursor, nextT, level, timer }
+  function buildMusic() {
+    if (!ctx || offline || musicNode) return;
+    const g = gainNode(0, master);
+    const player = createPlayer(ctx, g, MUSIC_TRACK, { night });
+    const events = eventsFor(MUSIC_TRACK, 1), loopBeats = barsOf(MUSIC_TRACK) * 4;
+    const m = { player, g, events, loopBeats, cursor: 0, nextT: ctx.currentTime + 0.1, level: 0.15, timer: 0 };
+    player.setIntensity(0.15, ctx.currentTime, 0.001);
+    const pump = () => {
+      if (musicNode !== m) return;
+      if (m.nextT < ctx.currentTime - 0.1) m.nextT = ctx.currentTime + 0.05; // the tab was asleep: carry on from here, no catch-up burst
+      const horizon = ctx.currentTime + 0.35;
+      while (m.nextT < horizon) { const beat = m.cursor % loopBeats; player.schedule(events, m.nextT - beat * player.spb, beat, beat + 1); m.cursor++; m.nextT += player.spb; }
+    };
+    pump();
+    m.timer = setInterval(pump, 80);
+    g.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 1.0);
+    musicNode = m;
   }
-  function tuneBed() {
-    if (!bed) return;
-    const c = chordAt(bed.t, night);
-    if (c.index === bed.chord) return;
-    bed.chord = c.index;
-    const now = ctx.currentTime;
-    bed.voices.forEach((v, i) => {
-      const f = c.notes[i];
-      v.vg.gain.setTargetAtTime(0, now, 0.8);
-      v.oscs.forEach((o) => o.frequency.setTargetAtTime(f, now + 1.2, 0.3));
-      v.vg.gain.setTargetAtTime(0.09, now + 1.6, 1.2);
-    });
-    bed.f.frequency.setTargetAtTime(c.filter, now, 2);
+  function dropMusic(fade = 0.8) {
+    const m = musicNode;
+    if (!m) return;
+    musicNode = null;
+    clearInterval(m.timer);
+    m.g.gain.setTargetAtTime(0, ctx.currentTime, fade / 3);
+    setTimeout(() => { try { m.g.disconnect(); } catch {} }, fade * 1000 + 600);
   }
 
   /** Every frame: the car's speed (m/s), throttle (-1..1), and the surface under it ('dirt' | 'grass' | 'cobble' | 'air'). */
@@ -154,12 +160,10 @@ export function createSound({ enabled = true, context = null, offline = false } 
     const trem = surface === "cobble" ? 0.6 + 0.4 * Math.max(0, Math.sin(roll.phase)) : 1;
     roll.g.gain.setTargetAtTime(surfaceGain(surface, speed) * trem * trim.road, now, 0.05);
     roll.f.frequency.setTargetAtTime(surface === "grass" ? 520 : surface === "cobble" ? 1100 : 760, now, 0.1);
-    if (bed) { bed.t += dt; tuneBed(); }
+    if (musicNode) { const want = Math.max(0.15, Math.min(1, Math.abs(speed) / 22)); musicNode.level += (want - musicNode.level) * 0.06; musicNode.player.setIntensity(musicNode.level, now, 0.4); }
   }
 
-  /** Only the bed moves (a clip's opening flight, scored offline): the chord walk advances without the engine. */
-  function ambient(dt) { if (bed) { bed.t += dt; tuneBed(); } }
-  /** A sheet is open and the game is paused: switch the engine and the road off (the bed plays on). tick() brings
+  /** A sheet is open and the game is paused: switch the engine and the road off and let the music settle (it plays on). tick() brings
    * them back when the game resumes. */
   let engineOff = false;
   function pauseEngine() {
@@ -169,6 +173,7 @@ export function createSound({ enabled = true, context = null, offline = false } 
     for (const g of [engine.g, engine.exG, engine.cmG, engine.amG, engine.whG, engine.wiG, roll.g]) g.gain.setTargetAtTime(0, now, 0.12);
     engine.a.frequency.setTargetAtTime(48, now, 0.25); // the revs die away
     engine.b.frequency.setTargetAtTime(48, now, 0.25);
+    if (musicNode) { musicNode.level = 0.15; musicNode.player.setIntensity(0.15, now, 1.5); }
   }
 
   // ── One-shots ──
@@ -248,16 +253,16 @@ export function createSound({ enabled = true, context = null, offline = false } 
   }
   function setMusic(v) {
     music = !!v; write(MUSIC_KEY, music);
-    if (ctx) { if (music && !bed) buildBed(); else if (bed) bed.g.gain.setTargetAtTime(bedLevel(), ctx.currentTime, 0.8); }
+    if (ctx) { if (music) buildMusic(); else dropMusic(); if (musicNode) musicNode.g.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 0.8); }
     emit();
   }
-  /** The bed steps aside (an arcade game has its own music) without changing the saved Music preference. */
+  /** The music steps aside (an arcade game has its own) without changing the saved Music preference. */
   let ducked = false;
-  const bedLevel = () => (music && !ducked ? 0.028 * trim.bed : 0);
+  const musicLevel = () => (music && !ducked ? MUSIC_LEVEL * trim.bed : 0);
   function duck(v) {
     ducked = !!v;
-    if (bed) bed.g.gain.setTargetAtTime(bedLevel(), ctx.currentTime, 0.8);
+    if (musicNode) musicNode.g.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 0.8);
   }
-  const setTrim = (k, v) => { if (!(k in trim)) return; trim[k] = Math.max(0, Math.min(3, Number(v) || 0)); try { localStorage.setItem(MIX_KEY, JSON.stringify(trim)); } catch {} if (k === "master" && ctx && on) master.gain.setTargetAtTime(MASTER * trim.master, ctx.currentTime, 0.05); if (k === "bed" && bed) bed.g.gain.setTargetAtTime(bedLevel(), ctx.currentTime, 0.3); };
-  return { unlock, tick, ambient, pauseEngine, state, setOn, setMusic, duck, trims: () => ({ ...trim }), setTrim, TRIM_KEYS, setNight: (v) => { night = !!v; if (bed) bed.chord = -1; }, onChange: (f) => listeners.add(f), ...cues };
+  const setTrim = (k, v) => { if (!(k in trim)) return; trim[k] = Math.max(0, Math.min(3, Number(v) || 0)); try { localStorage.setItem(MIX_KEY, JSON.stringify(trim)); } catch {} if (k === "master" && ctx && on) master.gain.setTargetAtTime(MASTER * trim.master, ctx.currentTime, 0.05); if (k === "bed" && musicNode) musicNode.g.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 0.3); };
+  return { unlock, tick, pauseEngine, state, setOn, setMusic, duck, trims: () => ({ ...trim }), setTrim, TRIM_KEYS, setNight: (v) => { if (night === !!v) return; night = !!v; if (musicNode) { dropMusic(); buildMusic(); } } /* night: a different tempo and tone, so rebuilt with a short crossfade */, onChange: (f) => listeners.add(f), ...cues };
 }

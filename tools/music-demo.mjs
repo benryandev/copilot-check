@@ -19,7 +19,7 @@ await page.goto(`${base}/ecosystem/arcade/flappy-coin/`, { waitUntil: 'domconten
 const keys = await page.evaluate(async () => Object.keys((await import('/ecosystem/js/music-math.js')).TRACKS));
 // name → [sketch key, renderSketch options]; the ramp runs the layers up from a standstill to flat out and back once
 const jobs = variantsOf
-  ? [[`${variantsOf}`, [variantsOf, {}]], [`${variantsOf}-round-lead`, [variantsOf, { lead: 'round' }]], [`${variantsOf}-layers-ramp`, [variantsOf, { intensity: 'ramp' }]], [`${variantsOf}-night`, [variantsOf, { night: true }]]]
+  ? [[`${variantsOf}`, [variantsOf, {}]], [`${variantsOf}-pulse-lead`, [variantsOf, { lead: 'pulse' }]], [`${variantsOf}-layers-ramp`, [variantsOf, { intensity: 'ramp' }]], [`${variantsOf}-night`, [variantsOf, { night: true }]]]
   : keys.map((k) => [k, [k, {}]]);
 for (const [name, [key, opts]] of jobs) {
   const { b64, peak, title, bpm } = await page.evaluate(async ([key, seconds, opts]) => {
