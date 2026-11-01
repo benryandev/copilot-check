@@ -141,7 +141,7 @@ export function stepCar(car, keys, dt) {
   let top = MAX_F * (dirt ? 1 : OFF_ROAD);
   if (boosting) top = boostedTop(top);
   const throttle = s.air ? 0 : (keys.up ? 1 : 0) - (keys.down ? 1 : 0);
-  if (boosting && !s.air) s.speed = Math.min(top, s.speed + ACCEL * 1.6 * dt);
+  if (boosting && !s.air && throttle > 0) s.speed = Math.min(top, s.speed + ACCEL * 1.6 * dt); // the boost pays while you are on the throttle
   if (throttle > 0) s.speed += (s.speed < 0 ? BRAKE : ACCEL) * dt;
   else if (throttle < 0) s.speed -= (s.speed > 0 ? BRAKE : ACCEL * 0.7) * dt;
   else if (!s.air) s.speed -= Math.sign(s.speed) * Math.min(Math.abs(s.speed), ROLL * dt);
