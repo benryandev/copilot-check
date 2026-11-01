@@ -334,6 +334,8 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 }
 .quality button { min-height: 44px; }
 .quality button[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-page); border-color: var(--text-primary); }
+.chip-sound { min-width: 44px; justify-content: center; } /* the short "♪" label alone is narrower than a tap target */
+.chip-sound[aria-pressed="false"] { text-decoration: line-through; color: var(--text-secondary); }
 .map-group { font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
 .map-group-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
 .map-list + .map-group-row { margin-top: var(--space-lg); }
@@ -467,5 +469,15 @@ body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transitio
   .race-time { font-size: 1.25rem; line-height: 1.15; }
   .race-sub { font-size: 0.65rem; }
   .race-result { font-size: 2rem !important; }
-  body:has(#race-hud:not([hidden])) #theme { display: none; }
+  body:has(#race-hud:not([hidden])) :is(#theme, #sound-chip) { display: none; } /* the timer panel needs the room; both live in Map view too */
 }
+
+/* ── Live races ─────────────────────────────────────────────────────── */
+.race-go { margin-top: var(--space-2xs); pointer-events: auto; }
+.race-go[hidden] { display: none; }
+.race-invite .prompt-card { cursor: default; pointer-events: auto; gap: var(--space-sm); }
+.race-invite-actions { display: flex; gap: var(--space-2xs); }
+.race-live-line { margin: 0 0 var(--space-2xs); font-family: var(--font-mono); font-size: 0.875rem; letter-spacing: 0.04em; color: var(--text-secondary); }
+.race-live-line[hidden] { display: none; }
+.race-actions { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; margin: var(--space-sm) 0; }
+.race-actions-hint { font-size: 0.875rem; }

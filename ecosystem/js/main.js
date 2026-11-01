@@ -14,6 +14,8 @@ import { createCar, stepCar, pushOut, keepInWorld, CAR_R, brakeLights } from "./
 import { tint } from "./colours.js";
 import { buildRaceway, formatTime } from "./raceway.js";
 import { celebrateOnce } from "./race-post.js";
+import { createSound } from "./sound.js";
+import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive } from "./race-live.js";
 import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview, refreshGhost } from "./race.js";
 import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
 import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer } from "./peers.js";
@@ -94,6 +96,10 @@ Object.keys(DISTRICTS).forEach((k) => buildBoard(scene, k, getLive));
 
 let grass = null, dust = null;
 const fireworks = reduceMotion ? null : createFireworks(); // a new #1 on the Raceway
+// Sound: synthesised, on after the first click, mute chip in the HUD. Silent under automation unless ?sound=1 asks.
+const soundParam = new URLSearchParams(location.search).get("sound");
+const sound = createSound({ enabled: soundParam === "1" || (soundParam !== "0" && !navigator.webdriver) });
+const onCobbles = (x, z) => Object.values(DISTRICTS).some((d) => d.plaza !== false && d.centre && Math.hypot(x - d.centre[0], z - d.centre[1]) < d.radius);
 if (fireworks) scene.add(fireworks);
 function applyTier() {
   const t = tier();
@@ -126,6 +132,7 @@ Object.assign(car.s, { x: SPAWN.x, z: SPAWN.z, heading: SPAWN.heading, y: ground
 // ── Theme ─────────────────────────────────────────────────────────────
 function applyTheme() {
   const p = pal();
+  sound.setNight(dark);
   root.classList.toggle("dark", dark);
   root.classList.toggle("light", !dark);
   $("theme").textContent = dark ? "Light" : "Dark";
@@ -148,6 +155,7 @@ $("theme").addEventListener("click", () => {
 
 // ── Input ─────────────────────────────────────────────────────────────
 const keys = { up: false, down: false, left: false, right: false };
+const NO_KEYS = { up: false, down: false, left: false, right: false }; // what the car sees while locked on a race grid
 const KEYMAP = { ArrowUp: "up", KeyW: "up", ArrowDown: "down", KeyS: "down", ArrowLeft: "left", KeyA: "left", ArrowRight: "right", KeyD: "right" };
 let paused = true;
 addEventListener("keydown", (e) => {
@@ -228,6 +236,7 @@ function stepCrates(dt) {
       p.x = s.x + nx * minD;
       p.z = s.z + nz * minD;
       const along = Math.max(0, (fx * nx + fz * nz) * s.speed);
+      if (along > 2 && performance.now() - (c.hitAt || 0) > 250) { c.hitAt = performance.now(); sound.hit(c.kind || "crate", along / 24); }
       c.v.x += nx * (along * 1.3 + 1);
       c.v.y += nz * (along * 1.3 + 1);
       c.spin += (Math.random() - 0.5) * along * 1.2;
@@ -277,7 +286,7 @@ function stepCrates(dt) {
       c.m.rotation.z += c.ang.z * dt;
       if (p.y - c.h <= floor) {
         p.y = floor + c.h;
-        if (c.vy < -3) { c.vy = -c.vy * CRATE_BOUNCE; c.ang.multiplyScalar(0.5); }
+        if (c.vy < -3) { if (Math.hypot(p.x - s.x, p.z - s.z) < 45) sound.clunk(); c.vy = -c.vy * CRATE_BOUNCE; c.ang.multiplyScalar(0.5); }
         else {
           c.vy = 0; c.air = false; c.ang.set(0, 0, 0);
           if (on && off > 0.55) { // caught the edge of the one below: slide off it
@@ -424,6 +433,7 @@ function checkPads() {
     activePad = found;
     $("prompt").hidden = !found;
     if (found) {
+      sound.chime();
       const d = DISTRICTS[found.stop.district];
       $("prompt-label").textContent = `Open ${found.stop.name}`;
       $("prompt-district").textContent = d.name;
@@ -487,7 +497,16 @@ function openStop(stop) {
 }
 
 let jumped = false; // the car was put down somewhere else this frame: tell the room so others see a snap, not a slide
+let raceNoteTimer = 0;
+function raceNote(text, ms = 2000) {
+  const el = $("race-note");
+  el.textContent = text; el.hidden = false;
+  clearTimeout(raceNoteTimer);
+  raceNoteTimer = setTimeout(() => { el.hidden = true; }, ms);
+}
+const onGridNote = () => raceNote("You're on the grid: the race is about to start", 2500);
 function teleport(stop) {
+  if (raceOnGrid()) return onGridNote();
   raceCancel("Lap cancelled: you jumped elsewhere");
   jumped = true;
   const pad = pads.find((p) => p.stop === stop);
@@ -502,6 +521,7 @@ function teleport(stop) {
 
 // Drop the car on the road just outside a district's arch, facing in
 function teleportDistrict(key) {
+  if (raceOnGrid()) return onGridNote();
   if (key === "raceway") return toStart();
   raceCancel("Lap cancelled: you jumped elsewhere");
   jumped = true;
@@ -526,7 +546,8 @@ function placeCar(x, z, heading) {
   checkPads();
   updateWhere();
 }
-initRace({ show, place: placeCar, car, scene, record: (rec) => celebrate(rec, { self: true }) });
+initRace({ show, place: placeCar, car, scene, record: (rec) => celebrate(rec, { self: true }), sound: (cue) => sound[cue]?.(), live: onLap });
+initRaceLive({ place: placeCar, note: raceNote, closeSheets: () => dialogs.forEach((d) => d.open && d.close()), sound, onRaceway: () => inRaceway(car.s.x, car.s.z) });
 
 // ── A new #1 on the Raceway: fireworks for everyone here, a note, the board and ghost refreshed ──
 // The setter hears it from their own post (while the finish sheet is up, so it waits for the sheet to close); everyone
@@ -540,6 +561,7 @@ function launchFireworks() {
 function showCelebration({ rec, self }) {
   peersNote(self ? `You're #1 on the Raceway with ${formatTime(rec.ms)}` : `${rec.name} just took #1 on the Raceway with ${formatTime(rec.ms)}`, 6000);
   launchFireworks();
+  sound.fanfare();
 }
 function celebrate(rec, { self = false } = {}) {
   if (!rec || !Number.isFinite(rec.ms)) return;
@@ -604,6 +626,8 @@ onPeers((state, event) => {
   drawPeers(state);
   if (event?.type === "join" && event.name) peersNote(`${event.name} just arrived`);
   if (event?.type === "record") celebrate(event);
+  if (event?.type === "race") raceEvent(event.m);
+  redrawRaceButtons();
   if (event?.type === "named") {
     const why = { reserved: `"${event.asked}" is reserved here, so you're ${event.name}.`, rude: `That name won't do here, so you're ${event.name}.`,
       bad: `That name won't work (1 to 20 ordinary characters), so you're ${event.name}.`, taken: `Someone here is already ${event.asked}, so you're ${event.name}.` };
@@ -679,6 +703,26 @@ onBoard(() => {
 $("intro-map").addEventListener("click", openMap);
 $("start").addEventListener("click", () => $("intro").close());
 $("intro-race").addEventListener("click", () => { $("intro").close(); toStart(); });
+// Browsers allow sound only after a gesture: the first click or key on the page starts the context
+for (const id of ["start", "intro-race", "intro-map", "sound-chip"]) $(id).addEventListener("click", () => sound.unlock());
+addEventListener("keydown", () => sound.unlock(), { once: false });
+addEventListener("pointerdown", () => sound.unlock());
+// The mute chip (HUD) and the Sound / Music switches (Map view) all show one state
+const soundChip = $("sound-chip");
+soundChip.hidden = typeof AudioContext === "undefined";
+function drawSound() {
+  const st = sound.state();
+  soundChip.setAttribute("aria-pressed", String(st.on));
+  soundChip.setAttribute("aria-label", st.on ? "Mute sound" : "Unmute sound");
+  soundChip.querySelector(".chip-long").textContent = st.on ? "Sound" : "Muted";
+  document.querySelectorAll("[data-sound]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.sound === "on") === st.on)));
+  document.querySelectorAll("[data-music]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.music === "on") === st.music)));
+}
+sound.onChange(drawSound);
+drawSound();
+soundChip.addEventListener("click", () => sound.setOn(!sound.state().on));
+document.querySelectorAll("[data-sound]").forEach((b) => b.addEventListener("click", () => { sound.unlock(); sound.setOn(b.dataset.sound === "on"); }));
+document.querySelectorAll("[data-music]").forEach((b) => b.addEventListener("click", () => { sound.unlock(); sound.setMusic(b.dataset.music === "on"); }));
 document.querySelectorAll("[data-quality]").forEach((b) =>
   b.addEventListener("click", () => {
     qualityPref = b.dataset.quality;
@@ -755,9 +799,12 @@ function frame() {
   const t = clock.elapsedTime;
   if (!paused) {
     const px = car.s.x, pz = car.s.z;
-    const info = stepCar(car, keys, dt);
+    const info = stepCar(car, raceLocked() ? NO_KEYS : keys, dt);
     brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on);
+    sound.tick(dt, { speed: car.s.speed, throttle: (keys.up ? 1 : 0) - (keys.down ? 1 : 0), surface: car.s.air ? "air" : info.dirt ? "dirt" : onCobbles(car.s.x, car.s.z) ? "cobble" : "grass" });
+    if (info.event?.landed > 4) sound.land(Math.min(1, info.event.landed / 14));
     raceTick(px, pz, car.s.x, car.s.z, car.s.heading, dt);
+    raceLiveTick();
     sendPose(car.s, jumped, performance.now());
     jumped = false;
     emitDust(dt, info);
@@ -778,6 +825,7 @@ function frame() {
     const here = inRaceway(car.s.x, car.s.z);
     raceHud(here);
     raceRefresh(here);
+    redrawRaceButtons();
   }
   animated.forEach((f) => f(t));
   if (!reduceMotion) {
@@ -826,4 +874,5 @@ setTimeout(() => $("loader").remove(), 450);
 window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, colliders,
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
   info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState,
-  cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks };
+  cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks, sound,
+  raceLive: raceLiveState, raceLap: onLap, raceLiveInject: injectRaceLive };

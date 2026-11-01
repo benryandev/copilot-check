@@ -60,6 +60,7 @@ function startLap(t) {
   countStage("start");
   Object.assign(lap, { running: true, start: t, next: 1, splits: [] });
   trace = [[0, round1(here.x), round1(here.z), round2(here.h)]];
+  hooks.sound?.("lapStart");
   if (ghostData) note(`Ghost: ${ghostData.name}, ${formatTime(ghostData.ms)}`, 2600);
 }
 export function raceCancel(why) {
@@ -81,6 +82,8 @@ function crossed(g, forward, t) {
     const ms = Math.round((t - lap.start) * 1000);
     lap.splits.push(ms);
     lap.next++;
+    hooks.sound?.("blip");
+    hooks.live?.("cp", g.i);
     const ref = best?.splits?.[g.i - 1];
     note(ref ? `Checkpoint ${g.i} of ${N}  ${gap(ms - ref)}` : `Checkpoint ${g.i} of ${N}`, 2200);
   } else if (!forward && g.i === lap.next - 1) {
@@ -130,9 +133,16 @@ function finish(t) {
   const nb = recordBest(best, { ms, splits, trace: path });
   if (nb !== best) { best = nb; save(BEST_KEY, best); }
   finished = { ms, splits, trace: path, prevBest, posted: false };
+  hooks.sound?.("lapFinish");
+  hooks.live?.("fin", ms);
   countStage("finish");
   openFinish();
 }
+
+// ── Live races (race-live.js) borrow the HUD's second line and hide the ghost while a race is on ──
+let liveLine = null, ghostHidden = false;
+export function setLiveLine(text) { liveLine = text || null; lastSub = ""; }
+export function setGhostHidden(on) { ghostHidden = !!on; if (ghostHidden && ghost) ghost.group.visible = false; }
 
 // ── HUD ────────────────────────────────────────────────────────────────
 let shown = false, lastTime = "", lastSub = "";
@@ -146,7 +156,9 @@ function drawHud() {
   const time = lap.running ? formatTime(Math.max(0, (clock - lap.start) * 1000), 2) : finished ? formatTime(finished.ms, 2) : "0:00.00";
   // Phones get the short form: the panel sits where the title was, beside the chips, and must not cover the track ahead
   const cp = Math.min(lap.next, N + 1) - 1;
-  const sub = narrow.matches
+  const sub = liveLine
+    ? `${liveLine}${lap.running ? `  ·  CP ${cp}/${N}` : ""}`
+    : narrow.matches
     ? (lap.running ? `CP ${cp}/${N}${best ? `  ·  best ${formatTime(best.ms, 2)}` : ""}` : best ? `Best ${formatTime(best.ms)}` : "Cross the line to start")
     : `Best ${best ? formatTime(best.ms) : "none yet"}${lap.running ? `  ·  Checkpoint ${cp} of ${N}` : "  ·  Cross the start line"}`;
   if (time !== lastTime) { lastTime = time; $("race-time").textContent = time; }
@@ -421,7 +433,7 @@ let ghostFly = null;
 function ghostTick(dt = 0) {
   if (!ghost || !ghostData) return;
   const e = previewMs ?? (lap.running ? (clock - lap.start) * 1000 : null);
-  const on = e != null && e <= ghostData.ms + 2000;
+  const on = !ghostHidden && e != null && e <= ghostData.ms + 2000;
   if (!on) ghostFly = null;
   ghost.group.visible = on;
   if (!on) return;

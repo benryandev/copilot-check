@@ -46,6 +46,7 @@
     <div class="hud-actions">
       <button type="button" class="chip" id="open-map" aria-label="Map view"><span class="chip-long">Map view</span><span class="chip-short">Map</span></button>
       <button type="button" class="chip chip-peers" id="peers-chip" hidden aria-label="Who's driving now"><span class="chip-long">Just you</span><span class="chip-short">1</span></button>
+      <button type="button" class="chip chip-sound" id="sound-chip" aria-label="Mute sound" aria-pressed="true" hidden><span class="chip-long">Sound</span><span class="chip-short">♪</span></button>
       <button type="button" class="chip" id="theme" aria-label="Switch to dark theme">Dark</button>
     </div>
     <p class="hud-hint peers-note" id="peers-note" role="status" aria-live="polite" hidden></p>
@@ -56,6 +57,7 @@
     <p class="race-time" id="race-time">0:00.00</p>
     <p class="race-sub" id="race-sub"></p>
     <p class="race-note" id="race-note" role="status" hidden></p>
+    <button type="button" class="chip race-go" id="race-go" hidden>Race</button>
   </div>
 
   <div class="hud hud-prompt" id="prompt" hidden>
@@ -63,6 +65,13 @@
       <span class="prompt-text"><span class="prompt-eyebrow" id="prompt-district"></span><span class="prompt-name" id="prompt-label">Open</span></span>
       <span class="prompt-key" id="prompt-hint">Enter</span>
     </button>
+  </div>
+
+  <div class="hud hud-prompt race-invite" id="race-invite" hidden>
+    <div class="prompt-card race-invite-card">
+      <span class="prompt-text"><span class="prompt-eyebrow">RealFi Raceway</span><span class="prompt-name" id="race-invite-text"></span></span>
+      <span class="race-invite-actions"><button type="button" class="chip" id="race-invite-join">Join</button><button type="button" class="chip" id="race-invite-no">Not now</button></span>
+    </div>
   </div>
 
   <div class="touch" id="touch" hidden>
@@ -128,6 +137,16 @@
       <button type="button" class="chip" data-quality="medium">Medium</button>
       <button type="button" class="chip" data-quality="low">Low</button>
     </fieldset>
+    <fieldset class="quality">
+      <legend>Sound</legend>
+      <button type="button" class="chip" data-sound="on">On</button>
+      <button type="button" class="chip" data-sound="off">Off</button>
+    </fieldset>
+    <fieldset class="quality">
+      <legend>Music</legend>
+      <button type="button" class="chip" data-music="on">On</button>
+      <button type="button" class="chip" data-music="off">Off</button>
+    </fieldset>
     <div class="sheet-actions">
       <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Back to the world</span></button>
     </div>
@@ -143,6 +162,7 @@
         <button type="submit" class="br-button"><span class="br-button-label">Save</span></button>
       </div>
     </form>
+    <div class="race-actions"><button type="button" class="br-button" id="peers-race"><span class="br-button-label">Start a race</span></button><span class="muted race-actions-hint">20 s to the grid, up to 8 cars, lap times still count for the leaderboard.</span></div>
     <ul class="peers-list" id="peers-list"></ul>
     <p class="muted" id="peers-status" role="status" aria-live="polite"></p>
     <div class="sheet-actions">
@@ -153,6 +173,7 @@
   <dialog id="race" class="sheet" aria-labelledby="race-title">
     <p class="br-label">RealFi Raceway</p>
     <h2 id="race-title">Lap complete</h2>
+    <p class="race-live-line" id="race-live-line" hidden></p>
     <p class="race-result" id="race-result"></p>
     <p id="race-gap"></p>
     <form class="race-form" id="race-form">

@@ -958,7 +958,7 @@ export function addProp(parent, kind, x, z, rotY = 0, lift = 0) {
   p.m.position.set(x, terrainHeight(x, z) + p.h + lift, z);
   p.m.rotation.y = rotY;
   parent.add(p.m);
-  crates.push({ ...p, v: new THREE.Vector2(), spin: 0, tilt: 0, lift, redraw: () => {} });
+  crates.push({ ...p, kind, v: new THREE.Vector2(), spin: 0, tilt: 0, lift, redraw: () => {} });
 }
 
 export function addProps(scene) {
