@@ -50,8 +50,11 @@ roads.forEach((r, ri) => {
 
 // Nearest point on any road within maxD: distance, road index, t (0–1), unit tangent.
 // Beyond maxD, d is Infinity.
+// The nearest road is the one whose EDGE is nearest, not its centreline: the flattening around a road is a function of
+// (distance - half), so choosing by edge keeps the ground continuous where a wide road's blend meets a narrow one's.
+// (Choosing by centreline put a 0.36 m step in the grass beside the Raceway, which the car took for a wall.)
 export function roadInfo(x, z, maxD = 26) {
-  let best = { d: Infinity, road: -1, t: 0, tx: 0, tz: 1, half: ROAD_HALF };
+  let best = { d: Infinity, road: -1, t: 0, tx: 0, tz: 1, half: ROAD_HALF }, bestEdge = Infinity;
   const ci = Math.floor(x / CELL), cj = Math.floor(z / CELL), n = Math.ceil(maxD / CELL);
   for (let a = ci - n; a <= ci + n; a++) for (let b = cj - n; b <= cj + n; b++) {
     const list = grid.get(cellKey(a, b));
@@ -61,8 +64,10 @@ export function roadInfo(x, z, maxD = 26) {
       const l2 = vx * vx + vz * vz;
       const u = Math.max(0, Math.min(1, ((x - g.ax) * vx + (z - g.az) * vz) / l2));
       const d = Math.hypot(x - (g.ax + vx * u), z - (g.az + vz * u));
-      if (d < best.d && d <= maxD) {
-        const l = Math.sqrt(l2), r = roads[g.ri];
+      const r = roads[g.ri], edge = d - r.half;
+      if (edge < bestEdge && d <= maxD) {
+        const l = Math.sqrt(l2);
+        bestEdge = edge;
         best = { d, road: g.ri, t: (g.cum + l * u) / r.len, tx: vx / l, tz: vz / l, half: r.half };
       }
     }
