@@ -12,6 +12,7 @@ What changed from the file as sent (everything else is as written):
 - The name field is prefilled with the player's race leaderboard name when there is one, and names go to 20 characters like the race board (was 16).
 - When a run ends the game tells the page it sits in (`postMessage`: `arcade.run`, `arcade.board`, and `arcade.close` for
   Escape) so the cabinet in the world can show the top score and the sheet can close.
+- The coin is the Strike mark (`/ecosystem/img/strike-mark.svg`, the world's own asset) instead of a drawn coin with a lightning bolt (Ben, 1 Nov).
 - `?theme=dark|light` sets the colour scheme, so the frame follows the world's theme rather than the OS.
 - A test hook, `window.__flappy.finish(score, level, seconds)`, so the world's QA can end a run without playing one.
 - Two lines of CSS so a short frame scrolls the start and game-over screens from the top instead of clipping the title.

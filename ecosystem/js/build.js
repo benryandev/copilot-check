@@ -370,6 +370,8 @@ function makeLabel(text, colour, y, parent) {
 export const marquees = new Map(); // stop key → redraw(line)
 export function setMarquee(key, line) { marquees.get(key)?.(line); }
 const lit = (tex) => new THREE.MeshBasicMaterial({ map: tex, toneMapped: false });
+const markImg = new Image();
+const strikeMark = new Promise((res) => { markImg.onload = () => res(markImg); markImg.onerror = () => res(null); markImg.src = "/ecosystem/img/strike-mark.svg"; });
 function cabinetScreen(title) {
   return canvasTexture(512, 400, (ctx, w, h) => {
     ctx.fillStyle = "#170F38"; ctx.fillRect(0, 0, w, h);
@@ -379,8 +381,8 @@ function cabinetScreen(title) {
     const candle = (x, top, bot) => { ctx.fillStyle = "#23CDA8"; ctx.fillRect(x, 0, 46, top); ctx.fillStyle = "#FF5C70"; ctx.fillRect(x, bot, 46, h - bot); };
     candle(300, 110, 250); candle(440, 170, 310);
     ctx.fillStyle = "#0B6E5B"; ctx.beginPath(); ctx.arc(150, 190, 34, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#23CDA8"; ctx.beginPath(); ctx.arc(146, 186, 34, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#6D3BF5"; ctx.beginPath(); ctx.moveTo(150, 166); ctx.lineTo(136, 190); ctx.lineTo(147, 190); ctx.lineTo(142, 208); ctx.lineTo(158, 184); ctx.lineTo(147, 184); ctx.closePath(); ctx.fill();
+    if (markImg.complete && markImg.naturalWidth) ctx.drawImage(markImg, 112, 152, 68, 68); // the coin is the Strike mark
+    else { ctx.fillStyle = "#23CDA8"; ctx.beginPath(); ctx.arc(146, 186, 34, 0, Math.PI * 2); ctx.fill(); }
     ctx.fillStyle = "#F1ECFF"; ctx.font = "700 44px Impact, 'Arial Black', sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
     ctx.fillText(title.toUpperCase(), w / 2, 22);
     ctx.font = "600 24px 'Atkinson Hyperlegible Next', Arial, sans-serif"; ctx.fillStyle = "#B3A6E6";
@@ -406,6 +408,7 @@ SHAPES.cabinet = (g, A, stop) => {
   for (const [x, z] of [[0.45, 1.0], [0.95, 1.25]]) g.add(cyl(0.16, 0.08, A, x, 2.9, z, 16));
   g.add(box(3.4, 0.9, 2.0, A, 0, 5.4, -0.4)); // marquee housing
   const screen = cabinetScreen(title); screen.redraw();
+  strikeMark.then(() => screen.redraw());
   const sc = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.0), lit(screen.tex));
   sc.position.set(0, 4.1, 1.01); sc.rotation.x = -0.1; g.add(sc);
   const sign = cabinetMarquee(title); sign.redraw("INSERT COIN");

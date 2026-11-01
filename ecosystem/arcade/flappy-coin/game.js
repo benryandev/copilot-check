@@ -653,6 +653,18 @@
     ctx.restore();
   }
 
+  // The coin is the Strike mark (the world's own asset); until it has loaded, a plain coin with a bolt on it
+  const mark = new Image(); let markOk = false;
+  mark.onload = () => { markOk = true; }; mark.src = '/ecosystem/img/strike-mark.svg';
+  function coinFace(r) {
+    if (markOk) { ctx.drawImage(mark, -r, -r, r * 2, r * 2); return; }
+    ctx.fillStyle = C.coin; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = C.edge; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, r * 0.76, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = C.bolt; ctx.beginPath();
+    ctx.moveTo(r * 0.12, -r * 0.62); ctx.lineTo(-r * 0.34, r * 0.08); ctx.lineTo(-r * 0.02, r * 0.08);
+    ctx.lineTo(-r * 0.14, r * 0.62); ctx.lineTo(r * 0.36, -r * 0.1); ctx.lineTo(r * 0.04, -r * 0.1); ctx.closePath(); ctx.fill();
+  }
+
   function drawMelt() {
     const r = p.r, m = Math.min(1, meltT / 1.1);
     ctx.save(); ctx.translate(p.x, p.y);
@@ -669,12 +681,9 @@
       ctx.beginPath(); ctx.arc(x, cy + ry + len, r * 0.2, 0, Math.PI * 2); ctx.fill();
     });
     ctx.fillStyle = C.edge; ctx.beginPath(); ctx.ellipse(2, cy + 3, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = C.coin; ctx.beginPath(); ctx.ellipse(0, cy, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
-    // fading bolt, squashed
-    ctx.globalAlpha = Math.max(0, 1 - m); ctx.translate(0, cy); ctx.scale(1 + 0.9 * m, 1 - 0.72 * m);
-    ctx.fillStyle = C.bolt; ctx.beginPath();
-    ctx.moveTo(r * 0.12, -r * 0.62); ctx.lineTo(-r * 0.34, r * 0.08); ctx.lineTo(-r * 0.02, r * 0.08);
-    ctx.lineTo(-r * 0.14, r * 0.62); ctx.lineTo(r * 0.36, -r * 0.1); ctx.lineTo(r * 0.04, -r * 0.1); ctx.closePath(); ctx.fill();
+    // the coin itself, squashed
+    ctx.translate(0, cy); ctx.scale(1 + 0.9 * m, 1 - 0.72 * m);
+    coinFace(r);
     ctx.restore();
   }
 
@@ -690,11 +699,7 @@
     const lift = flapAnim;
     ctx.save(); ctx.translate(-r * 0.15, -r * 0.2); wing(-1, r, Math.min(1, lift + 0.25)); ctx.restore();
     ctx.fillStyle = C.edge; ctx.beginPath(); ctx.arc(2, 3, r, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = C.coin; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = C.edge; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, r * 0.76, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = C.bolt; ctx.beginPath();
-    ctx.moveTo(r * 0.12, -r * 0.62); ctx.lineTo(-r * 0.34, r * 0.08); ctx.lineTo(-r * 0.02, r * 0.08);
-    ctx.lineTo(-r * 0.14, r * 0.62); ctx.lineTo(r * 0.36, -r * 0.1); ctx.lineTo(r * 0.04, -r * 0.1); ctx.closePath(); ctx.fill();
+    coinFace(r);
     ctx.save(); ctx.translate(-r * 0.3, 0); wing(1, r, lift); ctx.restore();
     ctx.restore();
   }
