@@ -2,7 +2,7 @@
 // a flat, time-ordered list of events by eventsFor(). No Web Audio here; music.js plays the events. Times are in beats.
 // Each sketch borrows a feel (bossa comping, an arcade four-on-the-floor, a shuffled organ groove), never a tune.
 
-export const BARS = 16, STEPS = 16; // bars per loop, 16th steps per bar
+export const BARS = 16, STEPS = 16; // default bars per loop (a sketch may set its own `bars`), 16th steps per bar
 
 // Chord voicings and bass roots are MIDI numbers (60 = middle C). q: the chord's quality, for the walking bass.
 const T = {
@@ -35,11 +35,13 @@ const T = {
     ],
   },
   sprint: {
-    name: 'B. Arcade sprint', bpm: 140, swing: 0.5, chordVoice: 'pad', leadVoice: 'pulse', arp: true,
+    name: 'B. Arcade sprint', bpm: 140, swing: 0.5, chordVoice: 'pad', leadVoice: 'pulse', arp: true, bars: 24,
+    // A (1-8) in A minor, B (9-16) climbs, C (17-24) is A lifted a whole step with a turnaround home in the last bar
     chords: [[57, 60, 64], [57, 60, 65], [55, 60, 64], [55, 59, 62], [57, 60, 64], [57, 60, 65], [55, 60, 64], [56, 59, 62, 64],
-      [57, 60, 65], [55, 59, 62], [57, 60, 64], [57, 60, 64], [57, 60, 65], [55, 59, 62], [55, 60, 64], [56, 59, 62, 64]],
-    roots: [45, 41, 48, 43, 45, 41, 48, 40, 41, 43, 45, 45, 41, 43, 48, 40],
-    q: ['min', 'maj', 'maj', 'maj', 'min', 'maj', 'maj', 'dom', 'maj', 'maj', 'min', 'min', 'maj', 'maj', 'maj', 'dom'],
+      [57, 60, 65], [55, 59, 62], [57, 60, 64], [57, 60, 64], [57, 60, 65], [55, 59, 62], [55, 60, 64], [56, 59, 62, 64],
+      [59, 62, 66], [59, 62, 67], [57, 62, 66], [57, 61, 64], [59, 62, 66], [59, 62, 67], [57, 62, 66], [56, 59, 62, 64]],
+    roots: [45, 41, 48, 43, 45, 41, 48, 40, 41, 43, 45, 45, 41, 43, 48, 40, 47, 43, 50, 45, 47, 43, 50, 40],
+    q: ['min', 'maj', 'maj', 'maj', 'min', 'maj', 'maj', 'dom', 'maj', 'maj', 'min', 'min', 'maj', 'maj', 'maj', 'dom', 'min', 'maj', 'maj', 'maj', 'min', 'maj', 'maj', 'dom'],
     bass: [[0, 0, 2, 0.9], [2, 12, 2, 0.55], [4, 0, 2, 0.8], [6, 12, 2, 0.55], [8, 0, 2, 0.9], [10, 12, 2, 0.55], [12, 0, 2, 0.8], [14, 12, 2, 0.55]], // octave pump
     drums: { kick: [[0, 0.9], [4, 0.8], [8, 0.9], [12, 0.8]], snare: [[4, 0.8], [12, 0.8]], hat: [[0, 0.35], [2, 0.5], [4, 0.35], [6, 0.5], [8, 0.35], [10, 0.5], [12, 0.35], [14, 0.5]], hatOpen: [[14, 0.4]] },
     comp: [[0, 8, 0.35], [8, 8, 0.35]],
@@ -60,6 +62,14 @@ const T = {
       [13, 0, 79, 4], [13, 4, 83, 4], [13, 8, 86, 8],
       [14, 0, 84, 2], [14, 2, 83, 2], [14, 4, 81, 2], [14, 6, 79, 2], [14, 8, 76, 4], [14, 12, 74, 4],
       [15, 0, 80, 4], [15, 4, 76, 4], [15, 8, 80, 8],
+      [16, 0, 78, 2], [16, 2, 78, 2], [16, 4, 81, 2], [16, 6, 83, 2], [16, 8, 78, 4], [16, 12, 76, 2], [16, 14, 74, 2],
+      [17, 0, 74, 4], [17, 4, 71, 2], [17, 6, 74, 2], [17, 8, 79, 8],
+      [18, 0, 81, 2], [18, 2, 81, 2], [18, 4, 78, 2], [18, 6, 76, 2], [18, 8, 74, 4], [18, 12, 76, 4],
+      [19, 0, 73, 4], [19, 4, 76, 4], [19, 8, 81, 8],
+      [20, 0, 83, 2], [20, 2, 83, 2], [20, 4, 81, 2], [20, 6, 78, 2], [20, 8, 83, 4], [20, 12, 81, 2], [20, 14, 78, 2],
+      [21, 0, 79, 4], [21, 4, 78, 2], [21, 6, 76, 2], [21, 8, 74, 8],
+      [22, 0, 78, 2], [22, 2, 76, 2], [22, 4, 74, 2], [22, 6, 76, 2], [22, 8, 78, 4], [22, 12, 81, 4],
+      [23, 0, 80, 2], [23, 2, 79, 2], [23, 4, 76, 4], [23, 8, 71, 8],
     ],
   },
   cruise: {
@@ -99,12 +109,13 @@ const THIRD = { maj: 4, min: 3, dom: 4 }, SIX7 = { maj: 9, min: 10, dom: 10 };
 export function eventsFor(key, loops = 1) {
   const d = T[key];
   if (!d) throw new Error(`no sketch ${key}`);
+  const bars = d.bars || BARS;
   const out = [];
   const lag = (step) => (step % 4 === 2 ? (d.swing - 0.5) * 0.5 : 0); // the off 8ths land late when the sketch swings
   const at = (bar, step) => bar * 4 + step / 4 + lag(step);
   for (let L = 0; L < loops; L++) {
-    const b0 = L * BARS;
-    for (let bar = 0; bar < BARS; bar++) {
+    const b0 = L * bars;
+    for (let bar = 0; bar < bars; bar++) {
       const chord = d.chords[bar], root = d.roots[bar], q = d.q[bar];
       for (const [kind, hits] of Object.entries(d.drums)) for (const [s, v] of hits) out.push({ t: at(b0 + bar, s), kind, dur: kind === 'hatOpen' ? 0.5 : 0.25, vel: v });
       if (d.walk) [0, THIRD[q], 7, SIX7[q]].forEach((o, i) => out.push({ t: at(b0 + bar, i * 4), kind: 'bass', midi: root + o, dur: 0.95, vel: i === 0 ? 0.85 : 0.7 }));
@@ -118,4 +129,5 @@ export function eventsFor(key, loops = 1) {
 }
 
 /** Seconds per loop at the sketch's tempo. */
-export const loopSeconds = (key) => (BARS * 4 * 60) / T[key].bpm;
+export const barsOf = (key) => T[key].bars || BARS;
+export const loopSeconds = (key, bpm = T[key].bpm) => (barsOf(key) * 4 * 60) / bpm;

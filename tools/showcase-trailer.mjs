@@ -202,6 +202,8 @@ const nightPage = async () => (pages.dark ||= await open({ theme: 'dark' }));
 const SHOTS = [
   ['01-arrival', async () => {
     const page = await open({ arrive: true });
+    // A viewer can't skip a video, and the small eyebrow was hard to read over the grass (Ben, 1 Nov): title alone
+    await page.evaluate(() => { for (const sel of ['#arrive .arrive-hint', '#arrive .br-label']) document.querySelector(sel).style.display = 'none'; });
     await rec(page, 5.6, (t) => titleAt(page, t));
     await page.context().close();
   }],
@@ -409,24 +411,43 @@ if (!NO_AUDIO) {
   await page.goto(`${base}/ecosystem/arcade/flappy-coin/`, { waitUntil: 'domcontentloaded' }); // any page on the origin: the module imports from there
   const wavB64 = await page.evaluate(async ([tl, frames, fps, sr]) => {
     const { createSound } = await import('/ecosystem/js/sound.js');
-    const dt = 1 / fps, PRE = Math.round(4 * fps), dur = (frames + PRE) * dt + 0.8; // four seconds of pre-roll so the bed is already playing at frame one
+    const { createPlayer } = await import('/ecosystem/js/music.js');
+    const { eventsFor, loopSeconds } = await import('/ecosystem/js/music-math.js');
+    const dt = 1 / fps, PRE = Math.round(4 * fps), dur = (frames + PRE) * dt + 0.8; // four seconds of pre-roll, so nothing is still fading in at frame one
     const ctx = new OfflineAudioContext(2, Math.ceil(dur * sr), sr);
     const sound = createSound({ enabled: true, context: () => ctx, offline: true });
     sound.setNight(false);
     sound.unlock();
-    sound.setTrim('bed', 2.5); // the bed sits far under the engine in the game; a clip wants it heard in the quiet shots
+    // The mix (Ben, 1 Nov): the engine is not the lead instrument. It sits well under the music, the one-shots stay forward, the old bed goes.
+    for (const [k, v] of Object.entries({ block: 0.22, exhaust: 0.35, chug: 0.12, whine: 0.12, wind: 0.3, road: 0.3, pops: 0.9, cues: 0.75, bed: 0 })) sound.setTrim(k, v);
+    // The music: the sprint sketch under the whole cut, its layers following the car's speed (bass and hats at rest, drums, arpeggio and lead with speed)
+    const musicGain = ctx.createGain(); musicGain.gain.value = 0.9; musicGain.connect(ctx.destination);
+    const music = createPlayer(ctx, musicGain, 'sprint');
+    const t0 = PRE * dt - 0.05; // bar one lands on frame one
+    music.schedule(eventsFor('sprint', Math.ceil((frames * dt) / loopSeconds('sprint')) + 1), t0, 0, (frames * dt) / music.spb + 8);
+    let level = 0.15; // smoothed intensity
+    music.setIntensity(level, 0, 0.001);
+    let full = 0; // frames of flat-out throttle in a row: every 1.8 s the throttle lifts for a third of a second, for the ear (the picture is unchanged)
     const byFrame = new Map();
     for (const e of tl) { if (!byFrame.has(e.f)) byFrame.set(e.f, []); byFrame.get(e.f).push(e); }
     const apply = (i) => {
       const evs = byFrame.get(i) || [];
-      if (!evs.some((e) => e.t === 'tick')) { sound.pauseEngine(); sound.ambient(dt); } // paused frames: the bed alone
+      const tick = evs.find((e) => e.t === 'tick');
+      if (!tick) { sound.pauseEngine(); full = 0; } // paused frames (the arrival): the music alone, at rest
+      const want = tick ? Math.max(0.15, Math.min(1, Math.abs(tick.speed) / 22)) : 0.15;
+      level += (want - level) * 0.08;
+      music.setIntensity(level, ctx.currentTime, 0.3);
       for (const e of evs) {
-        if (e.t === 'tick') sound.tick(dt, { speed: e.speed, throttle: e.th, surface: e.surf, boost: e.boost });
+        if (e.t === 'tick') {
+          let th = e.th;
+          if (th > 0 && e.speed > 19 && !e.boost) { full++; if (full % 54 >= 44) th = 0; } else full = 0;
+          sound.tick(dt, { speed: e.speed, throttle: th, surface: e.surf, boost: e.boost });
+        }
         else if (e.t === 'cue') sound[e.cue]?.(...e.args);
         else if (e.t === 'pause') sound.pauseEngine();
       }
     };
-    const at = (k) => { if (k < PRE) { sound.pauseEngine(); sound.ambient(dt); } else apply(k - PRE); };
+    const at = (k) => { if (k < PRE) sound.pauseEngine(); else apply(k - PRE); };
     at(0);
     for (let k = 1; k < frames + PRE; k++) ctx.suspend(k * dt).then(() => { at(k); ctx.resume(); });
     const buf = await ctx.startRendering();
