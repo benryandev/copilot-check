@@ -8,7 +8,7 @@ export function mountMixer(sound) {
   const rows = [];
   for (const k of sound.TRIM_KEYS) {
     const row = document.createElement("label"); row.style.cssText = "display:grid;grid-template-columns:58px 1fr 34px;gap:6px;align-items:center;margin:2px 0";
-    const name = document.createElement("span"); name.textContent = k;
+    const name = document.createElement("span"); name.textContent = k === "bed" ? "music" : k; // the "bed" trim drives the music now
     const input = document.createElement("input"); input.type = "range"; input.min = "0"; input.max = "2.5"; input.step = "0.05"; input.value = String(sound.trims()[k]); input.style.cssText = "width:100%;accent-color:#22c55e";
     const val = document.createElement("span"); val.textContent = Number(input.value).toFixed(2); val.style.textAlign = "right";
     input.addEventListener("input", () => { sound.setTrim(k, input.value); val.textContent = Number(input.value).toFixed(2); });
