@@ -8,7 +8,7 @@ import { groundHeight, inRaceway } from "./terrain.js";
 import { paint as carPaint } from "./build.js";
 import { nameTag } from "./tags.js";
 import { clockOffset } from "./race-live-math.js";
-import { nextSendDelay, poseAt, pickDrawn, backoff, flyY, opacityFor, pingSample, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE } from "./peers-math.js";
+import { nextSendDelay, poseAt, pickDrawn, backoff, flyY, opacityFor, pingSample, renderDelay, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE } from "./peers-math.js";
 
 const WS_DEFAULT = "wss://copilot-world.benryan.workers.dev/ws";
 const NAME_KEY = "eco-race-name", OWNER_KEY = "eco-owner";
@@ -247,12 +247,13 @@ function fade(p, quiet) {
 let rank = 0, drawn = new Set();
 export function peersTick(dt, camPos) {
   if (!peers.size) return;
-  const now = performance.now(), at = now - DELAY_MS;
-  // Who could be drawn: a known pose, not gone quiet, within range of the camera
+  const now = performance.now();
+  // Who could be drawn: a known pose, not gone quiet, within range of the camera. Each car is drawn as far behind
+  // its latest sample as its own sender's rate needs (150 ms at 10 Hz, more for a sparse one).
   const cands = [];
   for (const p of peers.values()) {
     const gone = !p.pinned && now - p.lastSeen > GONE_MS;
-    const pose = gone ? null : poseAt(p.samples, at);
+    const pose = gone ? null : poseAt(p.samples, now - renderDelay(p.samples));
     if (!pose || Math.hypot(pose.x - camPos.x, pose.z - camPos.z) > DRAW_RANGE) { park(p, now); continue; }
     cands.push({ p, x: pose.x, z: pose.z, h: pose.h });
   }

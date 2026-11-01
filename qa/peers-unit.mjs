@@ -26,12 +26,12 @@ test('backoff: 1, 2, 4, …, capped at 30 s', () => {
   assert.deepEqual([0, 1, 2, 5, 9].map(backoff), [1000, 2000, 4000, 30000, 30000]);
 });
 
-test('poseAt: holds before the first sample, blends between two, holds after the last', () => {
+test('poseAt: holds before the first sample, blends between two, carries on briefly after the last', () => {
   const s = [{ at: 1000, x: 0, z: 0, h: 0 }, { at: 1100, x: 10, z: 0, h: 1 }, { at: 1200, x: 10, z: 10, h: 1 }];
   assert.deepEqual(poseAt(s, 900), { x: 0, z: 0, h: 0 });
   assert.deepEqual(poseAt(s, 1050), { x: 5, z: 0, h: 0.5 });
   assert.deepEqual(poseAt(s, 1150), { x: 10, z: 5, h: 1 });
-  assert.deepEqual(poseAt(s, 1500), { x: 10, z: 10, h: 1 });
+  assert.deepEqual(poseAt(s, 1500), { x: 10, z: 35, h: 1 }, '300 ms past the last sample: 250 ms of the last velocity (100 m/s along z), then held');
   assert.equal(poseAt([], 0), null);
 });
 
@@ -77,4 +77,28 @@ test('pingSample: keeps the last five samples, newest last', async () => {
   for (let i = 0; i < 7; i++) s = pingSample(s, { sentAt: i, receivedAt: i + 1, serverNow: 1000 + i });
   assert.equal(s.length, 5); assert.equal(s[0].sentAt, 2); assert.equal(s[4].sentAt, 6);
   assert.deepEqual(pingSample([], { sentAt: 1, receivedAt: 2, serverNow: 3 }), [{ sentAt: 1, receivedAt: 2, serverNow: 3 }]);
+});
+
+test('poseAt: past the last sample the car carries on along its last velocity for a short while, then holds', async () => {
+  const { poseAt, EXTRAP_MS } = await import('../ecosystem/js/peers-math.js');
+  assert.equal(EXTRAP_MS, 250);
+  const samples = [{ at: 0, x: 0, z: 0, h: 0 }, { at: 100, x: 2, z: 0, h: 0 }]; // 20 m/s along x
+  assert.deepEqual(poseAt(samples, 50), { x: 1, z: 0, h: 0 });
+  assert.deepEqual(poseAt(samples, 200), { x: 4, z: 0, h: 0 }, '100 ms past the last sample: 2 m further');
+  assert.deepEqual(poseAt(samples, 350), { x: 7, z: 0, h: 0 }, 'at the extrapolation limit');
+  assert.deepEqual(poseAt(samples, 900), { x: 7, z: 0, h: 0 }, 'beyond it: held where the extrapolation stopped');
+  // A single sample, or two far apart in time (a heartbeat after a stop), never extrapolate
+  assert.deepEqual(poseAt([{ at: 0, x: 5, z: 5, h: 1 }], 300), { x: 5, z: 5, h: 1 });
+  assert.deepEqual(poseAt([{ at: 0, x: 0, z: 0, h: 0 }, { at: 1000, x: 2, z: 0, h: 0 }], 1100), { x: 2, z: 0, h: 0 });
+});
+
+test('renderDelay: 150 ms for a 10 Hz sender, stretched for a sparse one, capped', async () => {
+  const { renderDelay } = await import('../ecosystem/js/peers-math.js');
+  const every = (gap, n = 6) => Array.from({ length: n }, (_, i) => ({ at: i * gap, x: 0, z: 0, h: 0 }));
+  assert.equal(renderDelay(every(100)), 150);
+  assert.equal(renderDelay(every(300)), 390, '1.3 × the median gap');
+  assert.equal(renderDelay(every(900)), 600, 'capped');
+  assert.equal(renderDelay([]), 150); assert.equal(renderDelay(every(100, 1)), 150);
+  // One late sample among regular ones does not move the median
+  assert.equal(renderDelay([{ at: 0 }, { at: 100 }, { at: 200 }, { at: 700 }, { at: 800 }, { at: 900 }]), 150);
 });

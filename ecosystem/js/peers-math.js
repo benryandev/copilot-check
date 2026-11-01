@@ -22,17 +22,37 @@ export function interp(a, b, t) {
 }
 
 /** The pose at time `t` from samples sorted by `at`: held before the first and after the last, blended between. */
+export const EXTRAP_MS = 250; // past the latest sample a car carries on along its last velocity this long, then holds
+const EXTRAP_GAP_MAX = 500; // only from two samples this close in time (not a heartbeat after a stop)
 export function poseAt(samples, t) {
   if (!samples.length) return null;
   const pick = ({ x, z, h }) => ({ x, z, h });
   if (t <= samples[0].at) return pick(samples[0]);
   const last = samples[samples.length - 1];
-  if (t >= last.at) return pick(last);
+  if (t >= last.at) {
+    // Dead reckoning: a late sample (slow sender, lossy link) stalls the car otherwise, and the jump when it lands reads as lag
+    const prev = samples.length > 1 ? samples[samples.length - 2] : null;
+    const gap = prev ? last.at - prev.at : 0;
+    if (!prev || gap <= 0 || gap > EXTRAP_GAP_MAX) return pick(last);
+    const ahead = Math.min(EXTRAP_MS, t - last.at) / gap;
+    return { x: last.x + (last.x - prev.x) * ahead, z: last.z + (last.z - prev.z) * ahead, h: last.h };
+  }
   for (let i = 0; i < samples.length - 1; i++) {
     const a = samples[i], b = samples[i + 1];
     if (t >= a.at && t < b.at) return interp(a, b, (t - a.at) / (b.at - a.at));
   }
   return pick(last);
+}
+
+/** How far behind the latest sample to draw a car: 1.3 × the median gap between its recent samples, so a sender
+ * at 10 Hz is drawn 150 ms behind and a sparse one further back where there is always a pose to blend to. */
+export function renderDelay(samples, base = DELAY_MS, cap = 600) {
+  if (samples.length < 3) return base;
+  const gaps = [];
+  for (let i = 1; i < samples.length; i++) gaps.push(samples[i].at - samples[i - 1].at);
+  gaps.sort((a, b) => a - b);
+  const median = gaps[Math.floor(gaps.length / 2)];
+  return Math.max(base, Math.min(cap, Math.round(median * 1.3)));
 }
 
 /** The `cap` peers nearest the camera (each needs x, z), nearest first, ties in input order. */
