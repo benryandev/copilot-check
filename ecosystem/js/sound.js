@@ -8,7 +8,7 @@ const read = (k, dflt) => { try { const v = localStorage.getItem(k); return v ==
 const write = (k, v) => { try { localStorage.setItem(k, v ? "on" : "off"); } catch {} };
 
 export function createSound({ enabled = true } = {}) {
-  let ctx = null, master = null, out = null;
+  let ctx = null, master = null, out = null, unlocked = false;
   let on = read(SOUND_KEY, true), music = read(MUSIC_KEY, true), night = false;
   let engine = null, roll = null, bed = null, noiseBuf = null;
   const listeners = new Set();
@@ -41,7 +41,7 @@ export function createSound({ enabled = true } = {}) {
       document.addEventListener("visibilitychange", () => { if (!ctx) return; if (document.hidden) ctx.suspend(); else if (on) ctx.resume(); });
     }
     if (ctx.state === "suspended" && on) ctx.resume();
-    emit();
+    if (!unlocked) { unlocked = true; emit(); } // once: later unlocks (every click and key) change nothing listeners care about
   }
 
   // ── The engine, in layers so it does not drone: the block (detuned saws and a sub through a soft clip and a

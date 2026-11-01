@@ -81,6 +81,7 @@ function handle(m) {
       (m.peers || []).forEach(add);
       emit({ type: "on" });
       ping(); // the server clock, for race countdowns
+      if (m.race) emit({ type: "race", m: { t: "race.sync", ...m.race } }); // a race already on when we arrived
       break;
     case "join": add(m); emit({ type: "join", name: m.name }); break;
     case "leave": remove(m.id); emit({ type: "leave" }); break;

@@ -32,6 +32,12 @@ export function raceEvent(m) {
       entered = isEntrant();
       if (entered) toGrid(); else showInvite(m);
       break;
+    case "race.sync": // the room told us on arrival about a race already on (we are never in it: new socket, new id)
+      offGrid();
+      race = { id: m.id, host: m.host, name: m.name, startsAt: m.startsAt, grid: m.grid, state: m.state, order: m.order || [], dnf: [] };
+      entered = false;
+      if (race.state === "open") showInvite(m);
+      break;
     case "race.grid":
       if (race?.id !== m.id) break;
       race.grid = m.grid;
@@ -105,6 +111,7 @@ function mySlot() { return race?.grid.find((g) => g.id === myId())?.slot ?? 0; }
 function toGrid() {
   const k = mySlot();
   if (!k) return;
+  hooks.cancelLap?.(); // a lap already under way must not finish at Go
   const g = gridSlot(k), p = trackAt(trackLen - g.back);
   hooks.place?.(p.x + p.rx * g.v, p.z + p.rz * g.v, Math.atan2(-p.fx, -p.fz));
   locked = true; onGrid = true; lastCount = null; lastGoIn = null;
@@ -143,8 +150,10 @@ function finishRace() {
     const line = positionLine(race.order, myId());
     if (line) hooks.note?.(`${line} · race over`, 5000);
   }
-  setTimeout(() => { if (race?.state === "done") { setLiveLine(null); } }, 10_000);
+  setTimeout(() => { if (race?.state === "done") { setLiveLine(null); entered = false; $("race-live-line").hidden = true; draw(); } }, 10_000);
 }
+/** The socket went away or came back as someone new: whatever race we thought we were in is over for us. */
+export function raceReset() { if (race) clear(); draw(); }
 
 function showInvite(m) {
   if (entered) return;

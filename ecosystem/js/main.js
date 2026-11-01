@@ -15,7 +15,7 @@ import { tint } from "./colours.js";
 import { buildRaceway, formatTime } from "./raceway.js";
 import { celebrateOnce } from "./race-post.js";
 import { createSound } from "./sound.js";
-import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive } from "./race-live.js";
+import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive, raceReset } from "./race-live.js";
 import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview, refreshGhost } from "./race.js";
 import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
 import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer } from "./peers.js";
@@ -547,7 +547,7 @@ function placeCar(x, z, heading) {
   updateWhere();
 }
 initRace({ show, place: placeCar, car, scene, record: (rec) => celebrate(rec, { self: true }), sound: (cue) => sound[cue]?.(), live: onLap });
-initRaceLive({ place: placeCar, note: raceNote, closeSheets: () => dialogs.forEach((d) => d.open && d.close()), sound, onRaceway: () => inRaceway(car.s.x, car.s.z) });
+initRaceLive({ place: placeCar, note: raceNote, cancelLap: () => raceCancel("Lap cancelled: on the grid"), closeSheets: () => dialogs.forEach((d) => d.open && d.close()), sound, onRaceway: () => inRaceway(car.s.x, car.s.z) });
 
 // ── A new #1 on the Raceway: fireworks for everyone here, a note, the board and ghost refreshed ──
 // The setter hears it from their own post (while the finish sheet is up, so it waits for the sheet to close); everyone
@@ -627,6 +627,11 @@ onPeers((state, event) => {
   if (event?.type === "join" && event.name) peersNote(`${event.name} just arrived`);
   if (event?.type === "record") celebrate(event);
   if (event?.type === "race") raceEvent(event.m);
+  if (event?.type === "offline" || event?.type === "on") raceReset(); // a new socket is a new identity: any race is over for us
+  if (event?.type === "err") {
+    const why = { race_full: "The grid is full (8). You can watch.", race_running: "A race is already on. Wait for it to finish.", race_none: "That race is over." }[event.error];
+    if (why) raceNote(why, 3000);
+  }
   redrawRaceButtons();
   if (event?.type === "named") {
     const why = { reserved: `"${event.asked}" is reserved here, so you're ${event.name}.`, rude: `That name won't do here, so you're ${event.name}.`,
@@ -710,13 +715,16 @@ addEventListener("pointerdown", () => sound.unlock());
 // The mute chip (HUD) and the Sound / Music switches (Map view) all show one state
 const soundChip = $("sound-chip");
 soundChip.hidden = typeof AudioContext === "undefined";
+// Writes only what changed: rewriting the label's text node under a pressed pointer can swallow the click
+const setText = (el, text) => { if (el.textContent !== text) el.textContent = text; };
+const setAttr = (el, name, value) => { if (el.getAttribute(name) !== value) el.setAttribute(name, value); };
 function drawSound() {
   const st = sound.state();
-  soundChip.setAttribute("aria-pressed", String(st.on));
-  soundChip.setAttribute("aria-label", st.on ? "Mute sound" : "Unmute sound");
-  soundChip.querySelector(".chip-long").textContent = st.on ? "Sound" : "Muted";
-  document.querySelectorAll("[data-sound]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.sound === "on") === st.on)));
-  document.querySelectorAll("[data-music]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.music === "on") === st.music)));
+  setAttr(soundChip, "aria-pressed", String(st.on));
+  setAttr(soundChip, "aria-label", st.on ? "Mute sound" : "Unmute sound");
+  setText(soundChip.querySelector(".chip-long"), st.on ? "Sound" : "Muted");
+  document.querySelectorAll("[data-sound]").forEach((b) => setAttr(b, "aria-pressed", String((b.dataset.sound === "on") === st.on)));
+  document.querySelectorAll("[data-music]").forEach((b) => setAttr(b, "aria-pressed", String((b.dataset.music === "on") === st.music)));
 }
 sound.onChange(drawSound);
 drawSound();
