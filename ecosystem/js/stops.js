@@ -695,10 +695,10 @@ export const STOPS = [
     district: "analytics",
     name: "BendingAI",
     shape: "dome",
-    summary: "BendingAI is a Cardano DeFi analytics site with AI insights and token tracking, including a verified record for the STRIKE token.",
+    summary: "BendingAI is Strike's own Cardano DeFi analytics site: AI insights and token tracking, including a verified record for the STRIKE token.",
     points: [
       "Its token data includes Cardano holder counts and DEX liquidity for STRIKE.",
-      "It's an independent site; Strike doesn't run it.",
+      "Owned by Strike, run alongside the exchange.",
     ],
     live: null,
     docs: "https://bending.ai",
