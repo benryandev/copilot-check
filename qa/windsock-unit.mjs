@@ -2,7 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { WINDSOCKS, normaliseFunding, sockState, fmtRate, sockLabel, polePositions, segmentAngles, pollDue } from '../ecosystem/js/windsock-math.js';
-import { roads, roadInfo, groundHeight, jumpAt } from '../ecosystem/js/terrain.js';
+import { roads, roadInfo, groundHeight, jumpAt, jumps } from '../ecosystem/js/terrain.js';
+import { GRAVITY } from '../ecosystem/js/car-math.js';
 import { DISTRICTS } from '../ecosystem/js/content.js';
 
 const RAW = { data: [
@@ -62,4 +63,13 @@ test('segmentAngles: over a flutter cycle a limp sock averages 80° at the tip, 
   assert.ok(Math.abs(mean(cycle(0, 0)) - (80 / 6) * (Math.PI / 180)) < 1e-6, 'limp first segment 13.3°');
   assert.ok(Math.abs(mean(cycle(1, 5))) < 1e-6, 'a full sock is horizontal on average');
   assert.ok(swing(cycle(1, 0)) > swing(cycle(0, 0)) * 2.5, 'a full sock flutters more (8° against 2°)');
+});
+test('the Perps spoke jump lands well short of the board: a car off its lip at full speed is down at least 8 m before it', () => {
+  const spoke = roads.find((r) => r.kind === 'spoke' && r.to === 'perps');
+  const spokeIndex = roads.indexOf(spoke);
+  const jump = jumps.find((j) => j.road === spokeIndex);
+  assert.ok(jump, 'the Perps spoke has a jump');
+  const lipS = jump.t * spoke.len + jump.length;
+  const vy = 24 * (jump.height / jump.length), flight = 24 * (2 * vy / GRAVITY); // the lip's slope throws the car up; down again under its own gravity
+  assert.ok(lipS + flight + 8 <= polePositions(spoke.len).board.s, `lands at about ${(lipS + flight).toFixed(1)} m, the board is at ${polePositions(spoke.len).board.s}`);
 });
