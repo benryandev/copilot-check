@@ -99,6 +99,13 @@ export function renderGuidePage(g, { guides, stops, districts }) {
   ];
   const html = wrapTables(g.html);
   if (html.includes('{{')) throw new Error(`${g.slug}: unfilled claim in the output`);
+  // The FAQ goes after Things worth knowing, before How I use it and Next (the template order)
+  const cutAt = ['<h2 id="how-i-use-it">', '<h2 id="next">'].map((m) => html.indexOf(m)).filter((i) => i >= 0).sort((a, b) => a - b)[0] ?? html.length;
+  const faqSection = `      <section class="guide-faq">
+        <h2 id="questions-people-ask">Questions people ask</h2>
+${faqHtml}
+      </section>`;
+  const bodyHtml = `${html.slice(0, cutAt)}\n      </div>\n${faqSection}\n      <div class="guide-body">\n${html.slice(cutAt)}`;
   const main = `    <article class="guide-article">
       <p class="br-label">${esc(seriesLabel(g))}</p>
       <h1 id="guide-title">${esc(g.title)}</h1>
@@ -110,12 +117,8 @@ export function renderGuidePage(g, { guides, stops, districts }) {
         ${g.inOneMinute}
       </section>
 ${toc}      <div class="guide-body">
-${html}
+${bodyHtml}
       </div>
-      <section class="guide-faq">
-        <h2 id="questions-people-ask">Questions people ask</h2>
-${faqHtml}
-      </section>
       <p class="muted guide-disclosure">Not financial advice.</p>
       <div class="sheet-actions">
         <a class="br-button guide-drive" href="/ecosystem/?stop=${encodeURIComponent(g.stop)}"><span class="br-button-label">Drive there</span></a>

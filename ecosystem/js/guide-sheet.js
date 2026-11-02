@@ -55,6 +55,7 @@ export function classifyLink(href, pageUrl) {
   if (u.origin !== at.origin) return "external";
   if (u.hash && u.pathname === at.pathname && u.search === at.search) return "anchor";
   if (isInWorldPath(u.pathname)) return "guide";
+  if (u.pathname === "/ecosystem/" && (u.searchParams.has("stop") || u.searchParams.has("district"))) return "drive"; // a deep link: the visitor is already in the world, so drive, don't reload
   return "plain";
 }
 
@@ -66,6 +67,7 @@ export function rewriteLinks(root, pageUrl) {
     const kind = classifyLink(a.getAttribute("href"), pageUrl);
     if (kind === "guide") a.setAttribute("data-guide-link", "");
     else if (kind === "anchor") a.setAttribute("data-guide-anchor", new URL(a.getAttribute("href"), pageUrl).hash.slice(1));
+    else if (kind === "drive") a.setAttribute("data-guide-drive", new URL(a.getAttribute("href"), pageUrl).search);
     else if (kind === "external") { a.target = "_blank"; a.rel = "noopener"; }
   }
 }

@@ -54,6 +54,8 @@ test('classifyLink: in-world pages, same-page fragments, external, plain', () =>
   assert.equal(classifyLink('#next', at), 'anchor');
   assert.equal(classifyLink('/ecosystem/guides/what-is-strike/#next', at), 'anchor');
   assert.equal(classifyLink('https://docs.strikefinance.org/x', at), 'external');
-  assert.equal(classifyLink('/ecosystem/?stop=strike', at), 'plain');
+  assert.equal(classifyLink('/ecosystem/?stop=strike', at), 'drive');
+  assert.equal(classifyLink('/ecosystem/?district=perps', at), 'drive');
+  assert.equal(classifyLink('/ecosystem/', at), 'plain');
   assert.equal(classifyLink('/ecosystem/stops/#district-perps', 'https://strike.benryan.com.au/ecosystem/stops/'), 'anchor');
 });

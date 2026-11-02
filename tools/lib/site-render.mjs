@@ -43,7 +43,7 @@ const byDistrict = (stops, key) => publicStops(stops).filter((s) => s.district =
 const liveLabel = (k, labels) => labels[k] ?? (k.startsWith('lines:') ? 'Open credit lines' : k.replace(/[_:]+/g, ' '));
 
 function renderStop(stop, labels, guides = {}) {
-  const live = stop.live ? `<p class="stop-live br-label">Live on the pad: ${esc(stop.live.map((k) => liveLabel(k, labels)).join(', '))}</p>` : '';
+  const live = stop.live ? `<p class="stop-live">Live on the pad: ${esc(stop.live.map((k) => liveLabel(k, labels)).join(', '))}</p>` : '';
   const guide = guidesForStop(stop.key, guides).map((g) => `        <p class="stop-guide">Read the guide: <a href="${guidePath(g.slug)}">${esc(g.title)}</a></p>`).join('\n');
   const site = siteOf(stop) ? ` <a class="stop-doc" href="${esc(siteOf(stop))}" rel="noopener">${esc(stop.siteLabel || `Visit ${stop.name}`)}</a>` : '';
   return `      <article class="stop district-${esc(stop.district)}" id="stop-${esc(stop.key)}">

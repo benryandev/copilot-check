@@ -1,4 +1,4 @@
-# Ecosystem world: every sheet for review (generated 2026-11-02)
+# Ecosystem world: every sheet for review (generated 2026-11-03)
 
 Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 70 stops. Empty Builders' Row plots and arcade cabinets are left out.
 

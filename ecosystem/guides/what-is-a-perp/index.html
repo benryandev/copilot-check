@@ -22,7 +22,7 @@
   <meta name="twitter:title" content="What is a perp? Perpetual futures explained in plain English · Strike guides">
   <meta name="twitter:description" content="A perpetual future follows a price and never expires. What that means, how hourly funding keeps it close to the real price, and how to find a market on Strike.">
   <meta name="twitter:image" content="https://strike.benryan.com.au/ecosystem/guides/img/what-is-a-perp/cover.png">
-  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Article","@id":"https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/#article","headline":"What is a perp? Perpetual futures explained in plain English","description":"A perpetual future follows a price and never expires. What that means, how hourly funding keeps it close to the real price, and how to find a market on Strike.","image":"https://strike.benryan.com.au/ecosystem/guides/img/what-is-a-perp/cover.png","datePublished":"2026-11-03","dateModified":"2026-11-03","author":{"@type":"Person","name":"Ben Ryan","url":"https://benryan.com.au"},"publisher":{"@type":"Organization","name":"Copilot Check","url":"https://strike.benryan.com.au/"},"mainEntityOfPage":"https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/","isPartOf":{"@type":"WebSite","name":"Copilot Check","url":"https://strike.benryan.com.au/"},"inLanguage":"en","wordCount":681,"about":{"@type":"Thing","name":"Strike Finance"}},{"@type":"FAQPage","@id":"https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/#faq","mainEntity":[{"@type":"Question","name":"Do I own any Bitcoin when I buy a BTC perp?","acceptedAnswer":{"@type":"Answer","text":"No. You hold a contract that follows Bitcoin's price, backed by the dollars in your Strike account."}},{"@type":"Question","name":"When does the contract expire?","acceptedAnswer":{"@type":"Answer","text":"It does not. A perp runs until you close it or it is closed for you, which is what the liquidation guide explains."}},{"@type":"Question","name":"Can I profit when prices fall?","acceptedAnswer":{"@type":"Answer","text":"Yes. Going short on a perp earns when the price drops, and loses when it rises."}},{"@type":"Question","name":"Why is the perp's price slightly different from the real price?","acceptedAnswer":{"@type":"Answer","text":"The perp trades on its own order book, so it drifts. Hourly funding pulls it back towards the index price."}}]},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Strike ecosystem","item":"https://strike.benryan.com.au/ecosystem/"},{"@type":"ListItem","position":2,"name":"Guides","item":"https://strike.benryan.com.au/ecosystem/guides/"},{"@type":"ListItem","position":3,"name":"What is a perp? Perpetual futures explained in plain English","item":"https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/"}]}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Article","@id":"https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/#article","headline":"What is a perp? Perpetual futures explained in plain English","description":"A perpetual future follows a price and never expires. What that means, how hourly funding keeps it close to the real price, and how to find a market on Strike.","image":"https://strike.benryan.com.au/ecosystem/guides/img/what-is-a-perp/cover.png","datePublished":"2026-11-03","dateModified":"2026-11-03","author":{"@type":"Person","name":"Ben Ryan","url":"https://benryan.com.au"},"publisher":{"@type":"Organization","name":"Copilot Check","url":"https://strike.benryan.com.au/"},"mainEntityOfPage":"https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/","isPartOf":{"@type":"WebSite","name":"Copilot Check","url":"https://strike.benryan.com.au/"},"inLanguage":"en","wordCount":690,"about":{"@type":"Thing","name":"Strike Finance"}},{"@type":"FAQPage","@id":"https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/#faq","mainEntity":[{"@type":"Question","name":"Do I own any Bitcoin when I buy a BTC perp?","acceptedAnswer":{"@type":"Answer","text":"No. You hold a contract that follows Bitcoin's price, backed by the dollars in your Strike account."}},{"@type":"Question","name":"When does the contract expire?","acceptedAnswer":{"@type":"Answer","text":"It does not. A perp runs until you close it or it is closed for you, which part 4 of this series explains."}},{"@type":"Question","name":"Can I profit when prices fall?","acceptedAnswer":{"@type":"Answer","text":"Yes. Going short on a perp earns when the price drops, and loses when it rises."}},{"@type":"Question","name":"Why is the perp's price slightly different from the real price?","acceptedAnswer":{"@type":"Answer","text":"The perp trades on its own order book, so it drifts. Hourly funding pulls it back towards the index price."}}]},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Strike ecosystem","item":"https://strike.benryan.com.au/ecosystem/"},{"@type":"ListItem","position":2,"name":"Guides","item":"https://strike.benryan.com.au/ecosystem/guides/"},{"@type":"ListItem","position":3,"name":"What is a perp? Perpetual futures explained in plain English","item":"https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/"}]}]}</script>
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/img/favicon.ico" sizes="32x32">
   <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
@@ -106,7 +106,7 @@
 <li>Open <strong>app.strikefinance.org</strong> and sign in with your wallet.</li>
 <li>Click the market name at the top left of the Trade page, <strong>BTC-USD</strong> by default. A list opens.</li>
 <li>Use the tabs to narrow it: <strong>Crypto</strong>, <strong>TradFi</strong> for stocks, indices and commodities, and a search box for a name.</li>
-<li>Each row shows the last price, the 24-hour change, the volume and the current funding rate. Pick one and the chart and order panel switch to it.</li>
+<li>Each row shows the last price, the 24-hour change, the volume and the funding rate on its 8-hour basis. Pick one and the chart and order panel switch to it.</li>
 </ol>
 <figure><img src="/ecosystem/guides/img/what-is-a-perp/markets.png" alt="Strike's market list, opened from the market name on the Trade page, with the Crypto and TradFi tabs" width="860" height="630" loading="lazy"><figcaption>Strike's market list, opened from the market name on the Trade page, with the Crypto and TradFi tabs</figcaption></figure>
 <h2 id="a-worked-example">A worked example</h2>
@@ -115,29 +115,32 @@
 <p>A short works in reverse. Open a $100 short, and a 5% fall earns about $5 while a 5% rise loses about $5. Funding adds or takes a fraction of a cent an hour while the position is open.</p>
 <h2 id="things-worth-knowing">Things worth knowing</h2>
 <ul>
-<li><strong>Funding runs both ways.</strong> Depending on the market, you may pay or receive it. The rate shows next to each market in the list.</li>
+<li><strong>Funding runs both ways.</strong> Depending on the market, you may pay or receive it. The list shows each market's 8-hour rate, and Strike settles one eighth of it every hour.</li>
 <li><strong>Fees are small but real.</strong> Strike's base fee for taking liquidity is 0.050% of the trade's value, and placing a resting order earns a 0.005% rebate.</li>
 <li><strong>Leverage changes everything.</strong> The examples above use none. With leverage a smaller move produces the same gain or loss, and a large enough move closes the trade. That is the next two guides.</li>
 </ul>
-<h2 id="next">Next</h2>
-<ul>
-<li><strong>Next:</strong> Long, short and leverage (Start here, part 3)</li>
-<li>Then: Liquidation and how to avoid it, Your first trade on Strike.</li>
-<li>Official docs: <a href="https://docs.strikefinance.org/perpetuals/funding-rates" rel="noopener">Funding Rates</a> and <a href="https://docs.strikefinance.org/perpetuals/prices" rel="noopener">Prices</a></li>
-<li>Try it: <a href="https://app.strikefinance.org/trade/BTC?referralCode=BenRyan" rel="noopener">open Strike</a> (my referral link, 5% off fees)</li>
-</ul>
+
       </div>
       <section class="guide-faq">
         <h2 id="questions-people-ask">Questions people ask</h2>
         <h3>Do I own any Bitcoin when I buy a BTC perp?</h3>
         <p>No. You hold a contract that follows Bitcoin's price, backed by the dollars in your Strike account.</p>
         <h3>When does the contract expire?</h3>
-        <p>It does not. A perp runs until you close it or it is closed for you, which is what the liquidation guide explains.</p>
+        <p>It does not. A perp runs until you close it or it is closed for you, which part 4 of this series explains.</p>
         <h3>Can I profit when prices fall?</h3>
         <p>Yes. Going short on a perp earns when the price drops, and loses when it rises.</p>
         <h3>Why is the perp's price slightly different from the real price?</h3>
         <p>The perp trades on its own order book, so it drifts. Hourly funding pulls it back towards the index price.</p>
       </section>
+      <div class="guide-body">
+<h2 id="next">Next</h2>
+<ul>
+<li><strong>Next:</strong> Long, short and leverage (Start here, part 3, coming)</li>
+<li>Then: Liquidation and how to avoid it, Your first trade on Strike.</li>
+<li>Official docs: <a href="https://docs.strikefinance.org/perpetuals/funding-rates" rel="noopener">Funding Rates</a> and <a href="https://docs.strikefinance.org/perpetuals/prices" rel="noopener">Prices</a></li>
+<li>Try it: <a href="https://app.strikefinance.org/trade/BTC?referralCode=BenRyan" rel="noopener">open Strike</a> (my referral link, 5% off fees)</li>
+</ul>
+      </div>
       <p class="muted guide-disclosure">Not financial advice.</p>
       <div class="sheet-actions">
         <a class="br-button guide-drive" href="/ecosystem/?stop=perpetuals"><span class="br-button-label">Drive there</span></a>

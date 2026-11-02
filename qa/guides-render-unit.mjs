@@ -33,6 +33,8 @@ test('guide page: head, dates on the page, JSON-LD Article + FAQPage, buttons, n
   assert.ok(html.includes('id="theme-toggle"') && html.includes('/src/theme-toggle.js'));
   const last = renderGuidePage(file.guides['what-is-a-perp'], ctx);
   assert.ok(!last.includes('Read next: '), 'the series end has no Read next');
+  const faqAt = html.indexOf('id="questions-people-ask"'), howAt = html.indexOf('<h2 id="how-i-use-it">'), nextAt = html.indexOf('<h2 id="next">'), thingsAt = html.indexOf('<h2 id="things-worth-knowing">');
+  assert.ok(thingsAt < faqAt && faqAt < howAt && howAt < nextAt, 'the FAQ sits after Things worth knowing and before How I use it and Next (template order)');
 });
 test('index page lists both guides in order with CollectionPage + ItemList', () => {
   const html = renderGuidesIndex(file, ctx);

@@ -60,12 +60,14 @@ const state = (page) => page.evaluate(() => ({
   // links added after the mount are not rewritten, so run the same rule the mount runs
   await page.evaluate(() => { const a = document.querySelector('#guide h1 + a'); a.setAttribute('data-guide-anchor', 'next'); });
   const before2 = await state(page);
+  const scrollBefore = await page.evaluate(() => document.getElementById('guide').scrollTop);
   await page.click('#guide h1 + a');
   await page.waitForTimeout(300);
   const s2b = await state(page);
   const nextTop = await page.evaluate(() => document.querySelector('#guide #next').getBoundingClientRect().top);
+  const scrolled = await page.evaluate(() => document.getElementById('guide').scrollTop) - scrollBefore;
   check(s2b.guideOpen && s2b.path === before2.path && s2b.len === before2.len && s2b.hash === '', `fragment link (${frag}): sheet open, URL and history unchanged`);
-  check(nextTop >= 0 && nextTop < 200, `fragment link scrolled the sheet to Next (top ${Math.round(nextTop)} px)`);
+  check(scrolled > 200 && nextTop >= 0 && nextTop < 800, `fragment link scrolled the sheet ${Math.round(scrolled)} px; Next in view at ${Math.round(nextTop)} px (near the end, so the sheet cannot scroll further)`);
   await page.goBack();
   await page.waitForTimeout(400);
   const s3 = await state(page);
@@ -108,6 +110,13 @@ const state = (page) => page.evaluate(() => ({
   const t = await state(page);
   const cards = await page.evaluate(() => document.querySelectorAll('#guide article.stop').length);
   check(t.guideOpen && t.path === '/ecosystem/stops/' && cards > 50, `intro → stops page in-world: ${cards} stops at ${t.path}`);
+  // "Drive there" inside the sheet moves the car and opens that stop's sheet, no reload
+  const driveCount = await page.evaluate(() => document.querySelectorAll('#guide a[data-guide-drive]').length);
+  check(driveCount > 70, `${driveCount} drive links marked inside the stops sheet`);
+  await page.click('#guide a[data-guide-drive="?stop=slp"]');
+  await page.waitForFunction(() => !document.getElementById('guide').open && document.getElementById('stop').open, null, { timeout: 10000 });
+  const d = await page.evaluate(() => { const pad = window.__eco.pads.find((p) => p.stop.key === 'slp'); const c = window.__eco.car.s; return { title: document.getElementById('stop-title').textContent, dist: Math.hypot(c.x - pad.pos.x, c.z - pad.pos.z), path: location.pathname, eco: typeof window.__eco }; });
+  check(d.title === 'SLP Vault' && d.dist < 6 && d.path === '/ecosystem/' && d.eco === 'object', `Drive there from the sheet: "${d.title}" open, car ${d.dist.toFixed(1)} m from the pad, URL ${d.path}, no reload`);
   check(errs.length === 0, `no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
   await ctx.close();
 }

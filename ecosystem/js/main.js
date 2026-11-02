@@ -639,6 +639,16 @@ document.addEventListener("click", (e) => {
     if (target) target.scrollIntoView({ block: "start" });
     return;
   }
+  const drive = e.target.closest("a[data-guide-drive]");
+  if (drive) { // "Drive there" inside the in-world stops sheet: close the sheet and move the car, no reload
+    e.preventDefault();
+    const link = parseDeepLink(drive.getAttribute("data-guide-drive"), STOPS.map((s) => s.key), Object.keys(DISTRICTS));
+    $("guide").close();
+    if (link.kind === "start") { toStart(); paused = false; }
+    else if (link.kind === "district") { if (link.key === "hub") placeCar(SPAWN.x, SPAWN.z, SPAWN.heading); else teleportDistrict(link.key); paused = false; }
+    else if (link.kind === "stop") { const st = STOPS.find((x) => x.key === link.key); teleport(st); openStop(st); }
+    return;
+  }
   const a = e.target.closest("a[data-guide-link]");
   if (!a) return;
   e.preventDefault();

@@ -51,7 +51,7 @@ body.guide-page { background: var(--bg-page); color: var(--text-primary); }
 .guide-toc li { font-size: 0.95rem; }
 
 /* The index: one card per guide, the cover on top */
-.guide-cards { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--space-sm); }
+.guide-article .guide-cards { list-style: none; padding: 0; margin: var(--space-sm) 0 0; display: grid; gap: var(--space-sm); }
 .guide-cards li { max-width: none; }
 .guide-article a.guide-card { display: block; border: 1px solid var(--border-color); border-radius: 0.75rem; overflow: hidden; background: var(--bg-page); color: inherit; text-decoration: none; }
 .guide-article a.guide-card:hover { border-color: var(--text-secondary); }

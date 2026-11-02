@@ -1,15 +1,15 @@
 {
   "/": {
-    "hash": "b189ebe9b9b651b7",
-    "lastmod": "2026-11-02"
+    "hash": "126f2a8cd8594f7b",
+    "lastmod": "2026-11-03"
   },
   "/ecosystem/": {
-    "hash": "f09b529ddc0024f6",
+    "hash": "878f3d8d966f0cec",
     "lastmod": "2026-11-03"
   },
   "/ecosystem/stops/": {
-    "hash": "4a4385f6c7b5880b",
-    "lastmod": "2026-11-02"
+    "hash": "a8d9ac4fb7e5d0c1",
+    "lastmod": "2026-11-03"
   },
   "/ecosystem/submit/": {
     "hash": "3a7bf180e3524485",
@@ -20,11 +20,11 @@
     "lastmod": "2026-11-03"
   },
   "/ecosystem/guides/what-is-strike/": {
-    "hash": "ac4bb0a91eac92a4",
+    "hash": "b2dc2777c8812c39",
     "lastmod": "2026-11-03"
   },
   "/ecosystem/guides/what-is-a-perp/": {
-    "hash": "61110c652c4feccb",
+    "hash": "5b483c946e659aeb",
     "lastmod": "2026-11-03"
   }
 }

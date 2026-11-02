@@ -22,5 +22,6 @@
     visible.forEach(function (top, id) { if (top !== null && top < bestTop) { best = id; bestTop = top; } });
     if (best) mark(best);
   }, { rootMargin: '-10% 0px -70% 0px' });
+  mark(sections[0].id); // the first district reads as current at the top of the page
   sections.forEach(function (s) { io.observe(s); });
 })();
