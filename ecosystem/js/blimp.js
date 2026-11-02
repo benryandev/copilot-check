@@ -3,41 +3,36 @@
 // blimp is hard to place). Where it is comes from blimp-math (the clock, or a pinned angle for a shot).
 import * as THREE from "../vendor/three.module.min.js";
 import { M, box, mesh, canvasTexture, redraws } from "./build.js";
-import { DISTRICTS } from "./content.js";
 import { BLIMP, blimpPose } from "./blimp-math.js";
 
 const SKIN_W = 2048, SKIN_H = 512;
 export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
   const g = new THREE.Group();
-  const green = new THREE.MeshLambertMaterial({ color: DISTRICTS.hub.colour });
-  const greenHex = "#" + new THREE.Color(DISTRICTS.hub.colour).getHexString();
+  const green = new THREE.MeshLambertMaterial({ color: 0x26fab0 }); // fins in Strike mint
   let current = palette;
-  // The Strike mark (the site's own SVG, in its own colours: mint disc, black bolt); the skin repaints once it has loaded
-  const mark = new Image();
-  mark.onload = () => redraw(current);
-  mark.src = "/ecosystem/img/strike-mark.svg";
-  // The envelope's skin: silver, a green band round the middle, the mark and the wordmark twice so each flank reads them
-  const { tex: skin, redraw: paint } = canvasTexture(SKIN_W, SKIN_H, (ctx, w, h, p) => {
-    ctx.fillStyle = p.blimp;
-    ctx.fillRect(0, 0, w, h);
-    const y0 = h * 0.33, y1 = h * 0.67;
-    ctx.fillStyle = greenHex;
-    ctx.fillRect(0, y0, w, y1 - y0);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, y0 - 10, w, 10); ctx.fillRect(0, y1, w, 10);
-    // The mark and the wordmark, squashed along u because the flank is stretched three to one along the ship
+  // Liveries, all built from Strike's official lockup SVGs (mint disc and bolt, STRIKE FINANCE wordmark; the -dark file is the
+  // white wordmark for dark fields). The hull is a canvas skin: top colour, a band round the middle, the lockup on both flanks.
+  const LIVERIES = {
+    night: { top: "#0b1b3a", band: "#0b1b3a", bottom: "#d6dbe1", stripe: "#26fab0", logo: "dark" }, // Strike's dark app look: navy hull, mint stripe, white and mint lockup
+    mint: { top: "#0b1b3a", band: "#26fab0", bottom: "#26fab0", stripe: "#ffffff", logo: "light" }, // the Gemini concept: navy over mint, black lockup on the mint
+    silver: { top: "#d6dbe1", band: "#0b1b3a", bottom: "#d6dbe1", stripe: "#26fab0", logo: "dark" }, // Goodyear: silver ship, navy band, white and mint lockup
+  };
+  let livery = LIVERIES.night;
+  const logos = { light: new Image(), dark: new Image() };
+  for (const [k, img] of Object.entries(logos)) { img.onload = () => redraw(current); img.src = `/ecosystem/img/strike-logo${k === "dark" ? "-dark" : ""}.svg`; }
+  const { tex: skin, redraw: paint } = canvasTexture(SKIN_W, SKIN_H, (ctx, w, h) => {
+    const y0 = h * 0.3, y1 = h * 0.7;
+    ctx.fillStyle = livery.top; ctx.fillRect(0, 0, w, y0);
+    ctx.fillStyle = livery.bottom; ctx.fillRect(0, y1, w, h - y1);
+    ctx.fillStyle = livery.band; ctx.fillRect(0, y0, w, y1 - y0);
+    ctx.fillStyle = livery.stripe; ctx.fillRect(0, y1, w, 12); ctx.fillRect(0, y0 - 12, w, 12);
+    // The lockup, squashed along u because the flank is stretched three to one along the ship
+    const img = logos[livery.logo];
+    if (!(img.complete && img.naturalWidth > 0)) return;
+    const lw = 1180, lh = (lw * img.naturalHeight) / img.naturalWidth;
     for (const cx of [w * 0.25, w * 0.75]) {
       ctx.save(); ctx.translate(cx, (y0 + y1) / 2); ctx.scale(0.62, 1);
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "800 150px 'Atkinson Hyperlegible Next', Arial, sans-serif";
-      ctx.textBaseline = "middle"; ctx.textAlign = "left";
-      const text = "STRIKE", tw = ctx.measureText(text).width, ms = 150, gap = 36;
-      const ok = mark.complete && mark.naturalWidth > 0, total = tw + (ok ? ms + gap : 0), x0 = -total / 2;
-      if (ok) { // a white ring, then the mark in its own colours
-        ctx.beginPath(); ctx.arc(x0 + ms / 2, 0, ms / 2 + 8, 0, Math.PI * 2); ctx.fill();
-        ctx.drawImage(mark, x0, -ms / 2, ms, ms);
-      }
-      ctx.fillText(text, x0 + (ok ? ms + gap : 0), 4);
+      ctx.drawImage(img, -lw / 2, -lh / 2, lw, lh);
       ctx.restore();
     }
   });
@@ -67,7 +62,7 @@ export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
   tick(0);
   g.frustumCulled = false;
   scene.add(g);
-  g.userData = { tick, redraw, setAngle: (a) => { fixed = a; tick(0); }, pose: () => blimpPose(Date.now(), fixed) };
+  g.userData = { tick, redraw, setAngle: (a) => { fixed = a; tick(0); }, pose: () => blimpPose(Date.now(), fixed), setLivery: (name) => { if (LIVERIES[name]) { livery = LIVERIES[name]; redraw(current); } }, liveries: Object.keys(LIVERIES) };
   return g;
 }
 export { BLIMP };
