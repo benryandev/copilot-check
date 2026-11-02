@@ -28,7 +28,7 @@ const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 10
 const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'windsocks', 'stop', 'plaza', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race', 'deeplink'];
+const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'windsocks', 'stop', 'plaza', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race', 'deeplink', 'guide'];
 const pick = opt('states') || ALL;
 const FUNDING = JSON.parse(readFileSync(new URL('./fixtures/funding-2026-11-02.json', import.meta.url), 'utf8')); // the windsocks' fixed comparison (2 Nov 2026: ADA out straight, BTC gentle)
 const out = new URL('./shots/', import.meta.url).pathname;
@@ -275,6 +275,14 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         await page.goto(`${base}/ecosystem/?mp=0&stop=slp#${theme}`, { waitUntil: 'domcontentloaded' });
         await page.waitForFunction(() => window.__eco && document.getElementById('stop').open && !document.getElementById('loader'), null, { timeout: 60000 });
         await shot('deeplink', 600);
+      }
+      // A guide inside the world: the HQ sheet's "Read the guide" mounts the guide page in the #guide sheet
+      if (pick.includes('guide')) {
+        await page.goto(`${base}/ecosystem/?mp=0&stop=strike#${theme}`, { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => window.__eco && document.getElementById('stop').open && !document.getElementById('loader'), null, { timeout: 60000 });
+        await page.click('#stop-guides a');
+        await page.waitForFunction(() => document.getElementById('guide').open && document.querySelector('#guide h1'), null, { timeout: 20000 });
+        await shot('guide', 600);
       }
       problems += errors.length;
       for (const e of errors) console.log(`     ${tag}: page error ${e}`);

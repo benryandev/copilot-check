@@ -155,6 +155,22 @@ async function drives(page) {
   check(errs.length === 0, `stops page: no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
   await ctx.close();
 }
+// A guide page (static, dressed as the world) loads clean and points back at its pad
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const page = await ctx.newPage();
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(String(e)));
+  page.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+  const res = await page.goto(base + '/ecosystem/guides/', { waitUntil: 'load' });
+  const first = await page.evaluate(() => document.querySelector('a.guide-card')?.getAttribute('href'));
+  check(res.ok() && !!first, `guides index: loads with a first guide (${first})`);
+  await page.goto(base + first, { waitUntil: 'load' });
+  const st = await page.evaluate(() => ({ h1: document.querySelector('h1')?.textContent, drive: document.querySelector('a.guide-drive')?.getAttribute('href'), ld: !!document.querySelector('script[type="application/ld+json"]') }));
+  check(!!st.h1 && /^\/ecosystem\/\?stop=/.test(st.drive || '') && st.ld, `guide page: "${st.h1}", Drive there → ${st.drive}, JSON-LD present`);
+  check(errs.length === 0, `guide pages: no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
+  await ctx.close();
+}
 await browser.close();
 if (failures.length) { console.log(`deeplink smoke: ${failures.length} failure(s)`); process.exit(1); }
 console.log('deeplink smoke: ok');
