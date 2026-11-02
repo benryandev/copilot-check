@@ -123,10 +123,12 @@ export function renderStopsPage(ctx) {
   <link rel="stylesheet" href="/css/br-components.css">
   <link rel="stylesheet" href="/css/page.css">
   <link rel="stylesheet" href="/ecosystem/stops/stops.css">
+  <link rel="stylesheet" href="/ecosystem/guides/stills.css">
   <script src="/src/theme.js"></script>
 </head>
-<body class="stops-page">
+<body class="stops-page" data-stop="strike">
   <a class="skip" href="#main">Skip to the stops</a>
+  <div class="guide-back" aria-hidden="true"></div>
   <header class="stops-head">
     <div class="wrap">
       <div class="topbar">

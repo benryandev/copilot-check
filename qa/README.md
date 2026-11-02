@@ -273,3 +273,12 @@ Pillars: hierarchy 8.5 (eyebrow, display h1, lede, two actions, district rail), 
 from 1024, two card columns from 1280), typography 8 (card summaries trimmed to 1.05rem so the h3 leads), colour and kit 8.5
 (district colour as the card's left rule only, never as text), accessibility 8.5, states 8 (the theme toggle is the Check page's,
 wired by `src/theme-toggle.js` so static pages share it; the shoot flips the class on a page without one).
+
+## Guides (3 Nov): the guide pages, the guides index and the stops page's backdrop
+
+Workstream C of the content spec. States `guides` (`/ecosystem/guides/`), `guide` (one guide page) and `stops` shot at the
+8 kit widths in both themes: audit empty on all 48 frames after two fixes (dark-theme link colour inherited inside the
+article and on the stops page's guide line; the fixture image inside the sheet's width). By eye: index cards no longer
+underline every line; FAQ headings spaced from the box title. Local Lighthouse (mobile / desktop): guide page 99 / 100,
+index 100, stops page with the HQ still 99, all four categories at 100 otherwise; LCP 1.5–1.7 s mobile. The blind
+re-score runs before the deploy, on the real S0 and S1 pages.

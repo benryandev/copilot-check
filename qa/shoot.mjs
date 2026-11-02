@@ -33,6 +33,9 @@ const STATES = {
   // The ecosystem world's text companion and the styled 404 (static pages on the same kit)
   stops: '/ecosystem/stops/',
   notfound: '/404.html',
+  // The guides (workstream C): the index and one guide page, dressed as the world (still backdrop, sheet chrome)
+  guides: '/ecosystem/guides/',
+  guide: '/ecosystem/guides/what-is-strike/',
   paperBad: '/paper/x',
   // Project submission form (ecosystem): blank, every field flagged, and the thank-you panel (worker mocked)
   submit: '/ecosystem/submit/',

@@ -3,6 +3,15 @@
 
 .stops-page { background: var(--bg-page); color: var(--text-primary); }
 
+/* The HQ still behind the page (stills.css names the image), the header and body as cards on it */
+.stops-page .guide-back { position: fixed; inset: 0; z-index: 0; background-color: var(--bg-page); background-size: cover; background-position: center; }
+.stops-page .guide-back::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, color-mix(in srgb, var(--bg-page) 30%, transparent), color-mix(in srgb, var(--bg-page) 60%, transparent)); }
+.stops-page :is(.stops-head, .stops-body, footer) { position: relative; z-index: 1; }
+.stops-page :is(.stops-head > .wrap, .stops-body) { width: calc(100% - 2rem); background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 1rem; box-shadow: 0 12px 40px var(--shadow-heavy); }
+.stops-page .stops-head > .wrap { padding-bottom: var(--space-lg); }
+.stops-page .stops-body { margin-top: var(--space-md); padding-inline: var(--space-lg); }
+.stops-page .topbar { border-bottom: 0; }
+
 /* District accents (content.js ORDER colours); the hub shares Perpetuals' green */
 .district-hub { --d: #22c55e; }
 .district-perps { --d: #22c55e; }
@@ -17,7 +26,7 @@
 .district-raceway { --d: #0fb89c; }
 .district-yard { --d: #26fab0; }
 
-.stops-head { padding-block: var(--space-xl) var(--space-lg); border-bottom: 1px solid var(--border-color); }
+.stops-head { padding-block: var(--space-md) 0; }
 .stops-head h1 { font-family: var(--font-display); font-size: clamp(2rem, 1.4rem + 2.4vw, 3.25rem); line-height: 1.05; margin: var(--space-2xs) 0 var(--space-sm); max-width: 22ch; text-wrap: balance; }
 .stops-head .lede { max-width: var(--measure); color: var(--text-secondary); font-size: 1.1rem; line-height: 1.5; margin: 0; }
 .stops-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin: var(--space-md) 0 0; }
@@ -71,3 +80,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) { .stops-page * { transition: none !important; animation: none !important; } }
+/* A stop's guide link reads like its docs link (the kit's link colour fails on the dark surface) */
+.stop p.stop-guide { margin: 0 0 var(--space-xs); font-size: 1rem; }
+.stop-guide a { color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
+.stop-guide a:hover { color: var(--text-secondary); }
+.stop-guide a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 4px; }
