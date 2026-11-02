@@ -1,0 +1,3 @@
+{
+  "markets-count": { "value": "31", "source": "https://api.strikefinance.org/v2/markets", "checked": "2026-11-03", "guides": [] }
+}
