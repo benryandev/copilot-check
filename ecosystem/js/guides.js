@@ -7,6 +7,14 @@ export const GUIDES = [
     "series": "start-here",
     "order": 0,
     "path": "/ecosystem/guides/what-is-strike/"
+  },
+  {
+    "slug": "what-is-a-perp",
+    "title": "What is a perp? Perpetual futures explained in plain English",
+    "stop": "perpetuals",
+    "series": "start-here",
+    "order": 1,
+    "path": "/ecosystem/guides/what-is-a-perp/"
   }
 ];
 export const guidesForStop = (stopKey) => GUIDES.filter((g) => g.stop === stopKey);

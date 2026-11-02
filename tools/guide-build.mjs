@@ -36,7 +36,7 @@ export function buildGuides({ drafts, registry, images, previous = { guides: {} 
   for (const { path, text } of drafts) {
     const draft = parseDraft(text);
     const { meta } = draft;
-    if (meta.status === 'hold') continue;
+    if (/^hold\b/.test(meta.status || '')) continue; // a draft parked with status: hold
     const failures = checkGuide(draft, { stopKeys, registry, imageDims: (src) => images(meta.slug, src), today });
     if (failures.length) { errors.push(`${path}:\n  ${failures.join('\n  ')}`); continue; }
     if (guides[meta.slug]) { errors.push(`${path}: slug "${meta.slug}" used twice`); continue; }

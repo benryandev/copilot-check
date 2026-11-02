@@ -43,6 +43,8 @@ Perpetual futures: go long or short with leverage, and no expiry date to roll. S
 
 Link: [Docs: Margin tiers](https://docs.strikefinance.org/perpetuals/margin-tiers) · live: Markets trading, Max leverage, 24 h volume
 
+Guide: What is a perp? Perpetual futures explained in plain English (/ecosystem/guides/what-is-a-perp/)
+
 ### Strike Node
 
 Strike's own execution layer. Orders are matched off the base chain so trading can be fast, while deposits stay in on-chain locker contracts.

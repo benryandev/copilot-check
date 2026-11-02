@@ -65,8 +65,16 @@ body.guide-page { background: var(--bg-page); color: var(--text-primary); }
 
 /* The world's footer on a static page: pinned, clear of the sheet's end, the extra credit only where it fits */
 .guide-page .hud-foot { z-index: 10; }
-@media (max-width: 820px) { .guide-page .foot-by { display: none; } }
+/* Phones and small tablets: a reading page, so the HUD scrolls away and the footer sits after the sheet instead of
+   covering the text */
+@media (max-width: 820px) {
+  .guide-page .foot-by { display: none; }
+  .guide-page .hud-top { position: absolute; }
+  .guide-page .hud-foot { position: static; transform: none; width: fit-content; margin: calc(-1 * var(--space-2xl)) auto var(--space-md); }
+  .guide-sheet { margin-bottom: calc(var(--space-2xl) + 1rem); }
+}
 @media (min-width: 768px) { .guide-toc ol { columns: 2; column-gap: var(--space-md); } }
+@media (max-width: 480px) { .guide-page .hud-title { display: none; } } /* the district name is in the sheet; three wrapped lines crowded the chips */
 @media (max-width: 600px) {
   .guide-sheet { padding: var(--space-md); margin-top: calc(var(--space-lg) + 56px); }
   .guide-article h1 { font-size: 1.75rem; }
@@ -74,3 +82,5 @@ body.guide-page { background: var(--bg-page); color: var(--text-primary); }
   .guide-minute, .guide-faq { padding: var(--space-sm); }
 }
 @media (prefers-reduced-motion: reduce) { .guide-page * { transition: none !important; animation: none !important; } }
+/* Phones: inline links in the article reach 44 px without changing the line (the sheets do the same for .muted a) */
+@media (pointer: coarse) { .guide-article a:not(.br-button):not(.guide-card) { display: inline-block; padding-block: 13px; margin-block: -13px; } }

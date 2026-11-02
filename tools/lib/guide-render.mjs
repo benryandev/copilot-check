@@ -14,10 +14,9 @@ const bySeries = (a, b) => (a.series === b.series ? a.order - b.order : a.series
 export const sortedGuides = (guides) => list(guides).slice().sort(bySeries);
 export const guidesForStop = (stopKey, guides) => sortedGuides(guides).filter((g) => g.stop === stopKey);
 
-const seriesLabel = (g, guides) => {
-  const n = sortedGuides(guides).filter((x) => x.series === g.series).length;
-  return g.series === 'start-here' ? `Start here · ${g.order + 1} of ${n}` : 'Strike guide';
-};
+// Start Here is a fixed series of five (the 18 Oct spec), so the label counts to five even while guides are still arriving
+const START_HERE_COUNT = 5;
+const seriesLabel = (g) => (g.series === 'start-here' ? `Start here · ${g.order + 1} of ${START_HERE_COUNT}` : 'Strike guide');
 const jsonLd = (graph) => `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replace(/</g, '\\u003c')}</script>`;
 const website = { '@type': 'WebSite', name: 'Copilot Check', url: `${SITE}/` };
 const author = { '@type': 'Person', name: 'Ben Ryan', url: 'https://benryan.com.au' };
@@ -101,7 +100,7 @@ export function renderGuidePage(g, { guides, stops, districts }) {
   const html = wrapTables(g.html);
   if (html.includes('{{')) throw new Error(`${g.slug}: unfilled claim in the output`);
   const main = `    <article class="guide-article">
-      <p class="br-label">${esc(seriesLabel(g, guides))}</p>
+      <p class="br-label">${esc(seriesLabel(g))}</p>
       <h1 id="guide-title">${esc(g.title)}</h1>
       <p class="guide-sub">${esc(g.subtitle)}</p>
       <p class="guide-meta">Published ${longDate(g.published)} · Facts checked ${longDate(g.checked)} · By <a href="https://benryan.com.au">Ben Ryan</a></p>
@@ -136,7 +135,7 @@ export function renderGuidesIndex(file, { stops, districts }) {
   const canonical = `${SITE}/ecosystem/guides/`;
   const card = (g) => `        <li><a class="guide-card" href="${guidePath(g.slug)}">
           <img src="/ecosystem/guides/img/${esc(g.slug)}/cover.png" alt="" width="750" height="300" loading="lazy">
-          <span class="guide-card-text"><span class="br-label">${esc(seriesLabel(g, file.guides))}</span><strong>${esc(g.title)}</strong><span class="muted">${esc(g.subtitle)}</span><span class="guide-card-date">Published ${longDate(g.published)}</span></span>
+          <span class="guide-card-text"><span class="br-label">${esc(seriesLabel(g))}</span><strong>${esc(g.title)}</strong><span class="muted">${esc(g.subtitle)}</span><span class="guide-card-date">Published ${longDate(g.published)}</span></span>
         </a></li>`;
   const start = all.filter((g) => g.series === 'start-here'), features = all.filter((g) => g.series === 'feature');
   const ld = [

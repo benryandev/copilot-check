@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What is a perp? Perpetual futures explained in plain English · Strike guides</title>
+  <meta name="description" content="A perpetual future follows a price and never expires. What that means, how hourly funding keeps it close to the real price, and how to find a market on Strike.">
+  <link rel="canonical" href="https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Strike Ecosystem">
+  <meta property="og:title" content="What is a perp? Perpetual futures explained in plain English · Strike guides">
+  <meta property="og:description" content="A perpetual future follows a price and never expires. What that means, how hourly funding keeps it close to the real price, and how to find a market on Strike.">
+  <meta property="og:url" content="https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/">
+  <meta property="og:image" content="https://strike.benryan.com.au/ecosystem/guides/img/what-is-a-perp/cover.png">
+  <meta property="og:image:width" content="1500">
+  <meta property="og:image:height" content="600">
+  <meta property="og:image:alt" content="What is a perp? Perpetual futures explained in plain English">
+  <meta property="article:published_time" content="2026-11-03">
+  <meta property="article:modified_time" content="2026-11-02">
+  <meta property="article:author" content="https://benryan.com.au">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="What is a perp? Perpetual futures explained in plain English · Strike guides">
+  <meta name="twitter:description" content="A perpetual future follows a price and never expires. What that means, how hourly funding keeps it close to the real price, and how to find a market on Strike.">
+  <meta name="twitter:image" content="https://strike.benryan.com.au/ecosystem/guides/img/what-is-a-perp/cover.png">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Article","@id":"https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/#article","headline":"What is a perp? Perpetual futures explained in plain English","description":"A perpetual future follows a price and never expires. What that means, how hourly funding keeps it close to the real price, and how to find a market on Strike.","image":"https://strike.benryan.com.au/ecosystem/guides/img/what-is-a-perp/cover.png","datePublished":"2026-11-03","dateModified":"2026-11-02","author":{"@type":"Person","name":"Ben Ryan","url":"https://benryan.com.au"},"publisher":{"@type":"Organization","name":"Copilot Check","url":"https://strike.benryan.com.au/"},"mainEntityOfPage":"https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/","isPartOf":{"@type":"WebSite","name":"Copilot Check","url":"https://strike.benryan.com.au/"},"inLanguage":"en","wordCount":681,"about":{"@type":"Thing","name":"Strike Finance"}},{"@type":"FAQPage","@id":"https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/#faq","mainEntity":[{"@type":"Question","name":"Do I own any Bitcoin when I buy a BTC perp?","acceptedAnswer":{"@type":"Answer","text":"No. You hold a contract that follows Bitcoin's price, backed by the dollars in your Strike account."}},{"@type":"Question","name":"When does the contract expire?","acceptedAnswer":{"@type":"Answer","text":"It does not. A perp runs until you close it or it is closed for you, which is what the liquidation guide explains."}},{"@type":"Question","name":"Can I profit when prices fall?","acceptedAnswer":{"@type":"Answer","text":"Yes. Going short on a perp earns when the price drops, and loses when it rises."}},{"@type":"Question","name":"Why is the perp's price slightly different from the real price?","acceptedAnswer":{"@type":"Answer","text":"The perp trades on its own order book, so it drifts. Hourly funding pulls it back towards the index price."}}]},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Strike ecosystem","item":"https://strike.benryan.com.au/ecosystem/"},{"@type":"ListItem","position":2,"name":"Guides","item":"https://strike.benryan.com.au/ecosystem/guides/"},{"@type":"ListItem","position":3,"name":"What is a perp? Perpetual futures explained in plain English","item":"https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/"}]}]}</script>
+  <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/img/favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <link rel="preload" href="/fonts/AtkinsonHyperlegibleNext-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/br-fonts.css">
+  <link rel="stylesheet" href="/css/br-tokens.css">
+  <link rel="stylesheet" href="/css/br-base.css">
+  <link rel="stylesheet" href="/css/br-components.css">
+  <link rel="stylesheet" href="/css/page.css">
+  <link rel="stylesheet" href="/ecosystem/ecosystem.css">
+  <link rel="stylesheet" href="/ecosystem/guides/guides.css">
+  <link rel="stylesheet" href="/ecosystem/guides/stills.css">
+  <script src="/src/theme.js"></script>
+</head>
+<body class="guide-page" data-stop="perpetuals">
+  <a class="skip" href="#main">Skip to the guide</a>
+  <div class="guide-back" aria-hidden="true"></div>
+  <header class="hud hud-top">
+    <div class="hud-title">
+      <p class="br-label">Strike ecosystem · guide</p>
+      <p class="hud-district">Perpetuals &amp; Trading</p>
+    </div>
+    <div class="hud-actions">
+      <a class="chip" href="/ecosystem/guides/">All guides</a>
+      <a class="chip" href="/ecosystem/">Drive</a>
+      <button class="theme-toggle" type="button" aria-label="Switch to dark mode" id="theme-toggle">
+          <svg class="theme-toggle-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <g class="theme-toggle-rays">
+              <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </g>
+            <path class="theme-toggle-path" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
+          </svg>
+        </button>
+    </div>
+  </header>
+  <main id="main" class="sheet guide-sheet">
+    <article class="guide-article">
+      <p class="br-label">Start here · 2 of 5</p>
+      <h1 id="guide-title">What is a perp? Perpetual futures explained in plain English</h1>
+      <p class="guide-sub">A perpetual future follows a price and never expires. What that means, how hourly funding keeps it close to the real price, and how to find a market on Strike.</p>
+      <p class="guide-meta">Published 3 Nov 2026 · Facts checked 3 Nov 2026 · By <a href="https://benryan.com.au">Ben Ryan</a></p>
+      <p class="muted guide-disclosure">Not affiliated with Strike. Not financial advice.</p>
+      <section class="guide-minute">
+        <h2 id="in-one-minute">In one minute</h2>
+        <ul>
+<li><strong>What it is:</strong> a perp is a contract that tracks the price of something, such as Bitcoin or gold, and never expires. You trade the price move, not the asset.</li>
+<li><strong>Who it's for:</strong> people who want to profit from a price going up or down without buying the coin, the share or the metal itself.</li>
+<li><strong>The one thing to know:</strong> you never own the asset. Small hourly payments called funding keep the contract near the real price, and with leverage a bad move can close your trade.</li>
+</ul>
+      </section>
+      <div class="guide-body">
+<h2 id="what-is-a-perp">What is a perp?</h2>
+<p>A <strong>future</strong> is an agreement to trade something at a set price on a set date. A <strong>perpetual future</strong>, or <strong>perp</strong>, drops the date. The contract keeps running for as long as you hold it, and its price follows the asset it is named after.</p>
+<p>On Strike, a BTC-USD perp follows the price of Bitcoin. If you think the price will rise, you go <strong>long</strong>: you profit as it climbs. If you think it will fall, you go <strong>short</strong>: you profit as it drops.</p>
+<p>Either way you never hold any Bitcoin. Your position is a number on the exchange, backed by the dollars in your account.</p>
+<h3 id="what-keeps-the-price-honest">What keeps the price honest?</h3>
+<p>Nothing forces a perp to match the asset on its own, so exchanges use <strong>funding</strong>. The exchange compares the perp's price with an <strong>index price</strong>, a reference built from the asset's price on other venues. When the perp trades above the index, longs pay shorts a small fee; when it trades below, shorts pay longs. On Strike, funding is settled every hour, on the hour.</p>
+<p>The payments are tiny per hour. In Strike's own example, the rate is 0.00125% an hour. On a $100 position that is about a tenth of a cent, paid or received, every hour.</p>
+<div class="table"><table>
+<thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Long</td><td>You profit when the price rises</td></tr>
+<tr><td>Short</td><td>You profit when the price falls</td></tr>
+<tr><td>Index price</td><td>The asset's price elsewhere, used as the reference</td></tr>
+<tr><td>Mark price</td><td>The price Strike uses to value your position</td></tr>
+<tr><td>Funding</td><td>Hourly payment between longs and shorts</td></tr>
+</tbody>
+</table></div>
+<h2 id="who-it-s-for">Who it's for</h2>
+<ul>
+<li><strong>You want to trade a move, not hold the asset.</strong> No wallet for the coin, no broker for the share, no vault for the gold.</li>
+<li><strong>You want to be able to go short.</strong> A spot purchase only profits when prices rise. A perp lets you take the other side.</li>
+<li><strong>You want one account for different things.</strong> On Strike the same balance trades crypto, stocks, indices and commodities.</li>
+</ul>
+<h2 id="how-to-find-a-market-on-strike">How to find a market on Strike</h2>
+<ol>
+<li>Open <strong>app.strikefinance.org</strong> and sign in with your wallet.</li>
+<li>Click the market name at the top left of the Trade page, <strong>BTC-USD</strong> by default. A list opens.</li>
+<li>Use the tabs to narrow it: <strong>Crypto</strong>, <strong>TradFi</strong> for stocks, indices and commodities, and a search box for a name.</li>
+<li>Each row shows the last price, the 24-hour change, the volume and the current funding rate. Pick one and the chart and order panel switch to it.</li>
+</ol>
+<figure><img src="/ecosystem/guides/img/what-is-a-perp/markets.png" alt="Strike's market list, opened from the market name on the Trade page, with the Crypto and TradFi tabs" width="860" height="630" loading="lazy"><figcaption>Strike's market list, opened from the market name on the Trade page, with the Crypto and TradFi tabs</figcaption></figure>
+<h2 id="a-worked-example">A worked example</h2>
+<p><em>This is an example, not a suggestion.</em> Say you open a $100 long on the BTC-USD perp with no leverage, and Bitcoin rises 5%. Your position is now worth about $105. Close it and you keep the $5, less a small trading fee on the way in and out.</p>
+<p>If Bitcoin had fallen 5% instead, closing would leave you about $95.</p>
+<p>A short works in reverse. Open a $100 short, and a 5% fall earns about $5 while a 5% rise loses about $5. Funding adds or takes a fraction of a cent an hour while the position is open.</p>
+<h2 id="things-worth-knowing">Things worth knowing</h2>
+<ul>
+<li><strong>Funding runs both ways.</strong> Depending on the market, you may pay or receive it. The rate shows next to each market in the list.</li>
+<li><strong>Fees are small but real.</strong> Strike's base fee for taking liquidity is 0.050% of the trade's value, and placing a resting order earns a 0.005% rebate.</li>
+<li><strong>Leverage changes everything.</strong> The examples above use none. With leverage a smaller move produces the same gain or loss, and a large enough move closes the trade. That is the next two guides.</li>
+</ul>
+<h2 id="next">Next</h2>
+<ul>
+<li><strong>Next:</strong> Long, short and leverage (Start here, part 3)</li>
+<li>Then: Liquidation and how to avoid it, Your first trade on Strike.</li>
+<li>Official docs: <a href="https://docs.strikefinance.org/perpetuals/funding-rates" rel="noopener">Funding Rates</a> and <a href="https://docs.strikefinance.org/perpetuals/prices" rel="noopener">Prices</a></li>
+<li>Try it: <a href="https://app.strikefinance.org/trade/BTC?referralCode=BenRyan" rel="noopener">open Strike</a> (my referral link, 5% off fees)</li>
+</ul>
+      </div>
+      <section class="guide-faq">
+        <h2 id="questions-people-ask">Questions people ask</h2>
+        <h3>Do I own any Bitcoin when I buy a BTC perp?</h3>
+        <p>No. You hold a contract that follows Bitcoin's price, backed by the dollars in your Strike account.</p>
+        <h3>When does the contract expire?</h3>
+        <p>It does not. A perp runs until you close it or it is closed for you, which is what the liquidation guide explains.</p>
+        <h3>Can I profit when prices fall?</h3>
+        <p>Yes. Going short on a perp earns when the price drops, and loses when it rises.</p>
+        <h3>Why is the perp's price slightly different from the real price?</h3>
+        <p>The perp trades on its own order book, so it drifts. Hourly funding pulls it back towards the index price.</p>
+      </section>
+      <p class="muted guide-disclosure">Not financial advice.</p>
+      <div class="sheet-actions">
+        <a class="br-button guide-drive" href="/ecosystem/?stop=perpetuals"><span class="br-button-label">Drive there</span></a>
+        <a class="br-button br-button--secondary" href="/ecosystem/guides/"><span class="br-button-label">All guides</span></a>
+      </div>
+    </article>
+  </main>
+  <footer class="hud hud-foot">
+    <span class="foot-live">Live data: Strike public API ·</span>
+    <span class="foot-credit">Made with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></span>
+    <span><span class="foot-long">Independent, not affiliated with Strike</span><span class="foot-short">Not affiliated with Strike</span></span>
+    <span class="foot-by">· Built by <a href="https://benryan.com.au" target="_blank" rel="noopener">Ben Ryan</a> · <a href="https://github.com/benryandev/copilot-check" target="_blank" rel="noopener">Source</a></span>
+  </footer>
+  <script src="/src/theme-toggle.js"></script>
+</body>
+</html>
