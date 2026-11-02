@@ -13,27 +13,33 @@ await page.waitForFunction(() => window.__eco && document.getElementById('intro'
 await page.click('#start');
 
 // Run `secs` of physics from `metres` before the crossing of road `to`, heading at it, and report what happened
-const run = (to, opts) => page.evaluate(async ({ to, metres, speed, secs, air }) => {
+const run = (to, opts) => page.evaluate(async ({ to, kind = 'spoke', metres, speed, secs, air, follow = false, back = false }) => {
   const T = await import('/ecosystem/js/terrain.js');
   const { stepCar } = await import('/ecosystem/js/car.js');
   const e = window.__eco, car = e.car, s = car.s;
-  const c = T.crossings.find((c) => T.roads[c.road].kind === 'spoke' && T.roads[c.road].to === to);
-  // Lined up with the road at the crossing, `metres` back along its heading (a driver following the road)
-  const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), l = 1, p0 = { x: c.x - fx * metres, z: c.z - fz * metres };
+  const c = T.crossings.find((c) => T.roads[c.road].kind === kind && T.roads[c.road].to === to), r = T.roads[c.road];
+  // Start `metres` back along the road itself (or ahead of it with `back`), heading along the road; `follow` keeps the
+  // car on the centreline every step, like a driver who steers with the road
+  const dirSign = back ? -1 : 1;
+  const sStart = c.s0 - dirSign * metres, pStart = r.curve.getPointAt(Math.max(0, Math.min(1, sStart / r.len))), tStart = r.curve.getTangentAt(Math.max(0, Math.min(1, sStart / r.len)));
+  const fx = tStart.x * dirSign, fz = tStart.z * dirSign, l = 1, p0 = { x: pStart.x, z: pStart.z };
   Object.assign(s, { x: p0.x, z: p0.z, heading: Math.atan2(-fx / l, -fz / l), speed, steer: 0, vy: 0, air: false, boost: 0, wet: false, airTime: 0 });
   s.y = T.groundHeight(s.x, s.z);
   if (air) { const back = speed * Math.sqrt((2 * air) / 30); s.x = c.x - fx * back; s.z = c.z - fz * back; s.y = T.groundHeight(s.x, s.z) + air; s.air = true; s.vy = 0; s.airTime = 0; } // falls under the car's own gravity (30) to land on the crossing
   const keys = { up: !air, down: false, left: false, right: false };
-  const out = { minY: Infinity, maxWetSpeed: 0, exitSpeed: null, minDeckY: Infinity, minSpeed: Infinity, wetFrames: 0, splash: null, landed: null, boostAfterLanding: null, everOnBridge: false };
+  const out = { minY: Infinity, maxWetSpeed: 0, exitSpeed: null, minAirSpeed: Infinity, minDeckY: Infinity, minSpeed: Infinity, wetFrames: 0, splash: null, landed: null, boostAfterLanding: null, everOnBridge: false };
   for (let i = 0; i < secs * 60; i++) {
+    if (follow && !s.air) { const ri = T.roadInfo(s.x, s.z, 12); if (ri.road === c.road) s.heading = Math.atan2(-ri.tx * dirSign, -ri.tz * dirSign); }
     const info = stepCar(car, keys, 1 / 60);
     const wet = T.onWater(s.x, s.z), bridge = T.onBridge(s.x, s.z);
     out.minY = Math.min(out.minY, s.y);
     if (wet) { out.wetFrames++; out.maxWetSpeed = Math.max(out.maxWetSpeed, Math.abs(s.speed)); out.exitSpeed = +Math.abs(s.speed).toFixed(1); }
     if (bridge) { out.everOnBridge = true; if (T.bridgeHeight(s.x, s.z) >= T.DECK_Y - 1e-6) out.minDeckY = Math.min(out.minDeckY, s.y); } // the deck proper, not its ramps
     if (!s.air && i > 30) out.minSpeed = Math.min(out.minSpeed, s.speed);
+    if (s.air) out.minAirSpeed = Math.min(out.minAirSpeed, Math.abs(s.speed));
     if (info.event?.splash) out.splash = +info.event.splash.toFixed(1);
     if (info.event?.landed) { out.landed = i; out.boostAfterLanding = s.boost; }
+    if (follow && (s.x - c.x) * (fx / l) + (s.z - c.z) * (fz / l) > 14) break; // across and clear: stop before the next thing on the road (a jump, a plaza)
   }
   const ux = fx / l, uz = fz / l;
   out.past = (s.x - c.x) * ux + (s.z - c.z) * uz; // metres beyond the crossing along the approach
@@ -49,13 +55,20 @@ if (!(ford.exitSpeed <= 14)) fail(`left the water at ${ford.exitSpeed} m/s; wadi
 if (!ford.splash) fail('no splash event on entry');
 if (!(ford.past > 6 && !ford.endWet)) fail(`the car did not come out the far side (past ${ford.past.toFixed(1)}, wet ${ford.endWet})`);
 
-const bridge = await run('community', { metres: 25, speed: 24, secs: 4 });
-console.log('     bridge', JSON.stringify(bridge));
-if (!bridge.everOnBridge) fail('the car never reached the deck');
-if (!(bridge.minDeckY >= 0.17)) fail(`dipped to ${bridge.minDeckY} on the deck`);
-if (!(bridge.minSpeed >= 20)) fail(`slowed to ${bridge.minSpeed} m/s crossing the bridge`);
-if (bridge.wetFrames) fail('got wet on a bridge');
-if (!(bridge.past > 10)) fail(`did not get across (past ${bridge.past.toFixed(1)})`);
+for (const [to, kind] of [['community', 'spoke'], ['chains', 'spoke'], ['community', 'ring'], ['perps', 'ring']]) for (const back of [false, true]) {
+  const bridge = await run(to, { kind, metres: 25, speed: 24, secs: 4, follow: true, back });
+  const tag = `${kind} ${to}${back ? ' (towards HQ)' : ''}`;
+  console.log(`     bridge ${tag}`, JSON.stringify(bridge));
+  if (!bridge.everOnBridge) fail(`${tag}: the car never reached the deck`);
+  if (!(bridge.minDeckY >= 0.17)) fail(`${tag}: dipped to ${bridge.minDeckY} on the deck`);
+  if (!(bridge.minSpeed >= 20)) fail(`${tag}: slowed to ${bridge.minSpeed} m/s crossing the bridge`);
+  if (bridge.wetFrames) fail(`${tag}: got wet on a bridge`);
+  if (!(bridge.past > 10)) fail(`${tag}: did not get across (past ${bridge.past.toFixed(1)})`);
+}
+// Flying over the river keeps its speed: the air is not water
+const fly = await run('token', { metres: 6, speed: 24, secs: 1, air: 2.5 });
+console.log('     fly over the ford', JSON.stringify(fly));
+if (!(fly.minAirSpeed >= 23.5)) fail(`lost speed in the air over the water (${fly.minAirSpeed})`);
 
 const jump = await run('token', { metres: 0, speed: 8, secs: 3, air: 3 });
 console.log('     jump into the ford', JSON.stringify(jump));

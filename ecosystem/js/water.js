@@ -3,7 +3,7 @@
 // terrain.js; this file only draws it.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { river, riverInfo, terrainHeight, groundShade, WATER_LEVEL, crossings, DECK_Y, DECK_RAMP } from "./terrain.js";
+import { river, riverInfo, terrainHeight, groundShade, WATER_LEVEL, crossings, roads, DECK_Y, DECK_RAMP } from "./terrain.js";
 import { RIVER } from "./content.js";
 import { M, box, cyl, canvasTexture, redraws, colliders, orientedBox } from "./build.js";
 
@@ -98,7 +98,7 @@ export function buildWater(palette, { tier = "high", reduceMotion = false } = {}
   const simple = tier === "low";
   let mat, uniforms = null;
   if (simple) {
-    mat = new THREE.MeshLambertMaterial({ color: palette.water, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide });
+    mat = new THREE.MeshLambertMaterial({ color: palette.water, transparent: true, opacity: 0.8, depthWrite: true, side: THREE.DoubleSide });
   } else {
     uniforms = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
       uTime: { value: 0 }, uFlow: { value: RIVER.flow }, uNoise: { value: null },
@@ -106,7 +106,7 @@ export function buildWater(palette, { tier = "high", reduceMotion = false } = {}
     }]);
     uniforms.uNoise.value = noiseTexture();
     mat = new THREE.ShaderMaterial({
-      uniforms, transparent: true, depthWrite: false, fog: true, side: THREE.DoubleSide,
+      uniforms, transparent: true, depthWrite: true, fog: true, side: THREE.DoubleSide, // writes depth: the road through a ford is under the surface and must not paint over it
       vertexShader: `
         #include <common>
         #include <fog_pars_vertex>
@@ -172,36 +172,51 @@ export function buildBridges(scene, palette) {
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   redraws.push(redraw);
   redraw(palette);
-  const deckMat = new THREE.MeshLambertMaterial({ map: tex });
+  const deckMat = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide });
   const built = [];
   for (const c of crossings) {
     if (!c.bridge) continue;
+    const r = roads[c.road];
+    const at = (s) => { const t = Math.max(0, Math.min(1, s / r.len)), p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t); return { x: p.x, z: p.z, tx: tan.x, tz: tan.z, nx: -tan.z, nz: tan.x }; };
+    const profile = (u) => (u <= c.halfLen ? DECK_Y : DECK_Y * (1 - (u - c.halfLen) / DECK_RAMP)); // same as terrain.js bridgeHeight
     const g = new THREE.Group();
-    g.position.set(c.x, 0, c.z);
-    g.rotation.y = c.yaw; // local +z runs along the road
-    const W = c.halfW * 2, L = c.halfLen * 2;
-    const deck = box(W, DECK_Y, L, deckMat, 0, 0, 0);
-    deck.material = deckMat.clone(); deck.material.map = tex.clone(); deck.material.map.repeat.set(1, L / 4); deck.material.map.needsUpdate = true;
-    g.add(deck);
-    // ramps: a thin slab from the deck top down to the ground over DECK_RAMP
-    const hyp = Math.hypot(DECK_RAMP, DECK_Y), tilt = Math.atan2(DECK_Y, DECK_RAMP);
-    for (const side of [-1, 1]) {
-      const ramp = box(W, 0.06, hyp, deckMat, 0, 0, 0);
-      ramp.position.set(0, DECK_Y / 2 - 0.03, side * (c.halfLen + DECK_RAMP / 2));
-      ramp.rotation.x = side * tilt;
-      g.add(ramp);
+    // The deck: a ribbon swept along the road from ramp to ramp, with skirts down both sides
+    const s1 = c.s0 - c.halfLen - DECK_RAMP, s2 = c.s0 + c.halfLen + DECK_RAMP, n = Math.ceil((s2 - s1) / 0.5) + 1;
+    const top = new Float32Array(n * 2 * 3), uv = new Float32Array(n * 2 * 2), idx = [];
+    const skirt = [new Float32Array(n * 2 * 3), new Float32Array(n * 2 * 3)];
+    for (let i = 0; i < n; i++) {
+      const s = s1 + ((s2 - s1) * i) / (n - 1), p = at(s), y = profile(Math.abs(s - c.s0));
+      for (const [k, side] of [[0, -1], [1, 1]]) {
+        const x = p.x + p.nx * c.halfW * side, z = p.z + p.nz * c.halfW * side;
+        top.set([x, y, z], (i * 2 + k) * 3);
+        uv.set([k, (s - s1) / 4], (i * 2 + k) * 2);
+        skirt[k].set([x, y, z, x, y - DECK_Y - 0.05, z], i * 6);
+      }
+      if (i < n - 1) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
     }
-    // rails: posts every 1.5 m and a top rail, on both edges; their colliders keep the car on the deck
-    const rx = c.halfW - 0.1;
+    const mk = (verts, uvs) => { const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(verts, 3)); if (uvs) geo.setAttribute("uv", new THREE.BufferAttribute(uvs, 2)); geo.setIndex(idx); geo.computeVertexNormals(); return geo; };
+    const deck = new THREE.Mesh(mk(top, uv), deckMat);
+    deck.castShadow = deck.receiveShadow = true;
+    g.add(deck, new THREE.Mesh(mk(skirt[0]), M.wood), new THREE.Mesh(mk(skirt[1]), M.wood));
+    // Rails along both edges between the open 0.6 m at each end: posts every 1.5 m, two rails between them, a
+    // collider per rail segment so the rail turns with the road
+    const r1 = c.s0 - c.halfLen + 0.6, r2 = c.s0 + c.halfLen - 0.6, posts = Math.max(2, Math.round((r2 - r1) / 1.5) + 1);
     for (const side of [-1, 1]) {
-      g.add(box(0.1, 0.1, L, M.wood, side * rx, DECK_Y + 0.85, 0));
-      g.add(box(0.08, 0.06, L, M.wood, side * rx, DECK_Y + 0.45, 0));
-      for (let z = -c.halfLen + 0.3; z <= c.halfLen - 0.3; z += 1.5) g.add(box(0.12, 0.95, 0.12, M.wood, side * rx, DECK_Y, z));
-      const ox = side * rx; // the rail's centre in the world; orientedBox's local x runs along (cos yaw, -sin yaw)
-      colliders.push(orientedBox(c.x + Math.cos(c.yaw) * ox, c.z - Math.sin(c.yaw) * ox, 0.12, c.halfLen - 0.6, c.yaw)); // the first 60 cm of rail is open, so a slightly wide approach slides on instead of stopping dead
+      const ox = (c.halfW - 0.1) * side;
+      let prev = null;
+      for (let k = 0; k < posts; k++) {
+        const s = r1 + ((r2 - r1) * k) / (posts - 1), p = at(s), x = p.x + p.nx * ox, z = p.z + p.nz * ox;
+        g.add(box(0.12, 0.95, 0.12, M.wood, x, DECK_Y, z));
+        if (prev) {
+          const dx = x - prev.x, dz = z - prev.z, len = Math.hypot(dx, dz), yaw = Math.atan2(dx, dz), mx = (x + prev.x) / 2, mz = (z + prev.z) / 2;
+          for (const [h, ry] of [[0.1, DECK_Y + 0.85], [0.06, DECK_Y + 0.45]]) { const rail = box(0.1, h, len, M.wood, mx, ry, mz); rail.rotation.y = yaw; g.add(rail); }
+          colliders.push(orientedBox(mx, mz, 0.12, len / 2, yaw));
+        }
+        prev = { x, z };
+      }
     }
-    // piles at the corners, down into the water
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(cyl(0.14, 1.3, M.wood, sx * (c.halfW - 0.35), -0.6, sz * (c.halfLen - 1.2), 8));
+    // Piles at the corners, down into the water
+    for (const s of [c.s0 - c.halfLen + 1.2, c.s0 + c.halfLen - 1.2]) { const p = at(s); for (const side of [-1, 1]) g.add(cyl(0.14, 1.3, M.wood, p.x + p.nx * (c.halfW - 0.35) * side, -0.6, p.z + p.nz * (c.halfW - 0.35) * side, 8)); }
     group.add(g);
     built.push(g);
   }

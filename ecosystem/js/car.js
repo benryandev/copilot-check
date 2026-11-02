@@ -134,7 +134,7 @@ export function keepInWorld(o, r) {
 // Returns events for effects: { landed: impact speed } or null
 export function stepCar(car, keys, dt) {
   const s = car.s;
-  const dirt = onDirt(s.x, s.z), wet = onWater(s.x, s.z);
+  const dirt = onDirt(s.x, s.z), wet = !s.air && onWater(s.x, s.z); // the air over the river is not water
   // A jump boost (boost-math.js) raises the top speed for a moment and drives the car there; the brake or the river ends it
   if (s.boost > 0 && (keys.down || wet)) s.boost = 0;
   const boosting = s.boost > 0;

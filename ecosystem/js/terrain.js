@@ -125,19 +125,21 @@ export const crossings = (() => {
       const angle = (Math.acos(Math.min(1, Math.abs((tx * rx + tz * rz) / (l * rl)))) * 180) / Math.PI;
       const bridge = !RIVER.fords.includes(r.to);
       const halfLen = (RIVER.half + 2) / Math.sin((angle * Math.PI) / 180) + 0.5; // the deck covers the channel and both banks
-      out.push({ road: ri, x: ax + (bx - ax) * u, z: az + (bz - az) * u, yaw: Math.atan2(tx / l, tz / l), angle, bridge, half: r.half, halfLen, halfW: r.half + 0.5 });
+      out.push({ road: ri, x: ax + (bx - ax) * u, z: az + (bz - az) * u, yaw: Math.atan2(tx / l, tz / l), angle, bridge, half: r.half, halfLen, halfW: r.half + 0.5, s0: r.cum[j] + v * l });
     }
   });
   return out;
 })();
-// Height of a bridge deck at a point: DECK_Y on the deck, a ramp past each end, -Infinity off every bridge
-export function bridgeHeight(x, z) {
+// Height of a bridge deck at a point: DECK_Y on the deck, a ramp past each end, -Infinity off every bridge. The deck
+// follows its road (distance along the road from the crossing, distance from the centreline), so a road that bends
+// just past the river keeps the deck under it; the Chains spoke does exactly that.
+export function bridgeHeight(x, z, info = roadInfo(x, z)) {
   let h = -Infinity;
+  if (info.road < 0) return h;
   for (const c of crossings) {
-    if (!c.bridge) continue;
-    const dx = x - c.x, dz = z - c.z, fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
-    const u = Math.abs(dx * fx + dz * fz), v = Math.abs(dx * fz - dz * fx);
-    if (v > c.halfW || u > c.halfLen + DECK_RAMP) continue;
+    if (!c.bridge || c.road !== info.road || info.d > c.halfW) continue;
+    const u = Math.abs(info.t * roads[c.road].len - c.s0);
+    if (u > c.halfLen + DECK_RAMP) continue;
     h = Math.max(h, u <= c.halfLen ? DECK_Y : DECK_Y * (1 - (u - c.halfLen) / DECK_RAMP));
   }
   return h;
@@ -271,7 +273,8 @@ export function terrainHeight(x, z, info = roadInfo(x, z)) {
 }
 // The one truth for where the ground is: terrain and jumps, or a bridge deck where one spans the river
 export function groundHeight(x, z) {
-  return Math.max(terrainHeight(x, z) + jumpHeight(x, z), bridgeHeight(x, z));
+  const info = roadInfo(x, z);
+  return Math.max(terrainHeight(x, z, info) + jumpHeight(x, z), bridgeHeight(x, z, info));
 }
 // Grass grows where the ground isn't road, plaza or river
 export function grassWeight(x, z) {

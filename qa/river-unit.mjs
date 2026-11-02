@@ -47,11 +47,7 @@ test('a bridge deck carries the road over the channel: 0.18 m on the deck, nothi
   for (const c of crossings.filter((c) => c.bridge)) {
     assert.ok(Math.abs(groundHeight(c.x, c.z) - DECK_Y) < 1e-6, `deck height at ${roads[c.road].to}`);
     assert.ok(onBridge(c.x, c.z) && !onWater(c.x, c.z), `on the ${roads[c.road].to} deck: bridge, not water`);
-    const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw); // local +z along the road
-    let min = Infinity, worst = 0, prev = groundHeight(c.x - fx * 12, c.z - fz * 12);
-    for (let d = -12; d <= 12; d += 0.1) { const g = groundHeight(c.x + fx * d, c.z + fz * d); min = Math.min(min, g); worst = Math.max(worst, Math.abs(g - prev)); prev = g; }
-    assert.ok(min >= 0, `${roads[c.road].to}: road dips to ${min.toFixed(2)} through the bridge`);
-    assert.ok(worst < 0.03, `${roads[c.road].to}: ${worst.toFixed(3)} m step per 0.1 m on the approach`);
+    // (the approach along the road itself is walked by the "deck follows the real road" test below)
   }
 });
 
@@ -76,4 +72,26 @@ test('the car never meets a wall at the river: rise per 0.1 m across a bank and 
 test('the rim has a notch where the river leaves', () => {
   const [mx, mz] = RIVER.points[RIVER.points.length - 1];
   assert.ok(groundHeight(mx, mz) < 0.5, `mouth at ${groundHeight(mx, mz).toFixed(2)}`);
+});
+
+test('the deck follows the real road: centreline and both lane edges ride it through every bridge, and the road never leaves it sideways', () => {
+  for (const c of crossings.filter((c) => c.bridge)) {
+    const r = roads[c.road];
+    assert.ok(Number.isFinite(c.s0) && c.s0 > 0 && c.s0 < r.len, `${r.to}: crossing carries its distance along the road (s0)`);
+    for (const lane of [0, -(r.half - 0.6), r.half - 0.6]) {
+      for (let s = c.s0 - c.halfLen + 0.3; s <= c.s0 + c.halfLen - 0.3; s += 0.25) {
+        const p = r.curve.getPointAt(s / r.len), tan = r.curve.getTangentAt(s / r.len);
+        const x = p.x + -tan.z * lane, z = p.z + tan.x * lane;
+        assert.ok(Math.abs(groundHeight(x, z) - DECK_Y) < 1e-6, `${r.to}: lane ${lane.toFixed(1)} at s=${s.toFixed(1)} is off the deck (${groundHeight(x, z).toFixed(2)})`);
+      }
+    }
+    // approaching and leaving along the road itself: no dip into the channel, no step over 0.03 m per 0.1 m
+    let prev = null, min = Infinity, worst = 0;
+    for (let s = Math.max(0.5, c.s0 - c.halfLen - 8); s <= Math.min(r.len - 0.5, c.s0 + c.halfLen + 8); s += 0.1) { // the Chains deck ends 6 m before the road does
+      const p = r.curve.getPointAt(s / r.len), g = groundHeight(p.x, p.z);
+      min = Math.min(min, g); if (prev != null) worst = Math.max(worst, Math.abs(g - prev)); prev = g;
+    }
+    assert.ok(min >= -0.01, `${r.to}: the road dips to ${min.toFixed(2)} through the bridge`);
+    assert.ok(worst < 0.03, `${r.to}: ${worst.toFixed(3)} m per 0.1 m along the road through the bridge`);
+  }
 });
