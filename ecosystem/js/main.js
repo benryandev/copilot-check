@@ -10,7 +10,7 @@ import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.j
 import { buildBlimp } from "./blimp.js";
 import { buildRidge } from "./ridge.js";
 import { buildWindsocks } from "./windsocks.js";
-import { buildKerbs } from "./furniture.js";
+import { buildKerbs, buildLamps, buildBollards } from "./furniture.js";
 import { createGrass, createDust, createFireworks } from "./effects.js";
 import { createSky } from "./sky.js";
 import {
@@ -100,6 +100,8 @@ const sky = createSky({ reduceMotion });
 scene.add(sky);
 await load.step("Raising the districts");
 buildStops(scene);
+buildLamps(scene); // plaza furniture: a lamp beside every pad (needs the pads and the buildings' colliders)
+buildBollards(scene); // and bollards either side of every road mouth
 buildRoadSigns(scene);
 addProps(scene);
 await load.step("Marking out the raceway");

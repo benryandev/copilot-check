@@ -748,7 +748,7 @@ export function buildSignpost(parent, x, z, arms) {
 const unit = (x, z) => { const l = Math.hypot(x, z) || 1; return [x / l, z / l]; };
 // Gap from (x, z) to the nearest building's box. Models load later and can be a little wider
 // than the blockout, so callers ask for a margin.
-function clearance(x, z) {
+export function clearance(x, z) {
   let best = Infinity;
   for (const k of colliders) {
     if (k.top === undefined) continue;
