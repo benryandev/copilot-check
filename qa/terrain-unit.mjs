@@ -85,3 +85,24 @@ test('the coarse ground is lowered only along the ridge road itself, not in the 
   assert.ok(Math.abs(groundVertexHeight(after.x, after.z) - terrainHeight(after.x, after.z)) < 1e-9, 'past the end');
   setRidgeSeries(null);
 });
+
+// ── Plaza kerb ──
+import { KERB } from '../ecosystem/js/furniture-math.js';
+import { kerbGapsOf } from '../ecosystem/js/terrain.js';
+import { DISTRICTS } from '../ecosystem/js/content.js';
+test('the kerb: a 12 cm lip 0.3 m inside the rim, flat 2 m in, none at a road mouth, never a wall', () => {
+  const p = DISTRICTS.earn, r = p.radius, [cx, cz] = p.centre;
+  const north = (d) => ({ x: cx, z: cz - d });
+  const crest = north(r - KERB.inset), inside = north(r - 2.5), outside = north(r + 1);
+  assert.ok(Math.abs(groundHeight(crest.x, crest.z) - terrainHeight(crest.x, crest.z, roadInfo(crest.x, crest.z), false) - KERB.height) < 1e-6, 'the crest');
+  assert.ok(Math.abs(groundHeight(inside.x, inside.z) - terrainHeight(inside.x, inside.z, roadInfo(inside.x, inside.z), false)) < 1e-9, 'flat inside');
+  assert.ok(Math.abs(groundHeight(outside.x, outside.z) - terrainHeight(outside.x, outside.z, roadInfo(outside.x, outside.z), false)) < 1e-9, 'flat outside');
+  const spoke = roads.find((x) => x.kind === 'spoke' && x.to === 'earn'), end = spoke.pts[spoke.pts.length - 1];
+  const t = spoke.curve.getTangentAt(1); const mouth = { x: end[0] - t.x * 1.7, z: end[1] - t.z * 1.7 }; // on the road, at the rim
+  assert.ok(Math.abs(groundHeight(mouth.x, mouth.z) - terrainHeight(mouth.x, mouth.z, roadInfo(mouth.x, mouth.z), false)) < 1e-9, 'open at the mouth');
+  let worstRise = 0, worstSlope = 0;
+  for (let d = r - 2; d <= r + 1; d += 0.05) { const a = north(d), b = north(d + 0.5); worstRise = Math.max(worstRise, Math.abs(groundHeight(b.x, b.z) - groundHeight(a.x, a.z))); }
+  for (let d = r - 2; d <= r + 1; d += 0.05) { const a = north(d), b = north(d + 0.05); worstSlope = Math.max(worstSlope, Math.abs(groundHeight(b.x, b.z) - groundHeight(a.x, a.z)) / 0.05); }
+  assert.ok(worstRise < 0.25 && worstSlope < 0.9, `rise ${worstRise.toFixed(2)} over 0.5 m, slope ${worstSlope.toFixed(2)}: a bump, not a wall`);
+  assert.equal(kerbGapsOf(p).length, 3);
+});

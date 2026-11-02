@@ -6,6 +6,7 @@ import { createCobbles, metreUVs } from "./cobbles.js";
 import { DISTRICTS, ROADS, JUMPS, STOPS, TRACK_ROAD, RACE_TRACK, RIVER } from "./content.js";
 import { tint } from "./colours.js";
 import { ridgeProfile } from "./ridge-math.js";
+import { KERB, kerbGaps, inGap } from "./furniture-math.js";
 
 export const ROAD_HALF = 3.6;
 export const WORLD = { cx: 0, cz: 0, radius: 395 }; // 280 before the raceway went in beyond Partners
@@ -300,9 +301,27 @@ function ridgeLift(info) {
 /** On the ridge road or within its fade (the band whose ground moves when a new series lands). */
 export const onRidge = (x, z) => { const info = roadInfo(x, z); return info.road === RIDGE_ROAD && info.d < info.half + RIDGE_FADE; };
 
+// ── Plaza kerb ─────────────────────────────────────────────────────────
+// A 12 cm lip round each plaza's rim (furniture-math.js KERB), open where roads come in: in the height function so the
+// car feels a bump leaving the cobbles (under its 25 cm allowance, never a wall). The coarse ground mesh is built
+// without it (its cells are metres wide); the stone ring (furniture.js) is what you see.
+const kerbGapCache = new Map();
+export const kerbGapsOf = (plaza) => { let g = kerbGapCache.get(plaza.key); if (!g) { g = kerbGaps(plaza, roads); kerbGapCache.set(plaza.key, g); } return g; };
+export function kerbLift(x, z, info = roadInfo(x, z)) {
+  if (info.d < info.half + KERB.mouth) return 0; // on or beside a road: the mouth is open
+  for (const p of plazas) {
+    const dx = x - p.centre[0], dz = z - p.centre[1];
+    const u = Math.abs(Math.hypot(dx, dz) - (p.radius - KERB.inset));
+    if (u >= KERB.band / 2) continue;
+    if (inGap(kerbGapsOf(p), Math.atan2(dz, dx))) return 0;
+    return KERB.height * (1 - smooth(0, KERB.band / 2, u));
+  }
+  return 0;
+}
+
 export function terrainHeight(x, z, info = roadInfo(x, z), lift = true) {
   const rd = riverInfo(x, z).d;
-  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) * riverFlat(rd) + trackLift(info) + edgeRise(x, z) * rimOpen(rd) - riverChannel(rd) + (lift ? ridgeLift(info) : 0);
+  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) * riverFlat(rd) + trackLift(info) + edgeRise(x, z) * rimOpen(rd) - riverChannel(rd) + (lift ? ridgeLift(info) + kerbLift(x, z, info) : 0);
 }
 // The one truth for where the ground is: terrain and jumps, or a bridge deck where one spans the river
 export function groundHeight(x, z) {
@@ -327,7 +346,7 @@ export function groundVertexHeight(x, z) {
   const info = roadInfo(x, z);
   if (info.road === RIDGE_ROAD && info.d < info.half + RIDGE_FADE && info.t > 0 && info.t < 1) return terrainHeight(x, z, info, false) - 0.3; // along the road only: past its ends roadInfo clamps t and the patch stops
   const nearRiver = riverInfo(x, z, RIVER.half + 3).d < RIVER.half + 3;
-  return terrainHeight(x, z, info) - (nearRiver ? 0.15 : 0);
+  return terrainHeight(x, z, info) - kerbLift(x, z, info) - (nearRiver ? 0.15 : 0); // no kerb in the coarse mesh: its cells are metres wide and would alias the lip
 }
 export function buildGround(segments, palette) {
   const size = WORLD.radius * 2 + 40;
