@@ -7,6 +7,7 @@ import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInf
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.js";
 import { buildBlimp } from "./blimp.js";
+import { buildRidge } from "./ridge.js";
 import { createGrass, createDust, createFireworks } from "./effects.js";
 import { createSky } from "./sky.js";
 import {
@@ -86,6 +87,7 @@ let ground = buildGround(Math.round((tier().ground * WORLD.radius) / 280), pal()
 const roadMesh = buildRoads(pal());
 const jumpMesh = buildJumps(pal());
 const plazaMesh = buildPlazas(pal());
+const ridgeMesh = buildRidge(scene, pal()); // Chart Ridge: flat until the first candles land (ridge.js); adds itself to the scene
 const bedMesh = buildRiverBed(pal()); // the river channel at a fine spacing; the water itself is built per tier below
 let waterMesh = null;
 scene.add(ground, roadMesh, jumpMesh, plazaMesh, bedMesh);
@@ -163,7 +165,7 @@ function applyTheme() {
   sky.userData.setNight(dark);
   // With bloom on, every pad ring is pushed to the same glow luminance whatever its district colour; without it they stay as tinted
   if (post.on) pads.forEach((pd) => toGlow(pd.ring.material.color));
-  [ground, roadMesh, jumpMesh, plazaMesh, bedMesh, waterMesh, grass, dust, spray].forEach((o) => o?.userData.recolour?.(p));
+  [ground, roadMesh, jumpMesh, plazaMesh, bedMesh, waterMesh, grass, dust, spray, ridgeMesh].forEach((o) => o?.userData.recolour?.(p));
 }
 $("theme").addEventListener("click", () => {
   dark = !dark;

@@ -66,3 +66,12 @@ test('the lateral fade of an 8 m lift stays under the climb limit', () => {
   assert.ok(worst < 0.8, `lateral slope ${worst}`);
   setRidgeSeries(null);
 });
+
+import { groundVertexHeight } from '../ecosystem/js/terrain.js';
+test('the coarse ground is built without the ridge lift and 30 cm low under the corridor, unchanged elsewhere', () => {
+  setRidgeSeries(LIN);
+  const s = RIDGE.run + 23.5 * ((ridge.len - 2 * RIDGE.run) / 24), p = at(s), q = at(s, 40);
+  assert.ok(Math.abs(groundVertexHeight(p.x, p.z) - (terrainHeight(p.x, p.z, roadInfo(p.x, p.z), false) - 0.3)) < 1e-9);
+  assert.ok(Math.abs(groundVertexHeight(q.x, q.z) - terrainHeight(q.x, q.z)) < 1e-9);
+  setRidgeSeries(null);
+});

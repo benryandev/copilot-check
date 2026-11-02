@@ -794,6 +794,13 @@ export function buildRoadSigns(scene) {
     const s = ROAD_HALF + 1.6;
     buildSignpost(groupFor(scene, "developers"), p.x - tan.z * s, p.z + tan.x * s, [{ text: "Builders' Row", colour: DISTRICTS.developers.colour, dir: [tan.x, tan.z] }]);
   }
+  // Chart Ridge: an arch at each plaza edge naming it; it is a way between two plazas, not a place (no pad, no sheet)
+  roads.forEach((r) => {
+    if (r.kind !== "ridge") return;
+    const sign = { name: "Chart Ridge", colour: DISTRICTS.analytics.colour };
+    buildArch(groupFor(scene, r.from), r, sign, 5, { start: true });
+    buildArch(groupFor(scene, r.to), r, sign, 5);
+  });
   // A link road: a signpost where it leaves its district, an arch where it arrives
   roads.forEach((r) => {
     if (r.kind !== "link") return;
@@ -840,12 +847,12 @@ export function buildRoadSigns(scene) {
 }
 
 // A gateway over the road where it enters a district, with the district's name on the beam
-function buildArch(parent, road, d, back = 5) {
-  const t = 1 - back / road.len;
+function buildArch(parent, road, d, back = 5, { start = false } = {}) {
+  const t = start ? back / road.len : 1 - back / road.len; // `start`: the arch stands at the road's beginning instead, facing a car leaving the plaza
   const p = road.curve.getPointAt(t), tan = road.curve.getTangentAt(t);
   const g = new THREE.Group();
   g.position.set(p.x, 0, p.z);
-  g.rotation.y = Math.atan2(tan.x, tan.z);
+  g.rotation.y = Math.atan2(tan.x, tan.z) + (start ? Math.PI : 0);
   const A = accent(d.colour);
   const half = road.half + 1.6;
   const posts = [box(0.8, 6.4, 0.8, M.build, -half, 0, 0), box(0.8, 6.4, 0.8, M.build, half, 0, 0)];

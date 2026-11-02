@@ -319,6 +319,16 @@ export const onDirt = (x, z) => { const info = roadInfo(x, z); return info.d < i
 // ── Meshes ─────────────────────────────────────────────────────────────
 // The grass's 0..1 colour variation at a point (the ground mesh and the riverbed patch share it)
 export const groundShade = (x, z) => 0.5 + 0.5 * Math.sin(x * 0.21 + Math.cos(z * 0.17) * 2) * Math.cos(z * 0.13);
+/** What the coarse ground mesh writes at a vertex. Along the river it sits 15 cm under the analytic surface (the fine
+ * riverbed patch draws the channel; this keeps the mesh from poking through between vertices). Under the ridge it is
+ * built without the lift and 30 cm low: the fine ridge patch (ridge.js) draws the surface there and is rebuilt when a
+ * new series lands, which this mesh never is. */
+export function groundVertexHeight(x, z) {
+  const info = roadInfo(x, z);
+  if (info.road === RIDGE_ROAD && info.d < info.half + RIDGE_FADE) return terrainHeight(x, z, info, false) - 0.3;
+  const nearRiver = riverInfo(x, z, RIVER.half + 3).d < RIVER.half + 3;
+  return terrainHeight(x, z, info) - (nearRiver ? 0.15 : 0);
+}
 export function buildGround(segments, palette) {
   const size = WORLD.radius * 2 + 40;
   const geo = new THREE.PlaneGeometry(size, size, segments, segments);
@@ -330,8 +340,7 @@ export function buildGround(segments, palette) {
     const x = pos.getX(i), z = pos.getZ(i);
     // Along the river the coarse mesh sits 15 cm under the analytic surface: the fine riverbed patch (water.js) draws
     // the channel there, and this keeps the mesh from poking through it between vertices
-    const nearRiver = riverInfo(x, z, RIVER.half + 3).d < RIVER.half + 3;
-    pos.setY(i, terrainHeight(x, z) - (nearRiver ? 0.15 : 0));
+    pos.setY(i, groundVertexHeight(x, z));
     shade[i] = groundShade(x, z);
   }
   geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(pos.count * 3), 3));
