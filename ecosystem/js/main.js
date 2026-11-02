@@ -2,12 +2,14 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, SPAWN, MULTIPLAYER } from "./content.js";
-import { fetchLive, fetchKlines, LABELS } from "./data.js";
+import { fetchLive, fetchKlines, fetchFunding, LABELS } from "./data.js";
+import { normaliseFunding } from "./windsock-math.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo, setRidgeSeries, onRidge, ridgeSeries } from "./terrain.js";
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.js";
 import { buildBlimp } from "./blimp.js";
 import { buildRidge } from "./ridge.js";
+import { buildWindsocks } from "./windsocks.js";
 import { createGrass, createDust, createFireworks } from "./effects.js";
 import { createSky } from "./sky.js";
 import {
@@ -88,6 +90,7 @@ const roadMesh = buildRoads(pal());
 const jumpMesh = buildJumps(pal());
 const plazaMesh = buildPlazas(pal());
 const ridgeMesh = buildRidge(scene, pal()); // Chart Ridge: flat until the first candles land (ridge.js); adds itself to the scene
+const windsocks = buildWindsocks(scene, pal(), { reduceMotion }); // funding windsocks on the Perps spoke: grey and limp until the first comparison lands (windsocks.js)
 const bedMesh = buildRiverBed(pal()); // the river channel at a fine spacing; the water itself is built per tier below
 let waterMesh = null;
 scene.add(ground, roadMesh, jumpMesh, plazaMesh, bedMesh);
@@ -165,7 +168,7 @@ function applyTheme() {
   sky.userData.setNight(dark);
   // With bloom on, every pad ring is pushed to the same glow luminance whatever its district colour; without it they stay as tinted
   if (post.on) pads.forEach((pd) => toGlow(pd.ring.material.color));
-  [ground, roadMesh, jumpMesh, plazaMesh, bedMesh, waterMesh, grass, dust, spray, ridgeMesh].forEach((o) => o?.userData.recolour?.(p));
+  [ground, roadMesh, jumpMesh, plazaMesh, bedMesh, waterMesh, grass, dust, spray, ridgeMesh, windsocks].forEach((o) => o?.userData.recolour?.(p));
 }
 $("theme").addEventListener("click", () => {
   dark = !dark;
@@ -854,9 +857,19 @@ function applyRidge(closes) {
   ridgePending = null;
 }
 setInterval(() => { if (ridgePending && !onRidge(car.s.x, car.s.z)) applyRidge(ridgePending); }, 1000);
+// Funding windsocks: Strike's comparison, fetched at most every five minutes and applied at once (nothing on the road
+// or under a car moves; the socks ease to the new rates)
+let fundingFetchedAt = 0;
+async function pollFunding() {
+  if (Date.now() - fundingFetchedAt < 5 * 60_000) return;
+  fundingFetchedAt = Date.now();
+  const map = normaliseFunding(await fetchFunding());
+  if (map) windsocks.userData.apply(map);
+}
 
 async function refresh() {
   pollRidge();
+  pollFunding();
   try {
     live = await fetchLive();
     if (!cratesAdded) {
@@ -1015,6 +1028,7 @@ window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === ke
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
   info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState,
   ridge: { set: (closes) => applyRidge(closes), series: () => ridgeSeries() }, // Chart Ridge: QA and clips set a series by hand
+  windsocks: { set: (raw) => windsocks.userData.apply(normaliseFunding(raw)), state: () => windsocks.userData.state() }, // funding windsocks: QA sets a comparison by hand
   cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks, sound,
   raceLive: raceLiveState, raceLap: onLap, raceLiveInject: injectRaceLive, boost: (secs = 1.4) => { car.s.boost = secs; },
   arcade: (key = "arcade-flappy-coin") => openStop(STOPS.find((s) => s.key === key)), arcadeBoard: injectArcadeBoard,

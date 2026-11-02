@@ -3,7 +3,7 @@
 //   node tools/showcase-stills.mjs [base]   → tools/out/showcase/cabinet-night.png, wave-day.png
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 
 let chromium;
 try { ({ chromium } = await import('playwright')); } catch {
@@ -11,7 +11,7 @@ try { ({ chromium } = await import('playwright')); } catch {
   ({ chromium } = createRequire(`${g}/`)('playwright'));
 }
 const base = process.argv.find((a) => a.startsWith('http')) || 'http://localhost:8766';
-const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7); // cabinet | wave | river | stunt | ridge
+const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7); // cabinet | wave | river | stunt | ridge | windsocks
 const OUT = new URL('./out/showcase/', import.meta.url).pathname;
 mkdirSync(OUT, { recursive: true });
 const FPS = 30, DT = 1000 / FPS;
@@ -105,6 +105,22 @@ if (!only || only === 'ridge') {
   await p.screenshot({ path: `${OUT}ridge-day.png` });
   await p.context().close();
   console.log('ridge-day.png');
+}
+// Funding windsocks by day: the fixed comparison, the car level with the board, past the jump, looking up the row to the Perps gate
+if (!only || only === 'windsocks') {
+  const p = await open('light');
+  await p.evaluate(async (raw) => {
+    const T = await import('/ecosystem/js/terrain.js');
+    const e = window.__eco, r = T.roads.find((x) => x.kind === 'spoke' && x.to === 'perps');
+    e.windsocks.set(raw);
+    const q = r.curve.getPointAt(66 / r.len), t = r.curve.getTangentAt(66 / r.len);
+    e.placeCar(q.x, q.z, Math.atan2(-t.x, -t.z));
+  }, JSON.parse(readFileSync(new URL('../qa/fixtures/funding-2026-11-02.json', import.meta.url), 'utf8')));
+  await steps(p, 12);
+  await p.evaluate(() => new Promise((r) => setTimeout(r, 2500)));
+  await p.screenshot({ path: `${OUT}windsocks-day.png` });
+  await p.context().close();
+  console.log('windsocks-day.png');
 }
 // The epic jump by day: the car mid-air over the river from the side-on camera
 if (!only || only === 'stunt') {

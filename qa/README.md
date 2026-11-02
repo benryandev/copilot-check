@@ -249,6 +249,11 @@ Four rounds, then a blind re-score of 7.3 before its fixes:
 - `node qa/ridge-smoke.mjs http://localhost:8766` — the car drives the chart both ways at 24 m/s on the steepest allowed day and on a flat one.
 - Shoot state `ridge`; still `tools/showcase-stills.mjs --only=ridge`; hook `__eco.ridge.set(closes)` / `__eco.ridge.series()` (a series set by hand is applied at once, even with the car on the ridge).
 
+## Funding windsocks
+
+- `node --test qa/windsock-unit.mjs qa/data-unit.mjs` — the row's math (fill scale, direction, labels, the normalised comparison with missing venues, every pole off the road and on flat ground, the cloth's angles) and the funding fetch.
+- Shoot state `windsocks`; still `tools/showcase-stills.mjs --only=windsocks`; hook `__eco.windsocks.set(rawBody)` / `__eco.windsocks.state()` (`fills` per sock, Strike socks first). Fixed comparison: `qa/fixtures/funding-2026-11-02.json` (Strike's body, copied once). No smoke: nothing is on the road.
+
 ## When to run the full shoot (Ben, 2 Nov 2026)
 
 - During a build: only the states the change touches plus `drive`, at two widths, both themes, e.g. `node qa/shoot-eco.mjs http://localhost:8766 --states=ridge,drive --widths=375,1280`. About a minute.

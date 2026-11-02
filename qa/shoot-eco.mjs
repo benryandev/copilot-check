@@ -10,6 +10,7 @@
 // Test-environment artifacts: "Leaderboard offline" unless the origin is one the race API allows (localhost:8766,
 // strike.benryan.com.au); the race-finish sheet is filled in by the script, so the HUD's "Best" won't match it.
 import { mkdir } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
@@ -27,8 +28,9 @@ const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 10
 const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'stop', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
+const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'windsocks', 'stop', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
 const pick = opt('states') || ALL;
+const FUNDING = JSON.parse(readFileSync(new URL('./fixtures/funding-2026-11-02.json', import.meta.url), 'utf8')); // the windsocks' fixed comparison (2 Nov 2026: ADA out straight, BTC gentle)
 const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -180,6 +182,15 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         e.placeCar(p.x, p.z, Math.atan2(-t.x, -t.z));
       });
       await shot('ridge', 600);
+      // Funding windsocks: the fixed comparison, the car on the Perps spoke level with the board (past the jump), looking up the row
+      await page.evaluate(async (raw) => {
+        const T = await import('/ecosystem/js/terrain.js');
+        const e = window.__eco, r = T.roads.find((x) => x.kind === 'spoke' && x.to === 'perps');
+        e.windsocks.set(raw);
+        const p = r.curve.getPointAt(66 / r.len), t = r.curve.getTangentAt(66 / r.len);
+        e.placeCar(p.x, p.z, Math.atan2(-t.x, -t.z));
+      }, FUNDING);
+      await shot('windsocks', 2500); // the socks ease up over about two seconds
       await page.evaluate(() => window.__eco.teleport('liquidations')); // back on the pad for the stop sheet below
       await page.click('#prompt-btn');
       await shot('stop');
