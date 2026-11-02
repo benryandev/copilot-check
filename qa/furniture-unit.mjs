@@ -18,7 +18,7 @@ test('kerbGaps: Perps has a spoke and two ring roads: three gaps, each wide enou
 });
 test('kerbGaps: two endpoints close together merge into one gap; the Fill Yard has exactly one; HQ one per spoke', () => {
   const fake = { centre: [0, 0], radius: 20 };
-  const two = [{ pts: [[-30, 0], [19, 0]], half: 3.6 }, { pts: [[19.5, 1.5], [30, 30]], half: 3.6 }];
+  const two = [{ pts: [[12, 0], [19, 0], [30, 0]], half: 3.6 }, { pts: [[19.5, 1.5], [30, 30]], half: 3.6 }]; // one road out east, a second leaving beside it
   assert.equal(kerbGaps(fake, two).length, 1);
   assert.equal(kerbGaps(yard, roads).length, 1);
   assert.equal(kerbGaps(hub, roads).length, 9, 'HQ: one per spoke');
@@ -62,4 +62,21 @@ test('benchSpots: three benches spread round between pads, planters either side,
   assert.equal(one.benches.length, BENCH.perPlaza, 'one pad still gives three benches');
   const oa = one.benches.map((b) => ang(yard, b.x, b.z)).sort((p, q) => p - q);
   assert.ok(oa[2] - oa[0] > 1.5, 'spread round the yard');
+});
+
+// From the review (2 Nov): the Raceway link leaves Partners almost along the rim, so endpoint-only gaps drew the kerb
+// across 17 m of road with two bollards in it. Gaps now come from the road geometry: for every plaza, no kerbed angle
+// and no bollard may lie within a road's half-width plus margin of any road polyline.
+const distToRoads = (x, z) => { let best = Infinity; for (const r of roads) { const half = r.half ?? 3.6; for (let i = 0; i < r.pts.length - 1; i++) { const [ax, az] = r.pts[i], [bx, bz] = r.pts[i + 1]; const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1; const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2)); best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t) - half); } } return best; };
+test('kerbGaps follow the roads, not only their endpoints: no kerb and no bollard on any road, every plaza', () => {
+  for (const p of Object.values(DISTRICTS)) {
+    if (p.plaza === false) continue;
+    const gaps = kerbGaps(p, roads), r = p.radius - KERB.inset;
+    for (let a = -Math.PI; a < Math.PI; a += 0.005) {
+      if (inGap(gaps, a)) continue;
+      const x = p.centre[0] + Math.cos(a) * r, z = p.centre[1] + Math.sin(a) * r;
+      assert.ok(distToRoads(x, z) >= KERB.mouth - 0.3, `${p.key}: kerb on a road at angle ${a.toFixed(2)} (${distToRoads(x, z).toFixed(2)} m past the edge)`);
+    }
+    for (const s of bollardSpots(p, gaps)) assert.ok(distToRoads(s.x, s.z) >= 0.8, `${p.key}: a bollard ${distToRoads(s.x, s.z).toFixed(2)} m from a road's edge`);
+  }
 });

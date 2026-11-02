@@ -1,7 +1,7 @@
 // Plaza furniture: where everything goes, kept free of three.js so node can test it against the real districts and
 // roads. The kerb opens where roads meet a plaza's rim; a lamp stands beside each pad; bollards flank each gap;
 // benches sit between the pads, facing the centre, with a planter either side.
-export const KERB = { height: 0.12, band: 0.6, inset: 0.3, mouth: 1.5 }; // a 12 cm lip (under the car's 25 cm bump allowance) 0.3 m inside the rim, open within half + mouth of a road
+export const KERB = { height: 0.12, band: 1.0, inset: 0.3, mouth: 1.5 }; // a 12 cm lip (under the car's 25 cm bump allowance) over a 1 m band 0.3 m inside the rim (0.6 m hopped the car at speed, the review found), open within `mouth` of a road's edge
 export const LAMP = { beside: 3.4, clear: 1.2, padGap: 3.2, inside: 1.5 };
 export const BOLLARD = { inset: 0.8, step: 1.6, edge: 0.4 };
 export const BENCH = { at: 0.62, padGap: 3, clear: 2.5, mouthGap: 4, planter: 1.6, perPlaza: 3 };
@@ -11,32 +11,47 @@ const norm = (a) => { let r = ((a + Math.PI) % TAU + TAU) % TAU - Math.PI; retur
 const angleOf = (plaza, x, z) => Math.atan2(z - plaza.centre[1], x - plaza.centre[0]);
 const atAngle = (plaza, a, r) => ({ x: plaza.centre[0] + Math.cos(a) * r, z: plaza.centre[1] + Math.sin(a) * r });
 
-/** The arcs of a plaza's rim where roads come in: merged, sorted, in radians; an arc crossing ±π is split in two. */
-export function kerbGaps(plaza, roads) {
-  const [cx, cz] = plaza.centre, R = plaza.radius;
-  const arcs = [];
+/** Metres from a point to the nearest road EDGE (negative inside a road), over the roads' sampled polylines. */
+export function roadEdgeDistance(roads, x, z) {
+  let best = Infinity;
   for (const r of roads) {
-    const half = r.half ?? 3.6;
-    for (const [x, z] of [r.pts[0], r.pts[r.pts.length - 1]]) {
-      if (Math.abs(Math.hypot(x - cx, z - cz) - R) > 6) continue;
-      const a = angleOf(plaza, x, z), w = (half + KERB.mouth) / R;
-      arcs.push({ a0: a - w, a1: a + w });
+    const half = r.half ?? 3.6, pts = r.pts;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
+      const dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2));
+      const d = Math.hypot(x - ax - dx * t, z - az - dz * t) - half;
+      if (d < best) best = d;
     }
   }
-  // Sort by start (normalised to [−π, π)), merge overlaps; an arc across the ±π seam keeps a1 past π rather than
-  // splitting, so a gap there stays one gap (its bollards stand at its real edges, not at the seam)
-  const parts = arcs.map(({ a0, a1 }) => { const lo = norm(a0); return { a0: lo, a1: lo + (a1 - a0) }; }).sort((p, q) => p.a0 - q.a0);
+  return best;
+}
+
+/** The arcs of a plaza's rim where roads come in: the rim is sampled every half degree and is open wherever a road's
+ * edge is within KERB.mouth (the same rule the height field uses), so a road that runs along the rim (the Raceway link
+ * out of Partners) opens the whole stretch it touches, not only its endpoint. Merged, sorted, in radians; an arc
+ * across the ±π seam keeps a1 past π rather than splitting, so its bollards stand at its real edges. */
+export function kerbGaps(plaza, roads) {
+  const [cx, cz] = plaza.centre, R = plaza.radius, r = R - KERB.inset;
+  const near = roads.filter((rd) => rd.pts.some(([x, z]) => Math.hypot(x - cx, z - cz) < R + 30));
+  const N = 720, step = TAU / N;
+  const open = new Array(N);
+  for (let i = 0; i < N; i++) { const a = -Math.PI + i * step; open[i] = roadEdgeDistance(near, cx + Math.cos(a) * r, cz + Math.sin(a) * r) < KERB.mouth; }
+  const first = open.indexOf(false);
+  if (first < 0) return [{ a0: -Math.PI, a1: Math.PI }];
   const out = [];
-  for (const p of parts) {
-    const last = out[out.length - 1];
-    if (last && p.a0 <= last.a1 + 1e-9) last.a1 = Math.max(last.a1, p.a1);
-    else out.push({ ...p });
+  let i = first, seen = 0;
+  while (seen < N) { // walk once round from a closed sample, so a run across the seam stays one arc
+    const k = (i + seen) % N;
+    if (open[k]) {
+      let len = 0;
+      while (len < N && open[(k + len) % N]) len++;
+      const a0 = -Math.PI + k * step - step / 2, a1 = a0 + len * step + step; // padded half a sample each side
+      out.push({ a0: norm(a0), a1: norm(a0) + (a1 - a0) });
+      seen += len;
+    } else seen++;
   }
-  if (out.length > 1 && out[out.length - 1].a1 - TAU >= out[0].a0 - 1e-9) { // the last wraps into the first
-    out[out.length - 1].a1 = Math.max(out[out.length - 1].a1, out[0].a1 + TAU);
-    out.shift();
-  }
-  return out;
+  return out.sort((p, q) => p.a0 - q.a0);
 }
 /** Is an angle inside any gap (gaps may run past π). */
 export const inGap = (gaps, angle) => { const a = norm(angle); return gaps.some((g) => (a >= g.a0 && a <= g.a1) || (a + TAU >= g.a0 && a + TAU <= g.a1)); };

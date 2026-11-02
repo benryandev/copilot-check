@@ -122,7 +122,7 @@ if (!only || only === 'windsocks') {
   await p.context().close();
   console.log('windsocks-day.png');
 }
-// Plaza furniture by night: HQ's rim from the inside, the kerb, bollards, a glowing lamp, a bench
+// Plaza furniture by night: HQ's rim from the inside, the kerb, bollards, a glowing lamp (no benches at HQ: nine mouths leave no room)
 if (!only || only === 'plaza') {
   const p = await open('dark');
   await p.evaluate(() => { const e = window.__eco; e.teleport('strike'); e.placeCar(16, 14, Math.PI / 2); });

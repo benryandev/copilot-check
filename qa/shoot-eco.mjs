@@ -194,7 +194,7 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       await page.evaluate(() => window.__eco.teleport('liquidations')); // back on the pad for the stop sheet below
       await page.click('#prompt-btn');
       await shot('stop');
-      // Plaza furniture: HQ's rim from the inside, a kerb arc, bollards at a mouth, a lamp by the pad, a bench
+      // Plaza furniture: HQ's rim from the inside, a kerb arc, bollards at a mouth, a lamp by the pad (HQ has no benches: nine mouths leave no room)
       await page.evaluate(() => { const e = window.__eco; document.querySelector('#stop [data-close]')?.click(); e.teleport('strike'); e.placeCar(16, 14, Math.PI / 2); });
       await shot('plaza', 600);
       await page.evaluate(() => window.__eco.teleport('liquidations'));

@@ -907,7 +907,7 @@ const PROP = {
     g.add(mesh(new THREE.CylinderGeometry(0.42, 0.36, 0.5, 12), M.build, 0, 0, 0));
     g.add(mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.06, 12), M.trim, 0, 0.22, 0));
     g.add(mesh(new THREE.ConeGeometry(0.3, 0.5, 6), new THREE.MeshLambertMaterial({ color: 0x6fae4a }), 0, 0.5, 0));
-    return { m: g, r: 0.5, h: 0.5, sound: "cone" };
+    return { m: g, r: 0.5, h: 0.25, sound: "cone" }; // h is origin to bottom: the tub is centred on the origin, so its base is 0.25 below
   },
   bale: () => {
     const m = mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.3, 16), new THREE.MeshStandardMaterial({ color: 0xd6b25e, roughness: 1 }));
@@ -1078,7 +1078,8 @@ export function addProps(scene, { planters = true } = {}) {
     const cx = t.centre[0] + hx * 6, cz = t.centre[1] + hz * 6;
     for (let i = 0; i < 14; i++) addProp(groupFor(scene, "token"), "coin", cx + (Math.random() - 0.5) * 0.08, cz + (Math.random() - 0.5) * 0.08, Math.random() * 6, i * 0.21);
   }
-  // Benches between the pads on every plaza, facing the centre, a planter either side (not on the low tier)
+  // Benches between the pads on every plaza, facing the centre, a planter either side (not on the low tier). HQ gets none:
+  // nine road mouths round a 24 m plaza leave no stretch of rim 4 m clear of a road, and that is right for the hub (ruling, 2 Nov 2026).
   for (const d of Object.values(DISTRICTS)) {
     if (d.plaza === false) continue;
     const padsHere = pads.filter((p) => p.stop.district === d.key).map((p) => ({ x: p.pos.x, z: p.pos.z }));
