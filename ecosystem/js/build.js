@@ -904,9 +904,11 @@ const PROP = {
   },
   planter: () => {
     const g = new THREE.Group();
+    // The tub's top is at 0.25; the band wraps that rim (0.20 to 0.30) and the tuft sits on the band, so no two faces share a
+    // height (a band whose top met the tub's top z-fought: Ben saw it flicker where black meets white)
     g.add(mesh(new THREE.CylinderGeometry(0.42, 0.36, 0.5, 12), M.build, 0, 0, 0));
-    g.add(mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.06, 12), M.trim, 0, 0.22, 0));
-    g.add(mesh(new THREE.ConeGeometry(0.3, 0.5, 6), new THREE.MeshLambertMaterial({ color: 0x6fae4a }), 0, 0.5, 0));
+    g.add(mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.1, 12), M.trim, 0, 0.25, 0));
+    g.add(mesh(new THREE.ConeGeometry(0.3, 0.5, 6), new THREE.MeshLambertMaterial({ color: 0x6fae4a }), 0, 0.56, 0));
     return { m: g, r: 0.5, h: 0.25, sound: "cone" }; // h is origin to bottom: the tub is centred on the origin, so its base is 0.25 below
   },
   bale: () => {
