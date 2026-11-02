@@ -143,7 +143,9 @@ export const JUMPS = [
 // fords it. `half` is the channel's half-width, `depth` the bed under the banks at the centre, `level` the
 // water surface (under every road and plaza, which never go below 0), `flow` the texture's speed in m/s.
 export const RIVER = {
-  points: [[-150, -360], [-110, -290], [-75, -225], [-58, -172], [-62, -140], [-72, -112], [-82, -88], [-100, -55], [-108, -25], [-100, 20], [-100, 95], [-118, 138], [-138, 195], [-170, 260], [-215, 330]],
+  // Between the Chains plaza and the Fill Yard the gap is 16.5 m at its narrowest; the river passes through its exact
+  // centre (-68, -114) along the gap's own axis, 8 m from each, and crosses the Chains spoke at its mouth at about 72°.
+  points: [[-150, -360], [-110, -290], [-75, -225], [-58, -172], [-55, -148], [-61, -128], [-68, -114], [-76, -100], [-86, -86], [-94, -68], [-101, -48], [-108, -25], [-100, 20], [-100, 95], [-118, 138], [-138, 195], [-170, 260], [-215, 330]],
   half: 3.5, depth: 0.45, level: -0.06, flow: 0.7,
   fords: ["token"], // roads (by their `to`) that cross without a bridge
 };

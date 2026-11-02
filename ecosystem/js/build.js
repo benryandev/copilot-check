@@ -784,7 +784,7 @@ export function buildRoadSigns(scene) {
       arms.push({ text: n.name, colour: n.colour, dir: unit(l.pts[0][0] - b.x, l.pts[0][1] - b.z) });
     }
     buildSignpost(groupFor(scene, r.to), b.x, b.z, arms);
-    buildArch(groupFor(scene, r.to), r, to);
+    buildArch(groupFor(scene, r.to), r, to, to.key === "chains" ? 1 : 5); // Chains: the river's bridge ends just short of the plaza, so its gate stands at the edge (a moat and a drawbridge)
   });
   // Where Builders' Row begins, on the way into Developers
   if (builderSlots.length) {
