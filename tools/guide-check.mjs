@@ -29,6 +29,7 @@ export function pngDims(buf) {
 
 const strip = (s) => s.replace(CLAIM_RE, '$1').replace(/!\[[^\]]*\]\([^)]*\)/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[*_>#|`]/g, ' ').replace(/^\s*(\d+\.|-)\s+/gm, '');
 const words = (s) => strip(s).split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w));
+export const wordCount = (s) => words(s).length;
 const sentences = (s) => strip(s).replace(/\s+/g, ' ').split(/(?<=[.!?])\s+(?=[A-Z"(*])/).map((x) => x.trim()).filter((x) => words(x).length >= 3);
 
 // Prose blocks: paragraphs, list items and blockquote lines, not headings or table rows
