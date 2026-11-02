@@ -1,6 +1,6 @@
 // The Strike blimp (no three.js): node --test qa/blimp-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { BLIMP, blimpPose } from '../ecosystem/js/blimp-math.js';
+import { BLIMP, blimpPose, shadowSpot } from '../ecosystem/js/blimp-math.js';
 
 test('the blimp cruises a slow loop round HQ among the low clouds, shared by everyone because it runs on the clock', () => {
   assert.equal(BLIMP.radius, 140); assert.equal(BLIMP.height, 24, "under the cloud base"); assert.equal(BLIMP.period, 220);
@@ -13,4 +13,13 @@ test('the blimp cruises a slow loop round HQ among the low clouds, shared by eve
   const c = blimpPose(10), fx = -Math.sin(a.heading), fz = -Math.cos(a.heading);
   assert.ok((c.x - a.x) * fx + (c.z - a.z) * fz > 0, 'nose first');
   assert.equal(blimpPose(1234, 1.5).angle, 1.5, 'a fixed angle (for a shot) overrides the clock');
+});
+
+test('shadowSpot: the blimp\'s soft shadow lies on the ground down-sun of it, by its height over the sun\'s slope', () => {
+  const p = blimpPose(0);
+  const s = shadowSpot(p); // the world's sun sits at (+30, +55, +20) relative to the car, so shadows fall towards −x, −z
+  assert.ok(Math.abs(s.x - (p.x - (24 * 30) / 55)) < 1e-9); assert.ok(Math.abs(s.z - (p.z - (24 * 20) / 55)) < 1e-9);
+  assert.equal(s.heading, p.heading);
+  const t = shadowSpot({ x: 0, y: 55, z: 0, heading: 1 }, { x: 30, y: 55, z: 20 });
+  assert.deepEqual([t.x, t.z], [-30, -20], 'at the sun\'s own height the offset is the sun\'s own offset');
 });

@@ -3,7 +3,8 @@
 // blimp is hard to place). Where it is comes from blimp-math (the clock, or a pinned angle for a shot).
 import * as THREE from "../vendor/three.module.min.js";
 import { M, box, mesh, canvasTexture, redraws } from "./build.js";
-import { BLIMP, blimpPose } from "./blimp-math.js";
+import { BLIMP, blimpPose, shadowSpot } from "./blimp-math.js";
+import { groundHeight } from "./terrain.js";
 
 const SKIN_W = 2048, SKIN_H = 512;
 export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
@@ -47,11 +48,41 @@ export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
   env.castShadow = false;
   env.receiveShadow = true;
   g.add(env);
-  // Gondola under the belly, fins at the tail
-  g.add(box(1.4, 1.0, 3.4, M.build, 0, -3.6, 1.0));
-  g.add(box(0.16, 2.6, 2.6, green, 0, 1.8, 7.2));
-  g.add(box(0.16, 2.0, 2.4, green, 0, -3.6, 7.2));
-  g.add(box(5.6, 0.16, 2.4, green, 0, 0, 7.2));
+  // Gondola under the belly, fins at the tail. None of it casts a shadow: from 24 m up the sun's shadow map drew the
+  // gondola and the flat fins as hard black slabs sliding over the grass (Ben, 2 Nov). The ship's shadow is the soft
+  // blob below instead.
+  for (const part of [box(1.4, 1.0, 3.4, M.build, 0, -3.6, 1.0), box(0.16, 2.6, 2.6, green, 0, 1.8, 7.2), box(0.16, 2.0, 2.4, green, 0, -3.6, 7.2), box(5.6, 0.16, 2.4, green, 0, 0, 7.2)]) {
+    part.castShadow = false;
+    g.add(part);
+  }
+  // The soft shadow: a dark ellipse laid on the ground down-sun of the ship, the envelope's footprint, fading to nothing
+  // at its edge. A small patch draped on the terrain (a flat plane sank into the hills beyond a plaza's rim) with the
+  // fade in a four-part vertex colour (vertex alpha; a canvas texture drew nothing here), 22 × 11 m at 1 m cells, every
+  // vertex just above the plaza discs and rims; re-laid each tick as the ship moves.
+  const BW = 22, BH = 11, NX = 22, NZ = 11;
+  const blobGeo = new THREE.BufferGeometry();
+  const bpos = new Float32Array((NX + 1) * (NZ + 1) * 3), bcol = new Float32Array((NX + 1) * (NZ + 1) * 4), bidx = [];
+  for (let i = 0; i <= NX; i++) for (let j = 0; j <= NZ; j++) {
+    const q = i * (NZ + 1) + j, u = i / NX - 0.5, v = j / NZ - 0.5, d = Math.min(1, 2 * Math.hypot(u, v)); // 0 at the centre, 1 at the rim
+    bcol[q * 4 + 3] = 0.8 * (1 - d * d); // black, fading out with the square of the distance (0.4 read as nothing against lit grass)
+    if (i < NX && j < NZ) bidx.push(q, q + 1, q + NZ + 1, q + 1, q + NZ + 2, q + NZ + 1);
+  }
+  blobGeo.setAttribute("position", new THREE.BufferAttribute(bpos, 3));
+  blobGeo.setAttribute("color", new THREE.BufferAttribute(bcol, 4));
+  blobGeo.setIndex(bidx);
+  const blob = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
+  blob.renderOrder = 1;
+  blob.frustumCulled = false;
+  scene.add(blob);
+  function layBlob(sp) {
+    const ax = -Math.sin(sp.heading), az = -Math.cos(sp.heading), cx = -az, cz = ax; // along the ship, and across it
+    for (let i = 0; i <= NX; i++) for (let j = 0; j <= NZ; j++) {
+      const u = (i / NX - 0.5) * BW, v = (j / NZ - 0.5) * BH, q = (i * (NZ + 1) + j) * 3;
+      const x = sp.x + ax * u + cx * v, z = sp.z + az * u + cz * v;
+      bpos[q] = x; bpos[q + 1] = groundHeight(x, z) + 0.3; bpos[q + 2] = z; // above the plaza discs (0.08), their rims (0.12) and the coarse ground mesh where it bows above the analytic surface
+    }
+    blobGeo.attributes.position.needsUpdate = true;
+  }
   const redraw = (p) => { current = p; paint(p); };
   redraws.push(redraw);
   redraw(palette);
@@ -61,6 +92,7 @@ export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
     g.position.set(p.x, p.y + (reduceMotion ? 0 : Math.sin(t * 0.45) * 0.5), p.z);
     g.rotation.y = p.heading;
     g.rotation.z = reduceMotion ? 0 : Math.sin(t * 0.3) * 0.03;
+    layBlob(shadowSpot(p));
   };
   tick(0);
   g.frustumCulled = false;
