@@ -14,7 +14,7 @@ const DISTRICT_LINES = {
   perps: 'Trading on Strike: the markets, the matching engine, orders, margin, liquidations and the bots.',
   earn: 'The vaults, Borrow and Earn, copy trading, points and the LP program.',
   collateral: 'What you can deposit, and what you can borrow against.',
-  partners: 'Protocols Strike works with.',
+  partners: 'Protocols Strike works with, and the apps that plug Strike in.',
   developers: 'The API, builder codes and market data, and the projects built on Strike.',
   analytics: 'Where Strike\'s numbers and listings live elsewhere.',
   community: 'Referrals, clans, the leaderboard and Strike\'s own channels.',

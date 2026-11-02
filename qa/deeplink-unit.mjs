@@ -10,6 +10,7 @@ test('parseDeepLink: a known stop or district, the raceway as the start line, an
   assert.deepEqual(parseDeepLink('?stop=raceway', stops, districts), { kind: 'start', key: 'raceway' });
   assert.deepEqual(parseDeepLink('?district=raceway', stops, districts), { kind: 'start', key: 'raceway' });
   assert.deepEqual(parseDeepLink('?stop=linktree', stops, districts), { kind: null, key: null }, 'removed key: ignored');
+  for (const k of ['aiken', 'dexhunter', 'migration']) assert.deepEqual(parseDeepLink(`?stop=${k}`, stops, districts), { kind: null, key: null }, `removed key ${k}: ignored`);
   assert.deepEqual(parseDeepLink('?stop=SLP', stops, districts), { kind: null, key: null }, 'case-sensitive, no match');
   assert.deepEqual(parseDeepLink('?stop=<img>', stops, districts), { kind: null, key: null }, 'junk never reaches a lookup');
   assert.deepEqual(parseDeepLink('?stop=slp&district=perps', stops, districts), { kind: 'stop', key: 'slp' }, 'stop wins');

@@ -1,6 +1,6 @@
 # Ecosystem world: every sheet for review (generated 2026-11-02)
 
-Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 69 stops. Empty Builders' Row plots and arcade cabinets are left out.
+Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 63 stops. Empty Builders' Row plots and arcade cabinets are left out.
 
 ## Strike HQ
 
@@ -123,6 +123,15 @@ The Strike Liquidity Provider (SLP) is Strike's own market-making vault. Deposit
 - SLP is the only vault that Borrow and Earn credit can be drawn into, and its vault fee is 0%.
 
 Link: [Docs: SLP Vault](https://docs.strikefinance.org/perpetuals/vaults/slp-vault) · live: SLP vault size, SLP depositors
+
+### Insurance Fund
+
+The old Insurance Fund role now belongs to the SLP vault. It receives eligible liquidation backstop positions and adaptive liquidation fees.
+
+- If a liquidation still needs backstop handling, the engine tries to pass it to SLP. If SLP declines it, auto-deleveraging applies.
+- SLP can reduce how often ADL happens, but cannot guarantee every position is accepted.
+
+Link: [Docs: Insurance Fund](https://docs.strikefinance.org/perpetuals/liquidations/insurance-fund)
 
 ### Borrow & Earn
 
@@ -247,7 +256,7 @@ Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/b
 
 ## Partners & Integrations
 
-Protocols Strike works with.
+Protocols Strike works with, and the apps that plug Strike in.
 
 ### RealFi
 
@@ -285,23 +294,25 @@ Unifold provides deposit infrastructure that lets apps accept crypto and stablec
 
 Link: [Unifold for perps](https://unifold.io/solutions/perps) · [Visit Unifold](https://unifold.io)
 
-### DexHunter
-
-DexHunter is a Cardano swap aggregator that compares prices across many exchanges and splits a swap between them.
-
-- An aggregator can beat any single pool's price by routing parts of a swap through several.
-- Strike's own deposits use a DEX aggregator to turn volatile tokens like ADA into a stablecoin.
-
-Link: [STRIKE on DexHunter](https://app.dexhunter.io/swap?tokenIdSell=&tokenIdBuy=f13ac4d66b3ee19a6aa0f2a22298737bd907cc95121662fc971b5275535452494b45) · [Visit DexHunter](https://dexhunter.io)
-
 ### DEX Aggregators
 
 A DEX aggregator routes one swap across many liquidity pools to find a good price. Strike uses one when a volatile deposit, such as ADA, has to be turned into a stablecoin.
 
 - The swap is placed in a batching window; if it is not filled in time it is cancelled and resubmitted.
 - The result is recorded as a deposit receipt, then the stablecoin is locked in Strike's on-chain locker contract.
+- DexHunter is the Cardano aggregator most traders have met: it compares prices across many exchanges, splits a swap between them, and lists STRIKE for swapping. The docs don't say which aggregator Strike's own deposits go through.
 
-Link: [Docs: Exchanger](https://docs.strikefinance.org/perpetuals/deposits-and-withdrawals/exchanger)
+Link: [Docs: Exchanger](https://docs.strikefinance.org/perpetuals/deposits-and-withdrawals/exchanger) · [DexHunter](https://dexhunter.io)
+
+### Hizz
+
+Hizz is a multi-chain crypto terminal for token discovery, market signals, wallet monitoring and swaps. Since the hackathon it also trades Strike perpetuals from its own Perps tab, marked Powered by Strike.
+
+- Connect a Cardano wallet, sign once to authorise Strike trading, then go long or short with Strike's chart, mark price and funding on the Hizz screen.
+- Its token pages list STRIKE with Strike's website and @strikeperps as the links.
+- It's an independent tool; Strike doesn't run it.
+
+Link: [Strike perps on Hizz](https://www.hizz.io/perps/BTC-USD) · [Visit Hizz](https://hizz.io)
 
 ## Developers
 
@@ -387,6 +398,7 @@ Strike's code lives in the strike-finance GitHub organisation, linked from the S
 
 - Public repos include perpetuals smart contracts, staking contracts, a builder reference app and API agent skills.
 - The org also holds an Android app mirror and a linear vesting contract for the STRIKE token built by Anastasia Labs.
+- The perpetuals contracts are written in Aiken, Cardano's smart-contract language, with liquidity, orders, positions and pool validators; their unit tests run with aiken check.
 
 Link: [strike-finance org](https://github.com/strike-finance)
 
@@ -421,42 +433,15 @@ BendingAI is Strike's own Cardano DeFi analytics site: AI insights and token tra
 
 Link: [BendingAI home](https://bending.ai)
 
-### Hizz
+### Directories
 
-Hizz is a multi-chain crypto terminal for token discovery, market signals, wallet monitoring and swaps. Since the hackathon it also trades Strike perpetuals from its own Perps tab, marked Powered by Strike.
+Three Cardano directories list Strike, each run by someone other than Strike: cardano.org's Apps catalogue under DEX, CardanoCube under DeFi, and Adastack under Perpetuals and Staking.
 
-- Connect a Cardano wallet, sign once to authorise Strike trading, then go long or short with Strike's chart, mark price and funding on the Hizz screen.
-- Its token pages list STRIKE with Strike's website and @strikeperps as the links.
-- It's an independent tool; Strike doesn't run it.
+- cardano.org describes a perpetual futures protocol with on-chain margin, beside Minswap, WingRiders and SundaeSwap; CardanoCube's profile carries a description, token details and team information.
+- Adastack lists both Strike Finance and Strike Finance Staking on its dApps page.
+- cardano.org's catalogue and Adastack are open source, so anyone can send a correction through GitHub.
 
-Link: [Strike perps on Hizz](https://www.hizz.io/perps/BTC-USD) · [Visit Hizz](https://hizz.io)
-
-### CardanoCube
-
-CardanoCube is a directory and explorer of Cardano projects. It has a profile page for Strike Finance with a description, token details and team information.
-
-- The profile lists Strike under DeFi, in derivatives and investment management.
-- It's an independent directory; Strike doesn't run it.
-
-Link: [Strike on CardanoCube](https://www.cardanocube.com/projects/strike-finance) · [Visit CardanoCube](https://www.cardanocube.com)
-
-### Adastack
-
-Adastack is an open-source directory of Cardano apps and tools. Its dApps page lists Strike Finance as a perpetuals exchange and Strike Finance Staking as STRIKE revenue-share staking.
-
-- Both Strike entries sit on the dApps directory, under Perpetuals and Staking.
-- The site's code is public under the MIT licence, and anyone can suggest edits.
-
-Link: [Adastack dApps](https://adastack.io/dapps/) · [Visit Adastack](https://adastack.io)
-
-### cardano.org Apps
-
-cardano.org is the Cardano project's public website, and its Apps catalogue lists live mainnet apps. Strike Finance has an entry under DEX, describing a perpetual futures protocol with on-chain margin.
-
-- The entry sits beside Minswap, WingRiders and SundaeSwap in the DEX category.
-- The catalogue is open source, so anyone can submit a correction through GitHub.
-
-Link: [Strike on cardano.org](https://cardano.org/apps/strike-finance/) · [Visit cardano.org Apps](https://cardano.org/apps)
+Link: [Strike on cardano.org](https://cardano.org/apps/strike-finance/) · [Strike on CardanoCube](https://www.cardanocube.com/projects/strike-finance)
 
 ## Community & Channels
 
@@ -518,21 +503,12 @@ Link: [Docs: Docs](https://docs.strikefinance.org/getting-started/welcome)
 
 ### Medium
 
-Strike has a Medium publication under @strikecardano, linked from its Linktree, with a litepaper and a tokenomics article.
+Strike's Medium publication, @strikecardano, carries its longer announcements. Ten posts were listed there on 3 November 2026.
 
-- Links: medium.com/@strikecardano/litepaper-c42079484a98 and medium.com/@strikecardano/strike-tokenomics-d969ea6d1bee.
-- The docs site covers current V2 mechanics such as liquid staking and vaults.
+- Latest: "Strike Hackathon Starts this Wednesday" (18 October 2026) and, before it, "Strike Secures $1,000,000 Liquidity Deployment to Unlock the Next Phase of Growth" (15 July 2026).
+- Older posts include the 2026 roadmap, the litepaper and the tokenomics article; the docs site covers current V2 mechanics such as liquid staking and vaults.
 
-Link: [Litepaper](https://medium.com/@strikecardano/litepaper-c42079484a98)
-
-### Linktree
-
-Strike's Linktree at linktr.ee/strikeperps is the docs' own pointer to all official links.
-
-- Strike's Links page says all relevant links can be found there.
-- It lists the app, Docs, Discord, GitHub, CoinGecko and a demo, plus the Medium articles.
-
-Link: [Docs: Links](https://docs.strikefinance.org/social-media/links)
+Link: [Strike on Medium](https://medium.com/@strikecardano)
 
 ## Token & Governance
 
@@ -553,6 +529,7 @@ Opt in once on the Strike staking page and STRIKE in that wallet counts toward p
 
 - Balances are snapshotted daily at 00:00 UTC and averaged over time, so holding longer counts for more.
 - Supported places include Minswap, CSWAP, Splash, VyFi, SundaeSwap and WingRiders pools, plus Liqwid, Surf, Dano and FluidTokens.
+- Still staked the V1 way? Re-stake on the staking page in single address mode and keep the STRIKE in that wallet. V2 reward counting began on 15 May 2026, with daily snapshots at 00:00 UTC.
 
 Link: [Docs: Staking](https://docs.strikefinance.org/tokenomics/markdown)
 
@@ -573,15 +550,6 @@ Link: [Docs: Staking rewards](https://docs.strikefinance.org/tokenomics/markdown
 - The DAO share is part of the 25 million total, alongside the public sale, team and liquidity allocations.
 
 Link: [Docs: Tokenomics](https://docs.strikefinance.org/tokenomics/editor)
-
-### V1 to V2 Migration
-
-Staking moved from the V1 flow to V2 liquid staking. Anyone still staked through V1 re-stakes on the staking page, in single address mode.
-
-- With V2 the STRIKE stays in your wallet and keeps counting while it's used in supported pools.
-- Steps: sign in on the staking page, choose single address mode, click Stake, and keep the STRIKE in that wallet.
-
-Link: [Docs: V1 to V2 Migration](https://docs.strikefinance.org/tokenomics/markdown/v1-v2-migration)
 
 ## Chains & Security
 
@@ -631,24 +599,6 @@ Locker contracts are on-chain smart contracts on each supported chain where depo
 - Strike says no single party has direct access to user funds.
 
 Link: [Docs: Withdrawal Security](https://docs.strikefinance.org/perpetuals/deposits-and-withdrawals/withdrawal-security-and-controls)
-
-### Insurance Fund
-
-The old Insurance Fund role now belongs to the SLP vault. It receives eligible liquidation backstop positions and adaptive liquidation fees.
-
-- If a liquidation still needs backstop handling, the engine tries to pass it to SLP. If SLP declines it, auto-deleveraging applies.
-- SLP can reduce how often ADL happens, but cannot guarantee every position is accepted.
-
-Link: [Docs: Insurance Fund](https://docs.strikefinance.org/perpetuals/liquidations/insurance-fund)
-
-### Aiken
-
-Aiken is a smart-contract language for Cardano. Strike's perpetuals smart contracts repository on GitHub is written in Aiken.
-
-- The repo lists liquidity, orders, positions and pool validators as its main contracts.
-- Contract unit tests run with the aiken check command.
-
-Link: [Perpetuals contracts](https://github.com/strike-finance/perpetuals-smart-contracts)
 
 ## RealFi Raceway
 
