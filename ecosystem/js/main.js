@@ -3,6 +3,8 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, SPAWN, MULTIPLAYER } from "./content.js";
 import { parseDeepLink, stopUrl } from "./deeplink-math.js";
+import { guidesForStop } from "./guides.js";
+import { mountGuide, closeGuide, onPopState, rewriteLinks } from "./guide-sheet.js";
 import { fetchLive, fetchKlines, fetchFunding, LABELS } from "./data.js";
 import { normaliseFunding, pollDue } from "./windsock-math.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo, setRidgeSeries, onRidge, ridgeSeries } from "./terrain.js";
@@ -532,7 +534,7 @@ function checkPads() {
 }
 $("prompt-btn").addEventListener("click", () => activePad && openStop(activePad.stop));
 
-const dialogs = ["intro", "stop", "map", "race", "peers", "arcade"].map($);
+const dialogs = ["intro", "stop", "map", "race", "peers", "arcade", "guide"].map($);
 const anyOpen = () => dialogs.some((d) => d.open);
 dialogs.forEach((d) => {
   d.addEventListener("close", () => {
@@ -590,8 +592,54 @@ function openStop(stop) {
     $("stop-site").querySelector(".br-button-label").textContent = stop.siteLabel || `Visit ${stop.name}`;
   }
   resetLinkChip(stopUrl(location.origin, stop.key));
+  const guides = guidesForStop(stop.key);
+  $("stop-guides").hidden = !guides.length;
+  $("stop-guides").replaceChildren(...guides.map((g) => Object.assign(document.createElement("a"), { className: "br-button br-button--secondary", href: g.path, textContent: `Read the guide: ${g.title}` })));
+  $("stop-guides").querySelectorAll("a").forEach((a) => a.setAttribute("data-guide-link", ""));
   show($("stop"));
 }
+
+// Guides inside the world: any link marked data-guide-link (a stop sheet's "Read the guide", the intro's read line,
+// links inside a mounted guide) opens the page in the #guide sheet with the URL updated; see guide-sheet.js.
+// The guide and stops stylesheets load on demand (link elements from this origin, so the CSP is untouched).
+let savedTitle = null;
+const cssReady = {};
+const ensureCss = (href) => (cssReady[href] ||= new Promise((resolve) => {
+  const link = Object.assign(document.createElement("link"), { rel: "stylesheet", href });
+  link.onload = link.onerror = () => resolve();
+  document.head.append(link);
+}));
+async function openGuide(url) {
+  const isStops = url.startsWith("/ecosystem/stops/");
+  await Promise.all([ensureCss("/ecosystem/guides/guides.css"), isStops ? ensureCss("/ecosystem/stops/stops.css") : null]);
+  const r = await mountGuide(url, {
+    fetch: (u, o) => fetch(u, o), parse: (h) => new DOMParser().parseFromString(h, "text/html"), history, worldUrl: location.href,
+    mount: (title, main) => {
+      const node = document.importNode(main, true);
+      rewriteLinks(node, location.origin);
+      const h1 = node.querySelector("h1");
+      if (h1) h1.id = "guide-title";
+      $("guide-eyebrow").textContent = isStops ? "Every stop as text" : url === "/ecosystem/guides/" ? "Strike guides" : "Strike guide";
+      $("guide-main").replaceChildren(node);
+      savedTitle ??= document.title;
+      document.title = `${title} · Strike ecosystem`;
+      show($("guide"));
+      $("guide").scrollTop = 0;
+    },
+  });
+  if (r.navigate) location.href = r.navigate;
+}
+document.addEventListener("click", (e) => {
+  const a = e.target.closest("a[data-guide-link]");
+  if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+  e.preventDefault();
+  openGuide(new URL(a.href).pathname);
+});
+$("guide").addEventListener("close", () => {
+  closeGuide({ history });
+  if (savedTitle) { document.title = savedTitle; savedTitle = null; }
+});
+window.addEventListener("popstate", (e) => onPopState(e.state, { isOpen: () => $("guide").open, close: () => $("guide").close(), restoreTitle: () => {} }));
 
 // "Copy link" on the stop sheet: the clipboard when the browser allows it, otherwise a read-only field holding the
 // URL, selected, so the visitor can copy it by hand (text inside a button is not selectable everywhere). Never throws.

@@ -208,6 +208,23 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .sheet-actions .stop-link-url { flex: 1 1 100%; min-width: 0; font-family: var(--font-mono); font-size: 0.85rem; }
 .sheet-actions .stop-link-url[hidden] { display: none; }
 
+/* A guide (or the stops page) mounted inside the world: a wider sheet, Back to the pad at the top, the page's own
+   article rules from guides.css (loaded when the sheet first opens) */
+.sheet--guide { width: min(44rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); padding: var(--space-lg); }
+.sheet--guide > * + * { margin-top: var(--space-sm); }
+.guide-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
+.guide-head .br-button { flex: none; }
+.sheet--guide .guide-sheet, .sheet--guide main { position: static; margin: 0; width: auto; max-width: none; border: 0; box-shadow: none; padding: 0; background: transparent; }
+.sheet--guide :is(.stops-head > .wrap, .stops-body) { width: auto; margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none; }
+.sheet--guide .stops-head { padding: 0; }
+.sheet--guide .stops-body { display: block; margin-top: var(--space-md); }
+.sheet--guide .stops-nav { position: static; }
+.sheet--guide .topbar { padding: 0; }
+.stop-guides { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.stop-guides[hidden] { display: none; }
+.stop-guides .br-button { text-decoration: none; }
+@media (max-width: 600px) { .sheet--guide { padding: var(--space-md); } }
+
 /* The arcade cabinet's sheet: the game in a frame, Keep driving above it so it stays reachable on a phone */
 .sheet--arcade { width: min(40rem, calc(100vw - 2rem)); padding: var(--space-md); }
 .sheet--arcade > * + * { margin-top: var(--space-sm); }
