@@ -10,7 +10,7 @@ export const ORDER = ['hub', 'perps', 'earn', 'collateral', 'partners', 'develop
 
 // One line per district, in the same voice as the sheets (Ben reads these with the review markdown).
 const DISTRICT_LINES = {
-  hub: 'Strike Finance itself, with the platform\'s headline figures.',
+  hub: 'Strike Finance itself, how a first visit goes, and the platform\'s headline figures.',
   perps: 'Trading on Strike: the markets, the matching engine, orders, margin, liquidations and the bots.',
   earn: 'The vaults, Borrow and Earn, copy trading, points and the LP program.',
   collateral: 'What you can deposit, and what you can borrow against.',

@@ -1,7 +1,8 @@
 // Deep links end to end (dev only): node qa/serve.mjs & node qa/deeplink-smoke.mjs [baseUrl]
 //   ?stop=slp       no intro, the stop sheet open on "SLP Vault", the car within 6 m of the SLP pad
 //   ?stop=raceway   race HUD visible, no sheet open
-//   ?stop=nope      a normal visit: the intro sheet
+//   ?stop=getting-started  the hub's hand-placed pad, sheet open, no intro
+//   ?stop=nope      a normal visit: the intro sheet, no stop sheet
 //   Copy link       with clipboard-write granted the chip says "Link copied"; without it the chip shows the URL
 // Also loads /ecosystem/stops/ and asserts no page errors there. Exits 1 on any failure.
 // Runs against http://localhost:8766 by default (PORT=8766 node qa/serve.mjs): that is the local origin the race and
@@ -118,11 +119,26 @@ async function drives(page) {
   check(st.top === 'noscript' && st.hasLink, `no JS: the noscript box is on top (topmost at centre: ${st.top})`);
   await ctx.close();
 }
+// ?stop=getting-started: a hand-placed hub pad, the first from the arrival
+{
+  const { ctx, page, errs } = await open(world('stop=getting-started'));
+  const st = await page.evaluate(() => {
+    const pad = window.__eco.pads.find((p) => p.stop.key === 'getting-started');
+    const c = window.__eco.car.s;
+    return { intro: document.getElementById('intro').open, stop: document.getElementById('stop').open, title: document.getElementById('stop-title').textContent,
+      dist: pad ? Math.hypot(c.x - pad.pos.x, c.z - pad.pos.z) : Infinity };
+  });
+  check(!st.intro && st.stop && st.title === 'Getting started', `stop=getting-started: sheet open on "${st.title}", no intro`);
+  check(st.dist < 6, `stop=getting-started: car ${st.dist.toFixed(1)} m from the pad`);
+  check(errs.length === 0, `stop=getting-started: no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
+  await ctx.close();
+}
 // ?stop=nope
 {
   const { ctx, page, errs } = await open(world('stop=nope&arrive=0'));
-  const st = await page.evaluate(() => ({ intro: document.getElementById('intro').open, kind: window.__eco.deepLink.kind }));
+  const st = await page.evaluate(() => ({ intro: document.getElementById('intro').open, stop: document.getElementById('stop').open, kind: window.__eco.deepLink.kind }));
   check(st.intro && st.kind === null, `stop=nope: intro shown, link ignored (kind ${st.kind})`);
+  check(!st.stop, 'stop=nope: no stop sheet open at landing (the Getting started pad is outside the trigger)');
   check(errs.length === 0, `stop=nope: no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
   await ctx.close();
 }

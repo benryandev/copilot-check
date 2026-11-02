@@ -1,10 +1,10 @@
 # Ecosystem world: every sheet for review (generated 2026-11-02)
 
-Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 68 stops. Empty Builders' Row plots and arcade cabinets are left out.
+Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 69 stops. Empty Builders' Row plots and arcade cabinets are left out.
 
 ## Strike HQ
 
-Strike Finance itself, with the platform's headline figures.
+Strike Finance itself, how a first visit goes, and the platform's headline figures.
 
 ### Strike Finance
 
@@ -16,6 +16,17 @@ A perpetuals exchange with its own execution layer and settlement on several cha
 - The Open Strike button uses Ben Ryan's referral code.
 
 Link: [Docs: Welcome](https://docs.strikefinance.org/getting-started/welcome) · [Open Strike](https://app.strikefinance.org/trade/BTC?referralCode=BenRyan) · live: Users, all time, Volume, all time, 24 h volume
+
+### Getting started
+
+A first visit, from sign-in to a funded account. Sign in with a wallet on Cardano, Ethereum, Solana and more; deposit crypto on any supported chain or pay by card; your balance is held in USD.
+
+- Deposits as the app offered them on 3 November 2026: a crypto transfer on Cardano, Ethereum, Solana, Base, Arbitrum or Bitcoin, or a card deposit up to $50,000 (Visa or Mastercard). Bank transfer was marked coming soon.
+- Every deposit is quoted and verified by Strike's validators, and a volatile asset such as ADA or ETH is swapped to a stablecoin on the way in, so the account is backed one to one in USD.
+- Withdrawals need your wallet's signature and a margin check before validators release funds on chain. There's a mobile app and a full API as well.
+- The Open Strike button uses Ben Ryan's referral code.
+
+Link: [Docs: Deposits & Withdrawals](https://docs.strikefinance.org/perpetuals/deposits-and-withdrawals) · [Open Strike](https://app.strikefinance.org/trade/BTC?referralCode=BenRyan)
 
 ## Perpetuals & Trading
 

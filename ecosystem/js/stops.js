@@ -48,6 +48,27 @@ export const STOPS = [
     siteLabel: "Open Strike",
   },
   {
+    key: "getting-started",
+    district: "hub",
+    name: "Getting started",
+    shape: "gatehouse",
+    pos: [-13, 7], // the hub's south-west, facing the spawn: the first pad a visitor reaches, about 8 m from where the car lands (outside the 3 m trigger)
+    face: [0, 14],
+    summary:
+      "A first visit, from sign-in to a funded account. Sign in with a wallet on Cardano, Ethereum, Solana and more; deposit crypto on any supported chain or pay by card; your balance is held in USD.",
+    points: [
+      "Deposits as the app offered them on 3 November 2026: a crypto transfer on Cardano, Ethereum, Solana, Base, Arbitrum or Bitcoin, or a card deposit up to $50,000 (Visa or Mastercard). Bank transfer was marked coming soon.",
+      "Every deposit is quoted and verified by Strike's validators, and a volatile asset such as ADA or ETH is swapped to a stablecoin on the way in, so the account is backed one to one in USD.",
+      "Withdrawals need your wallet's signature and a margin check before validators release funds on chain. There's a mobile app and a full API as well.",
+      "The Open Strike button uses Ben Ryan's referral code.",
+    ],
+    live: null,
+    docs: `${DOCS}/perpetuals/deposits-and-withdrawals`,
+    docsLabel: "Deposits & Withdrawals",
+    site: "https://app.strikefinance.org/trade/BTC?referralCode=BenRyan",
+    siteLabel: "Open Strike",
+  },
+  {
     key: "perpetuals",
     district: "perps",
     name: "Perpetuals",
