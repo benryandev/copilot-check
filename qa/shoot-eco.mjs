@@ -28,7 +28,7 @@ const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 10
 const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'windsocks', 'stop', 'plaza', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
+const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'windsocks', 'stop', 'plaza', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race', 'deeplink'];
 const pick = opt('states') || ALL;
 const FUNDING = JSON.parse(readFileSync(new URL('./fixtures/funding-2026-11-02.json', import.meta.url), 'utf8')); // the windsocks' fixed comparison (2 Nov 2026: ADA out straight, BTC gentle)
 const out = new URL('./shots/', import.meta.url).pathname;
@@ -270,6 +270,12 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         document.getElementById('race').showModal();
       });
       await shot('race');
+      // A deep link (?stop=slp): a fresh load that lands on the pad with the sheet open, no flight, no intro
+      if (pick.includes('deeplink')) {
+        await page.goto(`${base}/ecosystem/?mp=0&stop=slp#${theme}`, { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => window.__eco && document.getElementById('stop').open && !document.getElementById('loader'), null, { timeout: 60000 });
+        await shot('deeplink', 600);
+      }
       problems += errors.length;
       for (const e of errors) console.log(`     ${tag}: page error ${e}`);
       console.log(`done ${tag}`);
