@@ -207,7 +207,7 @@ ADA is Cardano's native coin. On Strike it can be deposited and swapped into a U
 - A collateral deposit keeps your ADA as ADA. A balance deposit exchanges it for spendable USD instead.
 - Collateral ADA is not staked and earns nothing by itself, but you keep its price exposure.
 
-Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: lines:ADA
+Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: Open credit lines
 
 ### USDCx/USDM LP
 
@@ -216,7 +216,7 @@ A SundaeSwap liquidity-pool token for the USDCx/USDM pair. Strike accepts it as 
 - Trading fees paid into the pool add to the reserves behind each token, so it grows in value on its own.
 - It has its own credit line, with its own collateral and debt, separate from lines backed by other assets.
 
-Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: lines:LP_SUNDAE_USDCx_USDM
+Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: Open credit lines
 
 ### aUSDC
 
@@ -225,7 +225,7 @@ Aave V3 aUSDC on Ethereum is a receipt token for USDC supplied to Aave's lending
 - Supply interest from the lending market builds up in the token, so each token is worth more over time.
 - Strike prices it per scaled unit, which already includes Aave's liquidity index.
 
-Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: lines:SCALED_AAVE_V3_ETH_aUSDC
+Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: Open credit lines
 
 ### USDrf / sUSDrf
 
@@ -234,7 +234,7 @@ USDrf is a stablecoin from RealFi, and sUSDrf is its staked form. Strike accepts
 - On Strike, sUSDrf is held in custody on Cardano while it backs a credit line, and its growth shows as a rising token price.
 - Strike's API labels it 'RealFi staked USDrf'. Getting sUSDrf is done through RealFi's own app and terms.
 
-Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: lines:sUSDrf
+Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: Open credit lines
 
 ### enzoBTC
 
@@ -243,7 +243,7 @@ enzoBTC is a bitcoin-backed token from Lorenzo Protocol. Strike accepts it as Bo
 - Strike's credit settings list it as collateral with Ethereum custody and 8 decimal places.
 - It sits on its own credit line, so it neither backs nor is backed by lines opened with other collateral.
 
-Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: lines:enzoBTC
+Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: Open credit lines
 
 ## Partners & Integrations
 
@@ -256,7 +256,7 @@ RealFi issues USDrf, a Cardano stablecoin backed by real-world credit. Its stake
 - sUSDrf is staked USDrf. Its value shows up as a rising USDrf-per-sUSDrf rate rather than a growing token count.
 - On Strike, sUSDrf can back a credit line that buys shares in the SLP vault, while the sUSDrf stays in your custody.
 
-Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · [Visit RealFi](https://realfi.co) · live: lines:sUSDrf
+Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · [Visit RealFi](https://realfi.co) · live: Open credit lines
 
 ### SundaeSwap
 
@@ -265,7 +265,7 @@ SundaeSwap is a Cardano decentralised exchange where people swap tokens and prov
 - Holders of the USDCx/USDM LP token own a share of that pool, and trading fees paid into the pool add to the reserves behind each token.
 - Strike's credit API lists it as LP_SUNDAE_USDCx_USDM, described as the SundaeSwap V4 USDCx/USDM LP token.
 
-Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · [Visit SundaeSwap](https://sundae.fi) · live: lines:LP_SUNDAE_USDCx_USDM
+Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · [Visit SundaeSwap](https://sundae.fi) · live: Open credit lines
 
 ### Aave V3
 
@@ -274,7 +274,7 @@ Aave is a lending protocol where people supply assets to earn interest and borro
 - aUSDC is the receipt token Aave gives you when you supply USDC.
 - On Strike it can back a Borrow and Earn credit line while it stays supplied on Aave.
 
-Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · [Visit Aave V3](https://aave.com) · live: lines:SCALED_AAVE_V3_ETH_aUSDC
+Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · [Visit Aave V3](https://aave.com) · live: Open credit lines
 
 ### Unifold
 

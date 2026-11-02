@@ -4,8 +4,10 @@
 .notfound-main { padding-block: var(--space-2xl) var(--space-3xl); }
 .notfound-main h1 { font-family: var(--font-display); font-size: clamp(2.5rem, 1.6rem + 4vw, 4.5rem); line-height: 1; margin: var(--space-2xs) 0 var(--space-sm); }
 .notfound-main .lede { color: var(--text-secondary); font-size: 1.15rem; line-height: 1.5; max-width: var(--measure-lede); margin: 0 0 var(--space-lg); }
-.notfound-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); }
-.notfound-links { max-width: 100%; }
-.notfound-links li { max-width: 100%; }
-.notfound-links .br-button { text-decoration: none; max-width: 100%; white-space: normal; text-align: left; line-height: 1.3; }
+.notfound-primary { margin: 0 0 var(--space-md); }
+.notfound-primary .br-button { text-decoration: none; }
+.notfound-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2xs); }
+.notfound-links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
+.notfound-links a:hover { color: var(--text-secondary); }
+.notfound-links a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 4px; }
 @media (prefers-reduced-motion: reduce) { .notfound * { transition: none !important; animation: none !important; } }

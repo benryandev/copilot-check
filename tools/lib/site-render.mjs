@@ -38,8 +38,12 @@ const siteOf = (stop) => (stop.site && stop.site !== stop.docs ? stop.site : nul
 
 const byDistrict = (stops, key) => publicStops(stops).filter((s) => s.district === key);
 
+// A live figure's label. Per-collateral credit-line keys ("lines:<asset>") get their label at runtime in data.js,
+// so the static page names them the same way; an unknown key reads as plain words, never as a raw key.
+const liveLabel = (k, labels) => labels[k] ?? (k.startsWith('lines:') ? 'Open credit lines' : k.replace(/[_:]+/g, ' '));
+
 function renderStop(stop, labels) {
-  const live = stop.live ? `<p class="stop-live">Live on the pad: ${esc(stop.live.map((k) => labels[k] ?? k).join(', '))}</p>` : '';
+  const live = stop.live ? `<p class="stop-live br-label">Live on the pad: ${esc(stop.live.map((k) => liveLabel(k, labels)).join(', '))}</p>` : '';
   const site = siteOf(stop) ? ` <a class="stop-doc" href="${esc(siteOf(stop))}" rel="noopener">${esc(stop.siteLabel || `Visit ${stop.name}`)}</a>` : '';
   return `      <article class="stop district-${esc(stop.district)}" id="stop-${esc(stop.key)}">
         <h3>${esc(stop.name)}</h3>
@@ -135,9 +139,12 @@ export function renderStopsPage(ctx) {
   </header>
   <div class="wrap stops-body">
     <nav class="stops-nav" aria-label="Districts">
-      <ul>
+      <details class="stops-jump" id="stops-jump">
+        <summary>Jump to a district</summary>
+        <ul>
 ${nav}
-      </ul>
+        </ul>
+      </details>
     </nav>
     <main class="stops-main" id="main">
 ${order.map((k) => renderDistrict(k, ctx)).join('\n')}
@@ -150,6 +157,7 @@ ${order.map((k) => renderDistrict(k, ctx)).join('\n')}
     </div>
   </footer>
   <script src="/src/theme-toggle.js"></script>
+  <script src="/src/stops.js"></script>
 </body>
 </html>
 `;
@@ -187,7 +195,7 @@ export function renderReview(ctx) {
       out.push(`### ${s.name}`, '', s.summary, '');
       for (const t of s.points) out.push(`- ${t}`);
       out.push('');
-      const live = s.live ? ` · live: ${s.live.map((x) => labels[x] ?? x).join(', ')}` : '';
+      const live = s.live ? ` · live: ${s.live.map((x) => liveLabel(x, labels)).join(', ')}` : '';
       const site = siteOf(s) ? ` · [${s.siteLabel || `Visit ${s.name}`}](${siteOf(s)})` : '';
       out.push(`Link: [${docsLabel(s)}](${s.docs})${site}${live}`, '');
     }

@@ -18,13 +18,18 @@
 .district-yard { --d: #26fab0; }
 
 .stops-head { padding-block: var(--space-xl) var(--space-lg); border-bottom: 1px solid var(--border-color); }
-.stops-head h1 { font-family: var(--font-display); font-size: clamp(2rem, 1.4rem + 2.4vw, 3.25rem); line-height: 1.05; margin: var(--space-2xs) 0 var(--space-sm); max-width: 18ch; }
+.stops-head h1 { font-family: var(--font-display); font-size: clamp(2rem, 1.4rem + 2.4vw, 3.25rem); line-height: 1.05; margin: var(--space-2xs) 0 var(--space-sm); max-width: 22ch; text-wrap: balance; }
 .stops-head .lede { max-width: var(--measure); color: var(--text-secondary); font-size: 1.1rem; line-height: 1.5; margin: 0; }
 .stops-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin: var(--space-md) 0 0; }
 
 .stops-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); padding-block: var(--space-lg) var(--space-2xl); }
 
-.stops-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
+.stops-jump > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; min-height: 44px; padding: 0 1rem; border: 1px solid var(--border-color); border-radius: 999px; background: var(--bg-surface); font-weight: 600; }
+.stops-jump > summary::-webkit-details-marker { display: none; }
+.stops-jump > summary::after { content: ""; width: 0.5rem; height: 0.5rem; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); transition: transform 150ms ease; }
+.stops-jump[open] > summary::after { transform: translateY(2px) rotate(225deg); }
+.stops-jump > summary:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.stops-nav ul { list-style: none; margin: var(--space-xs) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
 .stops-nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.9rem; border: 1px solid var(--border-color); border-radius: 999px; color: var(--text-primary); text-decoration: none; font-size: 0.95rem; background: var(--bg-surface); }
 .stops-nav a:hover { border-color: var(--text-secondary); }
 .stops-nav a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
@@ -43,7 +48,7 @@
 .stop ul { margin: 0 0 var(--space-xs); padding-left: 1.1rem; max-width: var(--measure); }
 .stop li { line-height: 1.5; }
 .stop li + li { margin-top: var(--space-3xs); }
-.stop-live { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-secondary); }
+.stop p.stop-live { margin: 0 0 var(--space-xs); color: var(--text-secondary); line-height: 1.5; overflow-wrap: anywhere; }
 .stop-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs) var(--space-sm); margin: var(--space-xs) 0 0; max-width: none; }
 .stop-doc { display: inline-flex; align-items: center; min-height: 44px; color: var(--text-primary); text-decoration: underline; text-underline-offset: 3px; }
 .stop-doc:hover { color: var(--text-secondary); }
@@ -52,15 +57,17 @@
 @media (min-width: 1024px) {
   .stops-body { grid-template-columns: 15rem minmax(0, 1fr); align-items: start; }
   .stops-nav { position: sticky; top: var(--space-md); }
-  .stops-nav ul { flex-direction: column; gap: 0.2rem; }
+  .stops-jump > summary { display: none; }
+  .stops-nav ul { flex-direction: column; gap: 0.2rem; margin: 0; }
+  .stops-nav a[aria-current="true"] { color: var(--text-primary); border-left-color: var(--text-primary); font-weight: 600; }
   .stops-nav a { display: flex; min-height: 0; border: none; border-left: 3px solid transparent; border-radius: 0; padding: 0.4rem 0.75rem; background: none; color: var(--text-secondary); }
   .stops-nav a:hover { color: var(--text-primary); border-left-color: var(--border-color); }
 }
 
 @media (min-width: 1280px) {
-  .district .stops-grid { display: grid; }
-  .district { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-sm); align-items: start; }
+  .district { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-sm); align-items: stretch; }
   .district h2, .district-line { grid-column: 1 / -1; }
+  .district:has(> .stop:only-of-type) > .stop { grid-column: 1 / -1; }
 }
 
 @media (prefers-reduced-motion: reduce) { .stops-page * { transition: none !important; animation: none !important; } }

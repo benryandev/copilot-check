@@ -28,6 +28,8 @@ test('stops page: every public stop by name, a Drive there link per stop, distri
   const idx = ORDER.map(k => html.indexOf(`id="district-${k}"`));
   assert.ok(idx.every((v, i) => v > -1 && (i === 0 || v > idx[i - 1])), 'district sections in page order');
   assert.ok(html.includes('Live on the pad: Markets trading'), 'live labels named, not valued');
+  assert.ok(!/lines:[A-Z_]/.test(html), 'per-collateral line keys read as "Open credit lines", never as raw keys');
+  assert.ok(html.includes('Live on the pad: Open credit lines'), 'collateral cards name their live figure');
   assert.ok(/<article class="[^"]*\bdistrict-perps\b/.test(html), 'articles carry their district class');
   assert.ok(html.startsWith('<!doctype html>'));
   assert.ok(html.includes('<link rel="canonical" href="https://strike.benryan.com.au/ecosystem/stops/">'));
