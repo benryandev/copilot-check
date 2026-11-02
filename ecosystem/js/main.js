@@ -359,7 +359,7 @@ function emitDust(dt, info) {
 // ── Spray ─────────────────────────────────────────────────────────────
 // White spray off the wheels while wading, a ring of it on entry; also used for other visitors' cars (peers.js)
 let sprayCarry = 0;
-function sprayPuff(x, y, z, vx, vy, vz, size, life) { spray.userData.emit(x, y, z, vx, vy, vz, size, life); sprayCount++; }
+function sprayPuff(x, y, z, vx, vy, vz, size, life) { if (reduceMotion || !spray) return; spray.userData.emit(x, y, z, vx, vy, vz, size, life); sprayCount++; } // the one gate for every spray path, the QA hook included
 function sprayBurst(x, y, z, n) {
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 3.5;
@@ -375,7 +375,6 @@ function sprayWheels(x, y, z, heading, k) {
   }
 }
 function emitSpray(dt, info) {
-  if (reduceMotion || !spray) return;
   const s = car.s;
   if (info.event?.splash) sprayBurst(s.x, Math.max(s.y, WATER_LEVEL), s.z, Math.min(50, Math.round(info.event.splash * 4)));
   if (!info.wet || s.air) return;
@@ -385,7 +384,7 @@ function emitSpray(dt, info) {
   while (sprayCarry >= 1) { sprayCarry -= 1; sprayWheels(s.x, Math.max(s.y, WATER_LEVEL), s.z, s.heading, Math.min(1, v / 12)); } // from the surface, not the bed
 }
 // Another visitor's car in the river (peers.js decides when)
-function sprayAt(x, z, heading, k) { if (reduceMotion || !spray) return; sprayWheels(x, WATER_LEVEL, z, heading, k); }
+function sprayAt(x, z, heading, k) { sprayWheels(x, WATER_LEVEL, z, heading, k); }
 
 // ── Camera ────────────────────────────────────────────────────────────
 // How far along the sightline from (x, y, z) to `to` (0–1) the first building taller than the line

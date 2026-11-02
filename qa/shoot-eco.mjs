@@ -27,7 +27,7 @@ const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 10
 const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'stop', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
+const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stop', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
 const pick = opt('states') || ALL;
 const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
@@ -153,6 +153,23 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       await shot('drive');
       await page.evaluate(() => window.__eco.boost(1.4)); // a jump just landed: afterburner lamps, wider camera, more dust
       await shot('boost', 350);
+      // The river: the Community spoke bridge from the road, then the car in the Token ford with an entry burst of spray
+      await page.evaluate(async () => {
+        const T = await import('/ecosystem/js/terrain.js');
+        const c = T.crossings.find((c) => T.roads[c.road].kind === 'spoke' && T.roads[c.road].to === 'community');
+        const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+        window.__eco.placeCar(c.x - fx * 14, c.z - fz * 14, Math.atan2(-fx, -fz));
+      });
+      await shot('bridge', 900);
+      await page.evaluate(async () => {
+        const T = await import('/ecosystem/js/terrain.js');
+        const e = window.__eco, c = T.crossings.find((c) => T.roads[c.road].kind === 'spoke' && T.roads[c.road].to === 'token');
+        const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+        e.placeCar(c.x + fx * 0.5, c.z + fz * 0.5, Math.atan2(-fx, -fz));
+        e.splash();
+      });
+      await shot('ford', 400);
+      await page.evaluate(() => window.__eco.teleport('liquidations')); // back on the pad for the stop sheet below
       await page.click('#prompt-btn');
       await shot('stop');
       await page.evaluate(() => document.querySelector('#stop [data-close]').click());

@@ -11,7 +11,7 @@ try { ({ chromium } = await import('playwright')); } catch {
   ({ chromium } = createRequire(`${g}/`)('playwright'));
 }
 const base = process.argv.find((a) => a.startsWith('http')) || 'http://localhost:8766';
-const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7); // cabinet | wave
+const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7); // cabinet | wave | river
 const OUT = new URL('./out/showcase/', import.meta.url).pathname;
 mkdirSync(OUT, { recursive: true });
 const FPS = 30, DT = 1000 / FPS;
@@ -72,5 +72,23 @@ if (!only || only === 'wave') {
   await p.screenshot({ path: `${OUT}wave-day.png` });
   await p.context().close();
   console.log('wave-day.png');
+}
+// The river by day: the car mid-ford on the Token spoke with spray up, the water and banks either side
+if (!only || only === 'river') {
+  const p = await open('light');
+  await p.evaluate(async () => {
+    const T = await import('/ecosystem/js/terrain.js');
+    const e = window.__eco, c = T.crossings.find((c) => T.roads[c.road].kind === 'spoke' && T.roads[c.road].to === 'token');
+    const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+    e.placeCar(c.x - fx * 1.5, c.z - fz * 1.5, Math.atan2(-fx, -fz));
+    e.car.s.speed = 7; e.keys.up = true;
+  });
+  await steps(p, 8);
+  await p.evaluate(() => window.__eco.splash());
+  await steps(p, 6); // 0.2 s: the burst at full spread, the wheels spraying
+  await p.screenshot({ path: `${OUT}river-day.png` });
+  await p.evaluate(() => { window.__eco.keys.up = false; });
+  await p.context().close();
+  console.log('river-day.png');
 }
 await browser.close();
