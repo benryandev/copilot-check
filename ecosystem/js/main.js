@@ -305,7 +305,7 @@ function stepCrates(dt) {
       c.m.rotation.z += c.ang.z * dt;
       if (p.y - c.h <= floor) {
         p.y = floor + c.h;
-        if (c.vy < -3) { if (Math.hypot(p.x - s.x, p.z - s.z) < 45) sound.clunk(); c.vy = -c.vy * CRATE_BOUNCE; c.ang.multiplyScalar(0.5); }
+        if (c.vy < -3) { c.vy = -c.vy * CRATE_BOUNCE; c.ang.multiplyScalar(0.5); } // silent: Ben (2 Nov) likes the hit sound when driving through crates, not the clunk of them landing off the belt
         else {
           c.vy = 0; c.air = false; c.ang.set(0, 0, 0);
           if (on && off > 0.55) { // caught the edge of the one below: slide off it
