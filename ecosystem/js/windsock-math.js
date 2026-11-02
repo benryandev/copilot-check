@@ -13,7 +13,9 @@ export const WINDSOCKS = {
   ease: 2, // seconds for a sock to settle on a new rate
 };
 
-const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+// A rate is data only when it is a number or a non-blank numeric string: Number(null), Number("") and Number(false) are 0, and a
+// sock must never show "+0.000%" for a venue that sent nothing
+const num = (v) => (typeof v === "number" || (typeof v === "string" && v.trim() !== "")) && Number.isFinite(+v) ? +v : null;
 
 /** Strike's comparison body → Map of bare symbol → { strike, bybit, binance, hyperliquid } (numbers per 8 h or null). */
 export function normaliseFunding(raw) {
@@ -56,3 +58,8 @@ export function segmentAngles(fill, t, n = WINDSOCKS.segments) {
   for (let k = 0; k < n; k++) out.push((((1 - fill) * (k + 1)) / n * droop + (2 + 6 * fill) * Math.sin(t * 6 + k)) * (Math.PI / 180));
   return out;
 }
+
+/** Is a fetch due: five minutes after a good one, thirty seconds after a failed one (so a flaky load does not leave the
+ * row grey for five minutes), at once when none has run. */
+export const POLL_MS = 5 * 60_000, RETRY_MS = 30_000;
+export const pollDue = (now, lastAt, lastOk) => !lastAt || now - lastAt >= (lastOk ? POLL_MS : RETRY_MS);

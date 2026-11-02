@@ -14,7 +14,7 @@ const TONES = { up: new THREE.Color(0x4ade80), down: new THREE.Color(0xf87171), 
 const WHITE = new THREE.Color(0xffffff);
 const VENUE_NAMES = { bybit: "Bybit", binance: "Binance", hyperliquid: "Hyperliquid" };
 const SEG_LEN = 0.34, SEG_R0 = 0.15, TAPER = 0.85, CEX_SCALE = 0.7; // each segment's far end is TAPER of its near end, and the next segment starts there
-const BOARD = ["FUNDING, PER 8 H", "Strike's rate on each sock. Green blows towards Perps: longs pay. Red blows back: shorts pay.", "Behind each: Bybit, Binance, Hyperliquid."];
+const BOARD = ["FUNDING · PER 8 h", "Strike's rate on each sock.", "Green towards Perps: longs pay.", "Red back: shorts pay.", "Behind: Bybit, Binance, Hyperliquid."]; // the title, then one line each
 
 export function buildWindsocks(scene, palette, { reduceMotion = false } = {}) {
   const g = new THREE.Group();
@@ -110,25 +110,27 @@ export function buildWindsocks(scene, palette, { reduceMotion = false } = {}) {
     const p = at(pos.board.s, pos.board.v), y0 = terrainHeight(p.x, p.z);
     const grp = new THREE.Group();
     grp.position.set(p.x, y0, p.z);
-    grp.rotation.y = Math.atan2(p.tx, p.tz) + Math.PI / 2; // faces the road
-    grp.add(box(0.18, 2.6, 0.18, M.build, -1.6, 0, 0), box(0.18, 2.6, 0.18, M.build, 1.6, 0, 0));
-    const { tex, redraw } = canvasTexture(1024, 384, (ctx, w, h, q) => {
+    // Faces a driver coming up the road from HQ: turned towards the road 20 m back, not square to it (a square board is
+    // read edge-on from the road; the reviewer measured 51° off from the approach)
+    const back = at(pos.board.s - 20, -spoke.half);
+    grp.rotation.y = Math.atan2(back.x - p.x, back.z - p.z);
+    grp.add(box(0.18, 3.0, 0.18, M.build, -1.8, 0, 0), box(0.18, 3.0, 0.18, M.build, 1.8, 0, 0));
+    const { tex, redraw } = canvasTexture(1024, 448, (ctx, w, h, q) => {
       ctx.fillStyle = q.panel; ctx.fillRect(0, 0, w, h);
       ctx.fillStyle = "#" + new THREE.Color(DISTRICTS.perps.colour).getHexString(); ctx.fillRect(0, h - 14, w, 14);
       ctx.fillStyle = q.text; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.font = "700 48px 'Atkinson Hyperlegible Next', Arial, sans-serif";
-      ctx.fillText(BOARD[0], w / 2, 56, w - 60);
-      ctx.font = "500 34px 'Atkinson Hyperlegible Next', Arial, sans-serif";
-      const lines = ["Strike's rate on each sock.", "Green blows towards Perps: longs pay.", "Red blows back: shorts pay.", BOARD[2]];
-      lines.forEach((line, i) => ctx.fillText(line, w / 2, 128 + i * 58, w - 60));
+      ctx.font = "700 72px 'Atkinson Hyperlegible Next', Arial, sans-serif";
+      ctx.fillText(BOARD[0], w / 2, 64, w - 60);
+      ctx.font = "500 52px 'Atkinson Hyperlegible Next', Arial, sans-serif";
+      BOARD.slice(1).forEach((line, i) => ctx.fillText(line, w / 2, 150 + i * 72, w - 60));
     });
     redraws.push(redraw);
     redraw(pal);
     for (const [z, ry] of [[0.1, 0], [-0.1, Math.PI]]) {
-      const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.2), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
-      plane.position.set(0, 1.9, z); plane.rotation.y = ry; grp.add(plane);
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.575), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+      plane.position.set(0, 2.1, z); plane.rotation.y = ry; grp.add(plane);
     }
-    grp.add(box(3.4, 1.4, 0.12, M.build, 0, 1.2, 0));
+    grp.add(box(3.8, 1.8, 0.12, M.build, 0, 1.2, 0));
     g.add(grp);
   }
 

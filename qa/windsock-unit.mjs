@@ -1,7 +1,7 @@
 // Funding windsocks: the row's math (ecosystem/js/windsock-math.js) and the poles' places against the real terrain.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { WINDSOCKS, normaliseFunding, sockState, fmtRate, sockLabel, polePositions, segmentAngles } from '../ecosystem/js/windsock-math.js';
+import { WINDSOCKS, normaliseFunding, sockState, fmtRate, sockLabel, polePositions, segmentAngles, pollDue } from '../ecosystem/js/windsock-math.js';
 import { roads, roadInfo, groundHeight, jumpAt } from '../ecosystem/js/terrain.js';
 import { DISTRICTS } from '../ecosystem/js/content.js';
 
@@ -15,6 +15,18 @@ test('normaliseFunding: bare symbols, numeric rates, null where a venue is missi
   assert.deepEqual(m.get('ADA'), { strike: 0.00085672, bybit: -0.00002496, binance: 0.00005096, hyperliquid: 0.0000556 });
   assert.deepEqual(m.get('XAU'), { strike: 0, bybit: 0.00007696, binance: null, hyperliquid: null });
   for (const bad of [null, {}, { data: [] }, { data: 'x' }, [1]]) assert.equal(normaliseFunding(bad), null);
+});
+test('normaliseFunding: a null, empty, blank or missing rate is no data, never a zero', () => {
+  const m = normaliseFunding({ data: [{ symbol: 'ZEC-USD', strike: { rate: null }, bybit: { rate: '' }, binance: { rate: ' ' }, hyperliquid: {} }, { symbol: 'SUI-USD', strike: { rate: false }, bybit: null }] });
+  assert.deepEqual(m.get('ZEC'), { strike: null, bybit: null, binance: null, hyperliquid: null });
+  assert.deepEqual(m.get('SUI'), { strike: null, bybit: null, binance: null, hyperliquid: null });
+  assert.equal(normaliseFunding({ data: [{ symbol: 'XAU-USD', strike: { rate: '0' } }] }).get('XAU').strike, 0, 'a real zero is still data');
+});
+test('pollDue: five minutes after a good fetch, thirty seconds after a failed one, at once with none yet', () => {
+  const M = 60_000;
+  assert.equal(pollDue(1000 * M, 0, false), true, 'never fetched');
+  assert.equal(pollDue(10 * M + 1, 10 * M, true), false); assert.equal(pollDue(14 * M, 10 * M, true), false); assert.equal(pollDue(15 * M, 10 * M, true), true);
+  assert.equal(pollDue(10 * M + 20_000, 10 * M, false), false); assert.equal(pollDue(10 * M + 30_000, 10 * M, false), true, 'a failed fetch retries after 30 s');
 });
 test('sockState: fill scales to 0.0005, zero is data, null is none', () => {
   assert.deepEqual(sockState(null), { fill: 0, dir: 0, tone: 'none' });

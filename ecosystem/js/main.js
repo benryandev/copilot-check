@@ -3,7 +3,7 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, SPAWN, MULTIPLAYER } from "./content.js";
 import { fetchLive, fetchKlines, fetchFunding, LABELS } from "./data.js";
-import { normaliseFunding } from "./windsock-math.js";
+import { normaliseFunding, pollDue } from "./windsock-math.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo, setRidgeSeries, onRidge, ridgeSeries } from "./terrain.js";
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.js";
@@ -859,11 +859,12 @@ function applyRidge(closes) {
 setInterval(() => { if (ridgePending && !onRidge(car.s.x, car.s.z)) applyRidge(ridgePending); }, 1000);
 // Funding windsocks: Strike's comparison, fetched at most every five minutes and applied at once (nothing on the road
 // or under a car moves; the socks ease to the new rates)
-let fundingFetchedAt = 0;
+let fundingFetchedAt = 0, fundingOk = false;
 async function pollFunding() {
-  if (Date.now() - fundingFetchedAt < 5 * 60_000) return;
+  if (!pollDue(Date.now(), fundingFetchedAt, fundingOk)) return; // five minutes after a good fetch, thirty seconds after a failed one
   fundingFetchedAt = Date.now();
   const map = normaliseFunding(await fetchFunding());
+  fundingOk = !!map;
   if (map) windsocks.userData.apply(map);
 }
 
