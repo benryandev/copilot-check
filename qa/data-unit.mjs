@@ -11,3 +11,13 @@ test('fetchKlines is empty on a bad body or a failed fetch', async () => {
   assert.deepEqual(await fetchKlines('BTC-USD', '1h', 25, async () => { throw new Error('down'); }), []);
   assert.deepEqual(await fetchKlines('BTC-USD', '1h', 25, async () => ({ ok: false, json: async () => [] })), []);
 });
+
+// ── Funding windsocks ──
+import { fetchFunding } from '../ecosystem/js/data.js';
+test('fetchFunding returns the comparison body on ok, null otherwise', async () => {
+  const body = { data: [{ symbol: 'BTC-USD', strike: { rate: '0.0001', timestamp: 1 } }] };
+  assert.deepEqual(await fetchFunding(async () => ({ ok: true, json: async () => body })), body);
+  assert.equal(await fetchFunding(async () => ({ ok: true, json: async () => ({ error: 'x' }) })), null);
+  assert.equal(await fetchFunding(async () => ({ ok: false, json: async () => body })), null);
+  assert.equal(await fetchFunding(async () => { throw new Error('down'); }), null);
+});

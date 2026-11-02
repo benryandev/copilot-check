@@ -26,6 +26,20 @@ export async function fetchKlines(symbol = "BTC-USD", interval = "1h", limit = 2
   }
 }
 
+/** Strike's funding comparison for the windsocks: the raw body (`{ data: [{ symbol, strike, bybit, … }] }`, rates per 8 h as
+ * strings) when the call is ok and the body has that shape, else null; never throws. windsock-math.js normaliseFunding reads it. */
+export async function fetchFunding(f = fetch) {
+  try {
+    const res = await f(`${API}/stat/v1/stats/coin/funding-rate-comparison`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const body = await res.json();
+    return body && typeof body === "object" && !Array.isArray(body) && Array.isArray(body.data) ? body : null;
+  } catch (err) {
+    console.warn("[eco]", "funding-rate-comparison", err.message);
+    return null;
+  }
+}
+
 const usd = (n) =>
   n >= 1e9 ? `$${(n / 1e9).toFixed(2)}B`
   : n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M`
