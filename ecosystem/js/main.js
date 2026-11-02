@@ -617,8 +617,8 @@ async function openGuide(url) {
     mount: (title, main) => {
       const node = document.importNode(main, true);
       rewriteLinks(node, location.origin);
-      const h1 = node.querySelector("h1");
-      if (h1) h1.id = "guide-title";
+      const h1 = node.querySelector("h1") || node.prepend(Object.assign(document.createElement("h1"), { textContent: title })) || node.querySelector("h1"); // the stops page keeps its h1 in its header
+      h1.id = "guide-title";
       $("guide-eyebrow").textContent = isStops ? "Every stop as text" : url === "/ecosystem/guides/" ? "Strike guides" : "Strike guide";
       $("guide-main").replaceChildren(node);
       savedTitle ??= document.title;
