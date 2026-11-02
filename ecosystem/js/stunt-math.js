@@ -5,8 +5,12 @@ export const STUNT_IN = 0.25; // s to blend in after take-off
 export const STUNT_OUT = 0.6; // s to blend back after landing
 export const STUNT_BACK = 22; // m down the river from the jump line
 export const STUNT_UP = 4; // m above the water
-/** True on the one frame the car leaves the ground off a stunt ramp (`jump` is the ramp under its last ground position). */
-export const stuntTakeoff = (wasAir, air, jump) => !wasAir && air && !!jump?.stunt;
+/** True on the one frame the car leaves the ground off a stunt ramp (`jump` is the ramp under its last ground position),
+ * heading up it within 30°: a sideways hop off the ramp's edge is not the stunt. */
+export const STUNT_COS = Math.cos((30 * Math.PI) / 180);
+export const stuntTakeoff = (wasAir, air, jump, fx, fz) => !wasAir && air && !!jump?.stunt && fx * jump.fx + fz * jump.fz >= STUNT_COS;
+/** The blend eased (smoothstep), so the camera leaves and arrives gently. */
+export const stuntEase = (k) => k * k * (3 - 2 * k);
 /** Blend 0..1: rises while airborne, falls once landed. */
 export const stuntBlend = (k, dt, airborne) => (airborne ? Math.min(1, k + dt / STUNT_IN) : Math.max(0, k - dt / STUNT_OUT));
 /** Where the camera stands: `at` is the river point under the jump line, `tan` the river's unit tangent there. */

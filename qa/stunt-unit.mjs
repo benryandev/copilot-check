@@ -2,7 +2,7 @@
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { jumps, jumpAt, riverInfo, groundHeight, terrainHeight, onWater } from '../ecosystem/js/terrain.js';
 import { GRAVITY } from '../ecosystem/js/car-math.js';
-import { stuntBlend, stuntCamera, stuntTakeoff, STUNT_IN, STUNT_OUT, STUNT_BACK, STUNT_UP } from '../ecosystem/js/stunt-math.js';
+import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase, STUNT_IN, STUNT_OUT, STUNT_BACK, STUNT_UP } from '../ecosystem/js/stunt-math.js';
 
 const stunt = () => jumps.filter((j) => j.stunt);
 const lip = (j) => ({ x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length });
@@ -78,10 +78,18 @@ test('the side-on camera eases in while airborne and back after landing, from a 
 });
 
 test('the camera only cuts on the frame the car leaves a stunt ramp', () => {
-  const ramp = { stunt: true }, kicker = { stunt: false };
-  assert.equal(stuntTakeoff(false, true, ramp), true, 'took off this frame from a stunt ramp');
-  assert.equal(stuntTakeoff(false, true, kicker), false, 'a road kicker');
-  assert.equal(stuntTakeoff(false, true, null), false, 'a hill');
-  assert.equal(stuntTakeoff(true, true, ramp), false, 'already in the air');
-  assert.equal(stuntTakeoff(false, false, ramp), false, 'still on the ramp');
+  const ramp = { stunt: true, fx: -1, fz: 0 }, kicker = { stunt: false, fx: -1, fz: 0 };
+  const along = [-1, 0], skew = [-Math.cos(0.4), Math.sin(0.4)], side = [0, 1];
+  assert.equal(stuntTakeoff(false, true, ramp, ...along), true, 'took off this frame from a stunt ramp, heading up it');
+  assert.equal(stuntTakeoff(false, true, ramp, ...skew), true, '23° off the ramp line still counts');
+  assert.equal(stuntTakeoff(false, true, ramp, ...side), false, 'a sideways hop off the ramp edge does not');
+  assert.equal(stuntTakeoff(false, true, kicker, ...along), false, 'a road kicker');
+  assert.equal(stuntTakeoff(false, true, null, ...along), false, 'a hill');
+  assert.equal(stuntTakeoff(true, true, ramp, ...along), false, 'already in the air');
+  assert.equal(stuntTakeoff(false, false, ramp, ...along), false, 'still on the ramp');
+});
+
+test('the blend is eased, so the camera starts and stops gently', () => {
+  assert.equal(stuntEase(0), 0); assert.equal(stuntEase(1), 1); assert.equal(stuntEase(0.5), 0.5);
+  assert.ok(stuntEase(0.1) < 0.05 && stuntEase(0.9) > 0.95, 'flat at both ends');
 });

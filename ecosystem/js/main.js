@@ -5,7 +5,7 @@ import { DISTRICTS, STOPS, SPAWN, MULTIPLAYER } from "./content.js";
 import { fetchLive, LABELS } from "./data.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo } from "./terrain.js";
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
-import { stuntBlend, stuntCamera, stuntTakeoff } from "./stunt-math.js";
+import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.js";
 import { createGrass, createDust, createFireworks } from "./effects.js";
 import { createSky } from "./sky.js";
 import {
@@ -462,9 +462,9 @@ function stuntTick(dt) {
   if (!car.s.air) stunt.on = false;
   stunt.k = stuntBlend(stunt.k, dt, stunt.on && car.s.air);
   if (stunt.k <= 0) return;
-  const s = car.s;
-  camera.position.lerpVectors(camPos, stunt.cam, stunt.k);
-  stunt.look.set(s.x, s.y + 0.8, s.z).lerp(camLook, 1 - stunt.k);
+  const s = car.s, k = stuntEase(stunt.k);
+  camera.position.lerpVectors(camPos, stunt.cam, k);
+  stunt.look.set(s.x, s.y + 0.8, s.z).lerp(camLook, 1 - k);
   camera.lookAt(stunt.look);
 }
 
@@ -900,7 +900,7 @@ function frame() {
     const px = car.s.x, pz = car.s.z, wasAir = car.s.air;
     const info = stepCar(car, raceLocked() ? NO_KEYS : keys, dt);
     if (info.event) car.lastEvent = info.event; // QA scripts read it
-    if (stuntTakeoff(wasAir, car.s.air, jumpAt(px, pz) || jumpAt(px - info.fx, pz - info.fz))) stuntStart(jumpAt(px, pz) || jumpAt(px - info.fx, pz - info.fz)); // off a stunt ramp: the side-on camera
+    { const j = jumpAt(px, pz) || jumpAt(px - info.fx, pz - info.fz); if (stuntTakeoff(wasAir, car.s.air, j, info.fx, info.fz)) stuntStart(j); } // off a stunt ramp, heading up it: the side-on camera
     brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on, info.boost > 0);
     sound.tick(dt, { speed: car.s.speed, throttle: (keys.up ? 1 : 0) - (keys.down ? 1 : 0), surface: car.s.air ? "air" : info.wet ? "water" : info.dirt ? "dirt" : onCobbles(car.s.x, car.s.z) ? "cobble" : "grass", boost: info.boost > 0 });
     if (info.event?.landed > 4) sound.land(Math.min(1, info.event.landed / 14));
