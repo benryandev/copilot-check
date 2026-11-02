@@ -58,9 +58,9 @@ const pal = () => (dark ? PALETTE.dark : PALETTE.light);
 
 // ── Quality tiers ─────────────────────────────────────────────────────
 const TIERS = {
-  high: { ratio: 2, shadow: 2048, grass: 14000, ground: 200, dust: 420, bloom: { strength: 0.28, radius: 0.22 } },
-  medium: { ratio: 1.5, shadow: 1024, grass: 7000, ground: 150, dust: 280, bloom: { strength: 0.25, radius: 0.2 } },
-  low: { ratio: 1, shadow: 0, grass: 2500, ground: 110, dust: 140, bloom: false },
+  high: { ratio: 2, shadow: 2048, grass: 14000, ground: 200, dust: 420, bloom: { strength: 0.28, radius: 0.22 }, planters: true },
+  medium: { ratio: 1.5, shadow: 1024, grass: 7000, ground: 150, dust: 280, bloom: { strength: 0.25, radius: 0.2 }, planters: true },
+  low: { ratio: 1, shadow: 0, grass: 2500, ground: 110, dust: 140, bloom: false, planters: false },
 };
 const ORDER = ["high", "medium", "low"];
 let qualityPref = (() => { try { return localStorage.getItem("eco-quality") || "auto"; } catch { return "auto"; } })();
@@ -103,7 +103,7 @@ buildStops(scene);
 buildLamps(scene); // plaza furniture: a lamp beside every pad (needs the pads and the buildings' colliders)
 buildBollards(scene); // and bollards either side of every road mouth
 buildRoadSigns(scene);
-addProps(scene);
+addProps(scene, { planters: tier().planters }); // includes the plaza benches and planters (furniture-math.js)
 await load.step("Marking out the raceway");
 buildRaceway(scene);
 buildYard();
@@ -266,7 +266,7 @@ function stepCrates(dt) {
       p.x = s.x + nx * minD;
       p.z = s.z + nz * minD;
       const along = Math.max(0, (fx * nx + fz * nz) * s.speed);
-      if (along > 2 && performance.now() - (c.hitAt || 0) > 250) { c.hitAt = performance.now(); sound.hit(c.kind || "crate", along / 24); }
+      if (along > 2 && performance.now() - (c.hitAt || 0) > 250) { c.hitAt = performance.now(); sound.hit(c.sound || c.kind || "crate", along / 24); }
       if (s.air) s.airHit = true; // a clipped crate or bale spoils the jump's boost
       c.v.x += nx * (along * 1.3 + 1);
       c.v.y += nz * (along * 1.3 + 1);

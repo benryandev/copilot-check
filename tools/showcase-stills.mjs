@@ -11,7 +11,7 @@ try { ({ chromium } = await import('playwright')); } catch {
   ({ chromium } = createRequire(`${g}/`)('playwright'));
 }
 const base = process.argv.find((a) => a.startsWith('http')) || 'http://localhost:8766';
-const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7); // cabinet | wave | river | stunt | ridge | windsocks
+const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7); // cabinet | wave | river | stunt | ridge | windsocks | plaza
 const OUT = new URL('./out/showcase/', import.meta.url).pathname;
 mkdirSync(OUT, { recursive: true });
 const FPS = 30, DT = 1000 / FPS;
@@ -121,6 +121,15 @@ if (!only || only === 'windsocks') {
   await p.screenshot({ path: `${OUT}windsocks-day.png` });
   await p.context().close();
   console.log('windsocks-day.png');
+}
+// Plaza furniture by night: HQ's rim from the inside, the kerb, bollards, a glowing lamp, a bench
+if (!only || only === 'plaza') {
+  const p = await open('dark');
+  await p.evaluate(() => { const e = window.__eco; e.teleport('strike'); e.placeCar(16, 14, Math.PI / 2); });
+  await steps(p, 12);
+  await p.screenshot({ path: `${OUT}plaza-night.png` });
+  await p.context().close();
+  console.log('plaza-night.png');
 }
 // The epic jump by day: the car mid-air over the river from the side-on camera
 if (!only || only === 'stunt') {

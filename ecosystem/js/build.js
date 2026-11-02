@@ -4,8 +4,9 @@ import * as THREE from "../vendor/three.module.min.js";
 import { glowIntensity } from "./post.js";
 import { DISTRICTS, STOPS, ROADS, layoutStops, boardSpot } from "./content.js";
 import { LABELS } from "./data.js";
-import { roads, jumps, ROAD_HALF, terrainHeight, builderSlots, roadInfo } from "./terrain.js";
+import { roads, jumps, ROAD_HALF, terrainHeight, builderSlots, roadInfo, kerbGapsOf } from "./terrain.js";
 import { tint, setDark } from "./colours.js";
+import { benchSpots } from "./furniture-math.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
 
 // Everything in a district lives in its group, so far-away districts can be skipped when drawing
@@ -893,6 +894,21 @@ const PROP = {
     g.add(mesh(new THREE.BoxGeometry(0.85, 0.06, 0.85), new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.7 }), 0, -0.42, 0));
     return { m: g, r: 0.45, h: 0.45 };
   },
+  // Plaza furniture (furniture-math.js benchSpots): a bench of wood on two legs, a stone planter with a tuft of grass
+  bench: () => {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.BoxGeometry(1.8, 0.08, 0.45), M.wood, 0, 0, 0)); // the seat, at the group's origin (h above the ground)
+    g.add(mesh(new THREE.BoxGeometry(1.8, 0.06, 0.1), M.wood, 0, 0.3, -0.2)); // a back rail
+    for (const x of [-0.7, 0.7]) g.add(mesh(new THREE.BoxGeometry(0.08, 0.42, 0.4), M.trim, x, -0.24, 0));
+    return { m: g, r: 1.0, h: 0.45, sound: "crate" };
+  },
+  planter: () => {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.CylinderGeometry(0.42, 0.36, 0.5, 12), M.build, 0, 0, 0));
+    g.add(mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.06, 12), M.trim, 0, 0.22, 0));
+    g.add(mesh(new THREE.ConeGeometry(0.3, 0.5, 6), new THREE.MeshLambertMaterial({ color: 0x6fae4a }), 0, 0.5, 0));
+    return { m: g, r: 0.5, h: 0.5, sound: "cone" };
+  },
   bale: () => {
     const m = mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.3, 16), new THREE.MeshStandardMaterial({ color: 0xd6b25e, roughness: 1 }));
     m.rotation.z = Math.PI / 2;
@@ -1031,7 +1047,7 @@ export function addProp(parent, kind, x, z, rotY = 0, lift = 0) {
   crates.push({ ...p, kind, v: new THREE.Vector2(), spin: 0, tilt: 0, lift, redraw: () => {} });
 }
 
-export function addProps(scene) {
+export function addProps(scene, { planters = true } = {}) {
   // Cones in an arc in front of the Liquidations building
   const liq = STOPS.find((s) => s.key === "liquidations");
   if (liq) {
@@ -1061,6 +1077,14 @@ export function addProps(scene) {
     const [hx, hz] = t.hubDir;
     const cx = t.centre[0] + hx * 6, cz = t.centre[1] + hz * 6;
     for (let i = 0; i < 14; i++) addProp(groupFor(scene, "token"), "coin", cx + (Math.random() - 0.5) * 0.08, cz + (Math.random() - 0.5) * 0.08, Math.random() * 6, i * 0.21);
+  }
+  // Benches between the pads on every plaza, facing the centre, a planter either side (not on the low tier)
+  for (const d of Object.values(DISTRICTS)) {
+    if (d.plaza === false) continue;
+    const padsHere = pads.filter((p) => p.stop.district === d.key).map((p) => ({ x: p.pos.x, z: p.pos.z }));
+    const { benches, planters: pots } = benchSpots(d, padsHere, kerbGapsOf(d), clearance, { planters });
+    for (const b of benches) addProp(groupFor(scene, d.key), "bench", b.x, b.z, b.yaw);
+    for (const q of pots) addProp(groupFor(scene, d.key), "planter", q.x, q.z, Math.random() * 6);
   }
 }
 

@@ -28,7 +28,7 @@ const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 10
 const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'windsocks', 'stop', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
+const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'windsocks', 'stop', 'plaza', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
 const pick = opt('states') || ALL;
 const FUNDING = JSON.parse(readFileSync(new URL('./fixtures/funding-2026-11-02.json', import.meta.url), 'utf8')); // the windsocks' fixed comparison (2 Nov 2026: ADA out straight, BTC gentle)
 const out = new URL('./shots/', import.meta.url).pathname;
@@ -194,6 +194,11 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       await page.evaluate(() => window.__eco.teleport('liquidations')); // back on the pad for the stop sheet below
       await page.click('#prompt-btn');
       await shot('stop');
+      // Plaza furniture: HQ's rim from the inside, a kerb arc, bollards at a mouth, a lamp by the pad, a bench
+      await page.evaluate(() => { const e = window.__eco; document.querySelector('#stop [data-close]')?.click(); e.teleport('strike'); e.placeCar(16, 14, Math.PI / 2); });
+      await shot('plaza', 600);
+      await page.evaluate(() => window.__eco.teleport('liquidations'));
+      await page.click('#prompt-btn'); // the stop sheet again, so the states after this keep their old starting point
       await page.evaluate(() => document.querySelector('#stop [data-close]').click());
       await page.evaluate(() => window.__eco.teleport('fillyard'));
       await shot('yard', 3000); // the conveyor and whatever the trade stream has sent

@@ -254,6 +254,11 @@ Four rounds, then a blind re-score of 7.3 before its fixes:
 - `node --test qa/windsock-unit.mjs qa/data-unit.mjs` — the row's math (fill scale, direction, labels, the normalised comparison with missing venues, every pole off the road and on flat ground, the cloth's angles) and the funding fetch.
 - Shoot state `windsocks`; still `tools/showcase-stills.mjs --only=windsocks`; hook `__eco.windsocks.set(rawBody)` / `__eco.windsocks.state()` (`fills` per sock, Strike socks first). Fixed comparison: `qa/fixtures/funding-2026-11-02.json` (Strike's body, copied once). No smoke: nothing is on the road.
 
+## Plaza furniture
+
+- `node --test qa/furniture-unit.mjs qa/terrain-unit.mjs` — where the kerb opens (gaps from road endpoints, merged, whole across the ±π seam), lamp spots beside pads (right first, none when blocked), bollard spots just outside each gap, bench and planter spots between pads; the kerb's 12 cm lip in the height field (open at mouths, under the car's bump allowance).
+- Shoot state `plaza` (HQ's rim from inside, by day and night); still `tools/showcase-stills.mjs --only=plaza` (night). Benches and planters are props in the crate system, so the crate QA covers their physics.
+
 ## When to run the full shoot (Ben, 2 Nov 2026)
 
 - During a build: only the states the change touches plus `drive`, at two widths, both themes, e.g. `node qa/shoot-eco.mjs http://localhost:8766 --states=ridge,drive --widths=375,1280`. About a minute.
