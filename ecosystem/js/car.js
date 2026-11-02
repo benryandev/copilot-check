@@ -8,11 +8,10 @@ import { groundHeight, onDirt, onWater, racewayWeight, jumpAt, WORLD } from "./t
 
 import { glowIntensity } from "./post.js";
 import { boostFor, boostedTop } from "./boost-math.js";
-import { topShare, accelShare, slowShare, GRAVITY } from "./car-math.js";
+import { topShare, accelShare, slowShare, blocksClimb, CLIMB_PROBE, GRAVITY } from "./car-math.js";
 
 export const CAR_R = 1.6;
 const MAX_F = 24, MAX_R = 9, ACCEL = 16, BRAKE = 34, ROLL = 5, TURN = 2.2;
-const MAX_CLIMB = 0.9; // steepest slope (rise per unit) the car can drive up
 
 export function createCar(colour) {
   const car = new THREE.Group();
@@ -159,10 +158,12 @@ export function stepCar(car, keys, dt) {
 
   let event = null;
   const ox = s.x, oz = s.z; // where this frame started, for a mid-air hit that has to be undone
-  const gNew = groundHeight(nx, nz);
   const step = Math.hypot(nx - s.x, nz - s.z);
-  // Too steep to drive up (the back of a kicker, the world's edge): stop like a wall
-  if (!s.air && step > 1e-4 && (gNew - s.y) / step > MAX_CLIMB && gNew - s.y > 0.25) {
+  // Too steep to drive up (the back of a kicker, a gorge wall, the world's edge): stop like a wall. The ground is read
+  // a fixed distance ahead (the frame's step when longer), so the rule holds at a crawl as well as at full speed.
+  const dir = Math.sign(s.speed) || 1, probe = Math.max(step, step > 1e-4 ? CLIMB_PROBE : 0);
+  const gProbe = groundHeight(s.x + fx * dir * probe, s.z + fz * dir * probe);
+  if (!s.air && blocksClimb(gProbe - s.y, probe)) {
     s.speed *= -0.25;
   } else {
     s.x = nx;
