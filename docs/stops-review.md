@@ -21,7 +21,7 @@ Link: [Docs: Welcome](https://docs.strikefinance.org/getting-started/welcome) ·
 
 A first visit, from sign-in to a funded account. Sign in with a wallet on Cardano, Ethereum, Solana and more; deposit crypto on any supported chain or pay by card; your balance is held in USD.
 
-- Deposits as the app offered them on 3 November 2026: a crypto transfer on Cardano, Ethereum, Solana, Base, Arbitrum or Bitcoin, or a card deposit up to $50,000 (Visa or Mastercard). Bank transfer was marked coming soon.
+- Two ways to fund it (checked in the app on 3 November 2026): send crypto from a Cardano, Ethereum, Solana, Base, Arbitrum or Bitcoin wallet, or pay by card up to $50,000 (Visa or Mastercard). Bank transfer is marked coming soon.
 - Every deposit is quoted and verified by Strike's validators, and a volatile asset such as ADA or ETH is swapped to a stablecoin on the way in, so the account is backed one to one in USD.
 - Withdrawals need your wallet's signature and a margin check before validators release funds on chain. There's a mobile app and a full API as well.
 - The Open Strike button uses Ben Ryan's referral code.
