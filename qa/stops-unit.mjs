@@ -12,7 +12,7 @@ const PLAN = {
   perps: ['perpetuals', 'node', 'markets', 'order-types', 'rfq', 'margin', 'liquidations', 'subaccounts', 'pair-trading', 'twap', 'trailing', 'grid', 'scale', 'funding-comparison', 'funding-rates'],
   earn: ['slp', 'insurance-fund', 'borrow-earn', 'user-vaults', 'protocol-vaults', 'copy-trading', 'points', 'lp-program'],
   collateral: ['usdm', 'usdc', 'ada', 'usdcx-usdm-lp', 'ausdc', 'susdrf', 'enzobtc'],
-  partners: ['realfi', 'sundaeswap', 'aave-v3', 'unifold', 'dex-aggregators', 'hizz'],
+  partners: ['realfi', 'sundaeswap', 'aave-v3', 'unifold', 'dex-aggregators', 'hizz', 'lorenzo'], // lorenzo: Strike's own ecosystem graphic, 2 Nov 2026 (Ben: add now, 3 Nov)
   analytics: ['defillama', 'coingecko', 'bendingai', 'directories'],
   community: ['arcade-flappy-coin', 'referrals', 'clans', 'leaderboard', 'x', 'discord', 'docs', 'medium'],
   token: ['strike-token', 'staking', 'revenue-share', 'dao-treasury'],

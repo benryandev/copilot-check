@@ -1,6 +1,6 @@
 # Ecosystem world: every sheet for review (generated 2026-11-02)
 
-Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 69 stops. Empty Builders' Row plots and arcade cabinets are left out.
+Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 70 stops. Empty Builders' Row plots and arcade cabinets are left out.
 
 ## Strike HQ
 
@@ -311,6 +311,7 @@ enzoBTC is a bitcoin-backed token from Lorenzo Protocol. Strike accepts it as Bo
 
 - Strike's credit settings list it as collateral with Ethereum custody and 8 decimal places.
 - It sits on its own credit line, so it neither backs nor is backed by lines opened with other collateral.
+- On 2 November 2026 Strike announced $200,000 of BTC supplied to Strike as enzoBTC, with full details to follow; the live figure on this pad counts the open enzoBTC lines.
 
 Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: Open credit lines
 
@@ -373,6 +374,16 @@ Hizz is a multi-chain crypto terminal for token discovery, market signals, walle
 - It's an independent tool; Strike doesn't run it.
 
 Link: [Strike perps on Hizz](https://www.hizz.io/perps/BTC-USD) · [Visit Hizz](https://hizz.io)
+
+### Lorenzo
+
+Lorenzo Protocol issues enzoBTC, a bitcoin-backed token Strike takes as Borrow and Earn collateral. Strike's own ecosystem graphic (2 November 2026) lists Lorenzo as a partner for BTC liquidity and yield infrastructure.
+
+- On 2 November 2026 Strike announced $200,000 of BTC supplied to Strike as enzoBTC, with full details to follow.
+- enzoBTC is deposited from an Ethereum wallet and sits on its own credit line; the borrowed USD buys SLP vault shares only. Its own pad is in Collateral.
+- It's an independent protocol; Strike doesn't run it.
+
+Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · [Visit Lorenzo](https://lorenzo-protocol.xyz)
 
 ## Developers
 

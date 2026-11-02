@@ -616,6 +616,7 @@ export const STOPS = [
     points: [
       "Strike's credit settings list it as collateral with Ethereum custody and 8 decimal places.",
       "It sits on its own credit line, so it neither backs nor is backed by lines opened with other collateral.",
+      "On 2 November 2026 Strike announced $200,000 of BTC supplied to Strike as enzoBTC, with full details to follow; the live figure on this pad counts the open enzoBTC lines.",
     ],
     live: ["lines:enzoBTC"],
     docs: "https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn",
@@ -713,6 +714,23 @@ export const STOPS = [
     docs: "https://www.hizz.io/perps/BTC-USD",
     docsLabel: "Strike perps on Hizz",
     site: "https://hizz.io",
+  },
+  {
+    key: "lorenzo",
+    district: "partners",
+    name: "Lorenzo",
+    shape: "coinstack",
+    summary: "Lorenzo Protocol issues enzoBTC, a bitcoin-backed token Strike takes as Borrow and Earn collateral. Strike's own ecosystem graphic (2 November 2026) lists Lorenzo as a partner for BTC liquidity and yield infrastructure.",
+    points: [
+      "On 2 November 2026 Strike announced $200,000 of BTC supplied to Strike as enzoBTC, with full details to follow.",
+      "enzoBTC is deposited from an Ethereum wallet and sits on its own credit line; the borrowed USD buys SLP vault shares only. Its own pad is in Collateral.",
+      "It's an independent protocol; Strike doesn't run it.",
+    ],
+    live: null,
+    docs: `${DOCS}/perpetuals/vaults/borrow-and-earn`,
+    docsLabel: "Borrow and Earn",
+    site: "https://lorenzo-protocol.xyz",
+    siteLabel: "Visit Lorenzo",
   },
   {
     key: "api",
