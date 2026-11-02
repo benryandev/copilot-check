@@ -138,7 +138,6 @@ export function buildWater(palette, { tier = "high", reduceMotion = false } = {}
     });
   }
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.renderOrder = 1; // after the opaque world, before the dust
   mesh.userData.recolour = (p) => {
     if (simple) mat.color.set(p.water);
     else { uniforms.uWater.value.set(p.water); uniforms.uDeep.value.set(p.waterDeep); uniforms.uFoam.value.set(p.foam); }

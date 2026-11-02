@@ -63,5 +63,20 @@ if (jump.landed == null) fail('never landed');
 if (!jump.splash) fail('no splash landing in the ford');
 if (!(jump.boostAfterLanding === 0)) fail(`a boost (${jump.boostAfterLanding}) for landing in the water`);
 
+// Spray through the live frame loop: the car wading at speed throws puffs within a second of real time
+const sprayed = await page.evaluate(async () => {
+  const T = await import('/ecosystem/js/terrain.js');
+  const e = window.__eco, c = T.crossings.find((c) => T.roads[c.road].kind === 'spoke' && T.roads[c.road].to === 'token');
+  const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+  e.placeCar(c.x - fx * 2, c.z - fz * 2, Math.atan2(-fx, -fz));
+  const before = e.sprayCount();
+  e.car.s.speed = 9; e.keys.up = true;
+  await new Promise((r) => setTimeout(r, 1200));
+  e.keys.up = false;
+  return e.sprayCount() - before;
+});
+console.log('     spray puffs while wading', sprayed);
+if (!(sprayed > 0)) fail('no spray while wading through the ford');
+
 console.log('ok   river smoke');
 await browser.close();

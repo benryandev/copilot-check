@@ -49,3 +49,8 @@ test('idleGain: full while moving or for the first 3 s at rest, then down to hal
   assert.equal(idleGain(5), 0.5); assert.equal(idleGain(60), 0.5);
   assert.equal(IDLE_AFTER, 3); assert.equal(IDLE_FADE, 2); assert.equal(IDLE_FLOOR, 0.5);
 });
+
+test('surfaceGain: water is the loudest ground and still silent at a standstill', () => {
+  assert.ok(surfaceGain('water', 24) > surfaceGain('grass', 24), 'wading is louder than grass');
+  assert.equal(surfaceGain('water', 0), 0);
+});

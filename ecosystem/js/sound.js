@@ -157,10 +157,10 @@ export function createSound({ enabled = true, context = null, offline = false } 
     const now = ctx.currentTime;
     engineOff = false;
     engineTick(now, dt, speed, throttle, boost);
-    roll.phase += dt * (surface === "cobble" ? 22 : 0);
-    const trem = surface === "cobble" ? 0.6 + 0.4 * Math.max(0, Math.sin(roll.phase)) : 1;
+    roll.phase += dt * (surface === "cobble" ? 22 : surface === "water" ? 6 : 0);
+    const trem = surface === "cobble" ? 0.6 + 0.4 * Math.max(0, Math.sin(roll.phase)) : surface === "water" ? 0.75 + 0.25 * Math.sin(roll.phase) : 1; // cobbles rattle, water sloshes
     roll.g.gain.setTargetAtTime(surfaceGain(surface, speed) * trem * trim.road, now, 0.05);
-    roll.f.frequency.setTargetAtTime(surface === "grass" ? 520 : surface === "cobble" ? 1100 : 760, now, 0.1);
+    roll.f.frequency.setTargetAtTime(surface === "grass" ? 520 : surface === "cobble" ? 1100 : surface === "water" ? 420 : 760, now, 0.1);
     idleFor = Math.abs(speed) > 0.3 || throttle > 0 ? 0 : idleFor + dt;
     if (musicNode) {
       const want = Math.max(0.15, Math.min(1, Math.abs(speed) / 22));
@@ -218,6 +218,14 @@ export function createSound({ enabled = true, context = null, offline = false } 
       if (kind === "crate") { cueBurst({ dur: 0.14, freq: 900, q: 0.6, gain: 0.35 * s }); cueThump({ from: 110, to: 45, dur: 0.18, gain: 0.5 * s }); }
       else if (kind === "bale") { cueBurst({ dur: 0.2, freq: 380, q: 0.5, gain: 0.3 * s }); cueThump({ from: 70, to: 35, dur: 0.22, gain: 0.35 * s }); }
       else { cueBurst({ dur: 0.06, freq: 2400, q: 1.2, gain: 0.25 * s }); cueThump({ from: 420, to: 180, dur: 0.05, gain: 0.12 * s, type: "square" }); }
+    },
+    /** Into the river: a wet slap, a hiss of spray and a low thump; strength 0..1 from the entry speed */
+    splash(strength = 0.5) {
+      if (!live()) return;
+      const s = Math.min(1, Math.max(0.2, strength));
+      cueBurst({ dur: 0.3, freq: 650, q: 0.5, gain: 0.4 * s });
+      cueBurst({ at: 0.06, dur: 0.12, freq: 1400, q: 0.8, gain: 0.15 * s });
+      cueThump({ from: 90, to: 50, dur: 0.15, gain: 0.2 * s });
     },
     land(strength = 0.5) { if (!live()) return; const s = Math.min(1, strength); cueThump({ from: 80, to: 32, dur: 0.2, gain: 0.45 * s }); cueBurst({ dur: 0.1, freq: 500, q: 0.5, gain: 0.15 * s }); },
     chime() { if (!live()) return; cueNote(659.25, { dur: 0.3, gain: 0.1 }); cueNote(987.77, { at: 0.12, dur: 0.4, gain: 0.08 }); },

@@ -1,6 +1,6 @@
 // Pure parts of the multiplayer client (no three.js, no DOM): node --test qa/peers-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { nextSendDelay, interp, pickDrawn, backoff, poseAt, SEND_MS, IDLE_MS, DELAY_MS } from '../ecosystem/js/peers-math.js';
+import { nextSendDelay, interp, pickDrawn, backoff, poseAt, sprayDue, SEND_MS, IDLE_MS, DELAY_MS } from '../ecosystem/js/peers-math.js';
 
 test('nextSendDelay: 100 ms moving, 1000 ms still', () => {
   assert.equal(SEND_MS, 100); assert.equal(IDLE_MS, 1000); assert.equal(DELAY_MS, 150);
@@ -101,4 +101,12 @@ test('renderDelay: 150 ms for a 10 Hz sender, stretched for a sparse one, capped
   assert.equal(renderDelay([]), 150); assert.equal(renderDelay(every(100, 1)), 150);
   // One late sample among regular ones does not move the median
   assert.equal(renderDelay([{ at: 0 }, { at: 100 }, { at: 200 }, { at: 700 }, { at: 800 }, { at: 900 }]), 150);
+});
+
+test('sprayDue: a remote car in the water sprays at most every 60 ms and only while it moves', () => {
+  const p = {};
+  assert.equal(sprayDue(p, 1000, 0.3), true, 'first time, moving');
+  assert.equal(sprayDue(p, 1030, 0.3), false, 'too soon');
+  assert.equal(sprayDue(p, 1070, 0.3), true, '70 ms later');
+  assert.equal(sprayDue(p, 1200, 0.02), false, 'barely moved: standing in the water does not spray');
 });

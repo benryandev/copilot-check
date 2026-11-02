@@ -4,11 +4,11 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS } from "./content.js";
-import { groundHeight, inRaceway } from "./terrain.js";
+import { groundHeight, inRaceway, onWater } from "./terrain.js";
 import { paint as carPaint } from "./build.js";
 import { nameTag } from "./tags.js";
 import { clockOffset } from "./race-live-math.js";
-import { nextSendDelay, poseAt, pickDrawn, backoff, flyY, opacityFor, pingSample, renderDelay, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE } from "./peers-math.js";
+import { nextSendDelay, poseAt, pickDrawn, backoff, flyY, opacityFor, pingSample, renderDelay, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE, sprayDue } from "./peers-math.js";
 
 const WS_DEFAULT = "wss://copilot-world.benryan.workers.dev/ws";
 const NAME_KEY = "eco-race-name", OWNER_KEY = "eco-owner";
@@ -163,8 +163,8 @@ export function setRacers(ids) {
 }
 
 let heartbeat = null;
-export function initPeers({ scene, car, tierName, enabled: on = true, wsUrl, socket }) {
-  hooks = { scene, car, tierName: tierName || (() => "high"), socket };
+export function initPeers({ scene, car, tierName, enabled: on = true, wsUrl, socket, spray }) {
+  hooks = { scene, car, tierName: tierName || (() => "high"), socket, spray };
   enabled = on;
   if (!enabled) { status = "off"; emit({ type: "off" }); return; }
   // Ben's owner token can arrive as #owner=… (easier than a console on a phone); it's stored and the hash is cleared
@@ -276,6 +276,9 @@ export function peersTick(dt, camPos) {
     p.fly ||= { y: g, vy: 0, air: false };
     p.car.group.position.set(x, flyY(p.fly, g, dt), z); // off a ramp the car flies rather than snapping to the ground
     p.car.group.rotation.y = h;
+    // In the river: spray from this viewer's own emitter, worked out from the pose we already have (no new messages)
+    if (hooks.spray && onWater(x, z)) { const moved = p.sprayPos ? Math.hypot(x - p.sprayPos.x, z - p.sprayPos.z) : 1; if (sprayDue(p, now, moved)) hooks.spray(x, z, h, 0.6); }
+    p.sprayPos = { x, z };
     fade(p, !p.pinned && now - p.lastSeen > QUIET_MS);
   }
 }

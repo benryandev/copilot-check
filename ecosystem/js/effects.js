@@ -104,7 +104,7 @@ function puffTexture() {
   return new THREE.CanvasTexture(c);
 }
 
-export function createDust(max, palette) {
+export function createDust(max, palette, key = "dust") {
   const pos = new Float32Array(max * 3);
   const size = new Float32Array(max);
   const alpha = new Float32Array(max);
@@ -135,6 +135,7 @@ export function createDust(max, palette) {
   });
   const points = new THREE.Points(geo, mat);
   points.frustumCulled = false;
+  points.renderOrder = 2; // after the water (both transparent and both placed at the origin, so depth sorting alone would let the river paint over spray)
   const parts = Array.from({ length: max }, () => ({ life: 0, max: 1, x: 0, y: -99, z: 0, vx: 0, vy: 0, vz: 0, s: 1 }));
   let next = 0;
 
@@ -166,7 +167,7 @@ export function createDust(max, palette) {
     emit,
     step,
     setScale: (h) => (uniforms.uScale.value = h * 0.6),
-    recolour: (pal) => uniforms.uColour.value.set(pal.dust),
+    recolour: (pal) => uniforms.uColour.value.set(pal[key]),
   };
   points.userData.recolour(palette);
   return points;

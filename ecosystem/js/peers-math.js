@@ -89,3 +89,13 @@ export function flyY(st, g, dt) {
 export const opacityFor = (quiet, racer) => (quiet ? 0.4 : racer ? 0.7 : 1);
 /** Keep the last `max` ping samples, newest last. */
 export const pingSample = (samples, s, max = 5) => [...samples, s].slice(-max);
+
+/** A remote car in the river throws spray from its viewer's side: at most every 60 ms, and only while it moves (metres since
+ * the last look). Keeps the time on the peer record. */
+export const SPRAY_MS = 60;
+export function sprayDue(p, now, moved) {
+  if (moved < 0.05) return false;
+  if (p.sprayAt != null && now - p.sprayAt < SPRAY_MS) return false;
+  p.sprayAt = now;
+  return true;
+}

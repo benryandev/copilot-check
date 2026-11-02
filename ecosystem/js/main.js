@@ -3,7 +3,7 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, SPAWN, MULTIPLAYER } from "./content.js";
 import { fetchLive, LABELS } from "./data.js";
-import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates } from "./terrain.js";
+import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL } from "./terrain.js";
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { createGrass, createDust, createFireworks } from "./effects.js";
 import { createSky } from "./sky.js";
@@ -102,7 +102,8 @@ let live = null;
 const getLive = () => live;
 Object.keys(DISTRICTS).forEach((k) => buildBoard(scene, k, getLive));
 
-let grass = null, dust = null;
+let grass = null, dust = null, spray = null; // spray: the river's white dust
+let sprayCount = 0; // QA counter
 const fireworks = reduceMotion ? null : createFireworks(); // a new #1 on the Raceway
 // Sound: synthesised, on after the first click, mute chip in the HUD. Silent under automation unless ?sound=1 asks.
 const soundParam = new URLSearchParams(location.search).get("sound");
@@ -127,6 +128,9 @@ function applyTier() {
   if (dust) { scene.remove(dust); dust.geometry.dispose(); dust.material.dispose(); }
   dust = createDust(t.dust, pal());
   scene.add(dust);
+  if (spray) { scene.remove(spray); spray.geometry.dispose(); spray.material.dispose(); }
+  spray = createDust(Math.round(t.dust / 2), pal(), "spray");
+  scene.add(spray);
   if (waterMesh) { scene.remove(waterMesh); waterMesh.geometry.dispose(); waterMesh.material.dispose(); }
   waterMesh = buildWater(pal(), { tier: tierName, reduceMotion });
   scene.add(waterMesh);
@@ -156,7 +160,7 @@ function applyTheme() {
   sky.userData.setNight(dark);
   // With bloom on, every pad ring is pushed to the same glow luminance whatever its district colour; without it they stay as tinted
   if (post.on) pads.forEach((pd) => toGlow(pd.ring.material.color));
-  [ground, roadMesh, jumpMesh, plazaMesh, bedMesh, waterMesh, grass, dust].forEach((o) => o?.userData.recolour?.(p));
+  [ground, roadMesh, jumpMesh, plazaMesh, bedMesh, waterMesh, grass, dust, spray].forEach((o) => o?.userData.recolour?.(p));
 }
 $("theme").addEventListener("click", () => {
   dark = !dark;
@@ -321,7 +325,7 @@ function stepCrates(dt) {
 // ── Dust ──────────────────────────────────────────────────────────────
 let dustCarry = 0, baseFov = 55;
 function emitDust(dt, info) {
-  if (reduceMotion || !dust) return;
+  if (reduceMotion || !dust || info.wet) return; // in the river the spray takes over
   const s = car.s;
   const { fx, fz } = info;
   const rx = -fz, rz = fx;
@@ -351,6 +355,37 @@ function emitDust(dt, info) {
     }
   }
 }
+
+// ── Spray ─────────────────────────────────────────────────────────────
+// White spray off the wheels while wading, a ring of it on entry; also used for other visitors' cars (peers.js)
+let sprayCarry = 0;
+function sprayPuff(x, y, z, vx, vy, vz, size, life) { spray.userData.emit(x, y, z, vx, vy, vz, size, life); sprayCount++; }
+function sprayBurst(x, y, z, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 3.5;
+    sprayPuff(x, y + 0.2, z, Math.cos(a) * sp, 1.5 + Math.random() * 2, Math.sin(a) * sp, 1.6 + Math.random() * 1.2, 0.5 + Math.random() * 0.5);
+  }
+}
+// Spray from a car's rear wheels: position, heading, speed share 0..1
+function sprayWheels(x, y, z, heading, k) {
+  const fx = -Math.sin(heading), fz = -Math.cos(heading), rx = -fz, rz = fx;
+  for (const side of [-1, 1]) {
+    const wx = x - fx * 1.3 + rx * 1.1 * side, wz = z - fz * 1.3 + rz * 1.1 * side;
+    sprayPuff(wx, y + 0.1, wz, -fx * k * 3 + (Math.random() - 0.5) + rx * side * (0.8 + Math.random()), 1.5 + Math.random() * 1.5 * k, -fz * k * 3 + (Math.random() - 0.5) + rz * side * (0.8 + Math.random()), 1.4 + Math.random() * 1.2, 0.5 + Math.random() * 0.4);
+  }
+}
+function emitSpray(dt, info) {
+  if (reduceMotion || !spray) return;
+  const s = car.s;
+  if (info.event?.splash) sprayBurst(s.x, Math.max(s.y, WATER_LEVEL), s.z, Math.min(50, Math.round(info.event.splash * 4)));
+  if (!info.wet || s.air) return;
+  const v = Math.abs(s.speed);
+  if (v < 2) return;
+  sprayCarry += dt * v * 3;
+  while (sprayCarry >= 1) { sprayCarry -= 1; sprayWheels(s.x, Math.max(s.y, WATER_LEVEL), s.z, s.heading, Math.min(1, v / 12)); } // from the surface, not the bed
+}
+// Another visitor's car in the river (peers.js decides when)
+function sprayAt(x, z, heading, k) { if (reduceMotion || !spray) return; sprayWheels(x, WATER_LEVEL, z, heading, k); }
 
 // ── Camera ────────────────────────────────────────────────────────────
 // How far along the sightline from (x, y, z) to `to` (0–1) the first building taller than the line
@@ -599,7 +634,7 @@ function celebrate(rec, { self = false } = {}) {
 }
 
 // ── Other visitors ────────────────────────────────────────────────────
-initPeers({ scene, car, tierName: () => tierName, enabled: MULTIPLAYER && new URLSearchParams(location.search).get("mp") !== "0" });
+initPeers({ scene, car, tierName: () => tierName, enabled: MULTIPLAYER && new URLSearchParams(location.search).get("mp") !== "0", spray: sprayAt });
 const peerItem = (p) => {
   const li = document.createElement("li");
   li.className = "peers-item";
@@ -820,6 +855,7 @@ function resize() {
   camera.fov = baseFov;
   camera.updateProjectionMatrix();
   dust?.userData.setScale(h * renderer.getPixelRatio());
+  spray?.userData.setScale(h * renderer.getPixelRatio());
   fireworks?.userData.setScale(h * renderer.getPixelRatio());
   if (arcadeOpen()) post.render(); // the loop isn't drawing behind the arcade sheet; setSize cleared the canvas, so draw once
 }
@@ -839,8 +875,9 @@ function frame() {
     const info = stepCar(car, raceLocked() ? NO_KEYS : keys, dt);
     if (info.event) car.lastEvent = info.event; // QA scripts read it
     brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on, info.boost > 0);
-    sound.tick(dt, { speed: car.s.speed, throttle: (keys.up ? 1 : 0) - (keys.down ? 1 : 0), surface: car.s.air ? "air" : info.dirt ? "dirt" : onCobbles(car.s.x, car.s.z) ? "cobble" : "grass", boost: info.boost > 0 });
+    sound.tick(dt, { speed: car.s.speed, throttle: (keys.up ? 1 : 0) - (keys.down ? 1 : 0), surface: car.s.air ? "air" : info.wet ? "water" : info.dirt ? "dirt" : onCobbles(car.s.x, car.s.z) ? "cobble" : "grass", boost: info.boost > 0 });
     if (info.event?.landed > 4) sound.land(Math.min(1, info.event.landed / 14));
+    if (info.event?.splash) sound.splash(Math.min(1, info.event.splash / 16));
     if (info.event?.boost) { sound.boost(); if (inRaceway(car.s.x, car.s.z)) raceNote("Boost!", 900); }
     // The chase camera widens a little while boosting, and comes back
     const wantFov = baseFov + (info.boost > 0 ? 7 : 0);
@@ -850,6 +887,7 @@ function frame() {
     sendPose(car.s, jumped, performance.now());
     jumped = false;
     emitDust(dt, info);
+    emitSpray(dt, info);
     checkPads();
     updateWhere();
   }
@@ -859,6 +897,7 @@ function frame() {
   peersTick(dt, camera.position);
   emoteTick();
   dust?.userData.step(dt);
+  spray?.userData.step(dt);
   fireworks?.userData.step(dt);
   grass?.userData.tick(t);
   waterMesh?.userData.tick(t);
@@ -917,6 +956,7 @@ setTimeout(() => $("loader").remove(), 450);
 
 // Test hook for automated checks (no effect on play)
 window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, placeCar, colliders,
+  splash: (age = 0.35) => { sprayBurst(car.s.x, Math.max(car.s.y, WATER_LEVEL), car.s.z, 40); spray?.userData.step(age); } /* pre-aged, so a still catches the burst spread rather than under the car */, sprayCount: () => sprayCount, // river QA: an entry burst on demand, and how many puffs have flown
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
   info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState,
   cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks, sound,
