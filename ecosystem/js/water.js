@@ -216,7 +216,7 @@ export function buildBridges(scene, palette) {
       }
     }
     // Piles at the corners, down into the water
-    for (const s of [c.s0 - c.halfLen + 1.2, c.s0 + c.halfLen - 1.2]) { const p = at(s); for (const side of [-1, 1]) g.add(cyl(0.14, 1.3, M.wood, p.x + p.nx * (c.halfW - 0.35) * side, -0.6, p.z + p.nz * (c.halfW - 0.35) * side, 8)); }
+    for (const s of [c.s0 - c.halfLen + 1.2, c.s0 + c.halfLen - 1.2]) { const p = at(s); for (const side of [-1, 1]) g.add(cyl(0.14, 0.6 + DECK_Y - 0.04, M.wood, p.x + p.nx * (c.halfW - 0.35) * side, -0.6, p.z + p.nz * (c.halfW - 0.35) * side, 8)); } // from under the bed to just under the deck, never through it
     group.add(g);
     built.push(g);
   }
