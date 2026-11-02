@@ -94,7 +94,7 @@ if (!only || only === 'river') {
 // The epic jump by day: the car mid-air over the river from the side-on camera
 if (!only || only === 'stunt') {
   const p = await open('light');
-  await p.evaluate(() => window.__eco.stunt());
+  await p.evaluate(() => { window.__eco.blimp.setAngle(282); window.__eco.stunt(); });
   await steps(p, 4);
   await p.screenshot({ path: `${OUT}stunt-day.png` });
   await p.context().close();

@@ -169,7 +169,7 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         e.splash();
       });
       await shot('ford', 400);
-      await page.evaluate(() => window.__eco.stunt()); // mid-flight over the river, the side-on camera up
+      await page.evaluate(() => { window.__eco.blimp.setAngle(282); window.__eco.stunt(); }); // mid-flight over the river, the side-on camera up, the blimp in the top left
       await shot('stunt', 400);
       await page.evaluate(() => window.__eco.teleport('liquidations')); // back on the pad for the stop sheet below
       await page.click('#prompt-btn');
