@@ -201,12 +201,12 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .sheet .muted a { color: inherit; text-decoration: underline; text-underline-offset: 0.15em; } /* the kit's link colour fails contrast on the dark sheet */
 .sheet-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 /* Without JavaScript: one box pointing at the text companion (noscript content, never shown otherwise) */
-.noscript { position: fixed; inset: 0; z-index: 50; display: grid; place-content: center; padding: var(--space-lg); background: var(--bg-page); color: var(--text-primary); text-align: center; }
+.noscript { position: fixed; inset: 0; z-index: 60; /* above the loader (50) */ display: grid; place-content: center; padding: var(--space-lg); background: var(--bg-page); color: var(--text-primary); text-align: center; }
 .noscript p { max-width: var(--measure); font-size: 1.1rem; line-height: 1.5; }
 .sheet-actions .br-button { text-decoration: none; }
-/* Copy link's fallback when the clipboard is unavailable: the chip shows the URL itself, selectable */
-.sheet-actions .br-button.is-url { user-select: text; -webkit-user-select: text; cursor: text; font-family: var(--font-mono); font-size: 0.8rem; max-width: 100%; }
-.sheet-actions .br-button.is-url .br-button-label { overflow-wrap: anywhere; white-space: normal; }
+/* Copy link's fallback when the clipboard is unavailable: a read-only field with the URL, selected */
+.sheet-actions .stop-link-url { flex: 1 1 100%; min-width: 0; font-family: var(--font-mono); font-size: 0.85rem; }
+.sheet-actions .stop-link-url[hidden] { display: none; }
 
 /* The arcade cabinet's sheet: the game in a frame, Keep driving above it so it stays reachable on a phone */
 .sheet--arcade { width: min(40rem, calc(100vw - 2rem)); padding: var(--space-md); }

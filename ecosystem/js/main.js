@@ -593,19 +593,20 @@ function openStop(stop) {
   show($("stop"));
 }
 
-// "Copy link" on the stop sheet: the clipboard when the browser allows it, otherwise the chip becomes the URL
-// itself (selectable) so the visitor still gets the link. Never throws.
+// "Copy link" on the stop sheet: the clipboard when the browser allows it, otherwise a read-only field holding the
+// URL, selected, so the visitor can copy it by hand (text inside a button is not selectable everywhere). Never throws.
 let linkChipTimer = 0;
 function resetLinkChip(url) {
-  const b = $("stop-link");
+  const b = $("stop-link"), f = $("stop-link-url");
   b.dataset.url = url;
-  b.classList.remove("is-url");
+  b.hidden = false;
   b.querySelector(".br-button-label").textContent = "Copy link";
+  f.value = url;
+  f.hidden = true;
   clearTimeout(linkChipTimer);
 }
 $("stop-link").addEventListener("click", async () => {
   const b = $("stop-link"), label = b.querySelector(".br-button-label"), url = b.dataset.url;
-  if (b.classList.contains("is-url")) return; // showing the URL already: leave it selectable
   try {
     if (!navigator.clipboard) throw new Error("no clipboard");
     await navigator.clipboard.writeText(url);
@@ -613,8 +614,11 @@ $("stop-link").addEventListener("click", async () => {
     clearTimeout(linkChipTimer);
     linkChipTimer = setTimeout(() => { label.textContent = "Copy link"; }, 2000);
   } catch {
-    b.classList.add("is-url");
-    label.textContent = url;
+    const f = $("stop-link-url");
+    b.hidden = true;
+    f.hidden = false;
+    f.focus();
+    f.select();
   }
 });
 
@@ -1040,9 +1044,11 @@ await paint();
 await paint(); // a drawn frame behind it
 // A deep link (?stop=, ?district=) lands straight on the place with no flight and no intro; wantsArrival() is not
 // consulted, so its once-per-tab flag stays unset and a later plain visit still gets the arrival.
+// The world starts paused and only a closing sheet unpauses it, so the links that open no sheet unpause here.
+// Strike HQ has no spoke road of its own (teleportDistrict needs one), so its link lands at the spawn by the hub.
 const deepLink = parseDeepLink(location.search, STOPS.map((s) => s.key), Object.keys(DISTRICTS));
-if (deepLink.kind === "start") toStart();
-else if (deepLink.kind === "district") teleportDistrict(deepLink.key);
+if (deepLink.kind === "start") { toStart(); paused = false; }
+else if (deepLink.kind === "district") { if (deepLink.key === "hub") placeCar(SPAWN.x, SPAWN.z, SPAWN.heading); else teleportDistrict(deepLink.key); paused = false; }
 else if (deepLink.kind === "stop") { const s = STOPS.find((x) => x.key === deepLink.key); teleport(s); openStop(s); }
 // The flight starts under the loader, so the first frame anyone sees is already moving
 else if (wantsArrival()) {
@@ -1059,7 +1065,7 @@ $("loader").classList.add("is-done");
 setTimeout(() => $("loader").remove(), 450);
 
 // Test hook for automated checks (no effect on play)
-window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, placeCar, colliders, pads, deepLink,
+window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, placeCar, colliders, pads, deepLink, paused: () => paused,
   blimp: { setAngle: (deg) => blimp.userData.setAngle(deg == null ? null : (deg * Math.PI) / 180), pose: () => blimp.userData.pose(), setLivery: (n) => blimp.userData.setLivery(n), liveries: () => blimp.userData.liveries },
   stunt: () => { const j = jumps.find((o) => o.stunt && o.fx < 0); const lip = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length }; Object.assign(car.s, { x: lip.x + j.fx * 6, z: lip.z, heading: Math.atan2(-j.fx, -j.fz), speed: 24, air: true, vy: 2, airTime: 0.3 }); car.s.y = groundHeight(lip.x, lip.z) + j.height + 1.2; placeCamera(0, true); stuntStart(j); stunt.k = 1; stuntTick(0); } /* the snap first: it resets the stunt */, stuntState: () => ({ k: stunt.k, on: stunt.on }), // QA: mid-flight over the river with the side-on camera up
   splash: (age = 0.35) => { sprayBurst(car.s.x, Math.max(car.s.y, WATER_LEVEL), car.s.z, 40); spray?.userData.step(age); } /* pre-aged, so a still catches the burst spread rather than under the car */, sprayCount: () => sprayCount, // river QA: an entry burst on demand, and how many puffs have flown

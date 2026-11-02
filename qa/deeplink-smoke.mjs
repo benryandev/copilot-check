@@ -46,11 +46,14 @@ async function open(path, { clipboard = false } = {}) {
   check(st.dist < 6, `stop=slp: car ${st.dist.toFixed(1)} m from the pad`);
   check(st.url === `${base}/ecosystem/?stop=slp`, `stop=slp: link chip url ${st.url}`);
   check(errs.length === 0, `stop=slp: no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
-  // Copy link without clipboard permission: the chip becomes the URL
+  // Copy link without clipboard permission: a read-only field holding the URL, selected, so it can be copied by hand
   await page.click('#stop-link');
   await page.waitForTimeout(200);
-  const fb = await page.evaluate(() => ({ cls: document.getElementById('stop-link').className, text: document.querySelector('#stop-link .br-button-label').textContent }));
-  check(fb.cls.includes('is-url') && fb.text.endsWith('?stop=slp'), `copy link, no clipboard: chip shows the url (${fb.text})`);
+  const fb = await page.evaluate(() => {
+    const i = document.getElementById('stop-link-url');
+    return { shown: !!i && !i.hidden && i.offsetParent !== null, value: i ? i.value : '', selected: !!i && document.activeElement === i && i.selectionStart === 0 && i.selectionEnd === i.value.length, btnHidden: document.getElementById('stop-link').hidden };
+  });
+  check(fb.shown && fb.value.endsWith('?stop=slp') && fb.selected && fb.btnHidden, `copy link, no clipboard: url field shown and selected (${fb.value}), chip hidden`);
   await ctx.close();
 }
 // Copy link with the clipboard
@@ -64,13 +67,55 @@ async function open(path, { clipboard = false } = {}) {
   check(clip.endsWith('/ecosystem/?stop=slp'), `copy link: clipboard holds ${clip}`);
   await ctx.close();
 }
+// Can the car drive after a deep link that opens no sheet? (the world starts paused and only a closing sheet unpauses it)
+// Returns metres moved under 2 s of throttle, or -1 when the world is still paused. The software renderer runs a
+// few frames a second, so the distance is small but non-zero once the car is live.
+async function drives(page) {
+  if (await page.evaluate(() => window.__eco.paused())) return -1;
+  const before = await page.evaluate(() => ({ x: window.__eco.car.s.x, z: window.__eco.car.s.z }));
+  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(2000); await page.keyboard.up('ArrowUp');
+  const after = await page.evaluate(() => ({ x: window.__eco.car.s.x, z: window.__eco.car.s.z }));
+  return Math.hypot(after.x - before.x, after.z - before.z);
+}
 // ?stop=raceway
 {
   const { ctx, page, errs } = await open(world('stop=raceway'));
   await page.waitForFunction(() => !document.getElementById('race-hud').hidden, null, { timeout: 15_000 }).catch(() => {}); // the HUD follows the frame loop
   const st = await page.evaluate(() => ({ hud: !document.getElementById('race-hud').hidden, intro: document.getElementById('intro').open, stop: document.getElementById('stop').open }));
   check(st.hud && !st.intro && !st.stop, `stop=raceway: race HUD ${st.hud}, intro ${st.intro}, sheet ${st.stop}`);
+  const moved = await drives(page);
+  check(moved > 0.1, `stop=raceway: not paused, the car drives (${moved.toFixed(1)} m in 2 s of throttle)`);
   check(errs.length === 0, `stop=raceway: no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
+  await ctx.close();
+}
+// ?district=perps
+{
+  const { ctx, page, errs } = await open(world('district=perps'));
+  const st = await page.evaluate(() => ({ intro: document.getElementById('intro').open, where: document.getElementById('where').textContent }));
+  check(!st.intro, `district=perps: no intro sheet (HUD says "${st.where}")`);
+  const moved = await drives(page);
+  check(moved > 0.1, `district=perps: not paused, the car drives (${moved.toFixed(1)} m)`);
+  check(errs.length === 0, `district=perps: no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
+  await ctx.close();
+}
+// ?district=hub: Strike HQ has no spoke road, so this must land at the spawn, not crash
+{
+  const { ctx, page, errs } = await open(world('district=hub'));
+  const st = await page.evaluate(() => (window.__eco ? { ok: true, intro: document.getElementById('intro').open, x: window.__eco.car.s.x, z: window.__eco.car.s.z } : { ok: false }));
+  check(st.ok && !st.intro && Math.hypot(st.x, st.z) < 30, `district=hub: lands by HQ, no intro (${st.ok ? `${st.x.toFixed(0)}, ${st.z.toFixed(0)}` : 'world never loaded'})`);
+  check(errs.length === 0, `district=hub: no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
+  await ctx.close();
+}
+// Without JavaScript: the noscript box must be what the visitor sees, not the loader
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, javaScriptEnabled: false });
+  const page = await ctx.newPage();
+  await page.goto(base + '/ecosystem/', { waitUntil: 'load' });
+  const st = await page.evaluate(() => {
+    const el = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+    return { top: el ? (el.closest('.noscript') ? 'noscript' : el.id || el.className || el.tagName) : 'none', hasLink: !!document.querySelector('.noscript a[href="/ecosystem/stops/"]') };
+  });
+  check(st.top === 'noscript' && st.hasLink, `no JS: the noscript box is on top (topmost at centre: ${st.top})`);
   await ctx.close();
 }
 // ?stop=nope

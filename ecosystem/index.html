@@ -134,7 +134,8 @@
     <div class="sheet-actions">
       <a class="br-button" id="stop-docs" target="_blank" rel="noopener"><span class="br-button-label">Read the docs</span></a>
       <a class="br-button br-button--secondary" id="stop-site" target="_blank" rel="noopener" hidden><span class="br-button-label">Visit site</span></a>
-      <button type="button" class="br-button br-button--secondary" id="stop-link" aria-label="Copy a link to this stop"><span class="br-button-label">Copy link</span></button>
+      <button type="button" class="br-button br-button--secondary" id="stop-link"><span class="br-button-label" aria-live="polite">Copy link</span></button>
+      <input class="br-input stop-link-url" id="stop-link-url" type="url" readonly hidden aria-label="Link to this stop, selected: copy it">
       <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Keep driving</span></button>
     </div>
   </dialog>
