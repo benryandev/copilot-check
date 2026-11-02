@@ -248,3 +248,9 @@ Four rounds, then a blind re-score of 7.3 before its fixes:
 - `node --test qa/ridge-unit.mjs qa/data-unit.mjs` — the profile (slope cap, scaling, flat and missing data) and the klines fetch.
 - `node qa/ridge-smoke.mjs http://localhost:8766` — the car drives the chart both ways at 24 m/s on the steepest allowed day and on a flat one.
 - Shoot state `ridge`; still `tools/showcase-stills.mjs --only=ridge`; hook `__eco.ridge.set(closes)` / `__eco.ridge.series()` (a series set by hand is applied at once, even with the car on the ridge).
+
+## When to run the full shoot (Ben, 2 Nov 2026)
+
+- During a build: only the states the change touches plus `drive`, at two widths, both themes, e.g. `node qa/shoot-eco.mjs http://localhost:8766 --states=ridge,drive --widths=375,1280`. About a minute.
+- The full matrix (all states, twelve widths, both themes) only before a deploy, or when the change is to something every frame shares: the HUD or its CSS, the palette, the quality tiers, the loader, the audit itself.
+- Never re-shoot states nothing touched between those two moments.
