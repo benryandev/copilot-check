@@ -55,6 +55,12 @@ const svg = await page.evaluate(async () => {
   // Roads: dirt bands at their real width, the track wider
   for (const r of T.roads) out.push(`<polyline points="${poly(r.pts)}" fill="none" stroke="#c9a977" stroke-width="${r.half * 2 * S}" stroke-linecap="round" stroke-linejoin="round"/>`);
   for (const r of T.roads) out.push(`<polyline points="${poly(r.pts)}" fill="none" stroke="#a88757" stroke-width="1" stroke-dasharray="6 6" opacity="0.7"/>`);
+  // Named roads that are places in their own right (the ridge): a label at the road's far point from HQ
+  for (const r of T.roads) {
+    if (r.kind !== 'ridge') continue;
+    const far = r.pts.reduce((m, p) => (Math.hypot(p[0], p[1]) > Math.hypot(m[0], m[1]) ? p : m), r.pts[0]);
+    out.push(`<text x="${X(far[0])}" y="${Y(far[1]) + 30}" font-size="15" font-weight="700" fill="#8a5a2b" text-anchor="middle">Chart Ridge (${r.len.toFixed(0)} m, the last 24 h of BTC)</text>`);
+  }
   // Bridges and the ford
   for (const c of T.crossings) {
     const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw), rx = -fz, rz = fx, L = c.halfLen, Wd = c.halfW;
