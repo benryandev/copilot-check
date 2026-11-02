@@ -11,7 +11,7 @@ try { ({ chromium } = await import('playwright')); } catch {
   ({ chromium } = createRequire(`${g}/`)('playwright'));
 }
 const base = process.argv.find((a) => a.startsWith('http')) || 'http://localhost:8766';
-const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7); // cabinet | wave | river | stunt
+const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7); // cabinet | wave | river | stunt | ridge
 const OUT = new URL('./out/showcase/', import.meta.url).pathname;
 mkdirSync(OUT, { recursive: true });
 const FPS = 30, DT = 1000 / FPS;
@@ -90,6 +90,21 @@ if (!only || only === 'river') {
   await p.evaluate(() => { window.__eco.keys.up = false; });
   await p.context().close();
   console.log('river-day.png');
+}
+// Chart Ridge by day: a fixed day's closes, the car a few metres in, the chart rising ahead
+if (!only || only === 'ridge') {
+  const p = await open('light');
+  await p.evaluate(async () => {
+    const T = await import('/ecosystem/js/terrain.js');
+    const e = window.__eco, r = T.roads[T.RIDGE_ROAD];
+    e.ridge.set([80120, 80040, 79880, 79910, 79650, 79420, 79500, 79310, 78990, 78760, 78820, 78540, 78410, 78600, 78880, 79050, 78970, 79240, 79480, 79350, 79610, 79820, 79700, 79930]);
+    const q = r.curve.getPointAt(14 / r.len), t = r.curve.getTangentAt(14 / r.len);
+    e.placeCar(q.x, q.z, Math.atan2(-t.x, -t.z));
+  });
+  await steps(p, 12);
+  await p.screenshot({ path: `${OUT}ridge-day.png` });
+  await p.context().close();
+  console.log('ridge-day.png');
 }
 // The epic jump by day: the car mid-air over the river from the side-on camera
 if (!only || only === 'stunt') {

@@ -40,3 +40,9 @@ test('candleIndex and candleDir', () => {
   assert.equal(candleIndex(5, LEN), -1); assert.equal(candleIndex(RIDGE.run + 1, LEN), 0); assert.equal(candleIndex(LEN - RIDGE.run - 1, LEN), 23); assert.equal(candleIndex(LEN - 5, LEN), -1);
   assert.equal(candleDir(1, 2), 1); assert.equal(candleDir(2, 1), -1); assert.equal(candleDir(2, 2), 0);
 });
+test('the first and last 6 m stay level so the arches 5 m in stand on flat ground, whatever the first candle', () => {
+  const p = ridgeProfile(Array.from({ length: 24 }, (_, i) => 80000 - i * 80), LEN); // starts at the top
+  assert.equal(RIDGE.flat, 6);
+  assert.equal(p.h(5), 0); assert.equal(p.h(6), 0); assert.equal(p.h(LEN - 5), 0);
+  assert.ok(p.h(RIDGE.run) > 7.9, 'the run-in still reaches the first candle');
+});

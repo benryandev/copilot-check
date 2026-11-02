@@ -242,3 +242,9 @@ Four rounds, then a blind re-score of 7.3 before its fixes:
 - Portrait camera aims lower so the car sits above the driving buttons.
 - Below 1140px a sheet hid the corner panels behind it mid-word: they hide while a sheet is open. Darker scrim.
   The intro's phone tip shows on touch screens only.
+
+## Chart Ridge
+
+- `node --test qa/ridge-unit.mjs qa/data-unit.mjs` — the profile (slope cap, scaling, flat and missing data) and the klines fetch.
+- `node qa/ridge-smoke.mjs http://localhost:8766` — the car drives the chart both ways at 24 m/s on the steepest allowed day and on a flat one.
+- Shoot state `ridge`; still `tools/showcase-stills.mjs --only=ridge`; hook `__eco.ridge.set(closes)` / `__eco.ridge.series()` (a series set by hand is applied at once, even with the car on the ridge).

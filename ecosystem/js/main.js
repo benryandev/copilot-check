@@ -2,8 +2,8 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, SPAWN, MULTIPLAYER } from "./content.js";
-import { fetchLive, LABELS } from "./data.js";
-import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo } from "./terrain.js";
+import { fetchLive, fetchKlines, LABELS } from "./data.js";
+import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo, setRidgeSeries, onRidge, ridgeSeries } from "./terrain.js";
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.js";
 import { buildBlimp } from "./blimp.js";
@@ -835,7 +835,27 @@ document.querySelectorAll("[data-quality]").forEach((b) =>
 
 // ── Live data ─────────────────────────────────────────────────────────
 let cratesAdded = false;
+// Chart Ridge: hourly closes, fetched at most every five minutes, applied when the hour turns (or at first) and only
+// while the local car is clear of the ridge, so the ground never moves under anyone (remote cars read the same
+// height function on their own screens)
+let ridgePending = null, ridgeHour = -1, ridgeFetchedAt = 0;
+const hourNow = () => Math.floor(Date.now() / 3.6e6);
+async function pollRidge() {
+  if (Date.now() - ridgeFetchedAt < 5 * 60_000) return;
+  ridgeFetchedAt = Date.now();
+  const closes = await fetchKlines();
+  if (closes.length >= 2 && (hourNow() !== ridgeHour || !ridgeSeries().profile)) ridgePending = closes;
+}
+function applyRidge(closes) {
+  setRidgeSeries(closes);
+  ridgeMesh.userData.refresh();
+  ridgeHour = hourNow();
+  ridgePending = null;
+}
+setInterval(() => { if (ridgePending && !onRidge(car.s.x, car.s.z)) applyRidge(ridgePending); }, 1000);
+
 async function refresh() {
+  pollRidge();
   try {
     live = await fetchLive();
     if (!cratesAdded) {
@@ -993,6 +1013,7 @@ window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === ke
   splash: (age = 0.35) => { sprayBurst(car.s.x, Math.max(car.s.y, WATER_LEVEL), car.s.z, 40); spray?.userData.step(age); } /* pre-aged, so a still catches the burst spread rather than under the car */, sprayCount: () => sprayCount, // river QA: an entry burst on demand, and how many puffs have flown
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
   info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState,
+  ridge: { set: (closes) => applyRidge(closes), series: () => ridgeSeries() }, // Chart Ridge: QA and clips set a series by hand
   cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks, sound,
   raceLive: raceLiveState, raceLap: onLap, raceLiveInject: injectRaceLive, boost: (secs = 1.4) => { car.s.boost = secs; },
   arcade: (key = "arcade-flappy-coin") => openStop(STOPS.find((s) => s.key === key)), arcadeBoard: injectArcadeBoard,

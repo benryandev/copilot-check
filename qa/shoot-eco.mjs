@@ -27,7 +27,7 @@ const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 10
 const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'stop', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
+const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'stop', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race'];
 const pick = opt('states') || ALL;
 const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
@@ -171,6 +171,15 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       await shot('ford', 400);
       await page.evaluate(() => { window.__eco.blimp.setAngle(282); window.__eco.stunt(); }); // mid-flight over the river, the side-on camera up, the blimp in the top left
       await shot('stunt', 400);
+      // Chart Ridge: a fixed day's closes so the still is stable, the car a few metres in, looking along the chart
+      await page.evaluate(async () => {
+        const T = await import('/ecosystem/js/terrain.js');
+        const e = window.__eco, r = T.roads[T.RIDGE_ROAD];
+        e.ridge.set([80120, 80040, 79880, 79910, 79650, 79420, 79500, 79310, 78990, 78760, 78820, 78540, 78410, 78600, 78880, 79050, 78970, 79240, 79480, 79350, 79610, 79820, 79700, 79930]);
+        const p = r.curve.getPointAt(14 / r.len), t = r.curve.getTangentAt(14 / r.len);
+        e.placeCar(p.x, p.z, Math.atan2(-t.x, -t.z));
+      });
+      await shot('ridge', 600);
       await page.evaluate(() => window.__eco.teleport('liquidations')); // back on the pad for the stop sheet below
       await page.click('#prompt-btn');
       await shot('stop');

@@ -11,6 +11,21 @@ async function getJson(path) {
 // One failing endpoint shouldn't blank the rest
 const soft = (p) => getJson(p).catch((err) => { console.warn("[eco]", err.message); return null; });
 
+/** Hourly closes for the Chart Ridge, oldest first (the last row is the candle still forming). `[]` on any failure:
+ * the ridge then stays flat. Rows are Binance-style arrays; the close is index 4. `f` is injectable for tests. */
+export async function fetchKlines(symbol = "BTC-USD", interval = "1h", limit = 25, f = fetch) {
+  try {
+    const res = await f(`${API}/price/v2/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const rows = await res.json();
+    if (!Array.isArray(rows)) return [];
+    return rows.map((r) => Number(r?.[4])).filter(Number.isFinite);
+  } catch (err) {
+    console.warn("[eco]", "klines", err.message);
+    return [];
+  }
+}
+
 const usd = (n) =>
   n >= 1e9 ? `$${(n / 1e9).toFixed(2)}B`
   : n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M`

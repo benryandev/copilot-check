@@ -8,7 +8,7 @@ import { RIDGE, candleIndex, candleDir } from "./ridge-math.js";
 import { canvasTexture, redraws, accent, box } from "./build.js";
 import { DISTRICTS } from "./content.js";
 
-const UP = new THREE.Color(0x4ade80), DOWN = new THREE.Color(0xf87171), TINT = 1 / 3;
+const UP = new THREE.Color(0x4ade80), DOWN = new THREE.Color(0xf87171), TINT = 0.26, BLEND = 3; // tint strength; metres either side of a point averaged, so candle boundaries drift rather than band
 const LABELS = ["24h", "18h", "12h", "6h", "now"];
 
 export function buildRidge(scene, palette) {
@@ -54,13 +54,12 @@ export function buildRidge(scene, palette) {
   function buildRoad() {
     const closes = ridgeSeries().closes.slice(-RIDGE.candles);
     while (closes.length && closes.length < RIDGE.candles) closes.unshift(closes[0]);
+    const dirAt = (s) => { const i = candleIndex(s, r.len); return i < 0 || closes.length < 2 ? 0 : candleDir(closes[i - 1] ?? closes[i], closes[i]); };
     const colourAt = (s) => {
-      const i = candleIndex(s, r.len);
-      if (i < 0 || closes.length < 2) return [1, 1, 1];
-      const d = candleDir(closes[i - 1] ?? closes[i], closes[i]);
+      const d = (dirAt(s - BLEND) + dirAt(s) + dirAt(s + BLEND)) / 3; // −1..1, soft across boundaries and the run-ins
       if (!d) return [1, 1, 1];
-      const t = d > 0 ? UP : DOWN;
-      return [1 + (t.r - 1) * TINT, 1 + (t.g - 1) * TINT, 1 + (t.b - 1) * TINT];
+      const t = d > 0 ? UP : DOWN, k = Math.abs(d) * TINT;
+      return [1 + (t.r - 1) * k, 1 + (t.g - 1) * k, 1 + (t.b - 1) * k];
     };
     const mesh = new THREE.Mesh(roadRibbon(r, colourAt), roadMat);
     mesh.receiveShadow = true;
