@@ -3,7 +3,7 @@ import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { buildGuides } from '../tools/guide-build.mjs';
 
-const text = readFileSync(new URL('./fixtures/guides/good.md', import.meta.url), 'utf8');
+const text = readFileSync(new URL('./fixtures/guides/G-S0-what-is-strike.md', import.meta.url), 'utf8');
 const registry = JSON.parse(readFileSync(new URL('./fixtures/guides/claim-positions.json', import.meta.url), 'utf8'));
 const base = { drafts: [{ path: 'G-S0-what-is-strike.md', text }], registry, images: () => ({ width: 1200, height: 700 }), previous: { guides: {} }, today: '2026-11-10', stopKeys: ['strike', 'perpetuals'] };
 

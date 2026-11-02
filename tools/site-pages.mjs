@@ -13,18 +13,23 @@ import { fileURLToPath } from 'node:url';
 import { STOPS, DISTRICTS } from '../ecosystem/js/content.js';
 import { LABELS } from '../ecosystem/js/data.js';
 import { ORDER, renderReview, renderSitemap, renderStopsPage } from './lib/site-render.mjs';
+import { guidePath, renderGuidePage, renderGuidesIndex, renderGuidesModule, renderStillsCss } from './lib/guide-render.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SITE = 'https://strike.benryan.com.au';
 const STATE_PATH = 'tools/lib/site-pages-state.json';
+const GUIDES_PATH = 'tools/lib/guides.json';
 const DATE_MARK = '__LASTMOD__';
 
 const sha = (s) => createHash('sha256').update(s).digest('hex').slice(0, 16);
 
 // Every file under a path (sorted) concatenated, so a page backed by a directory hashes all of it
+// Generated files are never hashed as inputs (writing one would move its page's date on the next run)
+const GENERATED = new Set(['ecosystem/js/guides.js']);
 function hashFiles(paths) {
   const h = createHash('sha256');
   const walk = (p) => {
+    if (GENERATED.has(p)) return;
     const abs = join(ROOT, p);
     if (statSync(abs).isDirectory()) { for (const f of readdirSync(abs).sort()) walk(join(p, f)); return; }
     h.update(p).update('\0').update(readFileSync(abs));
@@ -33,26 +38,36 @@ function hashFiles(paths) {
   return h.digest('hex').slice(0, 16);
 }
 
-// Pages in the sitemap. Static ones hash their backing files; the stops page hashes its own render.
-// Workstream C adds the guides here.
+// Pages in the sitemap. Static ones hash their backing files; rendered ones (the stops page, the guides) hash their
+// own render. The guides come from tools/lib/guides.json (tools/guide-build.mjs), one page each plus the index.
 const PAGES = [
   { path: '/', files: ['index.html', 'src', 'css'] },
-  { path: '/ecosystem/', files: ['ecosystem/index.html', 'ecosystem/js', 'ecosystem/ecosystem.css'] },
-  { path: '/ecosystem/stops/', render: true },
+  { path: '/ecosystem/', files: ['ecosystem/index.html', 'ecosystem/js', 'ecosystem/ecosystem.css', GUIDES_PATH] }, // the world's sheets link the guides
+  { path: '/ecosystem/stops/', render: 'stops' },
   { path: '/ecosystem/submit/', files: ['ecosystem/submit'] },
+  { path: '/ecosystem/guides/', render: 'guides-index' },
 ];
 
 export function readState() {
   try { return JSON.parse(readFileSync(join(ROOT, STATE_PATH), 'utf8')); } catch { return {}; }
 }
+export function readGuides() {
+  try { return JSON.parse(readFileSync(join(ROOT, GUIDES_PATH), 'utf8')); } catch { return { generated: '', guides: {} }; }
+}
 const isoToday = () => new Date().toISOString().slice(0, 10);
 
-export function buildAll({ state = readState(), today = isoToday() } = {}) {
-  const base = { stops: STOPS, districts: DISTRICTS, order: ORDER, labels: LABELS };
-  const stopsHash = sha(renderStopsPage({ ...base, generated: DATE_MARK }));
+export function buildAll({ state = readState(), today = isoToday(), guidesFile = readGuides() } = {}) {
+  const guides = guidesFile.guides || {};
+  const base = { stops: STOPS, districts: DISTRICTS, order: ORDER, labels: LABELS, guides };
+  const renders = {
+    stops: () => renderStopsPage({ ...base, generated: DATE_MARK }),
+    'guides-index': () => renderGuidesIndex(guidesFile, base),
+  };
+  for (const g of Object.values(guides)) renders[g.slug] = () => renderGuidePage(g, base);
+  const pages = [...PAGES, ...Object.values(guides).map((g) => ({ path: guidePath(g.slug), render: g.slug }))];
   const next = {};
-  const entries = PAGES.map((p) => {
-    const hash = p.render ? stopsHash : hashFiles(p.files);
+  const entries = pages.map((p) => {
+    const hash = p.render ? sha(renders[p.render]()) : hashFiles(p.files);
     const prev = state[p.path];
     const lastmod = prev && prev.hash === hash ? prev.lastmod : today;
     next[p.path] = { hash, lastmod };
@@ -62,6 +77,10 @@ export function buildAll({ state = readState(), today = isoToday() } = {}) {
   const ctx = { ...base, generated };
   return [
     { path: 'ecosystem/stops/index.html', content: renderStopsPage(ctx) },
+    { path: 'ecosystem/guides/index.html', content: renderGuidesIndex(guidesFile, base) },
+    ...Object.values(guides).map((g) => ({ path: `ecosystem/guides/${g.slug}/index.html`, content: renderGuidePage(g, base) })),
+    { path: 'ecosystem/guides/stills.css', content: renderStillsCss(guidesFile) },
+    { path: 'ecosystem/js/guides.js', content: renderGuidesModule(guidesFile) },
     { path: 'sitemap.xml', content: renderSitemap(entries) },
     { path: 'docs/stops-review.md', content: renderReview(ctx) },
     { path: STATE_PATH, content: JSON.stringify(next, null, 2) + '\n' },

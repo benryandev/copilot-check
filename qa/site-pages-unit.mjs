@@ -2,11 +2,14 @@
 // Stale? Run: node tools/site-pages.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildAll } from '../tools/site-pages.mjs';
+import { buildAll, readGuides } from '../tools/site-pages.mjs';
+
+const slugs = Object.keys(readGuides().guides);
 
 test('committed site pages match a fresh render (run: node tools/site-pages.mjs)', () => {
   const files = buildAll();
-  assert.deepEqual(files.map((f) => f.path).sort(), ['docs/stops-review.md', 'ecosystem/stops/index.html', 'sitemap.xml', 'tools/lib/site-pages-state.json']);
+  assert.deepEqual(files.map((f) => f.path).sort(), ['docs/stops-review.md', 'ecosystem/guides/index.html', ...slugs.map((s) => `ecosystem/guides/${s}/index.html`), 'ecosystem/guides/stills.css', 'ecosystem/js/guides.js', 'ecosystem/stops/index.html', 'sitemap.xml', 'tools/lib/site-pages-state.json'].sort());
+  assert.ok(slugs.length >= 1, 'at least one guide is built');
   for (const { path, content } of files) {
     const onDisk = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
     assert.equal(onDisk, content, `${path} is stale: run node tools/site-pages.mjs`);
@@ -16,7 +19,7 @@ test('committed site pages match a fresh render (run: node tools/site-pages.mjs)
 test('sitemap lists only public pages', () => {
   const xml = buildAll().find((f) => f.path === 'sitemap.xml').content;
   for (const bad of ['/test/', '/tools/', '/qa/', '/scripts/', '/paper/']) assert.ok(!xml.includes(bad), bad);
-  for (const good of ['<loc>https://strike.benryan.com.au/</loc>', '/ecosystem/</loc>', '/ecosystem/stops/</loc>', '/ecosystem/submit/</loc>']) assert.ok(xml.includes(good), good);
+  for (const good of ['<loc>https://strike.benryan.com.au/</loc>', '/ecosystem/</loc>', '/ecosystem/stops/</loc>', '/ecosystem/submit/</loc>', '/ecosystem/guides/</loc>', ...slugs.map((s) => `/ecosystem/guides/${s}/</loc>`)]) assert.ok(xml.includes(good), good);
   assert.ok(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/.test(xml), 'lastmod is a date');
 });
 
@@ -29,7 +32,7 @@ test('lastmod moves only when a page\'s content changes (state file, not git dat
   const today = '2031-01-01';
   const fresh = buildAll({ state: {}, today });
   const sitemap = fresh.find((f) => f.path === 'sitemap.xml').content;
-  assert.equal((sitemap.match(/<lastmod>2031-01-01<\/lastmod>/g) || []).length, 4, 'unknown pages date to today');
+  assert.equal((sitemap.match(/<lastmod>2031-01-01<\/lastmod>/g) || []).length, 5 + slugs.length, 'unknown pages date to today');
   const state = JSON.parse(fresh.find((f) => f.path === 'tools/lib/site-pages-state.json').content);
   assert.ok(state['/ecosystem/stops/'].hash && state['/ecosystem/stops/'].lastmod === today);
   const again = buildAll({ state, today: '2031-06-30' });
@@ -38,4 +41,9 @@ test('lastmod moves only when a page\'s content changes (state file, not git dat
   const changed = buildAll({ state: bumped, today: '2031-06-30' }).find((f) => f.path === 'sitemap.xml').content;
   assert.ok(changed.includes('<loc>https://strike.benryan.com.au/ecosystem/stops/</loc>\n    <lastmod>2031-06-30</lastmod>'), 'a changed page dates to today');
   assert.ok(changed.includes('<loc>https://strike.benryan.com.au/</loc>\n    <lastmod>2031-01-01</lastmod>'), 'an unchanged page keeps its date');
+  const gpath = `/ecosystem/guides/${slugs[0]}/`;
+  const gbumped = { ...state, [gpath]: { hash: 'stale', lastmod: '2030-01-01' } };
+  const gchanged = buildAll({ state: gbumped, today: '2031-06-30' }).find((f) => f.path === 'sitemap.xml').content;
+  assert.ok(gchanged.includes(`<loc>https://strike.benryan.com.au${gpath}</loc>\n    <lastmod>2031-06-30</lastmod>`), 'a changed guide dates to today');
+  assert.ok(gchanged.includes('<loc>https://strike.benryan.com.au/ecosystem/stops/</loc>\n    <lastmod>2031-01-01</lastmod>'), 'the stops page keeps its date');
 });

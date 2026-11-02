@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { parseDraft, fillClaims, sectionsOf } from '../tools/lib/guide-parse.mjs';
 import { checkGuide, BANNED } from '../tools/guide-check.mjs';
 
-const good = readFileSync(new URL('./fixtures/guides/good.md', import.meta.url), 'utf8');
+const good = readFileSync(new URL('./fixtures/guides/G-S0-what-is-strike.md', import.meta.url), 'utf8');
 const registry = JSON.parse(readFileSync(new URL('./fixtures/guides/claim-positions.json', import.meta.url), 'utf8'));
 const ctx = { stopKeys: ['strike', 'perpetuals'], registry, imageDims: () => ({ width: 1200, height: 700 }), today: '2026-11-10' };
 const draft = () => parseDraft(good);

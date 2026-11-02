@@ -2,7 +2,9 @@
 // text), the sitemap, and the review markdown Ben reads before a sheet goes live. Pure strings, no DOM;
 // run by tools/site-pages.mjs, checked by qa/site-pages-unit.mjs (drift) and qa/site-render-unit.mjs.
 
-const SITE = 'https://strike.benryan.com.au';
+import { SITE, esc, THEME_TOGGLE } from './site-common.mjs';
+import { guidePath, guidesForStop } from './guide-render.mjs';
+export { THEME_TOGGLE };
 const DOCS = 'https://docs.strikefinance.org';
 
 // Page order: the hub, the ring clockwise from north (content.js ORDER), then the two off-ring places.
@@ -30,8 +32,6 @@ export const districtHref = (key) => `/ecosystem/?district=${encodeURIComponent(
 // The stops a reader can learn something from: not the empty Builders' Row plots, not the arcade cabinets.
 export const publicStops = (stops) => stops.filter((s) => s.shape !== 'plot' && !s.arcade);
 
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
 // Button text as openStop() in main.js shows it: Strike's own docs read "Docs: …", a third-party page names itself
 const docsLabel = (stop) => (stop.docs.startsWith(DOCS) ? `Docs: ${stop.docsLabel}` : stop.docsLabel);
 const siteOf = (stop) => (stop.site && stop.site !== stop.docs ? stop.site : null);
@@ -42,8 +42,9 @@ const byDistrict = (stops, key) => publicStops(stops).filter((s) => s.district =
 // so the static page names them the same way; an unknown key reads as plain words, never as a raw key.
 const liveLabel = (k, labels) => labels[k] ?? (k.startsWith('lines:') ? 'Open credit lines' : k.replace(/[_:]+/g, ' '));
 
-function renderStop(stop, labels) {
+function renderStop(stop, labels, guides = {}) {
   const live = stop.live ? `<p class="stop-live br-label">Live on the pad: ${esc(stop.live.map((k) => liveLabel(k, labels)).join(', '))}</p>` : '';
+  const guide = guidesForStop(stop.key, guides).map((g) => `        <p class="stop-guide">Read the guide: <a href="${guidePath(g.slug)}">${esc(g.title)}</a></p>`).join('\n');
   const site = siteOf(stop) ? ` <a class="stop-doc" href="${esc(siteOf(stop))}" rel="noopener">${esc(stop.siteLabel || `Visit ${stop.name}`)}</a>` : '';
   return `      <article class="stop district-${esc(stop.district)}" id="stop-${esc(stop.key)}">
         <h3>${esc(stop.name)}</h3>
@@ -51,18 +52,18 @@ function renderStop(stop, labels) {
         <ul>
 ${stop.points.map((t) => `          <li>${esc(t)}</li>`).join('\n')}
         </ul>
-        ${live}
+        ${live}${guide ? `\n${guide}` : ''}
         <p class="stop-actions"><a class="br-button br-button--secondary" href="${stopHref(stop.key)}">Drive there</a> <a class="stop-doc" href="${esc(stop.docs)}" rel="noopener">${esc(docsLabel(stop))}</a>${site}</p>
       </article>`;
 }
 
-function renderDistrict(key, { stops, districts, labels }) {
+function renderDistrict(key, { stops, districts, labels, guides }) {
   const d = districts[key];
   const drive = key === 'hub' ? '' : ` <a class="district-drive" href="${districtHref(key)}">Drive to this district</a>`;
   return `    <section class="district district-${esc(key)}" id="district-${esc(key)}" aria-labelledby="h-${esc(key)}">
       <h2 id="h-${esc(key)}">${esc(d.name)}</h2>
       <p class="district-line">${esc(DISTRICT_LINES[key] || '')}${drive}</p>
-${byDistrict(stops, key).map((s) => renderStop(s, labels)).join('\n')}
+${byDistrict(stops, key).map((s) => renderStop(s, labels, guides)).join('\n')}
     </section>`;
 }
 
@@ -163,19 +164,6 @@ ${order.map((k) => renderDistrict(k, ctx)).join('\n')}
 `;
 }
 
-// The Check page's toggle, verbatim (index.html), so the pages feel like one site
-export const THEME_TOGGLE = `<button class="theme-toggle" type="button" aria-label="Switch to dark mode" id="theme-toggle">
-          <svg class="theme-toggle-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <g class="theme-toggle-rays">
-              <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-              <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-            </g>
-            <path class="theme-toggle-path" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
-          </svg>
-        </button>`;
-
 export function renderSitemap(entries) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -198,6 +186,7 @@ export function renderReview(ctx) {
       const live = s.live ? ` · live: ${s.live.map((x) => liveLabel(x, labels)).join(', ')}` : '';
       const site = siteOf(s) ? ` · [${s.siteLabel || `Visit ${s.name}`}](${siteOf(s)})` : '';
       out.push(`Link: [${docsLabel(s)}](${s.docs})${site}${live}`, '');
+      for (const g of guidesForStop(s.key, ctx.guides || {})) out.push(`Guide: ${g.title} (${guidePath(g.slug)})`, '');
     }
   }
   return out.join('\n');

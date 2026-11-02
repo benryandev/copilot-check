@@ -4,7 +4,8 @@ import { STOPS, DISTRICTS, RING_KEYS } from '../ecosystem/js/content.js';
 import { LABELS } from '../ecosystem/js/data.js';
 import { renderStopsPage, renderSitemap, renderReview, publicStops, stopHref, ORDER } from '../tools/lib/site-render.mjs';
 
-const ctx = { stops: STOPS, districts: DISTRICTS, order: ORDER, labels: LABELS, generated: '2026-11-03' };
+const guides = { 'what-is-strike': { slug: 'what-is-strike', title: 'What is Strike? A plain-English guide', stop: 'strike', series: 'start-here', order: 0 } };
+const ctx = { stops: STOPS, districts: DISTRICTS, order: ORDER, labels: LABELS, generated: '2026-11-03', guides };
 
 test('ORDER is the hub, the ring, then the raceway and the yard', () => {
   assert.deepEqual(ORDER, ['hub', ...RING_KEYS, 'raceway', 'yard']);
@@ -43,6 +44,8 @@ test('stops page: every public stop by name, a Drive there link per stop, distri
   assert.ok(html.includes('<meta name="twitter:title"') && html.includes('<meta name="twitter:image"'), 'twitter tags');
   assert.ok(html.includes('id="theme-toggle"') && html.includes('/src/theme-toggle.js'), 'the site theme toggle is on the page');
   assert.ok(!/ style="/.test(html), 'no inline style');
+  assert.ok(/id="stop-strike"[^]*?Read the guide: <a href="\/ecosystem\/guides\/what-is-strike\/">What is Strike\? A plain-English guide<\/a>[^]*?id="stop-getting-started"/.test(html), 'the HQ card links its guide');
+  assert.equal((html.match(/Read the guide:/g) || []).length, 1, 'only the stop with a guide shows the line');
 });
 
 test('sitemap: only the given entries, xml shape', () => {
@@ -61,6 +64,7 @@ test('review markdown: one ### per public stop, grouped by district', () => {
   assert.equal((md.match(/^### /gm) || []).length, publicStops(STOPS).length);
   assert.ok(md.startsWith('# Ecosystem world: every sheet for review (generated 2026-11-03)'));
   assert.ok(md.includes('## Strike HQ'));
+  assert.ok(md.includes('Guide: What is Strike? A plain-English guide (/ecosystem/guides/what-is-strike/)'));
 });
 
 function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }

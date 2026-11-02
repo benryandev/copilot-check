@@ -4,15 +4,23 @@
     "lastmod": "2026-11-02"
   },
   "/ecosystem/": {
-    "hash": "5748dae4c6353ac5",
+    "hash": "a781180ace134bb3",
     "lastmod": "2026-11-02"
   },
   "/ecosystem/stops/": {
-    "hash": "d615b67267f6bbce",
+    "hash": "c2c158f673f0a173",
     "lastmod": "2026-11-02"
   },
   "/ecosystem/submit/": {
     "hash": "3a7bf180e3524485",
+    "lastmod": "2026-11-02"
+  },
+  "/ecosystem/guides/": {
+    "hash": "1a2349c5ba3268d5",
+    "lastmod": "2026-11-02"
+  },
+  "/ecosystem/guides/what-is-strike/": {
+    "hash": "8d73904196dc623e",
     "lastmod": "2026-11-02"
   }
 }

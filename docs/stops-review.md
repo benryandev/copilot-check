@@ -17,6 +17,8 @@ A perpetuals exchange with its own execution layer and settlement on several cha
 
 Link: [Docs: Welcome](https://docs.strikefinance.org/getting-started/welcome) · [Open Strike](https://app.strikefinance.org/trade/BTC?referralCode=BenRyan) · live: Users, all time, Volume, all time, 24 h volume
 
+Guide: What is Strike? A plain-English guide to the exchange (/ecosystem/guides/what-is-strike/)
+
 ### Getting started
 
 A first visit, from sign-in to a funded account. Sign in with a wallet on Cardano, Ethereum, Solana and more; deposit crypto on any supported chain or pay by card; your balance is held in USD.
