@@ -60,9 +60,12 @@ RING_KEYS.forEach((key, i) => {
   const wig = i % 2 ? 1 : -1;
   const end = RING - d.radius + 2;
   const at = (r, side) => [ux * r + px * side, uz * r + pz * side];
+  // The Chains spoke runs straight for its last 40 m (Ben, 2 Nov 2026): the river's bridge sits on that stretch, and a
+  // bridge on a bend looked wrong. The other spokes keep their wiggles all the way in.
+  const tail = key === "chains" ? [at(98, 0), at(116, 0)] : [at(102, 5 * wig), at(126, -4 * wig), at(end - 8, wig)];
   ROADS.push({
     kind: "spoke", from: "hub", to: key,
-    points: [at(20, 0), at(42, 6 * wig), at(72, -7 * wig), at(102, 5 * wig), at(126, -4 * wig), at(end - 8, wig), at(end, 0)],
+    points: [at(20, 0), at(42, 6 * wig), at(72, -7 * wig), ...tail, at(end, 0)],
   });
   // Ring road to the next district: the chord between the two plazas, bowed slightly outwards
   const n = DISTRICTS[RING_KEYS[(i + 1) % RING_KEYS.length]];
