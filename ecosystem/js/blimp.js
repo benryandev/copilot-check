@@ -13,7 +13,7 @@ export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
   // Liveries, all built from Strike's official lockup SVGs (mint disc and bolt, STRIKE FINANCE wordmark; the -dark file is the
   // white wordmark for dark fields). The hull is a canvas skin: top colour, a band round the middle, the lockup on both flanks.
   const LIVERIES = {
-    night: { top: "#0b1b3a", band: "#0b1b3a", bottom: "#d6dbe1", stripe: "#26fab0", logo: "dark" }, // Strike's dark app look: navy hull, mint stripe, white and mint lockup
+    night: { top: "#0b1b3a", band: "#0b1b3a", bottom: "#0b1b3a", stripe: "#0b1b3a", tail: true, logo: "dark" }, // Ben's pick (2 Nov): navy hull, white and mint tail stripes, the white and mint lockup
     mint: { top: "#0b1b3a", band: "#26fab0", bottom: "#26fab0", stripe: "#ffffff", logo: "light" }, // the Gemini concept: navy over mint, black lockup on the mint
     silver: { top: "#d6dbe1", band: "#0b1b3a", bottom: "#d6dbe1", stripe: "#26fab0", logo: "dark" }, // Goodyear: silver ship, navy band, white and mint lockup
   };
@@ -26,11 +26,14 @@ export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
     ctx.fillStyle = livery.bottom; ctx.fillRect(0, y1, w, h - y1);
     ctx.fillStyle = livery.band; ctx.fillRect(0, y0, w, y1 - y0);
     ctx.fillStyle = livery.stripe; ctx.fillRect(0, y1, w, 12); ctx.fillRect(0, y0 - 12, w, 12);
+    if (livery.tail) { // two bands round the hull near the tail (the tail is at the texture's seam, u = 0 and 1)
+      for (const [a, b, c] of [[0.035, 0.065, "#26fab0"], [0.065, 0.085, "#ffffff"], [0.915, 0.935, "#ffffff"], [0.935, 0.965, "#26fab0"]]) { ctx.fillStyle = c; ctx.fillRect(w * a, 0, w * (b - a), h); }
+    }
     // The lockup, squashed along u because the flank is stretched three to one along the ship
     const img = logos[livery.logo];
     if (!(img.complete && img.naturalWidth > 0)) return;
-    const lw = 1180, lh = (lw * img.naturalHeight) / img.naturalWidth;
-    for (const cx of [w * 0.25, w * 0.75]) {
+    const lw = 960, lh = (lw * img.naturalHeight) / img.naturalWidth; // about 0.29 of the way round: the flank, clear of the tail bands
+    for (const cx of [w * 0.27, w * 0.73]) { // a little towards the nose (the tail is at the seam)
       ctx.save(); ctx.translate(cx, (y0 + y1) / 2); ctx.scale(0.62, 1);
       ctx.drawImage(img, -lw / 2, -lh / 2, lw, lh);
       ctx.restore();
