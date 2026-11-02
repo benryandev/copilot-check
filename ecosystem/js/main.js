@@ -4,6 +4,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, SPAWN, MULTIPLAYER } from "./content.js";
 import { fetchLive, LABELS } from "./data.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates } from "./terrain.js";
+import { buildWater, buildRiverBed } from "./water.js";
 import { createGrass, createDust, createFireworks } from "./effects.js";
 import { createSky } from "./sky.js";
 import {
@@ -35,12 +36,14 @@ const PALETTE = {
     sky: 0xcfe0ec, grassA: 0x93bb6c, grassB: 0x75a056, grassBase: 0x4f7d3b, grassTip: 0xaed383,
     dirt: 0xf6ead6, dirtTop: 0xc9a97e, dirtSide: 0xa9896a, dust: 0xd9c5a3, plaza: 0xeef1f4, cobbleA: 0xded6c8, cobbleB: 0xcbc1b0, mortar: 0xb3a894,
     build: 0xf5f6f8, trim: 0x0d0d0d, wood: 0x8a6a48,
+    water: 0x4fa3c7, waterDeep: 0x2b6f93, foam: 0xeaf6fb, spray: 0xdff1f8, mud: 0x8a7a5c,
     panel: "#ffffff", text: "#0d0d0d", sub: "#4b5563", signBoard: "#f3e9d8", signInk: "#2b2118",
   },
   dark: {
     sky: 0x0b1016, grassA: 0x2d4b2a, grassB: 0x223a20, grassBase: 0x182a16, grassTip: 0x406c37,
     dirt: 0x9b8770, dirtTop: 0x6e5a43, dirtSide: 0x56462f, dust: 0x7a6a56, plaza: 0x181c21, cobbleA: 0x2b3139, cobbleB: 0x222730, mortar: 0x15181d,
     build: 0x252a31, trim: 0xf9fafb, wood: 0x5e4631,
+    water: 0x1b3a52, waterDeep: 0x0f2435, foam: 0x7f9fb4, spray: 0x9fb8c8, mud: 0x3f3a2c,
     panel: "#15191e", text: "#f9fafb", sub: "#9ca3af", signBoard: "#2a241c", signInk: "#f3e9d8",
   },
 };
@@ -81,7 +84,9 @@ let ground = buildGround(Math.round((tier().ground * WORLD.radius) / 280), pal()
 const roadMesh = buildRoads(pal());
 const jumpMesh = buildJumps(pal());
 const plazaMesh = buildPlazas(pal());
-scene.add(ground, roadMesh, jumpMesh, plazaMesh);
+const bedMesh = buildRiverBed(pal()); // the river channel at a fine spacing; the water itself is built per tier below
+let waterMesh = null;
+scene.add(ground, roadMesh, jumpMesh, plazaMesh, bedMesh);
 const sky = createSky({ reduceMotion });
 scene.add(sky);
 await load.step("Raising the districts");
@@ -121,6 +126,9 @@ function applyTier() {
   if (dust) { scene.remove(dust); dust.geometry.dispose(); dust.material.dispose(); }
   dust = createDust(t.dust, pal());
   scene.add(dust);
+  if (waterMesh) { scene.remove(waterMesh); waterMesh.geometry.dispose(); waterMesh.material.dispose(); }
+  waterMesh = buildWater(pal(), { tier: tierName, reduceMotion });
+  scene.add(waterMesh);
   post.enable(t.bloom);
   resize();
   document.querySelectorAll("[data-quality]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.quality === qualityPref)));
@@ -147,7 +155,7 @@ function applyTheme() {
   sky.userData.setNight(dark);
   // With bloom on, every pad ring is pushed to the same glow luminance whatever its district colour; without it they stay as tinted
   if (post.on) pads.forEach((pd) => toGlow(pd.ring.material.color));
-  [ground, roadMesh, jumpMesh, plazaMesh, grass, dust].forEach((o) => o?.userData.recolour?.(p));
+  [ground, roadMesh, jumpMesh, plazaMesh, bedMesh, waterMesh, grass, dust].forEach((o) => o?.userData.recolour?.(p));
 }
 $("theme").addEventListener("click", () => {
   dark = !dark;
@@ -851,6 +859,7 @@ function frame() {
   dust?.userData.step(dt);
   fireworks?.userData.step(dt);
   grass?.userData.tick(t);
+  waterMesh?.userData.tick(t);
   sky.userData.tick(t, dt, camera.position);
   if (arrival?.active) arrival.tick(dt);
   else if (!debugCam) { placeCamera(dt); cineCam?.(dt); }
@@ -905,7 +914,7 @@ $("loader").classList.add("is-done");
 setTimeout(() => $("loader").remove(), 450);
 
 // Test hook for automated checks (no effect on play)
-window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, colliders,
+window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, placeCar, colliders,
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
   info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState,
   cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks, sound,

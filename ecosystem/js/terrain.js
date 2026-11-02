@@ -281,6 +281,8 @@ export function grassWeight(x, z) {
 export const onDirt = (x, z) => { const info = roadInfo(x, z); return info.d < info.half + 0.3 || jumpHeight(x, z) > 0; };
 
 // ── Meshes ─────────────────────────────────────────────────────────────
+// The grass's 0..1 colour variation at a point (the ground mesh and the riverbed patch share it)
+export const groundShade = (x, z) => 0.5 + 0.5 * Math.sin(x * 0.21 + Math.cos(z * 0.17) * 2) * Math.cos(z * 0.13);
 export function buildGround(segments, palette) {
   const size = WORLD.radius * 2 + 40;
   const geo = new THREE.PlaneGeometry(size, size, segments, segments);
@@ -290,8 +292,11 @@ export function buildGround(segments, palette) {
   const shade = new Float32Array(pos.count); // 0..1 variation, coloured per theme
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), z = pos.getZ(i);
-    pos.setY(i, terrainHeight(x, z));
-    shade[i] = 0.5 + 0.5 * Math.sin(x * 0.21 + Math.cos(z * 0.17) * 2) * Math.cos(z * 0.13);
+    // Along the river the coarse mesh sits 15 cm under the analytic surface: the fine riverbed patch (water.js) draws
+    // the channel there, and this keeps the mesh from poking through it between vertices
+    const nearRiver = riverInfo(x, z, RIVER.half + 3).d < RIVER.half + 3;
+    pos.setY(i, terrainHeight(x, z) - (nearRiver ? 0.15 : 0));
+    shade[i] = groundShade(x, z);
   }
   geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(pos.count * 3), 3));
   geo.computeVertexNormals();
