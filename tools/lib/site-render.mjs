@@ -62,6 +62,27 @@ ${byDistrict(stops, key).map((s) => renderStop(s, labels)).join('\n')}
     </section>`;
 }
 
+// Structured data for the stops page: the page itself and the list of stops (name, one line, its deep link).
+// A data block, not a script: the CSP's script-src does not apply to it.
+function jsonLd(ctx) {
+  const { stops, districts, generated } = ctx;
+  const items = publicStops(stops).map((s, i) => ({
+    '@type': 'ListItem', position: i + 1, name: s.name, description: s.summary, url: `${SITE}${stopHref(s.key)}`,
+    item: { '@type': 'Thing', name: s.name, description: s.summary, url: `${SITE}${stopHref(s.key)}`, additionalType: districts[s.district].name },
+  }));
+  const data = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      { '@type': 'WebPage', '@id': `${SITE}/ecosystem/stops/`, url: `${SITE}/ecosystem/stops/`, name: 'Every stop in the Strike ecosystem',
+        description: 'Every district and every stop in the drivable Strike ecosystem map, as text.', dateModified: generated, inLanguage: 'en',
+        isPartOf: { '@type': 'WebSite', name: 'Copilot Check', url: `${SITE}/` },
+        author: { '@type': 'Person', name: 'Ben Ryan', url: 'https://benryan.com.au' } },
+      { '@type': 'ItemList', name: 'Stops in the Strike ecosystem world', numberOfItems: items.length, itemListOrder: 'https://schema.org/ItemListOrderAscending', itemListElement: items },
+    ],
+  };
+  return JSON.stringify(data).replace(/</g, '\\u003c');
+}
+
 export function renderStopsPage(ctx) {
   const { stops, districts, order = ORDER, generated } = ctx;
   const n = publicStops(stops).length;
@@ -84,6 +105,10 @@ export function renderStopsPage(ctx) {
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Strike Ecosystem: an aerial view of Strike HQ and the dirt roads out to its districts.">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Every stop in the Strike ecosystem">
+  <meta name="twitter:description" content="The drivable Strike map as text: ${n} stops across ${order.length} districts, each with a link into the world.">
+  <meta name="twitter:image" content="${SITE}/ecosystem/img/og.png">
+  <script type="application/ld+json">${jsonLd(ctx)}</script>
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/img/favicon.ico" sizes="32x32">
   <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">

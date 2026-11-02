@@ -32,7 +32,13 @@ test('stops page: every public stop by name, a Drive there link per stop, distri
   assert.ok(html.startsWith('<!doctype html>'));
   assert.ok(html.includes('<link rel="canonical" href="https://strike.benryan.com.au/ecosystem/stops/">'));
   for (const w of ['recommend', 'you should', 'best setting', ' score']) assert.ok(!html.toLowerCase().includes(w), `banned: ${w}`);
-  assert.ok(!/<script/.test(html.replace(/<script src="\/src\/[a-z-]+\.js"><\/script>/g, '')), 'no inline script');
+  assert.ok(!/<script/.test(html.replace(/<script src="\/src\/[a-z-]+\.js"><\/script>/g, '').replace(/<script type="application\/ld\+json">[^]*?<\/script>/, '')), 'no inline script (a JSON-LD data block is allowed)');
+  const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([^]*?)<\/script>/)[1]);
+  assert.equal(ld['@graph'][0]['@type'], 'WebPage');
+  assert.equal(ld['@graph'][1]['@type'], 'ItemList');
+  assert.equal(ld['@graph'][1].numberOfItems, publicStops(STOPS).length, 'the ItemList has every public stop');
+  assert.ok(ld['@graph'][1].itemListElement.every((it) => it.url.startsWith('https://strike.benryan.com.au/ecosystem/?stop=')));
+  assert.ok(html.includes('<meta name="twitter:title"') && html.includes('<meta name="twitter:image"'), 'twitter tags');
   assert.ok(html.includes('id="theme-toggle"') && html.includes('/src/theme-toggle.js'), 'the site theme toggle is on the page');
   assert.ok(!/ style="/.test(html), 'no inline style');
 });
