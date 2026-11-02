@@ -75,3 +75,13 @@ test('the coarse ground is built without the ridge lift and 30 cm low under the 
   assert.ok(Math.abs(groundVertexHeight(q.x, q.z) - terrainHeight(q.x, q.z)) < 1e-9);
   setRidgeSeries(null);
 });
+test('the coarse ground is lowered only along the ridge road itself, not in the crescents past its ends', () => {
+  setRidgeSeries(LIN);
+  const t0 = ridge.curve.getTangentAt(0), p0 = ridge.curve.getPointAt(0);
+  const before = { x: p0.x - t0.x * 3, z: p0.z - t0.z * 3 }; // 3 m before the road starts, towards the plaza
+  assert.ok(Math.abs(groundVertexHeight(before.x, before.z) - terrainHeight(before.x, before.z)) < 1e-9, 'before the start');
+  const t1 = ridge.curve.getTangentAt(1), p1 = ridge.curve.getPointAt(1);
+  const after = { x: p1.x + t1.x * 3, z: p1.z + t1.z * 3 };
+  assert.ok(Math.abs(groundVertexHeight(after.x, after.z) - terrainHeight(after.x, after.z)) < 1e-9, 'past the end');
+  setRidgeSeries(null);
+});

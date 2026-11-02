@@ -325,7 +325,7 @@ export const groundShade = (x, z) => 0.5 + 0.5 * Math.sin(x * 0.21 + Math.cos(z 
  * new series lands, which this mesh never is. */
 export function groundVertexHeight(x, z) {
   const info = roadInfo(x, z);
-  if (info.road === RIDGE_ROAD && info.d < info.half + RIDGE_FADE) return terrainHeight(x, z, info, false) - 0.3;
+  if (info.road === RIDGE_ROAD && info.d < info.half + RIDGE_FADE && info.t > 0 && info.t < 1) return terrainHeight(x, z, info, false) - 0.3; // along the road only: past its ends roadInfo clamps t and the patch stops
   const nearRiver = riverInfo(x, z, RIVER.half + 3).d < RIVER.half + 3;
   return terrainHeight(x, z, info) - (nearRiver ? 0.15 : 0);
 }
