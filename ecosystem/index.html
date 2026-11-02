@@ -16,6 +16,8 @@
   <meta property="og:image:alt" content="Strike Ecosystem: an aerial view of Strike HQ and the dirt roads out to its districts.">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/img/favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
   <script src="/src/theme.js"></script>
   <link rel="stylesheet" href="/css/br.css">
   <link rel="stylesheet" href="/ecosystem/ecosystem.css">
@@ -24,6 +26,7 @@
   <link rel="preload" href="/ecosystem/img/strike-mark.svg" as="image">
 </head>
 <body>
+  <noscript><div class="noscript"><p class="br-label">Strike ecosystem</p><p>The ecosystem world needs JavaScript and WebGL. <a href="/ecosystem/stops/">Read every stop as text instead.</a></p></div></noscript>
   <canvas id="world" aria-hidden="true"></canvas>
 
   <div class="loader" id="loader" role="status" aria-live="polite">
@@ -94,6 +97,7 @@
     <span class="foot-live">Live data: Strike public API ·</span>
     <span class="foot-credit">Made with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></span>
     <span><span class="foot-long">Independent, not affiliated with Strike</span><span class="foot-short">Not affiliated with Strike</span></span>
+    <a href="/ecosystem/stops/">Every stop</a>
     <a href="https://benryan.com.au">Built by Ben Ryan</a>
   </footer>
 
@@ -109,7 +113,7 @@
       <li><span class="key">M</span> map view</li>
       <li><span class="key">E</span> wave at someone</li>
     </ul>
-    <p class="muted"><span class="touch-tip">On a phone, use the buttons at the bottom of the screen. </span>Looking for something? Map view jumps you straight there. Race a lap puts you on the RealFi Raceway start line, with a live top 10. The Fill Yard, off the road to Perpetuals, shows every trade on Strike as it happens. Other visitors can see your car and the name you chose. Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>; the code is <a href="https://github.com/benryandev/copilot-check" target="_blank" rel="noopener">on GitHub</a>.</p>
+    <p class="muted"><span class="touch-tip">On a phone, use the buttons at the bottom of the screen. </span>Looking for something? Map view jumps you straight there. Race a lap puts you on the RealFi Raceway start line, with a live top 10. The Fill Yard, off the road to Perpetuals, shows every trade on Strike as it happens. Other visitors can see your car and the name you chose. Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>; the code is <a href="https://github.com/benryandev/copilot-check" target="_blank" rel="noopener">on GitHub</a>. Prefer to read? <a href="/ecosystem/stops/">Every stop as text</a>.</p>
     <div class="sheet-actions">
       <button type="button" class="br-button" id="start" autofocus><span class="br-button-label">Start driving</span></button>
       <button type="button" class="br-button br-button--secondary" id="intro-race"><span class="br-button-label">Race a lap</span></button>

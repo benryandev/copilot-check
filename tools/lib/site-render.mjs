@@ -85,6 +85,8 @@ export function renderStopsPage(ctx) {
   <meta property="og:image:alt" content="Strike Ecosystem: an aerial view of Strike HQ and the dirt roads out to its districts.">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/img/favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
   <link rel="stylesheet" href="/css/br.css">
   <link rel="stylesheet" href="/css/app.css">
   <link rel="stylesheet" href="/ecosystem/stops/stops.css">

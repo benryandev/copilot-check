@@ -1,0 +1,11 @@
+/* The styled 404 (404.html): the kit shell, one heading, three ways onward. */
+.notfound { min-height: 100vh; display: flex; flex-direction: column; background: var(--bg-page); color: var(--text-primary); }
+.notfound > .wrap { flex: 1 0 auto; width: 100%; }
+.notfound-main { padding-block: var(--space-2xl) var(--space-3xl); }
+.notfound-main h1 { font-family: var(--font-display); font-size: clamp(2.5rem, 1.6rem + 4vw, 4.5rem); line-height: 1; margin: var(--space-2xs) 0 var(--space-sm); }
+.notfound-main .lede { color: var(--text-secondary); font-size: 1.15rem; line-height: 1.5; max-width: var(--measure-lede); margin: 0 0 var(--space-lg); }
+.notfound-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); }
+.notfound-links .br-button { text-decoration: none; }
+.notfound .home { color: inherit; text-decoration: none; }
+.notfound .home:hover { text-decoration: underline; text-underline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .notfound * { transition: none !important; animation: none !important; } }

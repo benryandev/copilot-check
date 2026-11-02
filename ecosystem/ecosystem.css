@@ -200,6 +200,9 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .sheet .muted { color: var(--text-secondary); font-size: 0.95rem; }
 .sheet .muted a { color: inherit; text-decoration: underline; text-underline-offset: 0.15em; } /* the kit's link colour fails contrast on the dark sheet */
 .sheet-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+/* Without JavaScript: one box pointing at the text companion (noscript content, never shown otherwise) */
+.noscript { position: fixed; inset: 0; z-index: 50; display: grid; place-content: center; padding: var(--space-lg); background: var(--bg-page); color: var(--text-primary); text-align: center; }
+.noscript p { max-width: var(--measure); font-size: 1.1rem; line-height: 1.5; }
 .sheet-actions .br-button { text-decoration: none; }
 /* Copy link's fallback when the clipboard is unavailable: the chip shows the URL itself, selectable */
 .sheet-actions .br-button.is-url { user-select: text; -webkit-user-select: text; cursor: text; font-family: var(--font-mono); font-size: 0.8rem; max-width: 100%; }

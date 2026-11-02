@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /test/
+Disallow: /tools/
+Disallow: /qa/
+Disallow: /scripts/
+Sitemap: https://strike.benryan.com.au/sitemap.xml
