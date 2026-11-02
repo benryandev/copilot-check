@@ -8,5 +8,3 @@ export function blimpPose(nowMs, fixedAngle = null) {
   const heading = Math.atan2(-Math.cos(angle), -Math.sin(angle)); // nose along the loop: forward is (-sin h, -cos h), like the car
   return { x, y: BLIMP.height, z, heading, angle };
 }
-/** The banner's line: the same 24 h volume the district boards show (data.js `values`), or a holding word. Never a price. */
-export const blimpText = (values) => `24H VOLUME  ${values?.volume24h ?? "LOADING"}`;
