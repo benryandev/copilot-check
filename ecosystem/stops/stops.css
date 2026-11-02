@@ -1,0 +1,62 @@
+/* The stops page: every district and stop as text, on the kit (br.css + app.css). Generated markup from
+   tools/lib/site-render.mjs; district colours follow content.js so a card's rule matches its plaza ring. */
+
+.stops-page { background: var(--bg-page); color: var(--text-primary); }
+
+/* District accents (content.js ORDER colours); the hub shares Perpetuals' green */
+.district-hub { --d: #22c55e; }
+.district-perps { --d: #22c55e; }
+.district-earn { --d: #22d3ee; }
+.district-collateral { --d: #facc15; }
+.district-partners { --d: #ec4899; }
+.district-developers { --d: #3b82f6; }
+.district-analytics { --d: #f97316; }
+.district-community { --d: #cbd5e1; }
+.district-token { --d: #a78bfa; }
+.district-chains { --d: #94a3b8; }
+.district-raceway { --d: #0fb89c; }
+.district-yard { --d: #26fab0; }
+
+.stops-head { padding-block: var(--space-xl) var(--space-lg); border-bottom: 1px solid var(--border-color); }
+.stops-head h1 { font-family: var(--font-display); font-size: clamp(2rem, 1.4rem + 2.4vw, 3.25rem); line-height: 1.05; margin: var(--space-2xs) 0 var(--space-sm); max-width: 18ch; }
+.stops-head .lede { max-width: var(--measure); color: var(--text-secondary); font-size: 1.1rem; line-height: 1.5; margin: 0; }
+.stops-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin: var(--space-md) 0 0; }
+
+.stops-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-lg); padding-block: var(--space-lg) var(--space-2xl); }
+
+.stops-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
+.stops-nav a { display: inline-block; padding: 0.4rem 0.75rem; border: 1px solid var(--border-color); border-radius: 999px; color: var(--text-primary); text-decoration: none; font-size: 0.95rem; background: var(--bg-surface); }
+.stops-nav a:hover { border-color: var(--text-secondary); }
+.stops-nav a:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+.stops-main { min-width: 0; }
+.district { margin-block: 0 var(--space-xl); scroll-margin-top: var(--space-md); }
+.district h2 { font-family: var(--font-display); font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2.1rem); line-height: 1.1; margin: 0 0 var(--space-2xs); padding-left: 0.85rem; border-left: 5px solid var(--d); }
+.district-line { color: var(--text-secondary); max-width: var(--measure); line-height: 1.5; margin: 0 0 var(--space-md); display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; }
+.district-drive { color: var(--text-primary); text-underline-offset: 3px; }
+.district-drive:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+.district .stop { background: var(--bg-surface); border: 1px solid var(--border-color); border-left: 4px solid var(--d); border-radius: 12px; padding: var(--space-md) var(--space-md) var(--space-sm); margin: 0 0 var(--space-sm); scroll-margin-top: var(--space-md); }
+.stop h3 { font-family: var(--font-display); font-size: 1.35rem; line-height: 1.2; margin: 0 0 var(--space-2xs); }
+.stop p { max-width: var(--measure); font-size: 1.05rem; line-height: 1.55; margin: 0 0 var(--space-xs); }
+.stop ul { margin: 0 0 var(--space-xs); padding-left: 1.1rem; max-width: var(--measure); }
+.stop li { line-height: 1.5; }
+.stop li + li { margin-top: var(--space-3xs); }
+.stop-live { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-secondary); }
+.stop-actions { display: flex; flex-wrap: wrap; gap: var(--space-2xs); margin: var(--space-xs) 0 0; max-width: none; }
+
+@media (min-width: 1024px) {
+  .stops-body { grid-template-columns: 15rem minmax(0, 1fr); align-items: start; }
+  .stops-nav { position: sticky; top: var(--space-md); }
+  .stops-nav ul { flex-direction: column; gap: 0.2rem; }
+  .stops-nav a { display: block; border: none; border-left: 3px solid transparent; border-radius: 0; padding: 0.35rem 0.75rem; background: none; color: var(--text-secondary); }
+  .stops-nav a:hover { color: var(--text-primary); border-left-color: var(--border-color); }
+}
+
+@media (min-width: 1280px) {
+  .district .stops-grid { display: grid; }
+  .district { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-sm); align-items: start; }
+  .district h2, .district-line { grid-column: 1 / -1; }
+}
+
+@media (prefers-reduced-motion: reduce) { .stops-page * { transition: none !important; animation: none !important; } }

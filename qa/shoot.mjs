@@ -30,6 +30,9 @@ const STATES = {
   // Paper Copy trial page (served at /paper/<id> by the rewrite in vercel.json and serve.mjs)
   paper: '/paper/dmlPU88K0egpF3IdPV3Pvg',
   paperGone: '/paper/AAAAAAAAAAAAAAAAAAAAAA',
+  // The ecosystem world's text companion and the styled 404 (static pages on the same kit)
+  stops: '/ecosystem/stops/',
+  notfound: '/404.html',
   paperBad: '/paper/x',
   // Project submission form (ecosystem): blank, every field flagged, and the thank-you panel (worker mocked)
   submit: '/ecosystem/submit/',
@@ -148,7 +151,7 @@ for (const state of pick) {
   }
   await page.evaluate(() => document.fonts.ready);
   for (const theme of THEMES) {
-    await page.evaluate(t => { const r = document.documentElement; if (r.classList.contains('dark') !== (t === 'dark')) document.getElementById('theme-toggle').click(); }, theme);
+    await page.evaluate(t => { const r = document.documentElement; if (r.classList.contains('dark') !== (t === 'dark')) { const b = document.getElementById('theme-toggle'); if (b) b.click(); else { r.classList.toggle('dark'); r.classList.toggle('light'); } } }, theme); // a page without a toggle (404) flips the class
     for (const w of WIDTHS) {
       await page.setViewportSize({ width: w, height: 900 });
       await page.waitForTimeout(350);

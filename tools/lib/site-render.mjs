@@ -93,7 +93,10 @@ export function renderStopsPage(ctx) {
 <body class="stops-page">
   <header class="stops-head">
     <div class="wrap">
-      <p class="br-label">Strike ecosystem</p>
+      <div class="topbar">
+        <p class="sm">Strike ecosystem<span class="eyebrow-tail"> · as text</span></p>
+        ${THEME_TOGGLE}
+      </div>
       <h1>Every stop in the Strike ecosystem</h1>
       <p class="lede">Every district and every stop in the drivable map, as text. Each "Drive there" opens the world at that pad. Figures marked live are read from Strike's public API on the pad itself.</p>
       <p class="stops-actions"><a class="br-button" href="/ecosystem/">Drive the world</a> <a class="br-button br-button--secondary" href="/">Copilot Check</a></p>
@@ -115,10 +118,24 @@ ${order.map((k) => renderDistrict(k, ctx)).join('\n')}
       <p class="foot-note foot-credit"><img src="/img/br-logo-white.svg" alt="" width="32" height="15"> <span>Independent, not affiliated with Strike. Built by <a href="https://benryan.com.au">Ben Ryan</a>. Made with <a href="https://threejs.org" rel="noopener">three.js</a>. Source on <a href="https://github.com/benryandev/copilot-check">GitHub</a>. Generated ${esc(generated)}.</span></p>
     </div>
   </footer>
+  <script src="/src/theme-toggle.js"></script>
 </body>
 </html>
 `;
 }
+
+// The Check page's toggle, verbatim (index.html), so the pages feel like one site
+export const THEME_TOGGLE = `<button class="theme-toggle" type="button" aria-label="Switch to dark mode" id="theme-toggle">
+          <svg class="theme-toggle-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <g class="theme-toggle-rays">
+              <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </g>
+            <path class="theme-toggle-path" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
+          </svg>
+        </button>`;
 
 export function renderSitemap(entries) {
   return `<?xml version="1.0" encoding="UTF-8"?>
