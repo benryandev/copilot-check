@@ -8,10 +8,10 @@ import { groundHeight, onDirt, onWater, racewayWeight, WORLD } from "./terrain.j
 
 import { glowIntensity } from "./post.js";
 import { boostFor, boostedTop } from "./boost-math.js";
-import { topShare, accelShare, slowShare } from "./car-math.js";
+import { topShare, accelShare, slowShare, GRAVITY } from "./car-math.js";
 
 export const CAR_R = 1.6;
-const MAX_F = 24, MAX_R = 9, ACCEL = 16, BRAKE = 34, ROLL = 5, TURN = 2.2, GRAVITY = 30;
+const MAX_F = 24, MAX_R = 9, ACCEL = 16, BRAKE = 34, ROLL = 5, TURN = 2.2;
 const MAX_CLIMB = 0.9; // steepest slope (rise per unit) the car can drive up
 
 export function createCar(colour) {

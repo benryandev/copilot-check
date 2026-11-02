@@ -11,7 +11,7 @@ try { ({ chromium } = await import('playwright')); } catch {
   ({ chromium } = createRequire(`${g}/`)('playwright'));
 }
 const base = process.argv.find((a) => a.startsWith('http')) || 'http://localhost:8766';
-const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7); // cabinet | wave | river
+const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7); // cabinet | wave | river | stunt
 const OUT = new URL('./out/showcase/', import.meta.url).pathname;
 mkdirSync(OUT, { recursive: true });
 const FPS = 30, DT = 1000 / FPS;
@@ -90,5 +90,14 @@ if (!only || only === 'river') {
   await p.evaluate(() => { window.__eco.keys.up = false; });
   await p.context().close();
   console.log('river-day.png');
+}
+// The epic jump by day: the car mid-air over the river from the side-on camera
+if (!only || only === 'stunt') {
+  const p = await open('light');
+  await p.evaluate(() => window.__eco.stunt());
+  await steps(p, 4);
+  await p.screenshot({ path: `${OUT}stunt-day.png` });
+  await p.context().close();
+  console.log('stunt-day.png');
 }
 await browser.close();

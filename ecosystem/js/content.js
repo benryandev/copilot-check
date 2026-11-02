@@ -138,6 +138,12 @@ export const JUMPS = [
   { road: TRACK_ROAD, s: 70, side: -1, length: 8, height: 1.9, width: 5.4 },
   { road: TRACK_ROAD, s: 262, side: 1, length: 8, height: 1.9, width: 5.4 },
   { road: TRACK_ROAD, s: 445, side: 1, length: 8, height: 1.9, width: 5.4 },
+  // The epic jump (2 Nov 2026, Ben): two ramps facing each other across the river's straight stretch south of the Token
+  // ford. Free-standing (no road): `x, z` is the ramp's low end, `dir` the way up it. Flat out clears the gap and lands
+  // on the far ramp's slope (a boost); anything under about 22 m/s meets the far face and the river. `stunt` turns the
+  // side-on camera on for the flight.
+  { x: -82, z: 18, dir: [-1, 0], length: 12, height: 3.4, width: 5, stunt: true },
+  { x: -118.5, z: 18, dir: [1, 0], length: 12, height: 3.4, width: 5, stunt: true },
 ];
 
 // ── The river (2 Nov 2026, Ben) ────────────────────────────────────────

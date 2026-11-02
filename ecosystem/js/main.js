@@ -3,8 +3,9 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, SPAWN, MULTIPLAYER } from "./content.js";
 import { fetchLive, LABELS } from "./data.js";
-import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL } from "./terrain.js";
+import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo } from "./terrain.js";
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
+import { stuntBlend, stuntCamera } from "./stunt-math.js";
 import { createGrass, createDust, createFireworks } from "./effects.js";
 import { createSky } from "./sky.js";
 import {
@@ -441,6 +442,30 @@ function placeCamera(dt, snap = false) {
   sun.target.position.set(s.x, s.y, s.z);
 }
 
+// ── The epic jump's camera ────────────────────────────────────────────
+// Off a stunt ramp the camera eases to a point down the river at bank height and watches the flight side-on; after the
+// landing the chase camera eases back. Never under reduced motion.
+const stunt = { k: 0, on: false, cam: new THREE.Vector3(), look: new THREE.Vector3() };
+function stuntStart(j) {
+  if (reduceMotion) return;
+  const other = jumps.find((o) => o.stunt && o !== j);
+  const lipA = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length }, lipB = other ? { x: other.ox + other.fx * other.length, z: other.oz + other.fz * other.length } : lipA;
+  const mid = { x: (lipA.x + lipB.x) / 2, z: (lipA.z + lipB.z) / 2 }, ri = riverInfo(mid.x, mid.z, 12);
+  const c = stuntCamera(mid, ri.d < Infinity ? ri : { tx: j.rx, tz: j.rz }, WATER_LEVEL);
+  stunt.cam.set(c.x, c.y, c.z);
+  stunt.on = true;
+}
+function stuntTick(dt) {
+  if (!stunt.on && stunt.k <= 0) return;
+  if (!car.s.air) stunt.on = false;
+  stunt.k = stuntBlend(stunt.k, dt, stunt.on && car.s.air);
+  if (stunt.k <= 0) return;
+  const s = car.s;
+  camera.position.lerpVectors(camPos, stunt.cam, stunt.k);
+  stunt.look.set(s.x, s.y + 0.8, s.z).lerp(camLook, 1 - stunt.k);
+  camera.lookAt(stunt.look);
+}
+
 // ── Skip drawing districts out of sight (beyond the fog) ──────────────
 function cullDistricts() {
   for (const [key, g] of Object.entries(districtGroups)) {
@@ -870,9 +895,10 @@ function frame() {
   const dt = Math.min(raw, 1 / 30);
   const t = clock.elapsedTime;
   if (!paused) {
-    const px = car.s.x, pz = car.s.z;
+    const px = car.s.x, pz = car.s.z, wasAir = car.s.air;
     const info = stepCar(car, raceLocked() ? NO_KEYS : keys, dt);
     if (info.event) car.lastEvent = info.event; // QA scripts read it
+    if (!wasAir && car.s.air) { const j = jumpAt(px, pz) || jumpAt(px - info.fx, pz - info.fz); if (j?.stunt) stuntStart(j); } // off a stunt ramp: the side-on camera
     brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on, info.boost > 0);
     sound.tick(dt, { speed: car.s.speed, throttle: (keys.up ? 1 : 0) - (keys.down ? 1 : 0), surface: car.s.air ? "air" : info.wet ? "water" : info.dirt ? "dirt" : onCobbles(car.s.x, car.s.z) ? "cobble" : "grass", boost: info.boost > 0 });
     if (info.event?.landed > 4) sound.land(Math.min(1, info.event.landed / 14));
@@ -902,7 +928,7 @@ function frame() {
   waterMesh?.userData.tick(t);
   sky.userData.tick(t, dt, camera.position);
   if (arrival?.active) arrival.tick(dt);
-  else if (!debugCam) { placeCamera(dt); cineCam?.(dt); }
+  else if (!debugCam) { placeCamera(dt); stuntTick(dt); cineCam?.(dt); }
   if ((frameNo++ & 15) === 0) {
     if (!debugCam) cullDistricts();
     const here = inRaceway(car.s.x, car.s.z);
@@ -955,6 +981,7 @@ setTimeout(() => $("loader").remove(), 450);
 
 // Test hook for automated checks (no effect on play)
 window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, placeCar, colliders,
+  stunt: () => { const j = jumps.find((o) => o.stunt && o.fx < 0); const lip = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length }; Object.assign(car.s, { x: lip.x + j.fx * 6, z: lip.z, heading: Math.atan2(-j.fx, -j.fz), speed: 24, air: true, vy: 2, airTime: 0.3 }); car.s.y = groundHeight(lip.x, lip.z) + j.height + 1.2; stuntStart(j); stunt.k = 1; placeCamera(0, true); stuntTick(0); }, stuntState: () => ({ k: stunt.k, on: stunt.on }), // QA: mid-flight over the river with the side-on camera up
   splash: (age = 0.35) => { sprayBurst(car.s.x, Math.max(car.s.y, WATER_LEVEL), car.s.z, 40); spray?.userData.step(age); } /* pre-aged, so a still catches the burst spread rather than under the car */, sprayCount: () => sprayCount, // river QA: an entry burst on demand, and how many puffs have flown
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
   info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState,

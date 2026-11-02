@@ -150,6 +150,10 @@ export const onWater = (x, z) => riverInfo(x, z, 6).d < RIVER.half - 0.3 && !onB
 // ── Jumps, placed in each road's local frame ───────────────────────────
 // A jump may give `s` (metres along the road) instead of `t`.
 export const jumps = JUMPS.map((jump) => {
+  if (jump.road == null) { // free-standing: placed by its low end and direction
+    const l = Math.hypot(jump.dir[0], jump.dir[1]), fx = jump.dir[0] / l, fz = jump.dir[1] / l;
+    return { ...jump, ox: jump.x, oz: jump.z, fx, fz, rx: -fz, rz: fx };
+  }
   const r = roads[jump.road];
   const j = jump.s != null ? { ...jump, t: jump.s / r.len } : jump;
   const start = r.curve.getPointAt(j.t);
@@ -162,15 +166,24 @@ export const jumps = JUMPS.map((jump) => {
   return { ...j, ox: start.x + rx * off, oz: start.z + rz * off, fx: tx / l, fz: tz / l, rx, rz };
 });
 
-function jumpHeight(x, z) {
+/** The jump whose footprint holds the point, or null. */
+export function jumpAt(x, z) {
   for (const j of jumps) {
     const dx = x - j.ox, dz = z - j.oz;
     const u = dx * j.fx + dz * j.fz;
     const v = dx * j.rx + dz * j.rz;
-    if (u >= 0 && u <= j.length && Math.abs(v) <= j.width / 2) return j.height * Math.pow(u / j.length, 1.35);
+    if (u >= 0 && u <= j.length && Math.abs(v) <= j.width / 2) return j;
   }
-  return 0;
+  return null;
 }
+function jumpHeight(x, z) {
+  const j = jumpAt(x, z);
+  if (!j) return 0;
+  const u = (x - j.ox) * j.fx + (z - j.oz) * j.fz;
+  return j.height * Math.pow(u / j.length, 1.35);
+}
+// Free-standing ramps stand on flattened ground (like plazas), so both lips of a pair sit at the same height
+const freeJumpPads = jumps.filter((j) => j.road == null).map((j) => ({ x: j.ox + j.fx * j.length / 2, z: j.oz + j.fz * j.length / 2, r: j.length / 2 + 3 }));
 
 // ── Builders' Row: shop plots along the last stretch of the road into Developers ──
 // Alternate sides every 13 m, facing the road; each slot is flattened.
@@ -252,6 +265,7 @@ function flatMask(x, z, d, half = ROAD_HALF) {
     m *= smooth(1, 14, dp);
   }
   for (const b of builderSlots) m *= smooth(7, 16, Math.hypot(x - b.x, z - b.z));
+  for (const j of freeJumpPads) m *= smooth(j.r, j.r + 8, Math.hypot(x - j.x, z - j.z));
   return m;
 }
 function hills(x, z) {

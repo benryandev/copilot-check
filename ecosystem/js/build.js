@@ -4,7 +4,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { glowIntensity } from "./post.js";
 import { DISTRICTS, STOPS, ROADS, layoutStops, boardSpot } from "./content.js";
 import { LABELS } from "./data.js";
-import { roads, jumps, ROAD_HALF, terrainHeight, builderSlots } from "./terrain.js";
+import { roads, jumps, ROAD_HALF, terrainHeight, builderSlots, roadInfo } from "./terrain.js";
 import { tint, setDark } from "./colours.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
 
@@ -822,6 +822,15 @@ export function buildRoadSigns(scene) {
     buildArch(groupFor(scene, r.to), r, to, Math.min(22, r.len / 2));
   });
   jumps.forEach((j) => {
+    if (j.road == null) { // a free-standing ramp: a sign on the nearest road within 30 m, its arm pointing at the run-up
+      const info = roadInfo(j.ox, j.oz, 30);
+      if (info.road < 0) return;
+      const r = roads[info.road], p = r.curve.getPointAt(info.t), tan = r.curve.getTangentAt(info.t);
+      const dx = j.ox - p.x, dz = j.oz - p.z, d = Math.hypot(dx, dz);
+      const sx = p.x + (dx / d) * (r.half + 1.6), sz = p.z + (dz / d) * (r.half + 1.6);
+      buildSignpost(scene, sx, sz, [{ text: "River jump", colour: 0xf59e0b, dir: [(j.ox - sx) / d, (j.oz - sz) / d] }]);
+      return;
+    }
     const r = roads[j.road];
     const t = (j.t - 14 / r.len + 1) % 1;
     const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
@@ -1028,8 +1037,9 @@ export function addProps(scene) {
       addProp(groupFor(scene, "perps"), "cone", liq.pos[0] + Math.cos(a) * 8, liq.pos[1] + Math.sin(a) * 8);
     }
   }
-  // Hay bales on the grass either side of each jump's landing
+  // Hay bales on the grass either side of each jump's landing (the river ramps have none: 10 m past their lips is the water)
   jumps.forEach((j) => {
+    if (j.road == null) return;
     const half = roads[j.road].half;
     const parent = roads[j.road].kind === "track" ? groupFor(scene, "raceway") : scene;
     for (const side of [-1, 1]) for (let k = 0; k < 2; k++) {

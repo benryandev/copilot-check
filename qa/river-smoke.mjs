@@ -91,5 +91,37 @@ const sprayed = await page.evaluate(async () => {
 console.log('     spray puffs while wading', sprayed);
 if (!(sprayed > 0)) fail('no spray while wading through the ford');
 
+// The epic jump: flat out from the east bank clears the river and lands on the far ramp with a boost; 16 m/s ends in the water
+const jumpRun = (speed) => page.evaluate(async (speed) => {
+  const T = await import('/ecosystem/js/terrain.js');
+  const { stepCar } = await import('/ecosystem/js/car.js');
+  const e = window.__eco, car = e.car, s = car.s;
+  const j = T.jumps.find((o) => o.stunt && o.fx < 0);
+  // Flat out: a 45 m run-up with the throttle held. Slow: rolled onto the ramp's foot at `speed` and left to coast (the throttle would pull it back to 24)
+  const back = speed >= 24 ? 45 : 0;
+  Object.assign(s, { x: j.ox - j.fx * back, z: j.oz, heading: Math.atan2(-j.fx, -j.fz), speed, steer: 0, vy: 0, air: false, boost: 0, wet: false, airTime: 0 });
+  s.y = T.groundHeight(s.x, s.z);
+  const out = { air: 0, landed: null, boost: null, wetFrames: 0, minSpeed: Infinity, maxY: -Infinity, stuntK: 0 };
+  for (let i = 0; i < 300; i++) {
+    const info = stepCar(car, { up: speed >= 24, down: false, left: false, right: false }, 1 / 60);
+    if (s.air) out.air++;
+    out.maxY = Math.max(out.maxY, s.y);
+    if (T.onWater(s.x, s.z) && !s.air) out.wetFrames++;
+    out.minSpeed = Math.min(out.minSpeed, s.speed);
+    if (info.event?.landed != null && out.landed == null) { out.landed = i; out.boost = s.boost; out.landedOn = T.jumpAt(s.x, s.z) ? 'ramp' : T.onWater(s.x, s.z) ? 'water' : 'ground'; }
+    if (out.landed != null && i > out.landed + 30) break;
+  }
+  return out;
+}, speed);
+const fast = await jumpRun(24);
+console.log('     epic jump at 24', JSON.stringify(fast));
+if (!(fast.air > 20)) fail('never took off');
+if (fast.landedOn !== 'ramp') fail(`landed on ${fast.landedOn}, not the far ramp`);
+if (!(fast.boost > 0)) fail('no boost for the landing');
+if (fast.wetFrames) fail('got wet on the fast run');
+const slow = await jumpRun(16);
+console.log('     epic jump at 16', JSON.stringify(slow));
+if (!(slow.wetFrames > 0 || slow.minSpeed < 0)) fail('the slow run should end in the river or against the far face');
+
 console.log('ok   river smoke');
 await browser.close();
