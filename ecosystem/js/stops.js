@@ -78,6 +78,41 @@ export const STOPS = [
     docsLabel: "Strike Node",
   },
   {
+    key: "markets",
+    district: "perps",
+    name: "Markets",
+    shape: "dome",
+    summary:
+      "Strike lists USD-settled perpetuals in four groups: crypto (BTC, ETH, SOL, ADA, XRP and more), US and Asian stocks (NVDA, TSLA, GOOGL, COIN, SK Hynix), indices (S&P 500, Nasdaq 100) and commodities (gold, silver, WTI oil). Examples as listed on 3 November 2026.",
+    points: [
+      "Every market has its own leverage limit, margin tiers, tick size and minimum order, and the list grows as Strike adds markets.",
+      "The live figure on this pad is the number of markets in trading status, read from Strike's public markets endpoint.",
+    ],
+    live: ["markets"],
+    docs: `${DOCS}/api/market/rest-api/exchange-info`,
+    docsLabel: "Exchange Info",
+    site: "https://app.strikefinance.org/trade/BTC",
+    siteLabel: "See the markets",
+  },
+  {
+    key: "order-types",
+    district: "perps",
+    name: "Order types and fees",
+    shape: "kiosk",
+    summary:
+      "Market, limit, stop market, stop limit, take profit and stop loss, trailing stop, scale, TWAP and grid, matched by price then time. Fees are tiered on your rolling 30-day volume.",
+    points: [
+      "Tier 0 (under $100K in 30 days) pays 0.050% as taker and earns a 0.005% maker rebate; tiers recalculate daily at 00:05 UTC, and more volume lowers the taker fee.",
+      "Staked STRIKE unlocks discounts of 5% to 40% on positive fees, from 5,000 STRIKE up. Rebates are unchanged.",
+      "The bots (TWAP, trailing stop, grid, scale) and RFQ each have their own pad in this plaza.",
+    ],
+    live: null,
+    docs: `${DOCS}/perpetuals/order-types`,
+    docsLabel: "Order Types",
+    site: `${DOCS}/perpetuals/trading-fees`,
+    siteLabel: "Docs: Trading Fees",
+  },
+  {
     key: "rfq",
     district: "perps",
     name: "Strike RFQ",
@@ -138,6 +173,22 @@ export const STOPS = [
     docsLabel: "Sub-accounts",
   },
   {
+    key: "pair-trading",
+    district: "perps",
+    name: "Pair trading",
+    shape: "twin",
+    summary:
+      "The Pair Trading Terminal is a mode of the trade page, with no docs page of its own: one or more long legs against one or more short legs, sized by a split, with the basket's weighted ratio charted. As seen in the app on 3 November 2026.",
+    points: [
+      "Open it from the Carry Scanner's Trade button or a trade URL that names the long and short markets; Create Position places every leg.",
+      "Each leg is an ordinary market order placed one after another. Strike's own Carry Scanner says it: if one leg fails you hold an unhedged position.",
+      "The chart tabs show the basket's weighted ratio, performance and funding, and each leg's own market.",
+    ],
+    live: null,
+    docs: "https://app.strikefinance.org/trade/btc?long=btc&short=eth",
+    docsLabel: "Pair Trading Terminal in the app",
+  },
+  {
     key: "twap",
     district: "perps",
     name: "TWAP Bot",
@@ -196,6 +247,41 @@ export const STOPS = [
     live: null,
     docs: `${DOCS}/perpetuals/order-types`,
     docsLabel: "Order types",
+  },
+  {
+    key: "funding-comparison",
+    district: "perps",
+    name: "Funding Comparison and Carry Scanner",
+    shape: "antenna",
+    summary:
+      "Two pages in the app's Tools menu, with no docs page of their own. Funding Comparison lays Strike's hourly funding on every market beside Binance, Bybit, OKX, Hyperliquid, Lighter, Extended and Variational; the Carry Scanner ranks long/short pairs on Strike by funding carry against spread risk. As seen on 3 November 2026.",
+    points: [
+      "Funding Comparison shows each venue's rate and its gap to Strike's, with a Show Arb only filter for the markets where the gap is widest.",
+      "The Carry Scanner builds candidates from 30 days of hourly bars, sized by beta, with correlation, spread volatility and break-even days for each pair.",
+      "The app's own caveat: funding carry is a live snapshot and moves with the market, and correlation measured from past data can break down.",
+    ],
+    live: null,
+    docs: "https://app.strikefinance.org/funding-comparison",
+    docsLabel: "Funding Comparison in the app",
+    site: "https://app.strikefinance.org/carry-scanner",
+    siteLabel: "Carry Scanner in the app",
+  },
+  {
+    key: "funding-rates",
+    district: "perps",
+    name: "Funding rates",
+    shape: "flag",
+    pos: [26, -159], // inside the plaza east of the gate, mirroring the live board on the west; the windsocks stand on the east side of the road in
+    summary:
+      "Funding keeps a perpetual's price near its index by moving money between longs and shorts, every hour on the hour UTC. It is paid trader to trader; Strike keeps none of it.",
+    points: [
+      "Rates are quoted on an 8-hour basis and one eighth is paid each hour. Positive means longs pay shorts; negative, shorts pay longs.",
+      "The windsocks on the road in show Strike's rate per 8 hours on each sock, with Bybit, Binance and Hyperliquid in the row behind.",
+      "Crypto markets carry a 0.01% 8-hour interest rate; stocks, indices and commodities use a dampener instead. Both are capped at 4% per 8 hours either way.",
+    ],
+    live: null,
+    docs: `${DOCS}/perpetuals/funding-rates`,
+    docsLabel: "Funding Rates",
   },
   // ── Builders' Row (Developers): projects built on Strike. Listings by request and review only.
   {

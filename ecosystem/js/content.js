@@ -184,9 +184,12 @@ export function layoutStops() {
     if (!stops.length) continue;
     const base = Math.atan2(d.hubDir[1], d.hubDir[0]); // pointing at HQ
     const outer = Math.ceil(stops.length * 0.6);
+    // Past ten pads the arcs widen (Perpetuals after 3 Nov 2026 lays fourteen): 160° and 124° give 15.6 m and 13 m spacing at
+    // r = 54, still 25° clear of the ring-road mouths at ±70°; a plaza with ten or fewer keeps its arcs and positions.
+    const wide = stops.length > 10;
     const rows = [
-      { n: outer, r: d.radius - 12, from: 105, to: 255 },
-      { n: stops.length - outer, r: d.radius - 30, from: 128, to: 232 },
+      { n: outer, r: d.radius - 12, from: wide ? 95 : 105, to: wide ? 265 : 255 },
+      { n: stops.length - outer, r: d.radius - 30, from: wide ? 118 : 128, to: wide ? 242 : 232 },
     ];
     let k = 0;
     for (const row of rows) {
