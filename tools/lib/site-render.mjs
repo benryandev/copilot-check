@@ -66,10 +66,8 @@ ${byDistrict(stops, key).map((s) => renderStop(s, labels)).join('\n')}
 // A data block, not a script: the CSP's script-src does not apply to it.
 function jsonLd(ctx) {
   const { stops, districts, generated } = ctx;
-  const items = publicStops(stops).map((s, i) => ({
-    '@type': 'ListItem', position: i + 1, name: s.name, description: s.summary, url: `${SITE}${stopHref(s.key)}`,
-    item: { '@type': 'Thing', name: s.name, description: s.summary, url: `${SITE}${stopHref(s.key)}`, additionalType: districts[s.district].name },
-  }));
+  // Name and link only: the summaries are already in the page, and repeating 69 of them doubled its size
+  const items = publicStops(stops).map((s, i) => ({ '@type': 'ListItem', position: i + 1, name: `${s.name} (${districts[s.district].name})`, url: `${SITE}${stopHref(s.key)}` }));
   const data = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -112,8 +110,13 @@ export function renderStopsPage(ctx) {
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/img/favicon.ico" sizes="32x32">
   <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
-  <link rel="stylesheet" href="/css/br.css">
-  <link rel="stylesheet" href="/css/app.css">
+  <link rel="preload" href="/fonts/AtkinsonHyperlegibleNext-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/br-fonts.css">
+  <link rel="stylesheet" href="/css/br-tokens.css">
+  <link rel="stylesheet" href="/css/br-base.css">
+  <link rel="stylesheet" href="/css/br-components.css">
+  <link rel="stylesheet" href="/css/page.css">
   <link rel="stylesheet" href="/ecosystem/stops/stops.css">
   <script src="/src/theme.js"></script>
 </head>
