@@ -39,3 +39,8 @@ test('a held draft is skipped; two drafts with one slug collide', () => {
   assert.deepEqual(Object.keys(guides), []);
   assert.throws(() => buildGuides({ ...base, drafts: [{ path: 'a.md', text }, { path: 'b.md', text }] }), /slug.*twice|duplicate/i);
 });
+
+test('modified is never before published (a build on the morning of publication, by UTC still yesterday)', () => {
+  const { guides } = buildGuides({ ...base, today: '2026-11-09' });
+  assert.equal(guides['what-is-strike'].modified, '2026-11-10');
+});

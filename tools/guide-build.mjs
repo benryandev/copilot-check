@@ -58,7 +58,7 @@ export function buildGuides({ drafts, registry, images, previous = { guides: {} 
     const prev = previous.guides?.[meta.slug];
     guides[meta.slug] = {
       slug: meta.slug, title: meta.title, subtitle: meta.subtitle, series: meta.series, order: Number(meta.order), stop: meta.stop, next: meta.next || '',
-      cover: meta.cover, published: meta.published, checked: meta.checked, modified: prev && prev.hash === hash ? prev.modified : today, hash,
+      cover: meta.cover, published: meta.published, checked: meta.checked, modified: [prev && prev.hash === hash ? prev.modified : today, meta.published].sort().at(-1), hash, // never before published
       words: wordCount(draft.body.split(`## ${FAQ_TITLE}`)[0].replace(DISCLOSURE, '')), claims: used, faq, toc: h2s, html, inOneMinute,
     };
     for (const id of used) (cites[id] ||= []).push(meta.slug);
@@ -83,7 +83,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   };
   let previous = { guides: {} };
   try { previous = JSON.parse(readFileSync(join(ROOT, GUIDES_PATH), 'utf8')); } catch {}
-  const { generated, guides, registryOut } = buildGuides({ drafts, registry, images, previous, today: new Date().toISOString().slice(0, 10), stopKeys: STOPS.map((s) => s.key) });
+  const { localToday } = await import('./site-pages.mjs');
+  const { generated, guides, registryOut } = buildGuides({ drafts, registry, images, previous, today: localToday(), stopKeys: STOPS.map((s) => s.key) });
   const outputs = [
     { path: join(ROOT, GUIDES_PATH), content: JSON.stringify({ generated, guides }, null, 2) + '\n' },
     { path: registryPath, content: JSON.stringify(registryOut, null, 2) + '\n' },

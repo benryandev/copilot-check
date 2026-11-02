@@ -54,7 +54,9 @@ export function readState() {
 export function readGuides() {
   try { return JSON.parse(readFileSync(join(ROOT, GUIDES_PATH), 'utf8')); } catch { return { generated: '', guides: {} }; }
 }
-const isoToday = () => new Date().toISOString().slice(0, 10);
+// The calendar day in Brisbane (UTC+10, no DST): a build at 08:30 on 3 Nov must not date pages 2 Nov
+export const localToday = (ms = Date.now()) => new Date(ms + 10 * 3600 * 1000).toISOString().slice(0, 10);
+const isoToday = localToday;
 
 export function buildAll({ state = readState(), today = isoToday(), guidesFile = readGuides() } = {}) {
   const guides = guidesFile.guides || {};

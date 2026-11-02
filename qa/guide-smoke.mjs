@@ -28,7 +28,7 @@ async function open(path) {
 }
 const state = (page) => page.evaluate(() => ({
   guideOpen: document.getElementById('guide').open, stopOpen: document.getElementById('stop').open, path: location.pathname, search: location.search,
-  h1: document.querySelector('#guide h1')?.textContent || null, title: document.title, eco: typeof window.__eco, len: history.length,
+  h1: document.querySelector('#guide h1')?.textContent || null, title: document.title, eco: typeof window.__eco, len: history.length, hash: location.hash,
 }));
 
 // Open from the HQ sheet, read next, Back
@@ -51,11 +51,32 @@ const state = (page) => page.evaluate(() => ({
     const s2 = await state(page);
     check(s2.guideOpen && s2.path === next && s2.len === s1.len, `read next: ${s2.path}, history entry replaced (${s2.len})`);
   } else console.log('skip read next (one guide built)');
+  // A fragment link inside the mounted page scrolls within the sheet and never navigates (a feature guide's TOC)
+  const frag = await page.evaluate(() => {
+    const a = Object.assign(document.createElement('a'), { href: location.pathname + '#next', textContent: 'Jump to Next' });
+    document.querySelector('#guide h1').after(a);
+    return a.getAttribute('href');
+  });
+  // links added after the mount are not rewritten, so run the same rule the mount runs
+  await page.evaluate(() => { const a = document.querySelector('#guide h1 + a'); a.setAttribute('data-guide-anchor', 'next'); });
+  const before2 = await state(page);
+  await page.click('#guide h1 + a');
+  await page.waitForTimeout(300);
+  const s2b = await state(page);
+  const nextTop = await page.evaluate(() => document.querySelector('#guide #next').getBoundingClientRect().top);
+  check(s2b.guideOpen && s2b.path === before2.path && s2b.len === before2.len && s2b.hash === '', `fragment link (${frag}): sheet open, URL and history unchanged`);
+  check(nextTop >= 0 && nextTop < 200, `fragment link scrolled the sheet to Next (top ${Math.round(nextTop)} px)`);
   await page.goBack();
   await page.waitForTimeout(400);
   const s3 = await state(page);
   check(!s3.guideOpen && s3.path === '/ecosystem/' && s3.search === '?mp=0&stop=strike' && s3.eco === 'object', `Back: sheet closed, URL ${s3.path}${s3.search}, world intact`);
   check(!s3.title.includes(' · Strike ecosystem') || s3.title === 'Strike Ecosystem', `title restored "${s3.title}"`);
+  await page.goForward();
+  await page.waitForFunction(() => document.getElementById('guide').open && document.querySelector('#guide h1'), null, { timeout: 20000 });
+  const s3f = await state(page);
+  check(s3f.guideOpen && s3f.path.startsWith('/ecosystem/guides/') && s3f.len === s3.len, `Forward: the guide reopens at ${s3f.path} without a new entry`);
+  await page.goBack();
+  await page.waitForTimeout(400);
   // Close button
   await page.click('#prompt-btn').catch(() => {});
   await page.waitForFunction(() => document.getElementById('stop').open, null, { timeout: 5000 }).catch(() => {});

@@ -609,14 +609,14 @@ const ensureCss = (href) => (cssReady[href] ||= new Promise((resolve) => {
   link.onload = link.onerror = () => resolve();
   document.head.append(link);
 }));
-async function openGuide(url) {
+async function openGuide(url, { pushHistory = true } = {}) {
   const isStops = url.startsWith("/ecosystem/stops/");
   await Promise.all([ensureCss("/ecosystem/guides/guides.css"), isStops ? ensureCss("/ecosystem/stops/stops.css") : null]);
   const r = await mountGuide(url, {
-    fetch: (u, o) => fetch(u, o), parse: (h) => new DOMParser().parseFromString(h, "text/html"), history, worldUrl: location.href,
+    fetch: (u, o) => fetch(u, o), parse: (h) => new DOMParser().parseFromString(h, "text/html"), history, worldUrl: location.href, pushHistory,
     mount: (title, main) => {
       const node = document.importNode(main, true);
-      rewriteLinks(node, location.origin);
+      rewriteLinks(node, new URL(url, location.origin).href);
       const h1 = node.querySelector("h1") || node.prepend(Object.assign(document.createElement("h1"), { textContent: title })) || node.querySelector("h1"); // the stops page keeps its h1 in its header
       h1.id = "guide-title";
       $("guide-eyebrow").textContent = isStops ? "Every stop as text" : url === "/ecosystem/guides/" ? "Strike guides" : "Strike guide";
@@ -630,8 +630,17 @@ async function openGuide(url) {
   if (r.navigate) location.href = r.navigate;
 }
 document.addEventListener("click", (e) => {
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+  const anchor = e.target.closest("a[data-guide-anchor]");
+  if (anchor) { // a fragment inside the mounted page: scroll within the sheet, never a navigation
+    e.preventDefault();
+    const id = anchor.getAttribute("data-guide-anchor");
+    const target = id && $("guide-main").querySelector(`#${CSS.escape(id)}`);
+    if (target) target.scrollIntoView({ block: "start" });
+    return;
+  }
   const a = e.target.closest("a[data-guide-link]");
-  if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+  if (!a) return;
   e.preventDefault();
   openGuide(new URL(a.href).pathname);
 });
@@ -639,7 +648,7 @@ $("guide").addEventListener("close", () => {
   closeGuide({ history });
   if (savedTitle) { document.title = savedTitle; savedTitle = null; }
 });
-window.addEventListener("popstate", (e) => onPopState(e.state, { isOpen: () => $("guide").open, close: () => $("guide").close(), restoreTitle: () => {} }));
+window.addEventListener("popstate", (e) => onPopState(e.state, { isOpen: () => $("guide").open, close: () => $("guide").close(), restoreTitle: () => {}, open: (u) => openGuide(u, { pushHistory: false }) }));
 
 // "Copy link" on the stop sheet: the clipboard when the browser allows it, otherwise a read-only field holding the
 // URL, selected, so the visitor can copy it by hand (text inside a button is not selectable everywhere). Never throws.

@@ -2,7 +2,7 @@
 // Stale? Run: node tools/site-pages.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { buildAll, readGuides } from '../tools/site-pages.mjs';
+import { buildAll, readGuides, localToday } from '../tools/site-pages.mjs';
 
 const slugs = Object.keys(readGuides().guides);
 
@@ -46,4 +46,10 @@ test('lastmod moves only when a page\'s content changes (state file, not git dat
   const gchanged = buildAll({ state: gbumped, today: '2031-06-30' }).find((f) => f.path === 'sitemap.xml').content;
   assert.ok(gchanged.includes(`<loc>https://strike.benryan.com.au${gpath}</loc>\n    <lastmod>2031-06-30</lastmod>`), 'a changed guide dates to today');
   assert.ok(gchanged.includes('<loc>https://strike.benryan.com.au/ecosystem/stops/</loc>\n    <lastmod>2031-01-01</lastmod>'), 'the stops page keeps its date');
+});
+
+test('localToday is the Brisbane calendar day (UTC+10, no DST), not UTC', () => {
+  assert.equal(localToday(Date.UTC(2026, 10, 2, 22, 30)), '2026-11-03', '08:30 Brisbane on 3 Nov is still 2 Nov in UTC');
+  assert.equal(localToday(Date.UTC(2026, 10, 3, 13, 59)), '2026-11-03', '23:59 Brisbane');
+  assert.equal(localToday(Date.UTC(2026, 10, 3, 14, 0)), '2026-11-04', 'midnight Brisbane');
 });

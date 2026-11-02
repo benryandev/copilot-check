@@ -17,7 +17,8 @@ export function extractMain(html, parse) {
 
 // Fetch and mount; on any failure the caller navigates instead (never an empty sheet). A second guide opened from
 // inside the first replaces the entry, so Back returns to the world, not to the previous guide.
-export async function mountGuide(url, { fetch, parse, mount, history, worldUrl }) {
+// pushHistory: false re-mounts on a popstate (Forward after Back), where the entry already exists.
+export async function mountGuide(url, { fetch, parse, mount, history, worldUrl, pushHistory = true }) {
   let got;
   try {
     const res = await fetch(url, { credentials: "same-origin" });
@@ -26,9 +27,11 @@ export async function mountGuide(url, { fetch, parse, mount, history, worldUrl }
   } catch { return { navigate: url }; }
   if (!got) return { navigate: url };
   mount(got.title, got.main);
-  const state = { guide: url, worldUrl: history.state?.worldUrl || worldUrl };
-  if (history.state?.guide) history.replaceState(state, "", url);
-  else history.pushState(state, "", url);
+  if (pushHistory) {
+    const state = { guide: url, worldUrl: history.state?.worldUrl || worldUrl };
+    if (history.state?.guide) history.replaceState(state, "", url);
+    else history.pushState(state, "", url);
+  }
   return { ok: true };
 }
 
@@ -36,22 +39,33 @@ export function closeGuide({ history }) {
   if (history.state?.guide) history.back();
 }
 
-export function onPopState(state, { isOpen, close, restoreTitle }) {
-  if (state?.guide) return;
+// Back with a guide open closes it; Forward onto a guide entry with the sheet closed reopens that guide
+export function onPopState(state, { isOpen, close, restoreTitle, open }) {
+  if (state?.guide) { if (!isOpen() && open) open(state.guide); return; }
   if (!isOpen()) return;
   close();
   restoreTitle();
 }
 
+// What a link inside a mounted page is: another in-world page, a fragment on the same page (scroll inside the
+// sheet, no navigation), an external site, or anything else (left alone, a normal navigation)
+export function classifyLink(href, pageUrl) {
+  let u, at;
+  try { u = new URL(href, pageUrl); at = new URL(pageUrl); } catch { return "plain"; }
+  if (u.origin !== at.origin) return "external";
+  if (u.hash && u.pathname === at.pathname && u.search === at.search) return "anchor";
+  if (isInWorldPath(u.pathname)) return "guide";
+  return "plain";
+}
+
 // Inside a mounted article: in-world links open in the sheet, the Drive there button goes (the visitor is already
 // here), external links open in a new tab, the page's own skip link and theme toggle go.
-export function rewriteLinks(root, origin) {
+export function rewriteLinks(root, pageUrl) {
   root.querySelectorAll(".guide-drive, .skip, #theme-toggle, .stops-actions").forEach((el) => el.remove());
   for (const a of root.querySelectorAll("a[href]")) {
-    const href = a.getAttribute("href");
-    let u;
-    try { u = new URL(href, origin); } catch { continue; }
-    if (u.origin === origin && isInWorldPath(u.pathname)) a.setAttribute("data-guide-link", "");
-    else if (u.origin !== origin) { a.target = "_blank"; a.rel = "noopener"; }
+    const kind = classifyLink(a.getAttribute("href"), pageUrl);
+    if (kind === "guide") a.setAttribute("data-guide-link", "");
+    else if (kind === "anchor") a.setAttribute("data-guide-anchor", new URL(a.getAttribute("href"), pageUrl).hash.slice(1));
+    else if (kind === "external") { a.target = "_blank"; a.rel = "noopener"; }
   }
 }

@@ -172,7 +172,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     for (const p of [join(ROOT, 'ecosystem/guides/img', draft.meta.slug || '', basename(src)), join(dirname(draftPath), src)]) if (existsSync(p)) return pngDims(readFileSync(p));
     return null;
   };
-  const failures = checkGuide(draft, { stopKeys: STOPS.map((s) => s.key), registry, imageDims, today: new Date().toISOString().slice(0, 10) });
+  const { localToday } = await import('./site-pages.mjs');
+  const failures = checkGuide(draft, { stopKeys: STOPS.map((s) => s.key), registry, imageDims, today: localToday() });
   for (const l of failures) console.log(l);
   process.exit(failures.length ? 1 : 0);
 }

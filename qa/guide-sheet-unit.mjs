@@ -1,6 +1,6 @@
 // The in-world guide sheet's logic (ecosystem/js/guide-sheet.js), no DOM: node --test qa/guide-sheet-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { isInWorldPath, extractMain, mountGuide, closeGuide, onPopState } from '../ecosystem/js/guide-sheet.js';
+import { isInWorldPath, extractMain, mountGuide, closeGuide, onPopState, classifyLink } from '../ecosystem/js/guide-sheet.js';
 
 const page = '<!doctype html><html><head><title>What is Strike? · Strike guides</title></head><body><main id="main"><article><h1>What is Strike?</h1></article></main></body></html>';
 const fakeParse = (html) => ({ querySelector: (sel) => sel === 'title' ? { textContent: html.match(/<title>(.*?)<\/title>/)[1] } : sel === 'main' && html.includes('<main') ? { outerHTML: html.match(/<main[^]*<\/main>/)[0], id: 'main' } : null });
@@ -37,4 +37,23 @@ test('closeGuide goes back only when a guide entry is on top; popstate without a
   onPopState(null, { isOpen: () => true, close: () => closed++, restoreTitle: () => restored++ }); assert.equal(closed, 1); assert.equal(restored, 1);
   onPopState({ guide: '/x' }, { isOpen: () => true, close: () => closed++, restoreTitle: () => {} }); assert.equal(closed, 1, 'a guide state does not close');
   onPopState(null, { isOpen: () => false, close: () => closed++, restoreTitle: () => {} }); assert.equal(closed, 1, 'nothing to close');
+});
+
+test('Forward after Back reopens the guide the state names, without a new history entry', async () => {
+  const opened = [];
+  onPopState({ guide: '/ecosystem/guides/what-is-strike/' }, { isOpen: () => false, close: () => assert.fail('closed'), restoreTitle: () => {}, open: (u) => opened.push(u) });
+  assert.deepEqual(opened, ['/ecosystem/guides/what-is-strike/']);
+  const h = hist(); h.state = { guide: '/ecosystem/guides/what-is-strike/' };
+  const r = await mountGuide('/ecosystem/guides/what-is-strike/', { fetch: async () => ({ ok: true, text: async () => page }), parse: fakeParse, mount: () => {}, history: h, worldUrl: '/ecosystem/', pushHistory: false });
+  assert.deepEqual(r, { ok: true }); assert.deepEqual(h.entries, [], 'a popstate re-mount touches no history');
+});
+test('classifyLink: in-world pages, same-page fragments, external, plain', () => {
+  const at = 'https://strike.benryan.com.au/ecosystem/guides/what-is-strike/';
+  assert.equal(classifyLink('/ecosystem/guides/what-is-a-perp/', at), 'guide');
+  assert.equal(classifyLink('/ecosystem/stops/', at), 'guide');
+  assert.equal(classifyLink('#next', at), 'anchor');
+  assert.equal(classifyLink('/ecosystem/guides/what-is-strike/#next', at), 'anchor');
+  assert.equal(classifyLink('https://docs.strikefinance.org/x', at), 'external');
+  assert.equal(classifyLink('/ecosystem/?stop=strike', at), 'plain');
+  assert.equal(classifyLink('/ecosystem/stops/#district-perps', 'https://strike.benryan.com.au/ecosystem/stops/'), 'anchor');
 });
