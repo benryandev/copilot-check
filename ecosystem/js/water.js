@@ -3,8 +3,9 @@
 // terrain.js; this file only draws it.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { river, riverInfo, terrainHeight, groundShade, WATER_LEVEL } from "./terrain.js";
+import { river, riverInfo, terrainHeight, groundShade, WATER_LEVEL, crossings, DECK_Y, DECK_RAMP } from "./terrain.js";
 import { RIVER } from "./content.js";
+import { M, box, cyl, canvasTexture, redraws, colliders, orientedBox } from "./build.js";
 
 const BED_W = RIVER.half + 14; // half-width of the bed patch: wide enough to cover the ground mesh's pushed-down band and the triangles beside it
 const BED_ACROSS = 15; // samples across the patch
@@ -145,4 +146,66 @@ export function buildWater(palette, { tier = "high", reduceMotion = false } = {}
   mesh.userData.recolour(palette);
   mesh.userData.tick = (t) => { if (uniforms && !reduceMotion) uniforms.uTime.value = t; };
   return mesh;
+}
+
+// ── Bridges ────────────────────────────────────────────────────────────
+// A plank deck over each bridged crossing, rails you cannot drive through, piles into the water and a short ramp at
+// each end. Cosmetic only: the height the car rides is terrain.js bridgeHeight, which these match.
+const WOOD_W = 256, WOOD_H = 256;
+function planks(ctx, w, h, pal) {
+  const base = new THREE.Color(pal.wood), dark = base.clone().multiplyScalar(0.72), light = base.clone().multiplyScalar(1.12);
+  ctx.fillStyle = "#" + base.getHexString();
+  ctx.fillRect(0, 0, w, h);
+  const n = 12, ph = h / n; // planks run across the deck; the texture repeats along it
+  for (let i = 0; i < n; i++) {
+    ctx.fillStyle = "#" + (i % 3 === 1 ? light : i % 3 === 2 ? dark : base).clone().offsetHSL(0, 0, ((i * 7) % 5) * 0.012 - 0.024).getHexString();
+    ctx.fillRect(0, i * ph + 2, w, ph - 4);
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fillRect(0, i * ph, w, 2);
+    // a nail at each end
+    ctx.fillStyle = "rgba(0,0,0,0.3)";
+    ctx.fillRect(10, i * ph + ph / 2 - 2, 4, 4); ctx.fillRect(w - 14, i * ph + ph / 2 - 2, 4, 4);
+  }
+}
+export function buildBridges(scene, palette) {
+  const group = new THREE.Group();
+  const { tex, redraw } = canvasTexture(WOOD_W, WOOD_H, planks);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  redraws.push(redraw);
+  redraw(palette);
+  const deckMat = new THREE.MeshLambertMaterial({ map: tex });
+  const built = [];
+  for (const c of crossings) {
+    if (!c.bridge) continue;
+    const g = new THREE.Group();
+    g.position.set(c.x, 0, c.z);
+    g.rotation.y = c.yaw; // local +z runs along the road
+    const W = c.halfW * 2, L = c.halfLen * 2;
+    const deck = box(W, DECK_Y, L, deckMat, 0, 0, 0);
+    deck.material = deckMat.clone(); deck.material.map = tex.clone(); deck.material.map.repeat.set(1, L / 4); deck.material.map.needsUpdate = true;
+    g.add(deck);
+    // ramps: a thin slab from the deck top down to the ground over DECK_RAMP
+    const hyp = Math.hypot(DECK_RAMP, DECK_Y), tilt = Math.atan2(DECK_Y, DECK_RAMP);
+    for (const side of [-1, 1]) {
+      const ramp = box(W, 0.06, hyp, deckMat, 0, 0, 0);
+      ramp.position.set(0, DECK_Y / 2 - 0.03, side * (c.halfLen + DECK_RAMP / 2));
+      ramp.rotation.x = side * tilt;
+      g.add(ramp);
+    }
+    // rails: posts every 1.5 m and a top rail, on both edges; their colliders keep the car on the deck
+    const rx = c.halfW - 0.1;
+    for (const side of [-1, 1]) {
+      g.add(box(0.1, 0.1, L, M.wood, side * rx, DECK_Y + 0.85, 0));
+      g.add(box(0.08, 0.06, L, M.wood, side * rx, DECK_Y + 0.45, 0));
+      for (let z = -c.halfLen + 0.3; z <= c.halfLen - 0.3; z += 1.5) g.add(box(0.12, 0.95, 0.12, M.wood, side * rx, DECK_Y, z));
+      const ox = side * rx; // the rail's centre in the world; orientedBox's local x runs along (cos yaw, -sin yaw)
+      colliders.push(orientedBox(c.x + Math.cos(c.yaw) * ox, c.z - Math.sin(c.yaw) * ox, 0.12, c.halfLen - 0.6, c.yaw)); // the first 60 cm of rail is open, so a slightly wide approach slides on instead of stopping dead
+    }
+    // piles at the corners, down into the water
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(cyl(0.14, 1.3, M.wood, sx * (c.halfW - 0.35), -0.6, sz * (c.halfLen - 1.2), 8));
+    group.add(g);
+    built.push(g);
+  }
+  scene.add(group);
+  return built;
 }

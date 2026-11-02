@@ -8,7 +8,7 @@ import { groundHeight, onDirt, onWater, racewayWeight, WORLD } from "./terrain.j
 
 import { glowIntensity } from "./post.js";
 import { boostFor, boostedTop } from "./boost-math.js";
-import { topShare, accelShare } from "./car-math.js";
+import { topShare, accelShare, slowShare } from "./car-math.js";
 
 export const CAR_R = 1.6;
 const MAX_F = 24, MAX_R = 9, ACCEL = 16, BRAKE = 34, ROLL = 5, TURN = 2.2, GRAVITY = 30;
@@ -145,7 +145,7 @@ export function stepCar(car, keys, dt) {
   if (throttle > 0) s.speed += (s.speed < 0 ? BRAKE : ACCEL * accelShare(wet)) * dt;
   else if (throttle < 0) s.speed -= (s.speed > 0 ? BRAKE : ACCEL * 0.7) * dt;
   else if (!s.air) s.speed -= Math.sign(s.speed) * Math.min(Math.abs(s.speed), ROLL * dt);
-  if (s.speed > top) s.speed = Math.max(top, s.speed - BRAKE * 0.5 * dt); // ease down when leaving the road or as a boost ends (must out-pull ACCEL, or the throttle creeps past top)
+  if (s.speed > top) s.speed = Math.max(top, s.speed - BRAKE * slowShare(wet) * dt); // ease down when leaving the road or as a boost ends (must out-pull ACCEL, or the throttle creeps past top); water drags hard
   s.boost = Math.max(0, s.boost - dt);
   s.speed = Math.max(-MAX_R, s.speed);
 

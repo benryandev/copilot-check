@@ -7,3 +7,5 @@ export const WATER_SHARE = 0.5; // top speed share wading through the river, wha
 export const WATER_ACCEL = 0.6; // how much of the throttle's pull is left in the water
 export const topShare = (dirt, w, wet = false) => (dirt ? 1 : 1 - (1 - OFF_ROAD) * Math.max(0, Math.min(1, w))) * (wet ? WATER_SHARE : 1);
 export const accelShare = (wet) => (wet ? WATER_ACCEL : 1);
+export const WATER_DRAG = 2; // multiple of the brake's deceleration that pulls a too-fast car down in water (0.5 on land)
+export const slowShare = (wet) => (wet ? WATER_DRAG : 0.5);
