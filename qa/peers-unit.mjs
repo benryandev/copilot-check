@@ -110,3 +110,15 @@ test('sprayDue: a remote car in the water sprays at most every 60 ms and only wh
   assert.equal(sprayDue(p, 1070, 0.3), true, '70 ms later');
   assert.equal(sprayDue(p, 1200, 0.02), false, 'barely moved: standing in the water does not spray');
 });
+
+test('flyY: the ground jumping up under a parked or rolling car (a new ridge series) does not launch it', async () => {
+  const { flyY } = await import('../ecosystem/js/peers-math.js');
+  const st = { y: 0, vy: 0, air: false }, dt = 1 / 60;
+  for (let i = 0; i < 30; i++) flyY(st, 0, dt);
+  flyY(st, 4, dt); // the ground rose 4 m in one frame
+  assert.ok(Math.abs(st.y - 4) < 1e-9 && !st.air, 'rides the new ground');
+  // Then a gentle downhill at 20 m/s on a 10% slope: the car must stay on the ground, not fly off with 240 m/s of vy
+  let g = 4, peak = -Infinity;
+  for (let i = 0; i < 120; i++) { g -= 20 * dt * 0.1; const y = flyY(st, g, dt); peak = Math.max(peak, y - g); }
+  assert.ok(peak < 0.3, `rose ${peak.toFixed(2)} m above the ground`);
+});

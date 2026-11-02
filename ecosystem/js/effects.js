@@ -1,7 +1,7 @@
 // Grass that sways in the wind (vertex shader, instanced) and dust kicked up on dirt (pooled points).
 
 import * as THREE from "../vendor/three.module.min.js";
-import { WORLD, terrainHeight, grassWeight, roadInfo } from "./terrain.js";
+import { WORLD, terrainHeight, grassWeight, roadInfo, onRidge } from "./terrain.js";
 
 // ── Grass ──────────────────────────────────────────────────────────────
 function clumpGeometry() {
@@ -87,6 +87,17 @@ export function createGrass(count, palette, sway) {
   mesh.userData.recolour = (pal) => { uniforms.uBase.value.set(pal.grassBase); uniforms.uTip.value.set(pal.grassTip); };
   mesh.userData.recolour(palette);
   mesh.userData.tick = (t) => (uniforms.uTime.value = t);
+  // Tufts in the Chart Ridge's corridor sit on ground that moves with the series: re-seat them when it changes
+  mesh.userData.reseat = () => {
+    for (let i = 0; i < mesh.count; i++) {
+      mesh.getMatrixAt(i, m);
+      const x = m.elements[12], z = m.elements[14];
+      if (!onRidge(x, z)) continue;
+      m.elements[13] = terrainHeight(x, z) - 0.02;
+      mesh.setMatrixAt(i, m);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+  };
   return mesh;
 }
 

@@ -68,6 +68,8 @@ export function pickDrawn(peers, cam, cap) {
 export const backoff = (n) => Math.min(30000, 1000 * 2 ** Math.max(0, n));
 
 export const FLY_G = 30; // m/s², the car's gravity
+export const GROUND_JUMP = 1.5; // a rise of more than this in one frame is the ground moving, not the car climbing
+export const MAX_GROUND_VY = 15; // the steepest ramp at top speed gives about 7 m/s; nothing real is faster
 /** Vertical motion for a car whose ground height is known each frame but not its height (other visitors, the
  * ghost): it rides the ground, and when the ground drops away faster than it can fall (a ramp's end) it flies on
  * under gravity until it meets the ground again. `st` is { y, vy, air }, updated in place; returns the y to draw. */
@@ -79,7 +81,10 @@ export function flyY(st, g, dt) {
     if (st.y <= g) { st.y = g; st.vy = 0; st.air = false; }
     return st.y;
   }
-  const vyGround = (g - st.y) / dt;
+  // The ground rising under a car faster than any slope could carry it is the ground itself moving (a new Chart Ridge
+  // series, a teleport): ride it with no momentum, or the next dip would launch the car with hundreds of m/s of vy
+  if (g - st.y > GROUND_JUMP) { st.y = g; st.vy = 0; st.air = false; return g; }
+  const vyGround = Math.max(-MAX_GROUND_VY, Math.min(MAX_GROUND_VY, (g - st.y) / dt));
   if (st.y - g > FLY_G * dt * dt * 2 && st.vy > 2) { st.air = true; st.y += st.vy * dt; } // the same rule as the car
   else { st.y = g; st.vy = vyGround; }
   return st.y;

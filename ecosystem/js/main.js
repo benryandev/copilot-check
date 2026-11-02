@@ -849,6 +849,7 @@ async function pollRidge() {
 function applyRidge(closes) {
   setRidgeSeries(closes);
   ridgeMesh.userData.refresh();
+  grass?.userData.reseat?.(); // tufts in the corridor follow the ground
   ridgeHour = hourNow();
   ridgePending = null;
 }
