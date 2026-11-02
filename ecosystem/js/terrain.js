@@ -5,6 +5,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { createCobbles, metreUVs } from "./cobbles.js";
 import { DISTRICTS, ROADS, JUMPS, STOPS, TRACK_ROAD, RACE_TRACK, RIVER } from "./content.js";
 import { tint } from "./colours.js";
+import { ridgeProfile } from "./ridge-math.js";
 
 export const ROAD_HALF = 3.6;
 export const WORLD = { cx: 0, cz: 0, radius: 395 }; // 280 before the raceway went in beyond Partners
@@ -281,9 +282,27 @@ function edgeRise(x, z) {
   return Math.max(0, d - (WORLD.radius - 25)) * 0.55;
 }
 
-export function terrainHeight(x, z, info = roadInfo(x, z)) {
+// ── Chart Ridge ────────────────────────────────────────────────────────
+// The ridge road's lift comes from the last 24 hourly closes (ridge-math.js); it is part of the one height function,
+// like the Raceway's crest, so cars, ghosts and remote cars ride it for free. Flat until a series is set.
+export const RIDGE_ROAD = roads.findIndex((r) => r.kind === "ridge");
+export const RIDGE_FADE = 22; // metres from the road's edge over which the lift fades to the ground
+let ridgeState = { closes: [], profile: null };
+export function setRidgeSeries(closes) {
+  const list = Array.isArray(closes) ? closes.map(Number).filter(Number.isFinite) : [];
+  ridgeState = { closes: list, profile: list.length >= 2 && RIDGE_ROAD >= 0 ? ridgeProfile(list, roads[RIDGE_ROAD].len) : null };
+}
+export const ridgeSeries = () => ridgeState;
+function ridgeLift(info) {
+  if (info.road !== RIDGE_ROAD || !ridgeState.profile) return 0;
+  return ridgeState.profile.h(info.t * roads[RIDGE_ROAD].len) * (1 - smooth(info.half + 3, info.half + RIDGE_FADE, info.d));
+}
+/** On the ridge road or within its fade (the band whose ground moves when a new series lands). */
+export const onRidge = (x, z) => { const info = roadInfo(x, z); return info.road === RIDGE_ROAD && info.d < info.half + RIDGE_FADE; };
+
+export function terrainHeight(x, z, info = roadInfo(x, z), lift = true) {
   const rd = riverInfo(x, z).d;
-  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) * riverFlat(rd) + trackLift(info) + edgeRise(x, z) * rimOpen(rd) - riverChannel(rd);
+  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) * riverFlat(rd) + trackLift(info) + edgeRise(x, z) * rimOpen(rd) - riverChannel(rd) + (lift ? ridgeLift(info) : 0);
 }
 // The one truth for where the ground is: terrain and jumps, or a bridge deck where one spans the river
 export function groundHeight(x, z) {
@@ -363,12 +382,12 @@ function dirtTexture() {
   return tex;
 }
 
-export function buildRoads(palette) {
-  const tex = dirtTexture();
-  const mat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 });
-  const group = new THREE.Group();
-  for (const r of roads) {
+/** One road's ribbon geometry, sat on the ground. `colourAt(s)` (metres along the road → [r, g, b]) adds a vertex
+ * colour per sample pair, for a road whose dirt is tinted along its length (the ridge). */
+export function roadRibbon(r, colourAt = null) {
+  {
     const n = r.pts.length;
+    const cols = colourAt ? new Float32Array(n * 2 * 3) : null;
     const verts = new Float32Array(n * 2 * 3);
     const uvs = new Float32Array(n * 2 * 2);
     const idx = [];
@@ -385,13 +404,28 @@ export function buildRoads(palette) {
       verts.set([lx, terrainHeight(lx, lz) + 0.14, lz, qx, terrainHeight(qx, qz) + 0.14, qz], i * 6);
       const v = r.cum[i] / 8;
       uvs.set([0, v, 1, v], i * 4);
+      if (cols) { const c = colourAt(r.cum[i]); cols.set([c[0], c[1], c[2], c[0], c[1], c[2]], i * 6); }
       if (i < n - 1) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
     geo.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+    if (cols) geo.setAttribute("color", new THREE.BufferAttribute(cols, 3));
     geo.setIndex(idx);
     geo.computeVertexNormals();
+    return geo;
+  }
+}
+export function dirtMaterial(extra = {}) {
+  return new THREE.MeshLambertMaterial({ map: dirtTexture(), transparent: true, depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, ...extra });
+}
+
+export function buildRoads(palette) {
+  const mat = dirtMaterial();
+  const group = new THREE.Group();
+  for (const r of roads) {
+    if (r.kind === "ridge") continue; // the ridge draws its own ribbon, tinted per candle (ridge.js)
+    const geo = roadRibbon(r);
     const m = new THREE.Mesh(geo, mat);
     m.receiveShadow = true;
     m.renderOrder = 1;

@@ -98,6 +98,16 @@ ROADS.push({
 // The Fill Yard's drive: off the Perpetuals spoke (through one of its control points, so it meets
 // the road) and into the yard's plaza
 ROADS.push({ kind: "drive", from: "perps", to: "yard", points: [[-5, -102], [-10, -101.5], [-16, -100.7], [-21, -99.8]] });
+// Chart Ridge (2 Nov 2026, Ben): a dirt road between the south edges of Analytics & Discovery and Developers whose
+// height follows the last 24 hourly BTC candles (terrain.js setRidgeSeries, ridge-math.js). It leaves each plaza due
+// south and bows to about z 320; an optional, longer way between the two plazas, never on anyone's route.
+{
+  const a = DISTRICTS.analytics, d = DISTRICTS.developers;
+  const p0 = [a.centre[0], a.centre[1] + a.radius], p3 = [d.centre[0], d.centre[1] + d.radius];
+  const p1 = [p0[0], 350], p2 = [p3[0], 350];
+  const bez = (t) => [0, 1].map((k) => (1 - t) ** 3 * p0[k] + 3 * (1 - t) ** 2 * t * p1[k] + 3 * (1 - t) * t * t * p2[k] + t ** 3 * p3[k]);
+  ROADS.push({ kind: "ridge", from: "analytics", to: "developers", points: Array.from({ length: 7 }, (_, i) => bez(i / 6)) });
+}
 export const TRACK_ROAD = ROADS.findIndex((r) => r.kind === "track");
 // Race control sits in the infield by the start straight, facing it
 const raceControl = STOPS.find((s) => s.key === "raceway");
