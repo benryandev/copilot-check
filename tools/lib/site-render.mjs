@@ -40,7 +40,7 @@ const byDistrict = (stops, key) => publicStops(stops).filter((s) => s.district =
 
 function renderStop(stop, labels) {
   const live = stop.live ? `<p class="stop-live">Live on the pad: ${esc(stop.live.map((k) => labels[k] ?? k).join(', '))}</p>` : '';
-  const site = siteOf(stop) ? ` <a class="br-button br-button--secondary" href="${esc(siteOf(stop))}" rel="noopener">${esc(stop.siteLabel || `Visit ${stop.name}`)}</a>` : '';
+  const site = siteOf(stop) ? ` <a class="stop-doc" href="${esc(siteOf(stop))}" rel="noopener">${esc(stop.siteLabel || `Visit ${stop.name}`)}</a>` : '';
   return `      <article class="stop district-${esc(stop.district)}" id="stop-${esc(stop.key)}">
         <h3>${esc(stop.name)}</h3>
         <p>${esc(stop.summary)}</p>
@@ -48,7 +48,7 @@ function renderStop(stop, labels) {
 ${stop.points.map((t) => `          <li>${esc(t)}</li>`).join('\n')}
         </ul>
         ${live}
-        <p class="stop-actions"><a class="br-button" href="${stopHref(stop.key)}">Drive there</a> <a class="br-button br-button--secondary" href="${esc(stop.docs)}" rel="noopener">${esc(docsLabel(stop))}</a>${site}</p>
+        <p class="stop-actions"><a class="br-button br-button--secondary" href="${stopHref(stop.key)}">Drive there</a> <a class="stop-doc" href="${esc(stop.docs)}" rel="noopener">${esc(docsLabel(stop))}</a>${site}</p>
       </article>`;
 }
 
@@ -121,6 +121,7 @@ export function renderStopsPage(ctx) {
   <script src="/src/theme.js"></script>
 </head>
 <body class="stops-page">
+  <a class="skip" href="#main">Skip to the stops</a>
   <header class="stops-head">
     <div class="wrap">
       <div class="topbar">

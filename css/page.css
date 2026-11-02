@@ -19,3 +19,6 @@ footer.br-band-dark { padding: 2rem 0; }
 .foot-credit { display: flex; align-items: center; gap: 0.6rem; }
 .foot-credit img { width: 2rem; height: auto; }
 .nowrap { white-space: nowrap; }
+/* Skip link: off-screen until a keyboard user tabs to it */
+.skip { position: absolute; top: -100px; left: var(--space-sm); z-index: 100; padding: 0.6rem 1rem; border-radius: 999px; background: var(--text-primary); color: var(--bg-page); text-decoration: none; font-weight: 600; }
+.skip:focus { top: var(--space-sm); outline: 2px solid var(--focus-ring); outline-offset: 2px; }
