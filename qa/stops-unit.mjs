@@ -44,6 +44,9 @@ test('every stop fits the sheet schema', () => {
     for (const k of s.live || []) assert.ok(LABELS[k] || k.startsWith('lines:'), `${s.key}: live key ${k}`);
   }
 });
+test('stop names fit the pad label (22 characters; makeLabel draws 88 px type on a 1024 px canvas)', () => {
+  for (const s of STOPS) assert.ok(s.name.length <= 22, `${s.key}: "${s.name}" is ${s.name.length} characters`);
+});
 test('no sheet carries a banned word', () => {
   for (const s of STOPS) for (const t of [s.summary, ...s.points]) for (const re of BANNED) assert.doesNotMatch(t, re, `${s.key}: "${t}"`);
 });

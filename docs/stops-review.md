@@ -54,7 +54,7 @@ Link: [Docs: Strike Node](https://docs.strikefinance.org/perpetuals/strike-node)
 
 Strike lists USD-settled perpetuals in four groups: crypto (BTC, ETH, SOL, ADA, XRP and more), US and Asian stocks (NVDA, TSLA, GOOGL, COIN, SK Hynix), indices (S&P 500, Nasdaq 100) and commodities (gold, silver, WTI oil). Examples as listed on 3 November 2026.
 
-- Every market has its own leverage limit, margin tiers, tick size and minimum order, and the list grows as Strike adds markets.
+- Every market has its own leverage limit, margin tiers, tick size and minimum order, all published by Strike's public markets endpoint, and the list grows as Strike adds markets.
 - The live figure on this pad is the number of markets in trading status, read from Strike's public markets endpoint.
 
 Link: [Docs: Exchange Info](https://docs.strikefinance.org/api/market/rest-api/exchange-info) · [See the markets](https://app.strikefinance.org/trade/BTC) · live: Markets trading
@@ -65,7 +65,7 @@ Market, limit, stop market, stop limit, take profit and stop loss, trailing stop
 
 - Tier 0 (under $100K in 30 days) pays 0.050% as taker and earns a 0.005% maker rebate; tiers recalculate daily at 00:05 UTC, and more volume lowers the taker fee.
 - Staked STRIKE unlocks discounts of 5% to 40% on positive fees, from 5,000 STRIKE up. Rebates are unchanged.
-- The bots (TWAP, trailing stop, grid, scale) and RFQ each have their own pad in this plaza.
+- TWAP, grid, trailing stop, scale and RFQ each have their own pad in this plaza.
 
 Link: [Docs: Order Types](https://docs.strikefinance.org/perpetuals/order-types) · [Docs: Trading Fees](https://docs.strikefinance.org/perpetuals/trading-fees)
 
@@ -151,7 +151,7 @@ Splits one order into a ladder of up to 100 limit orders across a price range yo
 
 Link: [Docs: Order types](https://docs.strikefinance.org/perpetuals/order-types)
 
-### Funding Comparison and Carry Scanner
+### Funding Comparison
 
 Two pages in the app's Tools menu, with no docs page of their own. Funding Comparison lays Strike's hourly funding on every market beside Binance, Bybit, OKX, Hyperliquid, Lighter, Extended and Variational; the Carry Scanner ranks long/short pairs on Strike by funding carry against spread risk. As seen on 3 November 2026.
 
@@ -167,7 +167,7 @@ Funding keeps a perpetual's price near its index by moving money between longs a
 
 - Rates are quoted on an 8-hour basis and one eighth is paid each hour. Positive means longs pay shorts; negative, shorts pay longs.
 - The windsocks on the road in show Strike's rate per 8 hours on each sock, with Bybit, Binance and Hyperliquid in the row behind.
-- Crypto markets carry a 0.01% 8-hour interest rate; stocks, indices and commodities use a dampener instead. Both are capped at 4% per 8 hours either way.
+- By default a crypto market carries a 0.01% 8-hour interest rate, while stocks, indices and commodities use a 0.05% dampener band instead; a market can run on different limits. Every rate is capped at 4% per 8 hours either way.
 
 Link: [Docs: Funding Rates](https://docs.strikefinance.org/perpetuals/funding-rates)
 
@@ -360,7 +360,7 @@ A DEX aggregator routes one swap across many liquidity pools to find a good pric
 
 - The swap is placed in a batching window; if it is not filled in time it is cancelled and resubmitted.
 - The result is recorded as a deposit receipt, then the stablecoin is locked in Strike's on-chain locker contract.
-- DexHunter is the Cardano aggregator most traders have met: it compares prices across many exchanges, splits a swap between them, and lists STRIKE for swapping. The docs don't say which aggregator Strike's own deposits go through.
+- DexHunter is a Cardano swap aggregator: it compares prices across many exchanges, splits a swap between them, and has a STRIKE swap page at app.dexhunter.io. The docs don't say which aggregator Strike's own deposits go through.
 
 Link: [Docs: Exchanger](https://docs.strikefinance.org/perpetuals/deposits-and-withdrawals/exchanger) · [DexHunter](https://dexhunter.io)
 
@@ -498,7 +498,7 @@ Link: [BendingAI home](https://bending.ai)
 Three Cardano directories list Strike, each run by someone other than Strike: cardano.org's Apps catalogue under DEX, CardanoCube under DeFi, and Adastack under Perpetuals and Staking.
 
 - cardano.org describes a perpetual futures protocol with on-chain margin, beside Minswap, WingRiders and SundaeSwap; CardanoCube's profile carries a description, token details and team information.
-- Adastack lists both Strike Finance and Strike Finance Staking on its dApps page.
+- Adastack, open source under the MIT licence, lists both Strike Finance (perpetuals) and Strike Finance Staking (revenue-share staking) on its dApps page; CardanoCube files Strike under derivatives and investment management.
 - cardano.org's catalogue and Adastack are open source, so anyone can send a correction through GitHub.
 
 Link: [Strike on cardano.org](https://cardano.org/apps/strike-finance/) · [Strike on CardanoCube](https://www.cardanocube.com/projects/strike-finance)
@@ -563,9 +563,9 @@ Link: [Docs: Docs](https://docs.strikefinance.org/getting-started/welcome)
 
 ### Medium
 
-Strike's Medium publication, @strikecardano, carries its longer announcements. Ten posts were listed there on 3 November 2026.
+Strike's Medium publication, @strikecardano, carries its longer announcements. Its feed on 3 November 2026 led with the posts below.
 
-- Latest: "Strike Hackathon Starts this Wednesday" (18 October 2026) and, before it, "Strike Secures $1,000,000 Liquidity Deployment to Unlock the Next Phase of Growth" (15 July 2026).
+- Latest: "Strike Hackathon Starts this Wednesday — $3,000 in Prizes" (18 October 2026) and, before it, "Strike Secures $1,000,000 Liquidity Deployment to Unlock the Next Phase of Growth" (15 July 2026).
 - Older posts include the 2026 roadmap, the litepaper and the tokenomics article; the docs site covers current V2 mechanics such as liquid staking and vaults.
 
 Link: [Strike on Medium](https://medium.com/@strikecardano)

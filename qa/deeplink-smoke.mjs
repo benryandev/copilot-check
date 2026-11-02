@@ -136,9 +136,9 @@ async function drives(page) {
 // ?stop=nope
 {
   const { ctx, page, errs } = await open(world('stop=nope&arrive=0'));
-  const st = await page.evaluate(() => ({ intro: document.getElementById('intro').open, stop: document.getElementById('stop').open, kind: window.__eco.deepLink.kind }));
+  const st = await page.evaluate(() => ({ intro: document.getElementById('intro').open, stop: document.getElementById('stop').open, prompt: !document.getElementById('prompt').hidden, kind: window.__eco.deepLink.kind }));
   check(st.intro && st.kind === null, `stop=nope: intro shown, link ignored (kind ${st.kind})`);
-  check(!st.stop, 'stop=nope: no stop sheet open at landing (the Getting started pad is outside the trigger)');
+  check(!st.stop && !st.prompt, 'stop=nope: no stop sheet and no pad prompt at landing (the Getting started pad is outside the trigger)');
   check(errs.length === 0, `stop=nope: no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
   await ctx.close();
 }

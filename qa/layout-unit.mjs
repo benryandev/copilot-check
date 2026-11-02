@@ -34,3 +34,14 @@ test('hand-placed stops keep off the roads and clear of their neighbours', () =>
 test('hub stops stand at least 14 m from the spawn, so landing opens no sheet', () => {
   for (const s of STOPS.filter((x) => x.district === 'hub')) assert.ok(dist(s.pos, [SPAWN.x, SPAWN.z]) >= 14, s.key);
 });
+
+test('a second hub building keeps clear of HQ (12 m square) and of every road mouth', () => {
+  // The hub plaza is 24 m across with nine mouths at r = 20; a building of up to ~6.5 m needs 14 m from HQ's centre and
+  // 7 m from each road's first point (review finding, 3 Nov 2026: the gatehouse at [-13, 7] sat on HQ and the Community mouth).
+  const hq = STOPS.find((x) => x.key === 'strike').pos;
+  for (const s of STOPS.filter((x) => x.district === 'hub' && x.key !== 'strike')) {
+    assert.ok(dist(s.pos, hq) >= 14, `${s.key}: ${dist(s.pos, hq).toFixed(1)} m from HQ`);
+    for (const r of ROADS) if (r.kind === 'spoke') assert.ok(dist(s.pos, r.points[0]) >= 7, `${s.key}: ${dist(s.pos, r.points[0]).toFixed(1)} m from the ${r.to} mouth`);
+    assert.ok(dist(s.pos, [0, 0]) <= 20, `${s.key}: inside the plaza`);
+  }
+});

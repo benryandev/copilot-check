@@ -51,9 +51,9 @@ export const STOPS = [
     key: "getting-started",
     district: "hub",
     name: "Getting started",
-    shape: "gatehouse",
-    pos: [-13, 7], // the hub's south-west, facing the spawn: the first pad a visitor reaches, about 8 m from where the car lands (outside the 3 m trigger)
-    face: [0, 14],
+    shape: "kiosk",
+    pos: [11, 2], // the hub's east side, facing the spawn: the first pad a visitor reaches, about 9 m from where the car lands (outside the 3 m trigger),
+    face: [0, 14], // 14 m clear of HQ and 8 m from the nearest road mouth (the gatehouse at [-13, 7] sat on HQ and the Community mouth: review, 3 Nov 2026)
     summary:
       "A first visit, from sign-in to a funded account. Sign in with a wallet on Cardano, Ethereum, Solana and more; deposit crypto on any supported chain or pay by card; your balance is held in USD.",
     points: [
@@ -106,7 +106,7 @@ export const STOPS = [
     summary:
       "Strike lists USD-settled perpetuals in four groups: crypto (BTC, ETH, SOL, ADA, XRP and more), US and Asian stocks (NVDA, TSLA, GOOGL, COIN, SK Hynix), indices (S&P 500, Nasdaq 100) and commodities (gold, silver, WTI oil). Examples as listed on 3 November 2026.",
     points: [
-      "Every market has its own leverage limit, margin tiers, tick size and minimum order, and the list grows as Strike adds markets.",
+      "Every market has its own leverage limit, margin tiers, tick size and minimum order, all published by Strike's public markets endpoint, and the list grows as Strike adds markets.",
       "The live figure on this pad is the number of markets in trading status, read from Strike's public markets endpoint.",
     ],
     live: ["markets"],
@@ -125,7 +125,7 @@ export const STOPS = [
     points: [
       "Tier 0 (under $100K in 30 days) pays 0.050% as taker and earns a 0.005% maker rebate; tiers recalculate daily at 00:05 UTC, and more volume lowers the taker fee.",
       "Staked STRIKE unlocks discounts of 5% to 40% on positive fees, from 5,000 STRIKE up. Rebates are unchanged.",
-      "The bots (TWAP, trailing stop, grid, scale) and RFQ each have their own pad in this plaza.",
+      "TWAP, grid, trailing stop, scale and RFQ each have their own pad in this plaza.",
     ],
     live: null,
     docs: `${DOCS}/perpetuals/order-types`,
@@ -272,7 +272,7 @@ export const STOPS = [
   {
     key: "funding-comparison",
     district: "perps",
-    name: "Funding Comparison and Carry Scanner",
+    name: "Funding Comparison", // the Carry Scanner shares the sheet; the full name clipped the pad label
     shape: "antenna",
     summary:
       "Two pages in the app's Tools menu, with no docs page of their own. Funding Comparison lays Strike's hourly funding on every market beside Binance, Bybit, OKX, Hyperliquid, Lighter, Extended and Variational; the Carry Scanner ranks long/short pairs on Strike by funding carry against spread risk. As seen on 3 November 2026.",
@@ -298,7 +298,7 @@ export const STOPS = [
     points: [
       "Rates are quoted on an 8-hour basis and one eighth is paid each hour. Positive means longs pay shorts; negative, shorts pay longs.",
       "The windsocks on the road in show Strike's rate per 8 hours on each sock, with Bybit, Binance and Hyperliquid in the row behind.",
-      "Crypto markets carry a 0.01% 8-hour interest rate; stocks, indices and commodities use a dampener instead. Both are capped at 4% per 8 hours either way.",
+      "By default a crypto market carries a 0.01% 8-hour interest rate, while stocks, indices and commodities use a 0.05% dampener band instead; a market can run on different limits. Every rate is capped at 4% per 8 hours either way.",
     ],
     live: null,
     docs: `${DOCS}/perpetuals/funding-rates`,
@@ -690,7 +690,7 @@ export const STOPS = [
     points: [
       "The swap is placed in a batching window; if it is not filled in time it is cancelled and resubmitted.",
       "The result is recorded as a deposit receipt, then the stablecoin is locked in Strike's on-chain locker contract.",
-      "DexHunter is the Cardano aggregator most traders have met: it compares prices across many exchanges, splits a swap between them, and lists STRIKE for swapping. The docs don't say which aggregator Strike's own deposits go through.",
+      "DexHunter is a Cardano swap aggregator: it compares prices across many exchanges, splits a swap between them, and has a STRIKE swap page at app.dexhunter.io. The docs don't say which aggregator Strike's own deposits go through.",
     ],
     live: null,
     docs: "https://docs.strikefinance.org/perpetuals/deposits-and-withdrawals/exchanger",
@@ -838,7 +838,7 @@ export const STOPS = [
     summary: "Three Cardano directories list Strike, each run by someone other than Strike: cardano.org's Apps catalogue under DEX, CardanoCube under DeFi, and Adastack under Perpetuals and Staking.",
     points: [
       "cardano.org describes a perpetual futures protocol with on-chain margin, beside Minswap, WingRiders and SundaeSwap; CardanoCube's profile carries a description, token details and team information.",
-      "Adastack lists both Strike Finance and Strike Finance Staking on its dApps page.",
+      "Adastack, open source under the MIT licence, lists both Strike Finance (perpetuals) and Strike Finance Staking (revenue-share staking) on its dApps page; CardanoCube files Strike under derivatives and investment management.",
       "cardano.org's catalogue and Adastack are open source, so anyone can send a correction through GitHub.",
     ],
     live: null,
@@ -952,9 +952,9 @@ export const STOPS = [
     district: "community",
     name: "Medium",
     shape: "kiosk",
-    summary: "Strike's Medium publication, @strikecardano, carries its longer announcements. Ten posts were listed there on 3 November 2026.",
+    summary: "Strike's Medium publication, @strikecardano, carries its longer announcements. Its feed on 3 November 2026 led with the posts below.",
     points: [
-      "Latest: \"Strike Hackathon Starts this Wednesday\" (18 October 2026) and, before it, \"Strike Secures $1,000,000 Liquidity Deployment to Unlock the Next Phase of Growth\" (15 July 2026).",
+      "Latest: \"Strike Hackathon Starts this Wednesday — $3,000 in Prizes\" (18 October 2026) and, before it, \"Strike Secures $1,000,000 Liquidity Deployment to Unlock the Next Phase of Growth\" (15 July 2026).",
       "Older posts include the 2026 roadmap, the litepaper and the tokenomics article; the docs site covers current V2 mechanics such as liquid staking and vaults.",
     ],
     live: null,
