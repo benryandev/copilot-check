@@ -31,7 +31,10 @@ function ico(pngBuf, size) {
 }
 
 const p32 = await png(32), p180 = await png(180);
-writeFileSync(new URL('../img/favicon.ico', import.meta.url), ico(p32, 32));
-writeFileSync(new URL('../img/apple-touch-icon.png', import.meta.url), p180);
+// Linked from every page under /img/, and also at the root, where browsers and crawlers look when nothing is linked
+for (const dir of ['../img/', '../']) {
+  writeFileSync(new URL(`${dir}favicon.ico`, import.meta.url), ico(p32, 32));
+  writeFileSync(new URL(`${dir}apple-touch-icon.png`, import.meta.url), p180);
+}
 await browser.close();
-console.log(`img/favicon.ico (${p32.length} B png in ico) and img/apple-touch-icon.png (${p180.length} B) written`);
+console.log(`favicon.ico (${p32.length} B png in ico) and apple-touch-icon.png (${p180.length} B) written to img/ and the root`);
