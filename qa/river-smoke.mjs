@@ -101,14 +101,18 @@ const jumpRun = (speed) => page.evaluate(async (speed) => {
   const back = speed >= 24 ? 45 : 0;
   Object.assign(s, { x: j.ox - j.fx * back, z: j.oz, heading: Math.atan2(-j.fx, -j.fz), speed, steer: 0, vy: 0, air: false, boost: 0, wet: false, airTime: 0 });
   s.y = T.groundHeight(s.x, s.z);
-  const out = { air: 0, landed: null, boost: null, wetFrames: 0, minSpeed: Infinity, maxY: -Infinity, stuntK: 0 };
+  const far = T.jumps.find((o) => o.stunt && o.fx > 0), farLip = { x: far.ox + far.fx * far.length, z: far.oz + far.fz * far.length };
+  const out = { air: 0, landed: null, boost: null, wetFrames: 0, minSpeed: Infinity, maxY: -Infinity, popUp: 0, pastFarLip: null };
+  let prevY = s.y;
   for (let i = 0; i < 300; i++) {
     const info = stepCar(car, { up: speed >= 24, down: false, left: false, right: false }, 1 / 60);
     if (s.air) out.air++;
     out.maxY = Math.max(out.maxY, s.y);
     if (T.onWater(s.x, s.z) && !s.air) out.wetFrames++;
     out.minSpeed = Math.min(out.minSpeed, s.speed);
-    if (info.event?.landed != null && out.landed == null) { out.landed = i; out.boost = s.boost; out.landedOn = T.jumpAt(s.x, s.z) ? 'ramp' : T.onWater(s.x, s.z) ? 'water' : 'ground'; }
+    if (out.landed == null) out.popUp = Math.max(out.popUp, s.y - prevY - Math.max(0, s.vy) * (1 / 60)); // a rise in one frame beyond what the car's own climb explains
+    prevY = s.y;
+    if (info.event?.landed != null && out.landed == null) { out.landed = i; out.boost = s.boost; out.landedOn = T.jumpAt(s.x, s.z) ? 'ramp' : T.onWater(s.x, s.z) ? 'water' : 'ground'; out.pastFarLip = +((s.x - farLip.x) * far.fx * -1).toFixed(2); }
     if (out.landed != null && i > out.landed + 30) break;
   }
   return out;
@@ -117,8 +121,14 @@ const fast = await jumpRun(24);
 console.log('     epic jump at 24', JSON.stringify(fast));
 if (!(fast.air > 20)) fail('never took off');
 if (fast.landedOn !== 'ramp') fail(`landed on ${fast.landedOn}, not the far ramp`);
+if (!(fast.pastFarLip >= 1)) fail(`landed only ${fast.pastFarLip} m past the far lip`);
+if (!(fast.popUp < 0.3)) fail(`popped up ${fast.popUp.toFixed(2)} m in one frame: snapped onto the ramp through its face`);
 if (!(fast.boost > 0)) fail('no boost for the landing');
 if (fast.wetFrames) fail('got wet on the fast run');
+const edge = await jumpRun(21);
+console.log('     epic jump at 21', JSON.stringify(edge));
+if (!(edge.minSpeed < 0)) fail('21 m/s should hit the far face and bounce, not be lifted onto the ramp');
+if (edge.boost) fail('a boost for hitting the far face');
 const slow = await jumpRun(16);
 console.log('     epic jump at 16', JSON.stringify(slow));
 if (!(slow.wetFrames > 0 || slow.minSpeed < 0)) fail('the slow run should end in the river or against the far face');

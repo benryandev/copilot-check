@@ -5,7 +5,7 @@ import { DISTRICTS, STOPS, SPAWN, MULTIPLAYER } from "./content.js";
 import { fetchLive, LABELS } from "./data.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo } from "./terrain.js";
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
-import { stuntBlend, stuntCamera } from "./stunt-math.js";
+import { stuntBlend, stuntCamera, stuntTakeoff } from "./stunt-math.js";
 import { createGrass, createDust, createFireworks } from "./effects.js";
 import { createSky } from "./sky.js";
 import {
@@ -414,7 +414,10 @@ function cameraBlock(x, y, z, to) {
   return best;
 }
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+// The epic jump's camera state lives up here because a snap (teleport, grid, placeCar) ends it; see stuntTick below
+const stunt = { k: 0, on: false, cam: new THREE.Vector3(), look: new THREE.Vector3() };
 function placeCamera(dt, snap = false) {
+  if (snap) { stunt.k = 0; stunt.on = false; } // a teleport mid-flight must not leave the camera easing back from the river
   const s = car.s;
   const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
   const back = 11 + Math.max(0, s.speed) * 0.12;
@@ -445,7 +448,6 @@ function placeCamera(dt, snap = false) {
 // ── The epic jump's camera ────────────────────────────────────────────
 // Off a stunt ramp the camera eases to a point down the river at bank height and watches the flight side-on; after the
 // landing the chase camera eases back. Never under reduced motion.
-const stunt = { k: 0, on: false, cam: new THREE.Vector3(), look: new THREE.Vector3() };
 function stuntStart(j) {
   if (reduceMotion) return;
   const other = jumps.find((o) => o.stunt && o !== j);
@@ -898,7 +900,7 @@ function frame() {
     const px = car.s.x, pz = car.s.z, wasAir = car.s.air;
     const info = stepCar(car, raceLocked() ? NO_KEYS : keys, dt);
     if (info.event) car.lastEvent = info.event; // QA scripts read it
-    if (!wasAir && car.s.air) { const j = jumpAt(px, pz) || jumpAt(px - info.fx, pz - info.fz); if (j?.stunt) stuntStart(j); } // off a stunt ramp: the side-on camera
+    if (stuntTakeoff(wasAir, car.s.air, jumpAt(px, pz) || jumpAt(px - info.fx, pz - info.fz))) stuntStart(jumpAt(px, pz) || jumpAt(px - info.fx, pz - info.fz)); // off a stunt ramp: the side-on camera
     brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on, info.boost > 0);
     sound.tick(dt, { speed: car.s.speed, throttle: (keys.up ? 1 : 0) - (keys.down ? 1 : 0), surface: car.s.air ? "air" : info.wet ? "water" : info.dirt ? "dirt" : onCobbles(car.s.x, car.s.z) ? "cobble" : "grass", boost: info.boost > 0 });
     if (info.event?.landed > 4) sound.land(Math.min(1, info.event.landed / 14));

@@ -4,7 +4,7 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { M, paint, box, mesh, colliders } from "./build.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
-import { groundHeight, onDirt, onWater, racewayWeight, WORLD } from "./terrain.js";
+import { groundHeight, onDirt, onWater, racewayWeight, jumpAt, WORLD } from "./terrain.js";
 
 import { glowIntensity } from "./post.js";
 import { boostFor, boostedTop } from "./boost-math.js";
@@ -158,6 +158,7 @@ export function stepCar(car, keys, dt) {
   const nx = s.x + fx * s.speed * dt, nz = s.z + fz * s.speed * dt;
 
   let event = null;
+  const ox = s.x, oz = s.z; // where this frame started, for a mid-air hit that has to be undone
   const gNew = groundHeight(nx, nz);
   const step = Math.hypot(nx - s.x, nz - s.z);
   // Too steep to drive up (the back of a kicker, the world's edge): stop like a wall
@@ -181,7 +182,15 @@ export function stepCar(car, keys, dt) {
     s.vy -= GRAVITY * dt;
     s.y += s.vy * dt;
     s.airTime += dt;
-    if (s.y <= g) {
+    const ramp = s.y <= g ? jumpAt(s.x, s.z) : null;
+    if (ramp && g - s.y > 0.35) {
+      // Came down into a ramp's face from the air (short of the far lip of the river jump): a hit, not a landing. Back out of
+      // the face, bounce, no boost for this flight; keep falling, into whatever is below.
+      s.x = ox; s.z = oz;
+      s.speed *= -0.25;
+      s.airHit = true;
+      event = { hit: "ramp" };
+    } else if (s.y <= g) {
       event = { landed: -s.vy, airTime: s.airTime };
       const b = boostFor(s.airTime, onDirt(s.x, s.z) && !onWater(s.x, s.z), s.airHit); // a clean jump pays on landing; not into the river
       if (b > 0) { s.boost = b; event.boost = b; }

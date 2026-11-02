@@ -142,8 +142,8 @@ export const JUMPS = [
   // ford. Free-standing (no road): `x, z` is the ramp's low end, `dir` the way up it. Flat out clears the gap and lands
   // on the far ramp's slope (a boost); anything under about 22 m/s meets the far face and the river. `stunt` turns the
   // side-on camera on for the flight.
-  { x: -82, z: 18, dir: [-1, 0], length: 12, height: 3.4, width: 5, stunt: true },
-  { x: -118.5, z: 18, dir: [1, 0], length: 12, height: 3.4, width: 5, stunt: true },
+  { x: -82.9, z: 18, dir: [-1, 0], length: 12, height: 3.6, width: 5, stunt: true }, // lip 5.4 m east of the water's centreline
+  { x: -117.7, z: 18, dir: [1, 0], length: 12, height: 3.6, width: 5, stunt: true }, // lip 5.4 m west of it: 10.8 m lip to lip
 ];
 
 // ── The river (2 Nov 2026, Ben) ────────────────────────────────────────
