@@ -6,6 +6,12 @@
 const IN_WORLD = [/^\/ecosystem\/guides\/(?!img\/)[a-z0-9-]*\/?$/, /^\/ecosystem\/stops\/$/];
 export const isInWorldPath = (pathname) => IN_WORLD.some((re) => re.test(pathname));
 
+// A stop sheet's guide pill. One guide: "Read the guide" (the sheet is already about it; the full title rides on the
+// link's aria-label and is written out on the stops page). Several: each guide's short title, the part before its
+// first colon or question mark, so the pills stay one line on a phone.
+export const guideShortTitle = (title) => { const m = title.match(/^(.*?)(\?|:)\s/); return m ? m[1] + (m[2] === "?" ? "?" : "") : title; };
+export const guideLinkText = (guides, g) => (guides.length > 1 ? `Guide: ${guideShortTitle(g.title)}` : "Read the guide");
+
 // The page's title (before " · ") and its <main>; null when the document has no main to show
 export function extractMain(html, parse) {
   const doc = parse(html);

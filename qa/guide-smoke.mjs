@@ -34,8 +34,8 @@ const state = (page) => page.evaluate(() => ({
 // Open from the HQ sheet, read next, Back
 {
   const { ctx, page, errs } = await open('/ecosystem/?mp=0&stop=strike');
-  const link = await page.evaluate(() => { const a = document.querySelector('#stop-guides a[data-guide-link]'); return a ? { text: a.textContent, href: a.getAttribute('href') } : null; });
-  check(!!link && /^Read the guide: /.test(link.text) && /^\/ecosystem\/guides\/[a-z0-9-]+\/$/.test(link.href), `HQ sheet: guide link "${link?.text}" → ${link?.href}`);
+  const link = await page.evaluate(() => { const a = document.querySelector('#stop-guides a[data-guide-link]'); return a ? { text: a.textContent, label: a.getAttribute('aria-label'), href: a.getAttribute('href') } : null; });
+  check(!!link && link.text === 'Read the guide' && /^Read the guide: What is Strike\?/.test(link.label) && /^\/ecosystem\/guides\/[a-z0-9-]+\/$/.test(link.href), `HQ sheet: guide link "${link?.text}" (${link?.label}) → ${link?.href}`);
   const before = await state(page);
   await page.click('#stop-guides a[data-guide-link]');
   await page.waitForFunction(() => document.getElementById('guide').open && document.querySelector('#guide h1'), null, { timeout: 20000 });

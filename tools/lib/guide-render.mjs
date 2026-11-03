@@ -142,7 +142,7 @@ export function renderGuidesIndex(file, { stops, districts }) {
         </a></li>`;
   const start = all.filter((g) => g.series === 'start-here'), features = all.filter((g) => g.series === 'feature');
   const ld = [
-    { '@type': 'CollectionPage', '@id': canonical, url: canonical, name: 'Strike guides: start here', description: 'Plain-English guides to Strike Finance, from what a perp is to your first small trade, each one opening inside the drivable ecosystem map.', dateModified: file.generated, isPartOf: website, author, inLanguage: 'en' },
+    { '@type': 'CollectionPage', '@id': canonical, url: canonical, name: 'Strike guides: start here and learn Strike from zero', description: 'Plain-English guides to Strike Finance, from what a perp is to your first small trade, each one opening inside the drivable ecosystem map.', dateModified: file.generated, isPartOf: website, author, inLanguage: 'en' },
     { '@type': 'ItemList', name: 'Strike guides', numberOfItems: all.length, itemListOrder: 'https://schema.org/ItemListOrderAscending', itemListElement: all.map((g, i) => ({ '@type': 'ListItem', position: i + 1, name: g.title, url: `${SITE}${guidePath(g.slug)}` })) },
   ];
   const main = `    <article class="guide-article guide-index">
@@ -162,7 +162,7 @@ ${features.length ? `      <section>\n        <h2 id="feature-guides">Feature gu
       </div>
     </article>`;
   return shell({
-    title: 'Strike guides: start here', description: ld[0].description, canonical, ogType: 'website',
+    title: 'Strike guides: start here and learn Strike from zero', description: ld[0].description, canonical, ogType: 'website',
     ogImage: { url: `${SITE}/ecosystem/img/og.png`, width: 1200, height: 630 }, ogAlt: 'Strike Ecosystem: an aerial view of Strike HQ and the dirt roads out to its districts.',
     ld, stop: 'strike', districtName: districts.hub.name, eyebrow: 'Strike ecosystem · guides', main,
   });

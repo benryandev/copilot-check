@@ -4,7 +4,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, SPAWN, MULTIPLAYER } from "./content.js";
 import { parseDeepLink, stopUrl } from "./deeplink-math.js";
 import { guidesForStop } from "./guides.js";
-import { mountGuide, closeGuide, onPopState, rewriteLinks } from "./guide-sheet.js";
+import { mountGuide, closeGuide, onPopState, rewriteLinks, guideLinkText } from "./guide-sheet.js";
 import { fetchLive, fetchKlines, fetchFunding, LABELS } from "./data.js";
 import { normaliseFunding, pollDue } from "./windsock-math.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo, setRidgeSeries, onRidge, ridgeSeries } from "./terrain.js";
@@ -686,8 +686,14 @@ function openStop(stop) {
   resetLinkChip(stopUrl(location.origin, stop.key));
   const guides = guidesForStop(stop.key);
   $("stop-guides").hidden = !guides.length;
-  $("stop-guides").replaceChildren(...guides.map((g) => Object.assign(document.createElement("a"), { className: "br-button br-button--secondary", href: g.path, textContent: `Read the guide: ${g.title}` })));
-  $("stop-guides").querySelectorAll("a").forEach((a) => a.setAttribute("data-guide-link", ""));
+  // One guide reads "Read the guide" (the sheet is already about it; the full title rides on the link's aria-label and
+  // is written out on the stops page); a stop with several carries each guide's short title, so the pills stay one line.
+  $("stop-guides").replaceChildren(...guides.map((g) => {
+    const a = Object.assign(document.createElement("a"), { className: "br-button br-button--secondary", href: g.path, textContent: guideLinkText(guides, g) });
+    a.setAttribute("aria-label", `Read the guide: ${g.title}`);
+    a.setAttribute("data-guide-link", "");
+    return a;
+  }));
   show($("stop"));
 }
 

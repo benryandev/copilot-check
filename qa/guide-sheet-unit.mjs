@@ -1,6 +1,6 @@
 // The in-world guide sheet's logic (ecosystem/js/guide-sheet.js), no DOM: node --test qa/guide-sheet-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { isInWorldPath, extractMain, mountGuide, closeGuide, onPopState, classifyLink } from '../ecosystem/js/guide-sheet.js';
+import { isInWorldPath, extractMain, mountGuide, closeGuide, onPopState, classifyLink, guideShortTitle, guideLinkText } from '../ecosystem/js/guide-sheet.js';
 
 const page = '<!doctype html><html><head><title>What is Strike? · Strike guides</title></head><body><main id="main"><article><h1>What is Strike?</h1></article></main></body></html>';
 const fakeParse = (html) => ({ querySelector: (sel) => sel === 'title' ? { textContent: html.match(/<title>(.*?)<\/title>/)[1] } : sel === 'main' && html.includes('<main') ? { outerHTML: html.match(/<main[^]*<\/main>/)[0], id: 'main' } : null });
@@ -58,4 +58,12 @@ test('classifyLink: in-world pages, same-page fragments, external, plain', () =>
   assert.equal(classifyLink('/ecosystem/?district=perps', at), 'drive');
   assert.equal(classifyLink('/ecosystem/', at), 'plain');
   assert.equal(classifyLink('/ecosystem/stops/#district-perps', 'https://strike.benryan.com.au/ecosystem/stops/'), 'anchor');
+});
+test('guide pills: one guide reads "Read the guide"; several carry their short titles', () => {
+  const perp = { title: 'What is a perp? Perpetual futures explained in plain English' }, lev = { title: 'Long, short and leverage: what 2x, 10x and 20x really mean' };
+  assert.equal(guideLinkText([perp], perp), 'Read the guide');
+  assert.equal(guideLinkText([perp, lev], perp), 'Guide: What is a perp?');
+  assert.equal(guideLinkText([perp, lev], lev), 'Guide: Long, short and leverage');
+  assert.equal(guideShortTitle('Liquidation, and how to avoid it: a plain-English guide'), 'Liquidation, and how to avoid it');
+  assert.equal(guideShortTitle('No separator in this one'), 'No separator in this one');
 });

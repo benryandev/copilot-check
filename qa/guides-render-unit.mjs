@@ -42,7 +42,7 @@ test('index page lists both guides in order with CollectionPage + ItemList', () 
   assert.ok(html.indexOf('/ecosystem/guides/what-is-strike/') < html.indexOf('/ecosystem/guides/what-is-a-perp/'));
   assert.deepEqual(ld(html).map((n) => n['@type']), ['CollectionPage', 'ItemList']);
   assert.equal(ld(html)[1].numberOfItems, 2);
-  assert.ok(html.includes('<title>Strike guides: start here</title>') && html.includes('<h1 id="guide-title">Learn Strike from zero</h1>') && html.includes('data-stop="strike"'));
+  assert.ok(html.includes('<title>Strike guides: start here and learn Strike from zero</title>') && html.includes('<h1 id="guide-title">Learn Strike from zero</h1>') && html.includes('data-stop="strike"'));
   assert.ok(html.includes('<main id="main" class="sheet guide-sheet">'));
 });
 test('stills.css: the 960 still by default, 1920 from 961 px, both themes, every guide stop and the hub', () => {
