@@ -54,10 +54,11 @@ const names = (prefix, n) => Array.from({ length: n }, (_, i) => `${prefix}_${St
 const setMaterial = (n, mat) => n.traverse((o) => { if (o.isMesh) o.material = mat; });
 
 /** A two-line label/value face (canvas), blank until its first text, repainted on a theme change or a new value. */
-function makeFace(m, lines = 2) {
+function makeFace(m, lines = 2, aspect = 5.6 / 1.1) { // the canvas takes the plane's aspect so the type is not squeezed (reviewer, 3 Nov)
   if (m.face) return;
   m.faceText = null;
-  m.face = canvasTexture(1024, 16 + 92 * lines, (ctx, w, h, p) => {
+  const h = 16 + 92 * lines;
+  m.face = canvasTexture(Math.round(h * aspect), h, (ctx, w, h, p) => {
     ctx.fillStyle = p.panel; ctx.fillRect(0, 0, w, h);
     if (!m.faceText) return;
     ctx.textBaseline = "middle";
@@ -322,7 +323,7 @@ function attachBeacon(m) {
     const lm = accent(m.d.colour).clone(); if (lm.emissive) lm.emissive.set(m.d.colour); lm.emissiveIntensity = 1;
     setMaterial(m.nodes.lantern, lm); m.lanternMat = lm;
   }
-  makeFace(m); bindFace(m, m.nodes.face); // yesterday's traders and the cars here now, blank until the first series
+  makeFace(m, 2, 3.4 / 1.0); bindFace(m, m.nodes.face); // yesterday's traders and the cars here now, blank until the first series; a 3.4 × 1.0 plane
   m.pulse = m.pulse ?? pulsePeriod(1); m.phase = m.phase ?? 0;
   applyBeacon(m);
 }
@@ -368,7 +369,7 @@ function attachObelisk(m) {
   const blockout = m.nodes.screens.some((s) => s?.userData.blockout);
   m.screen.tex.flipY = blockout; m.screen.tex.needsUpdate = true;
   if (themePalette()) m.screen.redraw(themePalette());
-  makeFace(m); bindFace(m, m.nodes.face); // the yard's minute figures
+  makeFace(m, 2, 3.4 / 1.0); bindFace(m, m.nodes.face); // the yard's minute figures, on a 3.4 × 1.0 plane
   applyObelisk(m);
 }
 function applyObelisk(m) {
@@ -394,7 +395,7 @@ function attachPylons(m) {
     return l;
   });
   m.nodes.labels.forEach((n, i) => { if (!n) return; const l = m.labels[i]; l.face.tex.flipY = !!n.userData.blockout; l.face.tex.needsUpdate = true; n.material = l.mat; n.castShadow = false; if (themePalette()) l.face.redraw(themePalette()); });
-  makeFace(m, 3); bindFace(m, m.nodes.face); // deposits, withdrawals and the difference, blank until the first summary
+  makeFace(m, 3, 3.6 / 1.4); bindFace(m, m.nodes.face); // deposits, withdrawals and the difference, on a 3.6 × 1.4 plane, blank until the first summary
   applyPylons(m);
 }
 function applyPylons(m) {

@@ -419,21 +419,21 @@ const SHAPES = {
   // three tapered pylons at the corners for Cardano, Ethereum and Solana (one at the back, two flanking the front), each with
   // a name plate on its inward face, the name board on a post between the front two. 7.8 m tall, about 10 m across.
   pylons(g, A, stop) {
-    const base = mesh(new THREE.CylinderGeometry(5.2, 5.2, 0.8, 3), M.trim, 0, 0.4, 0); base.rotation.y = Math.PI; g.add(base); // corners at 60°, 180° and 300°, so a flat side faces +z
+    const base = mesh(new THREE.CylinderGeometry(5.2, 5.2, 1.5, 3), M.trim, 0, 0.75, 0); // 1.5 m, so the three-line face stands clear of the ground base.rotation.y = Math.PI; g.add(base); // corners at 60°, 180° and 300°, so a flat side faces +z
     const step = mesh(new THREE.CylinderGeometry(5.6, 5.6, 0.2, 3), M.build, 0, 0.1, 0); step.rotation.y = Math.PI; g.add(step);
     [["cardano", 90], ["ethereum", 210], ["solana", 330]].forEach(([chain, deg]) => {
       const a = (deg * Math.PI) / 180, x = Math.cos(a) * 3.2, z = -Math.sin(a) * 3.2;
-      const p = mesh(new THREE.CylinderGeometry(0.3, 0.6, 6.4, 4), M.build, x, 0.8 + 3.2, z); p.rotation.y = Math.PI / 4; g.add(p);
-      const band = mesh(new THREE.CylinderGeometry(0.36, 0.38, 0.25, 4), A, x, 6.4, z); band.rotation.y = Math.PI / 4; g.add(band);
-      g.add(mesh(new THREE.ConeGeometry(0.38, 0.5, 4), M.trim, x, 7.45, z));
+      const p = mesh(new THREE.CylinderGeometry(0.3, 0.6, 5.6, 4), M.build, x, 1.5 + 2.8, z); p.rotation.y = Math.PI / 4; g.add(p);
+      const band = mesh(new THREE.CylinderGeometry(0.36, 0.38, 0.25, 4), A, x, 6.3, z); band.rotation.y = Math.PI / 4; g.add(band);
+      g.add(mesh(new THREE.ConeGeometry(0.38, 0.5, 4), M.trim, x, 7.35, z));
       const l = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.4), M.trim); l.name = `label_${chain}`; l.userData.blockout = true;
       const toward = Math.atan2(-x, -z); // facing the centre
-      l.position.set(x - Math.sin(toward) * -0.8, 1.6, z - Math.cos(toward) * -0.8); l.rotation.y = toward; g.add(l);
+      l.position.set(x - Math.sin(toward) * -0.8, 2.3, z - Math.cos(toward) * -0.8); l.rotation.y = toward; g.add(l);
     });
     const face = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.4), M.trim); face.name = "face_flows"; face.userData.blockout = true;
-    face.position.set(0, 0.4, 2.61); g.add(face); // the flat side of a radius-5.2 triangle is 2.6 m from the centre
-    g.add(cyl(0.08, 2.0, M.trim, 0, 0.8, 1.2, 8));
-    g.add(signBoard(stop.name, 3.4, 0.7, 0, 2.5, 1.2));
+    face.position.set(0, 0.78, 2.61); g.add(face); // the flat side of a radius-5.2 triangle is 2.6 m from the centre
+    g.add(cyl(0.08, 1.6, M.trim, 0, 1.5, 1.2, 8));
+    g.add(signBoard(stop.name, 3.4, 0.7, 0, 3.2, 1.2));
     return 7.8;
   },
   // The Compass (the Partners monument, Part B3): a low round base, a dial ring that turns, eight stand-in arms at the centre
