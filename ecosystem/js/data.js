@@ -1,7 +1,7 @@
 // Live figures from Strike's public API (no key; CORS open; allowed by the site CSP's connect-src).
 // Never an APR or yield: those stay off the page by design.
 
-import { pickStaking, pickSlp, stakeValues, engineValues } from "./monument-math.js";
+import { pickStaking, pickSlp, stakeValues, engineValues, pickCollateral, pickActivity, pickSummary, collateralValues, beaconValues } from "./monument-math.js";
 
 const API = "https://api.strikefinance.org";
 
@@ -60,6 +60,14 @@ export const LABELS = {
   lastDistribution: "Last distribution",
   distributions: "Distributions so far",
   distributedAllTime: "Distributed all time",
+  // Part B2: the Chart Plinth, the Collateral Stacks and the Beacon
+  volume30d: "Volume, last 30 days",
+  revenue30d: "Revenue, last 30 days",
+  collateralAssets: "Collateral assets",
+  collateralHeld: "Collateral held by asset",
+  collateralLines: "Open credit lines by asset",
+  activeTradersHigh30d: "Active traders, 30-day high",
+  carsHere: "Cars here now",
   markets: "Markets trading",
   maxLeverage: "Max leverage",
   volume24h: "24 h volume",
@@ -104,7 +112,7 @@ export async function fetchLive() {
   // The monuments read only the fields monument-math.js names; every APR and price field in these bodies stops here
   slpId = vaults?.vaults?.find((v) => v.type === "protocol")?.vault_id ?? slpId;
   const positionsBody = slpId ? await soft(`/v2/positions?vault_id=${slpId}`) : null;
-  const monuments = { staking: pickStaking(stakingBody), slp: pickSlp(vaults, positionsBody) };
+  const monuments = { staking: pickStaking(stakingBody), slp: pickSlp(vaults, positionsBody), collateral: pickCollateral(credit), activity: pickActivity(users), summary: pickSummary(summary) };
   const list = Object.values(mk.markets).filter((m) => m.status === "trading");
   const values = {
     markets: String(list.length),
@@ -154,6 +162,6 @@ export async function fetchLive() {
     .map((t) => ({ sym: t.symbol.replace("-USD", ""), price: Number(t.lastPrice), change: Number(t.priceChangePercent), vol: Number(t.quoteVolume) }))
     .filter((q) => q.price > 0)
     .sort((a, b) => b.vol - a.vol);
-  try { Object.assign(values, stakeValues(monuments.staking), engineValues(monuments.slp, null)); } catch (err) { console.warn("[eco] monuments", err.message); } // a monument string must never take the boards down
+  try { Object.assign(values, stakeValues(monuments.staking), engineValues(monuments.slp, null), collateralValues(monuments.collateral), beaconValues(monuments.activity)); } catch (err) { console.warn("[eco] monuments", err.message); } // a monument string must never take the boards down
   return { tickers: list.map((m) => m.base_asset).sort(), values, quotes, monuments };
 }

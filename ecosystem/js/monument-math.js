@@ -122,3 +122,91 @@ export function engineValues(slp, hour) {
 
 // What no monument string may say: the sheets' rules plus yield, return and price (the staking APR never reaches the world)
 export const MONUMENT_BANNED = [/recommend|\bAPR\b|\byield\b|\breturn\b|loss cover|you should|best setting|\bprice\b/i, /STRIKE (token )?price/];
+
+// ── Part B2 (3 Nov 2026): the Chart Plinth in Analytics, the Collateral Stacks in Collateral, the Beacon in Community ──
+export const PLINTH = { days: 30, minBar: 0.03 };
+export const STACKS = { slots: 8, low: 1e3, high: 1e6, floor: 0.2, min: 0.05, ringsCap: 48 }; // $1K is a fifth of full height, $1M is full
+export const BEACON = { days: 30, minRung: 0.08, pulseSlow: 3, pulseFast: 0.5, fullCars: 8 };
+export const SERIES = { pollMs: 3_600_000, retryMs: 30_000 }; // the two daily series, once an hour
+export const COLLATERAL_NAMES = { ADA: "ADA", LP_SUNDAE_USDCx_USDM: "USDCx/USDM LP", SCALED_AAVE_V3_ETH_aUSDC: "aUSDC", sUSDrf: "sUSDrf", enzoBTC: "enzoBTC" }; // the Collateral sheets' names; an unknown key shows as itself
+
+/** The API's [ts, symbol, usd] rows summed per day, ascending; a row whose figure is not a number is skipped. */
+export function dailyTotals(rows) {
+  if (!Array.isArray(rows)) return [];
+  const byDay = new Map();
+  for (const r of rows) {
+    if (!Array.isArray(r)) continue;
+    const ts = num(r[0]), v = num(r[2]);
+    if (ts == null || v == null) continue;
+    byDay.set(ts, (byDay.get(ts) ?? 0) + v);
+  }
+  return [...byDay].map(([ts, usd]) => ({ ts, usd })).sort((a, b) => a.ts - b.ts);
+}
+export const lastDays = (totals, n = PLINTH.days) => totals.slice(-n);
+export function pickSeries(volumesBody, revenueBody) {
+  if (volumesBody == null && revenueBody == null) return null;
+  const side = (body, key) => (body == null ? null : lastDays(dailyTotals(body[key])));
+  return { volume: side(volumesBody, "total_volume_daily"), revenue: side(revenueBody, "total_revenue_daily") };
+}
+/** Exactly n slots, oldest first, null where there is no day; a bar is its day against the row's busiest, never below minBar. */
+export function barScales(days, n = PLINTH.days) {
+  const d = (days ?? []).slice(-n);
+  const max = Math.max(0, ...d.map((x) => x.usd));
+  const scaled = d.map((x) => (max > 0 ? Math.max(PLINTH.minBar, x.usd / max) : PLINTH.minBar));
+  return [...Array(n - scaled.length).fill(null), ...scaled];
+}
+const sumUsd = (days) => days.reduce((s, d) => s + d.usd, 0);
+export function plinthValues(series) {
+  const out = {};
+  if (series?.volume?.length) out.volume30d = usd(sumUsd(series.volume));
+  if (series?.revenue?.length) out.revenue30d = usd(sumUsd(series.revenue));
+  return out;
+}
+export const pickSummary = (body) => (body == null ? null : { volumeUsd: num(body.total_volume_usd), users: num(body.total_users) });
+
+/** One entry per collateral asset the API lists, valued in dollars where it has a price (the price itself never leaves here), largest first, the priceless last. */
+export function pickCollateral(body) {
+  if (!body?.assets || typeof body.assets !== "object") return null;
+  const list = [];
+  for (const [key, a] of Object.entries(body.assets)) {
+    const units = num(a?.total_collateral_units);
+    if (units == null) continue;
+    const price = num(a?.price);
+    list.push({ key, name: COLLATERAL_NAMES[key] ?? key, units, usd: price == null ? null : units * price, lines: num(a?.open_lines) });
+  }
+  return list.sort((x, y) => (x.usd == null) - (y.usd == null) || (y.usd ?? 0) - (x.usd ?? 0) || (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
+}
+/** A stack's height: a log scale from $1K (a fifth) to $1M (full), with a floor so the priceless and the tiny still stand. */
+export function stackScale(usd) {
+  if (usd == null) return STACKS.min;
+  const span = Math.log10(STACKS.high) - Math.log10(STACKS.low);
+  const f = STACKS.floor + (1 - STACKS.floor) * ((Math.log10(Math.max(1, usd)) - Math.log10(STACKS.low)) / span);
+  return Math.min(1, Math.max(STACKS.min, f));
+}
+export function collateralValues(list) {
+  if (list == null) return {};
+  const held = list.filter((a) => a.usd != null).map((a) => `${a.name} ${usd(a.usd)}`);
+  const lines = list.filter((a) => a.lines != null).sort((x, y) => y.lines - x.lines || (y.usd ?? 0) - (x.usd ?? 0)).map((a) => `${a.name} ${int(a.lines)}`);
+  return { collateralAssets: String(list.length), collateralHeld: held.length ? held.join(" · ") : "None", collateralLines: lines.length ? lines.join(" · ") : "None" };
+}
+
+/** The full days of the users series (the last row is today's partial, as data.js reads it), the last 30 of them. */
+export function pickActivity(body) {
+  const rows = body?.daily_active_users;
+  if (!Array.isArray(rows) || rows.length < 2) return null;
+  const days = rows.slice(0, -1).map((r) => ({ ts: num(r?.[0]), n: num(r?.[1]) })).filter((d) => d.ts != null && d.n != null);
+  return { days: days.slice(-BEACON.days) };
+}
+export const activityHigh = (days) => (days?.length ? Math.max(...days.map((d) => d.n)) : null);
+/** Exactly n rungs, newest first (yesterday on top), null padding at the end; a rung is its day against the best of them, never below minRung. */
+export function rungScales(days, n = BEACON.days) {
+  const d = (days ?? []).slice(-n).reverse();
+  const max = activityHigh(d) ?? 0;
+  const scaled = d.map((x) => (max > 0 ? Math.max(BEACON.minRung, x.n / max) : BEACON.minRung));
+  return [...scaled, ...Array(n - scaled.length).fill(null)];
+}
+export const beaconValues = (activity) => (activity?.days?.length ? { activeTradersHigh30d: int(activityHigh(activity.days)) } : {});
+/** "Cars here now": the room's count plus you when it is on, you alone when it is off by choice, unknown while connecting or offline. */
+export const carsHere = (status, peersCount) => (status === "on" ? String(peersCount + 1) : status === "off" ? "1" : null);
+/** The lantern's pulse period in seconds: slow alone, fast with eight or more cars here. */
+export const pulsePeriod = (cars) => BEACON.pulseSlow - (BEACON.pulseSlow - BEACON.pulseFast) * Math.min(1, Math.max(0, cars - 1) / (BEACON.fullCars - 1));
