@@ -141,7 +141,7 @@ export async function fetchLive() {
     values.copyAllocated = usd(Number(copy.total_allocated_usd));
     values.copyOpenInterest = usd(Number(copy.open_interest_usd));
   }
-  if (credit) {
+  if (credit?.assets) { // a body without assets would throw here and stop every board (reviewer, 3 Nov)
     let total = 0;
     for (const [asset, a] of Object.entries(credit.assets)) {
       values[lineKey(asset)] = String(a.open_lines ?? 0);
