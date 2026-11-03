@@ -10,8 +10,10 @@
 // a monument's faces and lamps, the pads, the ridge posts; freeze.js markKeep), transparent materials (their sort order is
 // their own), multi-material, instanced and skinned meshes, sprites and points, and a mesh whose material nobody else
 // shares (nothing to merge with). Groups the merge empties are pruned (pruneEmpty) unless kept, live or protected.
-// Run after the models land: a model landing later would be merged with nothing, and a kerb rebuilt from a group's box
-// (monuments.js buildKerb) would read an empty group. qa/scene-walk-smoke.mjs checks that nothing mergeable is left.
+// collapseStatic(group) does the same inside a live group: the static pieces of a bench, a stack of coins or the blimp become
+// one mesh with a geometry group per material, so the thing that moves is one object. Run after the models land: a model
+// landing later would be merged with nothing, and a kerb rebuilt from a group's box (monuments.js buildKerb) would read an
+// empty group. qa/scene-walk-smoke.mjs checks that nothing mergeable is left.
 import * as THREE from "../vendor/three.module.min.js";
 import { mergeGeometries } from "../vendor/BufferGeometryUtils.js";
 
@@ -50,6 +52,48 @@ export function mergeStatic(root, boundary = () => false) {
   return removed;
 }
 
+/** The static pieces inside a live group (a bench's seat, rail and legs; a stack's coins; the flywheel's disc, hub and spokes; the
+ * blimp's hull, gondola and fins) become one mesh with a geometry group per material, so the group moves as one object and
+ * draws with one call per material instead of one per piece. Pieces with different shadow flags or attributes make separate
+ * meshes; kept or live pieces inside, and everything under them, stay as they are. Returns the meshes taken out. */
+export function collapseStatic(group) {
+  const found = [];
+  const walk = (o) => { for (const c of o.children) { if (c.userData.live || c.userData.keep) continue; if (mergeable(c)) found.push(c); walk(c); } };
+  walk(group);
+  if (found.length < 2) return [];
+  group.updateWorldMatrix(true, true);
+  const inv = group.matrixWorld.clone().invert(), rel = new THREE.Matrix4();
+  const sets = new Map();
+  for (const o of found) { const k = batchKey(o).split("|").slice(1).join("|"); if (!sets.has(k)) sets.set(k, []); sets.get(k).push(o); } // the batch key without the material
+  const removed = [];
+  for (const list of sets.values()) {
+    if (list.length < 2) continue;
+    list.sort((a, b) => (a.material.uuid < b.material.uuid ? -1 : a.material.uuid > b.material.uuid ? 1 : 0)); // one material's pieces adjacent, so they share a group
+    const geos = list.map((o) => o.geometry.clone().applyMatrix4(rel.multiplyMatrices(inv, o.matrixWorld)));
+    const indexed = geos.every((g) => g.index);
+    const merged = mergeGeometries(indexed ? geos : geos.map((g) => (g.index ? g.toNonIndexed() : g)), true);
+    if (!merged) continue;
+    const mats = [], groups = [];
+    merged.groups.forEach((grp, i) => { // a group per input geometry: renumber by material and join neighbours of one material
+      const m = list[i].material;
+      let idx = mats.indexOf(m); if (idx < 0) { idx = mats.length; mats.push(m); }
+      const last = groups.at(-1);
+      if (last && last.materialIndex === idx && last.start + last.count === grp.start) last.count += grp.count; else groups.push({ start: grp.start, count: grp.count, materialIndex: idx });
+    });
+    merged.clearGroups();
+    for (const g of groups) merged.addGroup(g.start, g.count, g.materialIndex);
+    merged.computeBoundingSphere();
+    const first = list[0], mesh = new THREE.Mesh(merged, mats.length === 1 ? mats[0] : mats);
+    mesh.castShadow = first.castShadow; mesh.receiveShadow = first.receiveShadow; mesh.renderOrder = first.renderOrder; mesh.frustumCulled = first.frustumCulled;
+    mesh.name = "collapsed"; mesh.userData.merged = list.length;
+    mesh.matrixAutoUpdate = false; mesh.updateMatrix();
+    group.add(mesh);
+    for (const o of list) { o.parent.remove(o); removed.push(o); }
+  }
+  pruneEmpty(group);
+  return removed;
+}
+
 /** Free the GPU buffers of geometries nothing in the scene draws any more (a model's geometry is shared by its clones; one still standing keeps it). */
 export function disposeOrphans(scene, removed) {
   const used = new Set();
@@ -63,7 +107,7 @@ export function disposeOrphans(scene, removed) {
 export function pruneEmpty(root, protect = () => false) {
   let n = 0;
   const walk = (o) => {
-    if (o.userData.live || o.userData.keep || protect(o)) return;
+    if (o !== root && (o.userData.live || o.userData.keep || protect(o))) return;
     for (const c of [...o.children]) walk(c);
     if (o !== root && !o.children.length && (o.isGroup || o.type === "Object3D")) { o.parent.remove(o); n++; }
   };
