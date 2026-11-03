@@ -12,6 +12,8 @@ import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.js";
 import { initStick } from "./stick.js";
 import { FOCUS, focusPose, focusBlend, nearBoard } from "./focus-math.js";
+import { boardImage, shareBoard, shareCaption } from "./board-share.js";
+import { REALFI } from "./build.js";
 import { footStep } from "./hud-math.js";
 import { buildBlimp } from "./blimp.js";
 import { buildRidge } from "./ridge.js";
@@ -25,7 +27,7 @@ import {
 } from "./build.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R, brakeLights } from "./car.js";
 import { tint } from "./colours.js";
-import { buildRaceway, formatTime, boardPose } from "./raceway.js";
+import { buildRaceway, formatTime, boardPose, boardCanvas } from "./raceway.js";
 import { celebrateOnce } from "./race-post.js";
 import { createSound } from "./sound.js";
 import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive, raceReset } from "./race-live.js";
@@ -523,6 +525,7 @@ function focusTick(dt) {
   camera.lookAt(camLook.clone().lerp(focus.look, k));
 }
 $("focus-back").addEventListener("click", focusEnd);
+$("focus-save").addEventListener("click", () => shareBoard(boardImage(boardCanvas(), shareCaption(), { band: REALFI.green, ink: REALFI.paper }))); // the share sheet on a phone, a download elsewhere (board-share.js)
 
 // ── Skip drawing districts out of sight (beyond the fog) ──────────────
 function cullDistricts() {

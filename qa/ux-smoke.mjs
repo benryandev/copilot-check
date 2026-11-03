@@ -8,6 +8,8 @@
 //   landscape a phone on its side (844 by 390): no closed sheet paints (the arcade sheet did, 3 Nov 2026, Ben's phone)
 //   triggers  See it on the board in the finish sheet closes the sheet and zooms; parked in front of the board a card
 //             offers Zoom in, Not now holds it until the car leaves and comes back
+//   save      Save the board while zoomed downloads raceway-top-10.png, the board plus its caption band (no share sheet
+//             in headless Chromium, so the download path is what runs here)
 // Each part opens its own page. Exits 1 on any failure. Runs against http://localhost:8767 by default (the worktree's
 // server); the leaderboard is offline on that origin, which none of these checks need. The room is off (?mp=0) and
 // the opening flight is skipped (arrive=0).
@@ -22,7 +24,7 @@ try { ({ chromium } = await import('playwright')); } catch {
 const args = process.argv.slice(2);
 const base = (args.find((a) => !a.startsWith('--')) || 'http://localhost:8767').replace(/\/$/, '');
 const opt = (k) => args.find((a) => a.startsWith(`--${k}=`))?.split('=')[1]?.split(',');
-const parts = opt('part') || ['stick', 'footer', 'zoom', 'landscape', 'triggers'];
+const parts = opt('part') || ['stick', 'footer', 'zoom', 'landscape', 'triggers', 'save'];
 const reduced = args.includes('--reduced');
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const failures = [];
@@ -178,6 +180,25 @@ if (parts.includes('triggers')) {
   check(await page.evaluate(() => document.getElementById('board-prompt')?.hidden === true), 'triggers: the card is gone while zoomed');
   await page.evaluate(() => window.__eco.focusEnd());
   check(errs.length === 0, `triggers: no page errors${errs.length ? ' ' + errs.join(' | ') : ''}`);
+  await ctx.close();
+}
+
+if (parts.includes('save')) {
+  const { readFileSync } = await import('node:fs');
+  const until = (page, fn, ms = 20_000) => page.waitForFunction(fn, null, { timeout: ms }).then(() => true, () => false);
+  const { ctx, page, errs } = await open({ width: 1280, height: 800 });
+  await page.evaluate(() => { window.__eco.toStart(); window.__eco.focusBoard(); });
+  check(await until(page, () => window.__eco.focus.k >= 1, 30_000), 'save: zoomed on the board');
+  const dl = page.waitForEvent('download', { timeout: 10_000 }).catch(() => null);
+  await page.click('#focus-save', { timeout: 3000 }).catch(() => {});
+  const d = await dl;
+  check(!!d && d.suggestedFilename() === 'raceway-top-10.png', `save: a download named raceway-top-10.png (${d ? d.suggestedFilename() : 'no download'})`);
+  if (d) {
+    const buf = readFileSync(await d.path());
+    const w = buf.readUInt32BE(16), h = buf.readUInt32BE(20); // the PNG's IHDR
+    check(w === 1400 && h === 1110, `save: the board plus the band, ${w} by ${h}`);
+  }
+  check(errs.length === 0, `save: no page errors${errs.length ? ' ' + errs.join(' | ') : ''}`);
   await ctx.close();
 }
 
