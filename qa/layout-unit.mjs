@@ -68,7 +68,7 @@ test('odd counts leave the slot nearest 180 empty; even counts are symmetric', (
   assert.deepEqual(angles(eight).map(Math.round), [100, 123, 146, 169, 191, 214, 237, 260]);
 });
 
-test('nine or more: tallest stops outer on 95 to 265, the rest inner at alternate midpoints, 9 degrees clear', () => {
+test('nine or more: tallest stops outer on 95 to 265, the rest inner in alternate gaps, 6 degrees clear of every outer angle', () => {
   const shapes = ['tower', 'kiosk', 'twin', 'antenna', 'pillar', 'flag', 'terminal', 'dome', 'grid', 'coins'];
   const nine = fake('nine', 9, 54, shapes); // the outer row takes as many as fit at 13.5 m (ten at 54 m), so all nine stand outer
   const p9 = layoutStops(nine.s, nine.d);
@@ -81,7 +81,7 @@ test('nine or more: tallest stops outer on 95 to 265, the rest inner at alternat
   assert.ok(Math.min(...outer.map((s) => HEIGHT[s.shape])) >= Math.max(...inner.map((s) => HEIGHT[s.shape])), 'inner row is the shorter models');
   for (const i of inner) for (const o of outer) {
     const da = Math.abs(degFromHQ(perps, placed.get(i.key)) - degFromHQ(perps, placed.get(o.key)));
-    assert.ok(Math.min(da, 360 - da) >= 9, `${i.key} lines up with ${o.key}`);
+    assert.ok(Math.min(da, 360 - da) >= 6, `${i.key} lines up with ${o.key}`);
   }
   for (const s of auto) assert.ok(Math.abs(degFromHQ(perps, placed.get(s.key)) - 180) >= LAYOUT.keepOff180, s.key);
 });
@@ -94,12 +94,8 @@ test('from the HQ mouth no two pads share a bearing (within 3 degrees), so no la
     const rows = STOPS.filter((s) => s.district === d.key && placed.has(s.key)).map((s) => { const p = placed.get(s.key); return { key: s.key, h: HEIGHT[s.shape], b: (Math.atan2(p[1] - mouth[1], p[0] - mouth[0]) * 180) / Math.PI }; }).sort((a, b) => a.b - b.b);
     for (let i = 1; i < rows.length; i++) {
       const gap = rows[i].b - rows[i - 1].b;
-      if (gap >= 3) continue;
-      // Perpetuals' two rows cannot keep 3° from the entrance without lining buildings up radially from the centre
-      // (3 Nov 2026 ruling): a pair under 3° is allowed only across rows, and only when the inner model is at least
-      // 3 m shorter, which keeps its label below the outer one on screen. Single-row plazas keep the 3° rule.
-      assert.ok(d.key === 'perps' && gap >= 1.5, `${d.key}: ${rows[i - 1].key} and ${rows[i].key} ${gap.toFixed(1)} degrees apart from the mouth`);
-      assert.ok(Math.abs(rows[i].h - rows[i - 1].h) >= 3, `${d.key}: ${rows[i - 1].key} and ${rows[i].key} ${gap.toFixed(1)} degrees apart and within 3 m in height`);
+      // Perpetuals' inner pads slide within their gaps to earn this (3 Nov 2026): exact midpoints gave 2° at best
+      assert.ok(gap >= 3, `${d.key}: ${rows[i - 1].key} and ${rows[i].key} ${gap.toFixed(1)} degrees apart from the mouth`);
     }
   }
 });

@@ -196,9 +196,10 @@ export const MULTIPLAYER = true;
 //     a pad at 180°, straight behind the centre from the entrance, so odd counts use n+1 slots and leave the one nearest
 //     180° empty (the larger of a tie), which also opens a view corridor behind the plaza's monument;
 //   - nine or more (Perpetuals): the outer row at r−12 on 95°–265° takes the tallest stops, as many as fit 13.5 m apart
-//     (ten at 54 m); the rest sit at r−28 on alternate midpoints between outer slots, so no inner pad lines up with an
-//     outer one and no label stacks from the entrance.
-export const LAYOUT = { oneRowMax: 8, arc: [100, 260], outerArc: [95, 265], outerInset: 12, innerInset: 28, minGap: 14, minGapWide: 13.5, keepOff180: 5 };
+//     (ten at 54 m); the rest sit at r−28 in alternate gaps between outer slots, each slid within its gap so that its
+//     bearing from the entrance is at least 3° from every other pad, so no inner pad lines up with an outer one and no
+//     label stacks from the entrance.
+export const LAYOUT = { oneRowMax: 8, arc: [100, 260], outerArc: [95, 265], outerInset: 12, innerInset: 28, innerClear: 6, minGap: 14, minGapWide: 13.5, keepOff180: 5 };
 export function layoutStops(stops = STOPS, districts = DISTRICTS) {
   const out = new Map();
   const deg = Math.PI / 180;
@@ -223,10 +224,29 @@ export function layoutStops(stops = STOPS, districts = DISTRICTS) {
     const outer = auto.filter((s) => tallest.has(s.key)), inner = auto.filter((s) => !tallest.has(s.key)); // STOPS order within each row
     const oa = slots(k, LAYOUT.outerArc);
     outer.forEach((s, i) => put(s, oa[i], rOut));
-    const mids = oa.slice(1).map((a, i) => (a + oa[i]) / 2);
-    const alt = mids.filter((_, i) => i % 2 === 1); // every other midpoint, 2 steps apart
-    const innerSlots = alt.length >= inner.length ? alt : mids; // more inner stops than alternate slots: every midpoint
-    inner.forEach((s, i) => put(s, innerSlots[i], d.radius - LAYOUT.innerInset));
+    // Inner pads take alternate gaps between outer slots (gap 1, 3, 5, …; every gap if there are more inner stops than
+    // that). Within its gap each pad slides, 6° clear of both outer angles, to the angle whose bearing from the HQ mouth
+    // is furthest from every pad already placed: exact midpoints gave 2° at best, which stacked two labels from the
+    // entrance; sliding reaches 3°.
+    const rIn = d.radius - LAYOUT.innerInset;
+    const mouth = [d.centre[0] + d.hubDir[0] * d.radius, d.centre[1] + d.hubDir[1] * d.radius];
+    const bearing = (p) => Math.atan2(p[1] - mouth[1], p[0] - mouth[0]) / deg;
+    const at = (a, r) => [d.centre[0] + Math.cos(base + a * deg) * r, d.centre[1] + Math.sin(base + a * deg) * r];
+    const placed = outer.map((s) => out.get(s.key));
+    const gaps = Array.from({ length: k - 1 }, (_, i) => i).filter((i) => i % 2 === 1);
+    const order = gaps.length >= inner.length ? gaps : Array.from({ length: k - 1 }, (_, i) => i);
+    inner.forEach((s, i) => {
+      const g = order[i];
+      let best = null;
+      for (let a = oa[g] + LAYOUT.innerClear; a <= oa[g + 1] - LAYOUT.innerClear + 1e-9; a += 0.1) {
+        const p = at(a, rIn), b = bearing(p);
+        if (placed.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < LAYOUT.minGapWide)) continue;
+        const sep = Math.min(...placed.map((q) => Math.abs(bearing(q) - b)));
+        if (!best || sep > best.sep) best = { a, p, sep };
+      }
+      const p = best ? best.p : at((oa[g] + oa[g + 1]) / 2, rIn); // nothing clears the spacing: the midpoint, as before
+      out.set(s.key, p); placed.push(p);
+    });
   }
   return out;
 }
