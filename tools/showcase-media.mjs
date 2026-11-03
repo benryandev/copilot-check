@@ -19,6 +19,7 @@ try { ({ chromium } = await import('playwright')); } catch {
 const base = process.argv.slice(2).find((a) => !a.startsWith('--')) || 'http://localhost:8766';
 const here = (p) => new URL(p, import.meta.url).pathname;
 const SIZE = (process.argv.find((a) => a.startsWith('--size=')) || '--size=1920x1080').slice(7).split('x').map(Number);
+const THEME = (process.argv.find((a) => a.startsWith('--theme=')) || '--theme=light').slice(8); // the hero stills' theme; dark ones carry -dark in the name
 const OUT = here(SIZE[0] === 1920 && SIZE[1] === 1080 ? './out/showcase/' : `./out/showcase/${SIZE[0]}x${SIZE[1]}/`);
 mkdirSync(OUT, { recursive: true });
 const STILL = SIZE, FPS = 30, DT = 1000 / FPS;
@@ -65,9 +66,10 @@ const titleAt = (page, t) => page.evaluate((t) => {
 // ── Hero stills: the arrival's held overview with the title card, and a closer one on the way down ──────────
 const HERO_ONLY = process.argv.includes('--hero');
 {
-  const page = await open(STILL, { arrive: true });
+  const page = await open(STILL, { arrive: true, theme: THEME });
   let t = 0;
-  for (const [until, name] of [[1.6, 'hero-arrival.png'], [2.9, 'hero-arrival-close.png']]) {
+  const suffix = THEME === 'dark' ? '-dark' : '';
+  for (const [until, name] of [[1.6, `hero-arrival${suffix}.png`], [2.9, `hero-arrival-close${suffix}.png`]]) {
     while (t < until) { await step(page); t += DT / 1000; }
     await titleAt(page, 1.5); // the card fully in
     await step(page, 0);
