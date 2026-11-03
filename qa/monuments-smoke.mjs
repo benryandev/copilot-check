@@ -3,11 +3,14 @@
 // honest shape, the seed lands (more than 100 fills held) and three injected fills make three sparks. Part B2: the Chart
 // Plinth's 30-day lines equal the strings from the two daily series and its thirty bars stand with today's lit; the Collateral
 // Stacks' lines equal the strings from the collateral assets and the stacks and rings count; the Beacon's lines equal the users
-// series, "Cars here now" reads 1 with the room off, thirty rungs stand and the lantern pulses slowly.
+// series, "Cars here now" reads 1 with the room off, thirty rungs stand and the lantern pulses slowly. Part B3: the Feed Obelisk's
+// lines have the yard's shapes and two injected fills reach its screens; the Three Pylons' lines equal the summary; the Compass
+// has no live block, seven arms named for the partners, and a dial that turns.
 // Usage: node qa/monuments-smoke.mjs [baseUrl]   (exit 1 on any failure or page error; one line per check)
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { pickStaking, pickSlp, stakeValues, engineValues, pickSeries, plinthValues, pickCollateral, collateralValues, pickActivity, beaconValues, STACKS } from '../ecosystem/js/monument-math.js';
+import { pickStaking, pickSlp, stakeValues, engineValues, pickSeries, plinthValues, pickCollateral, collateralValues, pickActivity, beaconValues, STACKS, flowValues, tradeLine, pickSummary } from '../ecosystem/js/monument-math.js';
+import { STOPS } from '../ecosystem/js/content.js';
 
 let chromium;
 try { ({ chromium } = await import('playwright')); } catch {
@@ -109,6 +112,42 @@ const yesterday = activity.days.at(-1).n.toLocaleString('en-AU');
 check(got['Active traders, yesterday'] === yesterday && got['Active traders, 30-day high'] === bv.activeTradersHigh30d && got['Cars here now'] === '1', `the Beacon's lines match the users series and read one car with the room off ("${got['Active traders, yesterday']}", "${got['Active traders, 30-day high']}", "${got['Cars here now']}")`);
 state = await page.evaluate(() => window.__eco.monuments.state());
 check(state.rungs === 30 && state.pulse === 3, `thirty rungs stand and the lantern pulses every 3 s (${state.rungs}, ${state.pulse})`);
+
+// (16) and (17): the Feed Obelisk
+await open('monument-developers');
+got = await sheet();
+check(/^[\d,]+$/.test(got['Fills, last minute'] || '') && /^\$[\d.,]+[KMB]?$/.test(got['Traded, last 10 min'] || '') && /^(.+ \(\d+ fills?\)|No fills in 10 min)$/.test(got['Busiest market, 10 min'] || ''), `the Obelisk's lines have the yard's shapes ("${got['Fills, last minute']}", "${got['Traded, last 10 min']}", "${got['Busiest market, 10 min']}")`);
+state = await page.evaluate(() => window.__eco.monuments.state());
+const feedBefore = state.feed;
+await page.evaluate(() => window.__eco.yardInject([{ sym: 'BTC', usd: 77000, buy: true }, { sym: 'ETH', usd: 3000, buy: false }]));
+await sleep(300);
+state = await page.evaluate(() => window.__eco.monuments.state());
+const wantLast = tradeLine({ s: 'ETH-USD', p: '3000', q: '1', m: true });
+check(state.stream === 'live' && state.feed === Math.min(14, feedBefore + 2) && state.feedLast === wantLast, `the stream is live and two injected fills reached the screens (${feedBefore} → ${state.feed}, last "${state.feedLast}")`);
+
+// (18) and (19): the Three Pylons
+const flowWant = async () => flowValues(pickSummary(await api('/stat/v1/dashboard/summary')));
+let fw = await flowWant();
+await open('monument-chains');
+got = await sheet();
+let flowOff = () => [['Deposits, all time', fw.depositsAllTime], ['Withdrawals, all time', fw.withdrawalsAllTime], ['Deposits less withdrawals', fw.netDeposits]].filter(([l, w]) => got[l] !== w);
+off = flowOff();
+if (off.length) { fw = await flowWant(); off = flowOff(); }
+check(off.length === 0, `the Pylons' lines match the summary${off.length ? `: ${off.map(([l, w]) => `${l} "${got[l]}" vs "${w}"`).join('; ')}` : ` ("${got['Deposits, all time']}", "${got['Withdrawals, all time']}", "${got['Deposits less withdrawals']}")`}`);
+state = await page.evaluate(() => window.__eco.monuments.state());
+check(state.pylonsFace?.length === 3, `three lines on the Pylons' face (${state.pylonsFace?.length})`);
+
+// (20) and (21): the Compass
+await page.goto(`${base}/ecosystem/?stop=monument-partners&mp=0&arrive=0#dark`, { waitUntil: 'domcontentloaded' });
+await page.waitForFunction(() => window.__eco && document.getElementById('stop').open, null, { timeout: 90000 });
+const partners = STOPS.filter((s) => s.district === 'partners' && !s.key.startsWith('monument-')).map((s) => s.name);
+const liveBlock = await page.evaluate(() => document.querySelectorAll('#stop-live div').length);
+state = await page.evaluate(() => window.__eco.monuments.state());
+check(liveBlock === 0 && state.arms === partners.length && JSON.stringify(state.armNames) === JSON.stringify(partners), `the Compass has no live block and ${state.arms} arms named for the partners (${state.armNames.join(', ')})`);
+const dial0 = state.dial;
+await page.waitForFunction((d) => window.__eco.monuments.state().dial > d + 0.01, dial0, { timeout: 15000 }).catch(() => {}); // software rendering is slow; give it a few frames
+state = await page.evaluate(() => window.__eco.monuments.state());
+check(state.dial > dial0, `the dial turns (${dial0.toFixed(3)} → ${state.dial.toFixed(3)} rad)`);
 
 // (5) no page error
 check(errors === 0, `no page error (${errors})`);

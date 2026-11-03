@@ -52,7 +52,7 @@ From a report, or with `/paper <wallet>` in [Copilot Watch](https://t.me/Copilot
 node qa/serve.mjs                          # http://localhost:8080, production headers
 node qa/shoot-eco.mjs http://localhost:8080  # 24 screenshots + audits into qa/shots/
 node qa/shoot-districts.mjs http://localhost:8766 --themes=dark,light  # every ring district: driver's eye, aerial, top-down, into qa/shots/
-node qa/monuments-smoke.mjs http://localhost:8766   # the five monuments against the live API: sheet strings, seed, sparks, bars, stacks, rungs
+node qa/monuments-smoke.mjs http://localhost:8766   # the eight monuments against the live API: sheet strings, seed, sparks, bars, stacks, rungs, screens, arms
 node --test qa/*-unit.mjs
 ```
 
