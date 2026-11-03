@@ -308,7 +308,8 @@ const SHAPES = {
   // The flywheel's axle runs along its local x; tank_fill and the gauge needles pivot at their own origin. 7.8 m tall, 10 m wide.
   slpengine(g, A, stop) {
     g.add(box(6, 4, 5, M.build, 1.2, 0, 0), box(6.4, 0.3, 5.4, M.trim, 1.2, 4, 0));
-    for (const z of [-0.9, 0.9]) g.add(box(0.5, 4.5, 0.5, M.trim, -2.8, 0, z)); // the axle's posts
+    for (const x of [-3.55, -2.05]) g.add(box(0.4, 4.75, 0.5, M.trim, x, 0, 0)); // the axle's posts straddle the wheel along the axle, clear of the disc and hub
+    const axle = cyl(0.12, 1.9, M.trim, -2.8, 4.5, 0, 10); axle.rotation.z = Math.PI / 2; g.add(axle);
     const wheel = new THREE.Group(); wheel.name = "flywheel"; wheel.position.set(-2.8, 4.5, 0);
     const disc = mesh(new THREE.CylinderGeometry(2.4, 2.4, 0.5, 28), A, 0, 0, 0); disc.rotation.z = Math.PI / 2;
     const hub = mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.9, 16), M.trim, 0, 0, 0); hub.rotation.z = Math.PI / 2;
