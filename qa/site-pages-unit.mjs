@@ -8,7 +8,7 @@ const slugs = Object.keys(readGuides().guides);
 
 test('committed site pages match a fresh render (run: node tools/site-pages.mjs)', () => {
   const files = buildAll();
-  assert.deepEqual(files.map((f) => f.path).sort(), ['docs/stops-review.md', 'ecosystem/guides/index.html', ...slugs.map((s) => `ecosystem/guides/${s}/index.html`), 'ecosystem/guides/stills.css', 'ecosystem/js/guides.js', 'ecosystem/stops/index.html', 'sitemap.xml', 'tools/lib/site-pages-state.json'].sort());
+  assert.deepEqual(files.map((f) => f.path).sort(), ['docs/stops-review.md', 'llms.txt', 'ecosystem/guides/index.html', ...slugs.map((s) => `ecosystem/guides/${s}/index.html`), 'ecosystem/guides/stills.css', 'ecosystem/js/guides.js', 'ecosystem/stops/index.html', 'sitemap.xml', 'tools/lib/site-pages-state.json'].sort());
   assert.ok(slugs.length >= 1, 'at least one guide is built');
   for (const { path, content } of files) {
     const onDisk = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -21,6 +21,26 @@ test('sitemap lists only public pages', () => {
   for (const bad of ['/test/', '/tools/', '/qa/', '/scripts/', '/paper/']) assert.ok(!xml.includes(bad), bad);
   for (const good of ['<loc>https://strike.benryan.com.au/</loc>', '/ecosystem/</loc>', '/ecosystem/stops/</loc>', '/ecosystem/submit/</loc>', '/ecosystem/guides/</loc>', ...slugs.map((s) => `/ecosystem/guides/${s}/</loc>`)]) assert.ok(xml.includes(good), good);
   assert.ok(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/.test(xml), 'lastmod is a date');
+});
+
+test('llms.txt lists the tools, the world, the stops page and every guide, one link and one line each', () => {
+  const txt = buildAll().find((f) => f.path === 'llms.txt').content;
+  assert.ok(txt.startsWith('# Copilot Check\n\n> '), 'H1 then a blockquote summary (llmstxt.org)');
+  assert.ok(txt.includes('Not affiliated with Strike'), 'the disclosure');
+  assert.deepEqual(txt.match(/^## .*$/gm), ['## Tools', '## The ecosystem world', '## Guides']);
+  const entries = txt.split('\n').filter((l) => l.startsWith('- '));
+  for (const l of entries) assert.match(l, /^- \[[^\]]+\]\(https:\/\/[^)\s]+\): \S[^\n]*[^\s.]\.$/, `entry is "- [name](url): one line." ${l}`);
+  for (const l of entries) assert.ok(!l.includes('\n') && l.length < 400, 'one line each');
+  const urls = entries.map((l) => l.match(/\((https:[^)]+)\)/)[1]);
+  const site = 'https://strike.benryan.com.au';
+  for (const u of [`${site}/`, `${site}/paper.html`, 'https://t.me/CopilotWatchBot', `${site}/ecosystem/`, `${site}/ecosystem/stops/`, `${site}/ecosystem/guides/`, ...slugs.map((s) => `${site}/ecosystem/guides/${s}/`)]) assert.ok(urls.includes(u), u);
+  assert.equal(new Set(urls).size, urls.length, 'no url twice');
+  for (const bad of ['/test/', '/tools/', '/qa/', '/scripts/', 'referralCode']) assert.ok(!txt.includes(bad), bad);
+  const guideSection = txt.slice(txt.indexOf('## Guides'));
+  for (const g of Object.values(readGuides().guides)) assert.ok(guideSection.includes(`[${g.title}](`), `guide title ${g.slug}`);
+  const order = slugs.map((s) => guideSection.indexOf(`/guides/${s}/`));
+  assert.deepEqual(order, order.slice().sort((a, b) => a - b), 'guides in series order');
+  assert.ok(txt.endsWith('\n') && !txt.includes('\n\n\n'), 'tidy');
 });
 
 test('a fresh render is stable: running twice gives the same bytes', () => {

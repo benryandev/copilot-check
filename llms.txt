@@ -1,0 +1,25 @@
+# Copilot Check
+
+> Independent tools for copy trading on Strike Finance, a perpetuals exchange on Cardano that mirrors Hyperliquid wallets: check a wallet before copying it, paper-copy it with your own settings, get an alert when a copy needs a look, and learn Strike through a drivable 3D map of its ecosystem and plain-English guides.
+
+Built by Ben Ryan. Not affiliated with Strike Finance. Not financial advice; past results do not predict future ones. The tools run in the browser against Strike's and Hyperliquid's public APIs and store nothing about a visitor; a paper copy keeps only the wallet and its settings, for 30 days. Source: https://github.com/benryandev/copilot-check.
+
+## Tools
+
+- [Copilot Check](https://strike.benryan.com.au/): paste a Hyperliquid wallet and see how much of its profit Strike can copy, what it holds now, the catches in its record, and how a copy would have done at your size in both copy modes.
+- [Paper copy](https://strike.benryan.com.au/paper.html): a paper copy of a wallet with your Strike copy settings, replayed on its real trades with no money; started from a report, or with /paper in Copilot Watch.
+- [Copilot Watch](https://t.me/CopilotWatchBot): a Telegram bot that sends Telegram and Discord alerts when a copy needs a look; source at https://github.com/benryandev/copilot-watch.
+
+## The ecosystem world
+
+- [Strike Ecosystem](https://strike.benryan.com.au/ecosystem/): a drivable 3D map of Strike's features, with districts on dirt roads around Strike HQ, a pad at every feature that opens a sheet with live figures, a raceway, and a yard where every trade on Strike arrives as a crate.
+- [Every stop, as text](https://strike.benryan.com.au/ecosystem/stops/): every district and every stop in the world as plain text, what each feature does, each with a link that opens the world at that pad.
+
+## Guides
+
+- [Strike guides: start here](https://strike.benryan.com.au/ecosystem/guides/): plain-English guides to Strike, from what a perp is to a first small trade, each one opening inside the world.
+- [What is Strike? A plain-English guide to the exchange](https://strike.benryan.com.au/ecosystem/guides/what-is-strike/): What you can trade on Strike, how copy trading works, who it is for, and how a first visit goes, in plain words for people who have never traded a perp.
+- [What is a perp? Perpetual futures explained in plain English](https://strike.benryan.com.au/ecosystem/guides/what-is-a-perp/): A perpetual future follows a price and never expires. What that means, how hourly funding keeps it close to the real price, and how to find a market on Strike.
+- [Long, short and leverage: what 2x, 10x and 20x really mean](https://strike.benryan.com.au/ecosystem/guides/long-short-leverage/): Going long or short on Strike, what leverage really multiplies, how the same 5% move plays out at 2x, 10x and 20x, and the cross and isolated margin modes.
+- [Liquidation, and how to avoid it: a plain-English guide](https://strike.benryan.com.au/ecosystem/guides/liquidation/): What the liquidation price is, why leverage pulls it closer, how Strike closes a position in stages, and the habits that keep a first trade well clear of it.
+- [Your first trade on Strike: fund, buy, set a stop, close](https://strike.benryan.com.au/ecosystem/guides/your-first-trade/): A real $10 trade on Strike from start to finish: moving funds, placing a market order at 1x, attaching a stop-loss, and closing it, with every screen shown.

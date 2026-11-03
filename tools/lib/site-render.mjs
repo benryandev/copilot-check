@@ -3,7 +3,7 @@
 // run by tools/site-pages.mjs, checked by qa/site-pages-unit.mjs (drift) and qa/site-render-unit.mjs.
 
 import { SITE, esc, THEME_TOGGLE } from './site-common.mjs';
-import { guidePath, guidesForStop } from './guide-render.mjs';
+import { guidePath, guidesForStop, sortedGuides } from './guide-render.mjs';
 export { THEME_TOGGLE };
 const DOCS = 'https://docs.strikefinance.org';
 
@@ -171,6 +171,36 @@ export function renderSitemap(entries) {
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${entries.map((e) => `  <url>\n    <loc>${esc(e.loc)}</loc>\n    <lastmod>${esc(e.lastmod)}</lastmod>\n  </url>`).join('\n')}
 </urlset>
+`;
+}
+
+// /llms.txt (llmstxt.org): the site's name, a one-paragraph summary, then the tools, the world and the guides, each
+// entry a link and one line. The guides come from guides.json, so a new guide appears on the next site-pages run.
+// No dates inside, so the file's bytes move only when an entry does.
+export function renderLlmsTxt({ guides }) {
+  const entry = (name, url, line) => `- [${name}](${url}): ${line}`;
+  const guideEntries = sortedGuides(guides).map((g) => entry(g.title, SITE + guidePath(g.slug), g.subtitle));
+  return `# Copilot Check
+
+> Independent tools for copy trading on Strike Finance, a perpetuals exchange on Cardano that mirrors Hyperliquid wallets: check a wallet before copying it, paper-copy it with your own settings, get an alert when a copy needs a look, and learn Strike through a drivable 3D map of its ecosystem and plain-English guides.
+
+Built by Ben Ryan. Not affiliated with Strike Finance. Not financial advice; past results do not predict future ones. The tools run in the browser against Strike's and Hyperliquid's public APIs and store nothing about a visitor; a paper copy keeps only the wallet and its settings, for 30 days. Source: https://github.com/benryandev/copilot-check.
+
+## Tools
+
+${entry('Copilot Check', SITE + '/', 'paste a Hyperliquid wallet and see how much of its profit Strike can copy, what it holds now, the catches in its record, and how a copy would have done at your size in both copy modes.')}
+${entry('Paper copy', SITE + '/paper.html', 'a paper copy of a wallet with your Strike copy settings, replayed on its real trades with no money; started from a report, or with /paper in Copilot Watch.')}
+${entry('Copilot Watch', 'https://t.me/CopilotWatchBot', 'a Telegram bot that sends Telegram and Discord alerts when a copy needs a look; source at https://github.com/benryandev/copilot-watch.')}
+
+## The ecosystem world
+
+${entry('Strike Ecosystem', SITE + '/ecosystem/', 'a drivable 3D map of Strike\'s features, with districts on dirt roads around Strike HQ, a pad at every feature that opens a sheet with live figures, a raceway, and a yard where every trade on Strike arrives as a crate.')}
+${entry('Every stop, as text', SITE + '/ecosystem/stops/', 'every district and every stop in the world as plain text, what each feature does, each with a link that opens the world at that pad.')}
+
+## Guides
+
+${entry('Strike guides: start here', SITE + '/ecosystem/guides/', 'plain-English guides to Strike, from what a perp is to a first small trade, each one opening inside the world.')}
+${guideEntries.join('\n')}
 `;
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Writes the committed site pages from the world's data: ecosystem/stops/index.html, sitemap.xml and
+// Writes the committed site pages from the world's data: ecosystem/stops/index.html, the guides, sitemap.xml, llms.txt and
 // docs/stops-review.md (the markdown Ben reads before a sheet goes live; copied to the Strike repo's
 // docs/ECOSYSTEM-SHEETS.md), plus tools/lib/site-pages-state.json, which remembers each page's content
 // hash and the date it last changed, so a sitemap <lastmod> moves only when the page does.
@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { STOPS, DISTRICTS } from '../ecosystem/js/content.js';
 import { LABELS } from '../ecosystem/js/data.js';
-import { ORDER, renderReview, renderSitemap, renderStopsPage } from './lib/site-render.mjs';
+import { ORDER, renderLlmsTxt, renderReview, renderSitemap, renderStopsPage } from './lib/site-render.mjs';
 import { guidePath, renderGuidePage, renderGuidesIndex, renderGuidesModule, renderStillsCss } from './lib/guide-render.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -84,6 +84,7 @@ export function buildAll({ state = readState(), today = isoToday(), guidesFile =
     { path: 'ecosystem/guides/stills.css', content: renderStillsCss(guidesFile) },
     { path: 'ecosystem/js/guides.js', content: renderGuidesModule(guidesFile) },
     { path: 'sitemap.xml', content: renderSitemap(entries) },
+    { path: 'llms.txt', content: renderLlmsTxt(base) },
     { path: 'docs/stops-review.md', content: renderReview(ctx) },
     { path: STATE_PATH, content: JSON.stringify(next, null, 2) + '\n' },
   ];
