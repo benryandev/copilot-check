@@ -154,6 +154,6 @@ export async function fetchLive() {
     .map((t) => ({ sym: t.symbol.replace("-USD", ""), price: Number(t.lastPrice), change: Number(t.priceChangePercent), vol: Number(t.quoteVolume) }))
     .filter((q) => q.price > 0)
     .sort((a, b) => b.vol - a.vol);
-  Object.assign(values, stakeValues(monuments.staking), engineValues(monuments.slp, null));
+  try { Object.assign(values, stakeValues(monuments.staking), engineValues(monuments.slp, null)); } catch (err) { console.warn("[eco] monuments", err.message); } // a monument string must never take the boards down
   return { tickers: list.map((m) => m.base_asset).sort(), values, quotes, monuments };
 }

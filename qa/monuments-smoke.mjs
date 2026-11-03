@@ -65,11 +65,12 @@ check(state.fills > 100 && state.seeded, `the seed landed: ${state.fills} fills 
 check(state.wheel >= 0 && state.rings === Math.min(72, want.slp.positions.length), `flywheel ${state.wheel.toFixed(2)} rad/s, ${state.rings} rings`);
 
 // (4) sparks
-const before = state.sparks;
+await page.waitForFunction(() => window.__eco.monuments.state().sparks === 0, null, { timeout: 15000 }).catch(() => {}); // sparks live 0.8 s
+const before = (await page.evaluate(() => window.__eco.monuments.state())).sparks;
 await page.evaluate(() => window.__eco.monuments.injectSlpFills([1, 2, 3].map((i) => ({ id: 1e9 + i, symbol: 'BTC-USD', side: 'buy', size: '0.01', price: '77000', timestamp: Date.now() }))));
-await sleep(200);
+await sleep(150);
 state = await page.evaluate(() => window.__eco.monuments.state());
-check(state.sparks >= before + 3 || state.sparks >= 3, `three injected fills made sparks (${before} → ${state.sparks})`);
+check(state.sparks === before + 3, `three injected fills made exactly three sparks (${before} → ${state.sparks})`);
 
 // (5) no page error
 check(errors === 0, `no page error (${errors})`);

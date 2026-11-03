@@ -13,13 +13,15 @@ export const ENGINE = { fullFillsPerMinute: 30, maxSpeed: 3, gaugeLow: 1e3, gaug
 // Fills: 100 every 10 s, seeded once with 1,000 (the API's cap: 2,000 returns 1,000), held for an hour
 export const FILLS = { limit: 100, seed: 1000, pollMs: 10_000, retryMs: 30_000, windowMs: 3_600_000 };
 
-const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+const num = (v) => { if (v == null || v === "") return null; const n = Number(v); return Number.isFinite(n) ? n : null; }; // a JSON null is not a zero
 const obj = (v) => v && typeof v === "object" && !Array.isArray(v);
 
 /** /v2/liquid-staking/summary → { staked, stakers, upcomingUsd, distributions, allTimeUsd, latest }; null without a staked figure. */
 export function pickStaking(body) {
-  if (!obj(body) || num(body.current_staked_strike) == null) return null;
-  const l = obj(body.latest_distribution) ? body.latest_distribution : null;
+  if (!obj(body) || !("current_staked_strike" in body)) return null;
+  const date = (v) => typeof v === "string" && !Number.isNaN(Date.parse(v));
+  let l = obj(body.latest_distribution) ? body.latest_distribution : null;
+  if (l && !(num(l.amount_usd) != null && num(l.recipient_count) != null && date(l.period_start) && date(l.period_end))) l = null; // a partial distribution is no line
   return {
     staked: num(body.current_staked_strike),
     stakers: num(body.active_staked_count),
@@ -35,8 +37,9 @@ export function pickSlp(vaultsBody, positionsBody) {
   const list = Array.isArray(vaultsBody?.vaults) ? vaultsBody.vaults : [];
   const slp = list.find((v) => v.type === "protocol");
   if (!slp) return null;
-  const positions = (Array.isArray(positionsBody?.positions) ? positionsBody.positions : []).map((p) => ({ symbol: String(p.symbol), size: num(p.size) }));
-  const userVaults = list.filter((v) => v.type === "user").map((v) => ({ name: String(v.name), equity: num(v.equity) }));
+  // A failed positions fetch is null, not an empty book: the sheet then drops its count and the rings stay as they were
+  const positions = Array.isArray(positionsBody?.positions) ? positionsBody.positions.map((p) => ({ symbol: String(p.symbol), size: num(p.size) })) : null;
+  const userVaults = list.filter((v) => v.type === "user").map((v) => ({ name: String(v.name), equity: num(v.equity) })).filter((v) => v.equity != null); // "by size" needs a size
   return { id: slp.vault_id, equity: num(slp.equity), positions, userVaults };
 }
 
@@ -65,6 +68,8 @@ export function hourFigure(fills, since, now) {
   return { n, minutes, complete };
 }
 export const hourString = ({ n, minutes, complete }) => (complete ? int(n) : `${int(n)} in the last ${minutes} min`);
+/** The sheet's fills line, or null until a fill has been seen (an empty or malformed seed shows nothing, not "0 in the last 0 min"). */
+export const fillsLine = (fills, since, now) => (since == null ? null : hourString(hourFigure(fills, since, now)));
 
 export const wheelSpeed = (fillsLastMinute) => ENGINE.maxSpeed * Math.min(1, fillsLastMinute / ENGINE.fullFillsPerMinute);
 export const tankLevel = (equity, high) => (!high ? 1 : Math.min(1, equity / high));
@@ -75,6 +80,9 @@ export function topVaults(userVaults, n = ENGINE.gauges) {
   return top;
 }
 export const columnScale = (staked) => Math.min(1, Math.max(0.05, staked / STAKE.fullStaked));
+/** The fills poll seeds (limit 1,000) on its first call and again after more than a minute without a good poll: a hidden tab
+ * or an outage leaves a gap that 100 fills cannot fill, and the hour figure would undercount while labelled as an hour. */
+export const seedDue = (now, lastOkAt, seeded) => !seeded || now - lastOkAt > 60_000;
 /** Sparks to fire for one poll: the new fills, within what the live cap leaves free. */
 export const sparkBudget = (added, live, cap) => Math.max(0, Math.min(added, cap - live));
 export const lampsLit = (stakers) => Math.round(STAKE.lamps * Math.min(1, stakers / STAKE.fullStakers));
@@ -106,10 +114,8 @@ export function stakeValues(s) {
 export function engineValues(slp, hour) {
   if (!slp) return {};
   const vaults = [...slp.userVaults].sort((a, b) => b.equity - a.equity);
-  const v = {
-    slpOpenPositions: int(slp.positions.length),
-    userVaultSizes: vaults.length ? vaults.map((x) => `${x.name} ${usd(x.equity)}`).join(" · ") : "None",
-  };
+  const v = { userVaultSizes: vaults.length ? vaults.map((x) => `${x.name} ${usd(x.equity)}`).join(" · ") : "None" };
+  if (slp.positions) v.slpOpenPositions = int(slp.positions.length);
   if (hour) v.slpFillsHour = hourString(hour);
   return v;
 }

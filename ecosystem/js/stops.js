@@ -420,10 +420,10 @@ export const STOPS = [
     pos: [122.13, -145.55], // Earn's centre (ring index 1: [sin 40° × 190, −cos 40° × 190]); the layout never counts a monument
     face: [91.28, -108.78], // the HQ mouth: centre + hubDir × 48
     summary:
-      "The plaza's engine runs on the SLP vault's own trades. Every fill the vault makes lands as a spark on the flywheel, which spins faster the more it fills; the tank is the vault's size, and the gauges are the user vaults.",
+      "The plaza's engine runs on the SLP vault's own trades. New fills land as sparks on the flywheel, which spins faster the more the vault fills; the tank is the vault's size, and the gauges are the user vaults.",
     points: [
       "Strike's Liquidity Provider vault quotes bids and asks across the markets, so it fills often: around a thousand fills an hour on 3 November 2026, across dozens of symbols, more or less as the markets move.",
-      "One glowing ring round the base for each position the vault has open; the tank's level is the vault's size against the highest seen while you have been here.",
+      "One glowing ring round the base for each position the vault has open (up to 72); the tank's level is the vault's size against the highest seen while you have been here.",
       "The three gauges show the user vaults by size. Figures are read from Strike's public API every 30 seconds; fills every 10.",
     ],
     live: ["slpFillsHour", "slpOpenPositions", "slpEquity", "userVaultSizes"],

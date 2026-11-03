@@ -25,7 +25,7 @@ test('pickSlp resolves the protocol vault and keeps equity, positions and the us
   assert.equal(s.positions.length, 34); assert.deepEqual(Object.keys(s.positions[0]).sort(), ['size', 'symbol']);
   assert.deepEqual(s.userVaults.map((v) => v.name), ['MARKET WIZARDS', 'Strike V.I.S.I.O.N. Strategy', 'Glacier Arc Digital']);
   assert.doesNotMatch(JSON.stringify(s), /apr|share_price|sharpe|return/i);
-  assert.deepEqual(pickSlp(vaults, null).positions, []);
+  assert.equal(pickSlp(vaults, null).positions, null, 'a failed positions fetch is not an empty book');
   assert.equal(pickSlp({ vaults: [] }, null), null); assert.equal(pickSlp(null, null), null);
 });
 test('fills: pick, merge by id, window, future stamps, the hour figure', () => {
@@ -82,4 +82,45 @@ test('no monument value or label carries a banned word; every value key has a la
 import { sparkBudget } from '../ecosystem/js/monument-math.js';
 test('sparkBudget never exceeds the live cap, and fires nothing for a quiet poll', () => {
   assert.equal(sparkBudget(0, 0, 60), 0); assert.equal(sparkBudget(100, 0, 60), 60); assert.equal(sparkBudget(5, 58, 60), 2); assert.equal(sparkBudget(3, 20, 20), 0); assert.equal(sparkBudget(3, 25, 20), 0);
+});
+
+// ── Review fixes (3 Nov 2026): a JSON null is not a zero, a partial distribution is not a line, a failed fetch keeps its state ──
+test('a null field in the staking body drops its line, never "0" or "NaN"', () => {
+  const s = pickStaking({ ...staking, upcoming_rewards_usd: null, active_staked_count: null, all_time_distributed_usd: '' });
+  assert.equal(s.upcomingUsd, null); assert.equal(s.stakers, null); assert.equal(s.allTimeUsd, null);
+  const v = stakeValues(s);
+  assert.ok(!('rewardsThisPeriod' in v) && !('stakers' in v) && !('distributedAllTime' in v), JSON.stringify(v));
+  assert.equal(pickStaking({ ...staking, current_staked_strike: null }).staked, null);
+  assert.ok(!('stakedStrike' in stakeValues(pickStaking({ ...staking, current_staked_strike: null }))));
+  for (const val of Object.values(v)) assert.doesNotMatch(val, /NaN|undefined|^\$0$|^0$/);
+});
+test('a partial latest_distribution is dropped whole', () => {
+  const noDates = { ...staking.latest_distribution, period_start: undefined, period_end: undefined };
+  assert.equal(pickStaking({ ...staking, latest_distribution: noDates }).latest, null);
+  assert.equal(pickStaking({ ...staking, latest_distribution: { ...staking.latest_distribution, recipient_count: null } }).latest, null);
+  assert.equal(pickStaking({ ...staking, latest_distribution: { ...staking.latest_distribution, period_end: 'soon' } }).latest, null);
+  assert.ok(pickStaking(staking).latest);
+});
+test('a user vault without an equity is left out; a null positions body keeps the previous count', () => {
+  const broken = { vaults: vaults.vaults.map((v) => (v.name === 'MARKET WIZARDS' ? { ...v, equity: null } : v)) };
+  const slp = pickSlp(broken, positions);
+  assert.deepEqual(slp.userVaults.map((v) => v.name), ['Strike V.I.S.I.O.N. Strategy', 'Glacier Arc Digital']);
+  assert.equal(engineValues(slp, null).userVaultSizes, 'Glacier Arc Digital $43K · Strike V.I.S.I.O.N. Strategy $11K');
+  assert.equal(topVaults(slp.userVaults)[2], null);
+  const noBook = pickSlp(vaults, null);
+  assert.ok(!('slpOpenPositions' in engineValues(noBook, null)), 'no count without a book');
+  assert.equal(engineValues(pickSlp(vaults, { positions: [] }), null).slpOpenPositions, '0', 'an empty book is a real zero');
+});
+import { seedDue } from '../ecosystem/js/monument-math.js';
+test('seedDue: the first poll seeds, and so does the first poll after more than a minute without a good one (a hidden tab, an outage)', () => {
+  assert.equal(seedDue(1000, 0, false), true);
+  assert.equal(seedDue(100_000, 95_000, true), false);
+  assert.equal(seedDue(200_000, 95_000, true), true);
+});
+import { fillsLine } from '../ecosystem/js/monument-math.js';
+test('fillsLine is absent until a fill has been seen, so an empty seed never reads "0 in the last 0 min"', () => {
+  assert.equal(fillsLine([], null, 1_000_000), null);
+  const list = pickFills(fills), now = list[0].timestamp;
+  assert.equal(fillsLine(list, list[99].timestamp, now), '100 in the last 7 min');
+  assert.equal(fillsLine([], list[99].timestamp, now + 3_600_000 * 2), '0', 'a quiet hour after a seen fill is a real zero');
 });

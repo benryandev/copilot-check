@@ -10,7 +10,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, isMonument } from "./content.js";
 import { pads, accent, M, obbOf, modelHooks, canvasTexture, redraws, themePalette } from "./build.js";
 import { slpVaultId } from "./data.js";
-import { FILLS, ENGINE, STAKE, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel } from "./monument-math.js";
+import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel } from "./monument-math.js";
 
 const API = "https://api.strikefinance.org";
 const KERB = { lift: 0.8, gap: (40 * Math.PI) / 180, radius: 0.14 }; // the kerb arc: 0.8 m outside the footprint, open ±40° towards the pad
@@ -22,7 +22,7 @@ let opts = { coarse: false, reduceMotion: false };
 const listeners = [];
 const state = {
   slp: null, staking: null, high: null, // the last SLP and staking picks; the highest SLP equity seen this session
-  fills: [], since: null, seeded: false, lastAt: 0, ok: true, // the fills poll
+  fills: [], since: null, seeded: false, lastAt: 0, lastOkAt: 0, ok: true, forceSeed: false, startedAt: 0, // the fills poll
 };
 const monuments = new Map(); // district key → { g, aux, nodes, ... }
 const glass = M.glass.clone(); glass.transparent = true; glass.opacity = 0.35; glass.depthWrite = false;
@@ -82,7 +82,7 @@ function attachEngine(m) {
 /** One ring per open SLP position, flat round the base outside the kerb, spread over the 280° away from the pad. */
 function layRings(m) {
   if (!m.rings) return;
-  const n = Math.min(RINGS.max, state.slp?.positions.length ?? 0);
+  const n = Math.min(RINGS.max, state.slp?.positions?.length ?? 0);
   const mat = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)), s = new THREE.Vector3(1, 1, 1);
   const span = Math.PI * 2 - KERB.gap * 2;
   for (let i = 0; i < n; i++) {
@@ -168,10 +168,11 @@ function attachStake(m) {
 }
 function applyStake(m) {
   const s = state.staking; if (!s || !m.nodes.column) return;
-  m.columnTarget = columnScale(s.staked ?? 0);
-  if (opts.reduceMotion || m.columnTarget == null) m.nodes.column.scale.y = m.columnTarget;
-  const lit = lampsLit(s.stakers ?? 0);
-  m.nodes.lamps.forEach((l, i) => { if (l) l.material = i < lit ? accent(m.d.colour) : M.build; }); // unlit in the building colour: trim is white at night
+  if (s.staked != null) { m.columnTarget = columnScale(s.staked); if (opts.reduceMotion) m.nodes.column.scale.y = m.columnTarget; }
+  if (s.stakers != null) { // a missing count leaves the lamps as they were
+    const lit = lampsLit(s.stakers);
+    m.nodes.lamps.forEach((l, i) => { if (l) l.material = i < lit ? accent(m.d.colour) : M.build; }); // unlit in the building colour: trim is white at night
+  }
   const text = [["Rewards building this period", s.upcomingUsd != null ? usdExact(s.upcomingUsd) : ""]];
   if (s.latest?.amountUsd != null) text.push(["Last distribution", `${usdExact(s.latest.amountUsd)} · ${periodLabel(s.latest.start, s.latest.end)}`]);
   const key = JSON.stringify(text);
@@ -199,15 +200,18 @@ function tickStake(m, dt) {
 // ── The fills poll ──
 async function pollFills(now = Date.now()) {
   const id = slpVaultId();
-  if (!id || document.hidden) return;
+  if (!state.startedAt) state.startedAt = now;
+  if (!id) { if (now - state.startedAt > 90_000) state.ok = false; return; } // no vault id after three fetchLive rounds: the line says so
+  if (document.hidden) return;
   const wait = state.ok ? FILLS.pollMs : FILLS.retryMs;
   if (state.lastAt && now - state.lastAt < wait - 500) return;
   state.lastAt = now;
+  const seed = state.forceSeed || seedDue(now, state.lastOkAt, state.seeded); // the first poll, or the first after a gap (hidden tab, outage), or after a poll of all-new fills
   try {
-    const res = await fetch(`${API}/v2/history/fill?vault_id=${id}&limit=${state.seeded ? FILLS.limit : FILLS.seed}`, { cache: "no-store" });
+    const res = await fetch(`${API}/v2/history/fill?vault_id=${id}&limit=${seed ? FILLS.seed : FILLS.limit}`, { cache: "no-store" });
     if (!res.ok) throw new Error(`fills ${res.status}`);
-    takeFills(pickFills(await res.json()), Date.now(), !state.seeded);
-    state.seeded = true; state.ok = true;
+    takeFills(pickFills(await res.json()), Date.now(), seed);
+    state.seeded = true; state.ok = true; state.lastOkAt = Date.now(); state.forceSeed = false;
   } catch (err) {
     state.ok = false;
     console.warn("[eco] slp fills", err.message);
@@ -215,6 +219,7 @@ async function pollFills(now = Date.now()) {
 }
 function takeFills(incoming, now, seed = false) {
   const { fills, added } = mergeFills(state.fills, incoming, now);
+  if (!seed && incoming.length >= FILLS.limit && added.length === incoming.length) state.forceSeed = true; // a full page of new fills: the gap may be wider than a page
   state.fills = fills;
   for (const f of incoming) if (state.since == null || f.timestamp < state.since) state.since = f.timestamp;
   const m = monuments.get("monument-earn");
@@ -239,7 +244,8 @@ export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
 export function applyMonuments(monuments) {
   if (!monuments) return;
   if (monuments.slp) {
-    state.slp = monuments.slp;
+    const prev = state.slp;
+    state.slp = { ...monuments.slp, positions: monuments.slp.positions ?? prev?.positions ?? null }; // a failed positions fetch keeps the rings
     if (monuments.slp.equity != null) state.high = Math.max(state.high ?? 0, monuments.slp.equity);
     const m = findMonument("monument-earn"); if (m) layRings(m);
   }
@@ -253,8 +259,8 @@ export function monumentsTick(dt) {
 export function monumentValues() {
   // Before the seed lands the line is loading, not "Not available" (the smoke caught a sheet opened in that gap, 3 Nov);
   // after a failed seed with nothing held it is honestly unavailable until the next try succeeds
-  if (!state.seeded) return { slpFillsHour: state.ok ? "Loading" : "Not available" };
-  return { slpFillsHour: hourString(hourFigure(state.fills, state.since, Date.now())) };
+  const line = fillsLine(state.fills, state.since, Date.now());
+  return { slpFillsHour: line ?? (state.ok ? "Loading" : "Not available") };
 }
 export const onMonumentStats = (f) => listeners.push(f);
 /** QA: feed fills as a poll would. */
