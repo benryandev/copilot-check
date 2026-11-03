@@ -13,10 +13,10 @@ const PLAN = {
   hub: ['strike', 'getting-started'],
   perps: ['perpetuals', 'node', 'markets', 'order-types', 'rfq', 'margin', 'liquidations', 'subaccounts', 'pair-trading', 'twap', 'trailing', 'grid', 'scale', 'funding-comparison', 'funding-rates'],
   earn: ['monument-earn', 'slp', 'insurance-fund', 'borrow-earn', 'user-vaults', 'protocol-vaults', 'copy-trading', 'points', 'lp-program'],
-  collateral: ['usdm', 'usdc', 'ada', 'usdcx-usdm-lp', 'ausdc', 'susdrf', 'enzobtc'],
+  collateral: ['monument-collateral', 'usdm', 'usdc', 'ada', 'usdcx-usdm-lp', 'ausdc', 'susdrf', 'enzobtc'],
   partners: ['realfi', 'sundaeswap', 'aave-v3', 'unifold', 'dex-aggregators', 'hizz', 'lorenzo'], // lorenzo: Strike's own ecosystem graphic, 2 Nov 2026 (Ben: add now, 3 Nov)
-  analytics: ['defillama', 'coingecko', 'bendingai', 'directories'],
-  community: ['arcade-flappy-coin', 'referrals', 'clans', 'leaderboard', 'x', 'discord', 'docs', 'medium'],
+  analytics: ['monument-analytics', 'defillama', 'coingecko', 'bendingai', 'directories'],
+  community: ['monument-community', 'arcade-flappy-coin', 'referrals', 'clans', 'leaderboard', 'x', 'discord', 'docs', 'medium'],
   token: ['monument-token', 'strike-token', 'staking', 'revenue-share', 'dao-treasury'],
   chains: ['cardano', 'ethereum', 'solana', 'validators', 'lockers'],
   raceway: ['raceway'], yard: ['fillyard'],
@@ -70,11 +70,11 @@ test('no model is used twice in Perpetuals (3 Nov 2026: scale, pair trading and 
   assert.equal(STOPS.find((s) => s.key === 'funding-comparison').shape, 'observatory');
 });
 
-test('monuments: one each in Earn and Token, placed by hand, their sheets name every figure and carry no banned word', () => {
+test('monuments: five, placed by hand (Earn, Collateral, Analytics, Community, Token), their sheets name every figure and carry no banned word', () => {
   const ms = STOPS.filter(isMonument);
-  assert.deepEqual(ms.map((s) => s.key), ['monument-earn', 'monument-token']);
+  assert.deepEqual(ms.map((s) => s.key), ['monument-earn', 'monument-collateral', 'monument-analytics', 'monument-community', 'monument-token']);
   for (const s of ms) {
-    assert.ok(s.pos && s.face, s.key); assert.ok(s.live.length >= 4, s.key); assert.match(s.docs, /^https:\/\/app\.strikefinance\.org\//);
+    assert.ok(s.pos && s.face, s.key); assert.ok(s.live.length >= 3, s.key); assert.match(s.docs, /^https:\/\/(app|docs)\.strikefinance\.org\//); // the figures' source pages: the app for Earn and Token, the docs for the rest (app.strikefinance.org/stats is a 404)
     for (const t of [s.summary, ...s.points]) for (const re of MONUMENT_BANNED) assert.doesNotMatch(t, re, `${s.key}: "${t}"`);
   }
 });

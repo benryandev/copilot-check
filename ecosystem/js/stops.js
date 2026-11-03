@@ -545,6 +545,26 @@ export const STOPS = [
     docsLabel: "LP Program",
   },
   {
+    key: "monument-collateral",
+    district: "collateral",
+    name: "The Collateral Stacks",
+    shape: "stacks",
+    pos: [187.11, -32.99], // Collateral's centre
+    face: [139.84, -24.66], // the HQ mouth: centre + hubDir × 48
+    summary:
+      "One coin stack for each asset Strike's Borrow and Earn accepts as collateral, as tall as the value held, with a ring round the stack for every open credit line against it. Five assets on 3 November 2026.",
+    points: [
+      "Height runs on a log scale so a small stack still shows: a thousand dollars held is a fifth of full height and a million is full. enzoBTC and sUSDrf carried most of the value on 3 November 2026; ADA carried most of the lines.",
+      "An asset the API lists is a stack even when little is held against it yet; USDM and USDC are what you borrow, not what you post, so they have no stack.",
+      "Figures are read from Strike's public API every 30 seconds: units held and open lines per asset, the units valued as Strike values them.",
+    ],
+    live: ["collateralAssets", "collateralHeld", "collateralLines", "creditLines"],
+    docs: "https://docs.strikefinance.org/api/credit",
+    docsLabel: "Credit API",
+    site: "https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn",
+    siteLabel: "Borrow and Earn",
+  },
+  {
     key: "usdm",
     district: "collateral",
     name: "USDM",
@@ -825,6 +845,26 @@ export const STOPS = [
     docsLabel: "strike-finance org",
   },
   {
+    key: "monument-analytics",
+    district: "analytics",
+    name: "The Chart Plinth",
+    shape: "plinth",
+    pos: [-64.98, 178.54], // Analytics' centre; the layout never counts a monument
+    face: [-50.62, 139.07], // the HQ mouth: centre + hubDir × 42
+    summary:
+      "The plaza's plinth is Strike's last 30 days in bars: trading volume along the back row, protocol revenue along the front, one bar a day with today's lit. The counter on the front is the exchange all time.",
+    points: [
+      "Each bar is one day's total across every market, read from Strike's public daily statistics once an hour; the tallest bar in a row is that row's busiest day, and today's bar grows through the day.",
+      "Volume is the dollar value traded; revenue is what the protocol earned from it in fees. The two rows share their days, so a busy day stands tall in both.",
+      "The counter shows volume and users since Strike opened. Figures come from Strike's public API: the daily series hourly, the counter every 30 seconds.",
+    ],
+    live: ["volume30d", "revenue30d", "totalVolume", "users"],
+    docs: "https://docs.strikefinance.org/api/platform-stats/daily-statistics",
+    docsLabel: "Daily Statistics API",
+    site: "https://docs.strikefinance.org/api/platform-stats/platform-dashboard",
+    siteLabel: "Platform Dashboard API",
+  },
+  {
     key: "defillama",
     district: "analytics",
     name: "DefiLlama",
@@ -885,6 +925,26 @@ export const STOPS = [
     docsLabel: "Strike on cardano.org",
     site: "https://www.cardanocube.com/projects/strike-finance",
     siteLabel: "Strike on CardanoCube",
+  },
+  {
+    key: "monument-community",
+    district: "community",
+    name: "The Beacon",
+    shape: "beacon",
+    pos: [-164.54, 95.0], // Community's centre
+    face: [-122.98, 71.0], // the HQ mouth: centre + hubDir × 48
+    summary:
+      "The plaza's beacon is Strike's people: thirty rungs up the column, one for each of the last thirty days, lit as far as that day's active traders reached, yesterday on top; the lantern pulses faster the more cars are in this world right now.",
+    points: [
+      "A rung's length is that day's active traders against the best day of the thirty, so the column reads as a chart from the road: 277 traders yesterday against a high of 343 on 3 November 2026.",
+      "The lantern is this world's own count: drivers here now, from the same room that shows their cars. Alone it breathes slowly; with eight or more it races.",
+      "Daily traders come from Strike's public API every 30 seconds; the referral figures stay on the district board.",
+    ],
+    live: ["activeTraders", "activeTradersHigh30d", "carsHere"],
+    docs: "https://docs.strikefinance.org/api/platform-stats/platform-dashboard",
+    docsLabel: "Platform Dashboard API",
+    site: "https://docs.strikefinance.org/api/platform-stats/daily-statistics",
+    siteLabel: "Daily Statistics API",
   },
   {
     key: "arcade-flappy-coin",

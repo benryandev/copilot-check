@@ -175,4 +175,5 @@ test('a monument stands at its plaza\'s centre, faces the HQ mouth, and is never
     assert.ok(HEIGHT[s.shape] <= 8, `${s.key} under 8 m`);
   }
   assert.equal(DISTRICTS.earn.radius, 48); assert.equal(DISTRICTS.token.radius, 42); // the count rule ignores them
+  assert.equal(DISTRICTS.analytics.radius, 42); assert.equal(DISTRICTS.collateral.radius, 48); assert.equal(DISTRICTS.community.radius, 48);
 });

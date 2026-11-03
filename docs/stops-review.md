@@ -1,6 +1,6 @@
 # Ecosystem world: every sheet for review (generated 2026-11-03)
 
-Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 73 stops. Empty Builders' Row plots and arcade cabinets are left out.
+Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 76 stops. Empty Builders' Row plots and arcade cabinets are left out.
 
 ## Strike HQ
 
@@ -271,6 +271,16 @@ Link: [Docs: LP Program](https://docs.strikefinance.org/perpetuals/vaults/strike
 
 What you can deposit, and what you can borrow against.
 
+### The Collateral Stacks
+
+One coin stack for each asset Strike's Borrow and Earn accepts as collateral, as tall as the value held, with a ring round the stack for every open credit line against it. Five assets on 3 November 2026.
+
+- Height runs on a log scale so a small stack still shows: a thousand dollars held is a fifth of full height and a million is full. enzoBTC and sUSDrf carried most of the value on 3 November 2026; ADA carried most of the lines.
+- An asset the API lists is a stack even when little is held against it yet; USDM and USDC are what you borrow, not what you post, so they have no stack.
+- Figures are read from Strike's public API every 30 seconds: units held and open lines per asset, the units valued as Strike values them.
+
+Link: [Docs: Credit API](https://docs.strikefinance.org/api/credit) · [Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: Collateral assets, Collateral held by asset, Open credit lines by asset, Open credit lines
+
 ### USDM
 
 USDM is a stablecoin Strike uses on Cardano. Volatile deposits like ADA are swapped into a stablecoin such as USDM before settlement, and staking rewards are paid out in USDM.
@@ -508,6 +518,16 @@ Link: [strike-finance org](https://github.com/strike-finance)
 
 Where Strike's numbers and listings live elsewhere.
 
+### The Chart Plinth
+
+The plaza's plinth is Strike's last 30 days in bars: trading volume along the back row, protocol revenue along the front, one bar a day with today's lit. The counter on the front is the exchange all time.
+
+- Each bar is one day's total across every market, read from Strike's public daily statistics once an hour; the tallest bar in a row is that row's busiest day, and today's bar grows through the day.
+- Volume is the dollar value traded; revenue is what the protocol earned from it in fees. The two rows share their days, so a busy day stands tall in both.
+- The counter shows volume and users since Strike opened. Figures come from Strike's public API: the daily series hourly, the counter every 30 seconds.
+
+Link: [Docs: Daily Statistics API](https://docs.strikefinance.org/api/platform-stats/daily-statistics) · [Platform Dashboard API](https://docs.strikefinance.org/api/platform-stats/platform-dashboard) · live: Volume, last 30 days, Revenue, last 30 days, Volume, all time, Users, all time
+
 ### DefiLlama
 
 DefiLlama is an independent dashboard that tracks value locked and activity across DeFi protocols. It lists Strike under the name Strike Finance Perpetuals, in the Derivatives category.
@@ -548,6 +568,16 @@ Link: [Strike on cardano.org](https://cardano.org/apps/strike-finance/) · [Stri
 ## Community & Channels
 
 Referrals, clans, the leaderboard and Strike's own channels.
+
+### The Beacon
+
+The plaza's beacon is Strike's people: thirty rungs up the column, one for each of the last thirty days, lit as far as that day's active traders reached, yesterday on top; the lantern pulses faster the more cars are in this world right now.
+
+- A rung's length is that day's active traders against the best day of the thirty, so the column reads as a chart from the road: 277 traders yesterday against a high of 343 on 3 November 2026.
+- The lantern is this world's own count: drivers here now, from the same room that shows their cars. Alone it breathes slowly; with eight or more it races.
+- Daily traders come from Strike's public API every 30 seconds; the referral figures stay on the district board.
+
+Link: [Docs: Platform Dashboard API](https://docs.strikefinance.org/api/platform-stats/platform-dashboard) · [Daily Statistics API](https://docs.strikefinance.org/api/platform-stats/daily-statistics) · live: Active traders, yesterday, Active traders, 30-day high, Cars here now
 
 ### Referrals
 
