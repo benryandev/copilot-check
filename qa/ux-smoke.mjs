@@ -26,6 +26,7 @@ const base = (args.find((a) => !a.startsWith('--')) || 'http://localhost:8767').
 const opt = (k) => args.find((a) => a.startsWith(`--${k}=`))?.split('=')[1]?.split(',');
 const parts = opt('part') || ['stick', 'footer', 'zoom', 'landscape', 'triggers', 'save'];
 const reduced = args.includes('--reduced');
+const shots = args.includes('--shots'); // the zoom part also screenshots the zoomed state in both themes to qa/shots/eco-focus-<w>-<theme>.png
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const failures = [];
 const check = (ok, msg) => { console.log(`${ok ? 'ok  ' : 'FAIL'} ${msg}`); if (!ok) failures.push(msg); };
@@ -115,9 +116,9 @@ if (parts.includes('footer')) {
 
 if (parts.includes('zoom')) {
   const until = (page, fn, ms = 20_000) => page.waitForFunction(fn, null, { timeout: ms }).then(() => true, () => false);
-  for (const [w, h, touch] of [[1280, 800, false], [375, 812, true]]) {
-    const tag = `zoom ${w}`;
-    const { ctx, page, errs } = await open({ width: w, height: h, touch });
+  for (const [w, h, touch] of [[1280, 800, false], [375, 812, true]]) for (const theme of shots ? ['light', 'dark'] : ['dark']) {
+    const tag = `zoom ${w}${shots ? ' ' + theme : ''}`;
+    const { ctx, page, errs } = await open({ width: w, height: h, touch, theme });
     await page.evaluate(() => window.__eco.toStart());
     await sleep(300);
     check(typeof (await page.evaluate(() => typeof window.__eco.focusBoard)) === 'string' && (await page.evaluate(() => typeof window.__eco.focusBoard)) === 'function', `${tag}: focusBoard is on __eco`);
@@ -128,6 +129,7 @@ if (parts.includes('zoom')) {
     check(at.speed > 1, `${tag}: zoomed while rolling at ${at.speed.toFixed(1)} m/s`);
     check(await page.evaluate(() => document.body.classList.contains('is-focus')), `${tag}: body.is-focus`);
     check(await until(page, () => { const e = window.__eco, c = e.camera.position, p = e.focus.cam; return e.focus.k >= 1 && Math.hypot(c.x - p.x, c.y - p.y, c.z - p.z) < 0.5; }, 30_000), `${tag}: the camera arrives at the board pose`);
+    if (shots) { await sleep(900); await page.screenshot({ path: new URL(`./shots/eco-focus-${w}-${theme}.png`, import.meta.url).pathname }); }
     const st = await page.evaluate(() => {
       const vis = (sel) => getComputedStyle(document.querySelector(sel)).visibility;
       const s = window.__eco.car.s, b = window.__eco.boardPose(), c = window.__eco.camera.position;
