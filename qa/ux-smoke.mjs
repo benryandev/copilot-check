@@ -198,6 +198,14 @@ if (parts.includes('triggers')) {
   await page.evaluate(() => window.__eco.focusEnd());
   check(await until(page, () => window.__eco.focus.k === 0, 30_000), 'triggers: back from Zoom in');
   check(!(await until(page, () => !document.getElementById('board-prompt').hidden, 2500)), 'triggers: Back by the board holds the card until the car leaves');
+  // (c) the marker: drive into the ring in front of the board and the card shows at once, no need to sit still
+  await page.evaluate(() => { const e = window.__eco, b = e.boardPose(); e.placeCar(b.x + b.fx * 40, b.z + b.fz * 40, 0); });
+  await sleep(1200);
+  await page.evaluate(() => { const e = window.__eco, m = e.boardMarker(), b = e.boardPose(); e.placeCar(m.x - b.fx * 1.5, m.z - b.fz * 1.5, Math.atan2(-b.fx, -b.fz) + Math.PI); });
+  check(await until(page, () => !document.getElementById('board-prompt').hidden, 2000), 'triggers: the card greets the car as it enters the marker');
+  const ring = await page.evaluate(() => { const e = window.__eco, m = e.boardMarker(); return { r: m.r, opacity: m.ring.material.opacity, ahead: Math.hypot(m.x - e.boardPose().x, m.z - e.boardPose().z) }; });
+  check(ring.r === 3 && Math.abs(ring.ahead - 10) < 0.01 && ring.opacity === 1, `triggers: the marker stands 10 m out, its ring full while the car is on it (${JSON.stringify(ring)})`);
+  if (shots) { await sleep(900); await page.screenshot({ path: new URL('./shots/eco-marker-1280-dark.png', import.meta.url).pathname }); }
   check(errs.length === 0, `triggers: no page errors${errs.length ? ' ' + errs.join(' | ') : ''}`);
   await ctx.close();
 }

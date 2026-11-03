@@ -11,7 +11,7 @@ import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInf
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.js";
 import { initStick } from "./stick.js";
-import { FOCUS, focusPose, focusBlend, nearBoard } from "./focus-math.js";
+import { FOCUS, focusPose, focusBlend, nearBoard, atMarker } from "./focus-math.js";
 import { boardImage, shareBoard, shareCaption } from "./board-share.js";
 import { REALFI } from "./build.js";
 import { footStep } from "./hud-math.js";
@@ -27,7 +27,7 @@ import {
 } from "./build.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R, brakeLights } from "./car.js";
 import { tint } from "./colours.js";
-import { buildRaceway, formatTime, boardPose, boardCanvas } from "./raceway.js";
+import { buildRaceway, formatTime, boardPose, boardCanvas, boardMarker } from "./raceway.js";
 import { celebrateOnce } from "./race-post.js";
 import { createSound } from "./sound.js";
 import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive, raceReset } from "./race-live.js";
@@ -590,12 +590,13 @@ $("prompt-btn").addEventListener("click", () => activePad && openStop(activePad.
 
 // The board prompt (Ben, 3 Nov 2026): parked in front of the top 10 board, a card offers the zoom. Not now holds it until the
 // car leaves the board and comes back; it never shows over a pad prompt, a race invite, a sheet or the zoom itself.
-let boardStill = 0, boardNo = false;
+let boardStill = 0, boardNo = false, boardAt = false;
 function boardPromptTick(dt) {
   const near = nearBoard(car.s, boardPose());
   if (!near) boardNo = false;
   boardStill = Math.abs(car.s.speed) < FOCUS.still ? boardStill + dt : 0;
-  const show = near && !boardNo && !focus.on && !activePad && $("race-invite").hidden && boardStill >= 1;
+  boardAt = atMarker(car.s, boardMarker()); // on the marker the card shows at once; elsewhere in front, after a second still
+  const show = (boardAt || (near && boardStill >= 1)) && near && !boardNo && !focus.on && !activePad && $("race-invite").hidden;
   if ($("board-prompt").hidden === show) $("board-prompt").hidden = !show;
 }
 $("board-zoom").addEventListener("click", focusBoard);
@@ -1159,6 +1160,7 @@ function frame() {
   if (!reduceMotion) {
     const pulse = 0.65 + Math.sin(t * 3) * 0.2;
     pads.forEach((p) => (p.ring.material.opacity = p === activePad ? 1 : pulse));
+    boardMarker().ring.material.opacity = boardAt ? 1 : pulse; // the board's marker pulses like a pad
   }
   if (!arcadeOpen()) post.render(); // the game in the arcade sheet gets the GPU; the world holds its last frame behind it
   watchFrames(raw, t);
@@ -1207,7 +1209,7 @@ $("loader").classList.add("is-done");
 setTimeout(() => $("loader").remove(), 450);
 
 // Test hook for automated checks (no effect on play)
-window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, stick, focusBoard, focusEnd, focus, boardPose, camera, project: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight }; }, jumps, groundHeight, placeCamera, placeCar, colliders, pads, deepLink, paused: () => paused,
+window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, stick, focusBoard, focusEnd, focus, boardPose, boardMarker, camera, project: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight }; }, jumps, groundHeight, placeCamera, placeCar, colliders, pads, deepLink, paused: () => paused,
   blimp: { setAngle: (deg) => blimp.userData.setAngle(deg == null ? null : (deg * Math.PI) / 180), pose: () => blimp.userData.pose(), setLivery: (n) => blimp.userData.setLivery(n), liveries: () => blimp.userData.liveries },
   stunt: () => { const j = jumps.find((o) => o.stunt && o.fx < 0); const lip = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length }; Object.assign(car.s, { x: lip.x + j.fx * 6, z: lip.z, heading: Math.atan2(-j.fx, -j.fz), speed: 24, air: true, vy: 2, airTime: 0.3 }); car.s.y = groundHeight(lip.x, lip.z) + j.height + 1.2; placeCamera(0, true); stuntStart(j); stunt.k = 1; stuntTick(0); } /* the snap first: it resets the stunt */, stuntState: () => ({ k: stunt.k, on: stunt.on }), // QA: mid-flight over the river with the side-on camera up
   splash: (age = 0.35) => { sprayBurst(car.s.x, Math.max(car.s.y, WATER_LEVEL), car.s.z, 40); spray?.userData.step(age); } /* pre-aged, so a still catches the burst spread rather than under the car */, sprayCount: () => sprayCount, // river QA: an entry burst on demand, and how many puffs have flown

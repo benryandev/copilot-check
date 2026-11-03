@@ -1,6 +1,6 @@
 // The board zoom's camera maths (no three.js): node --test qa/focus-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { FOCUS, frameDistance, focusPose, focusBlend, nearBoard } from '../ecosystem/js/focus-math.js';
+import { FOCUS, MARKER, frameDistance, focusPose, focusBlend, nearBoard, markerPos, atMarker } from '../ecosystem/js/focus-math.js';
 const board = { x: 100, y: 12, z: -50, fx: 0, fz: 1, w: 14, h: 10 };
 
 test('frameDistance fits the height on a wide screen and the width on a portrait one', () => {
@@ -31,6 +31,15 @@ test('focusPose frames the board in the band above a bar at the bottom of the vi
 test('focusBlend eases in over 0.9 s and out over 0.6 s', () => {
   assert.equal(Math.round(focusBlend(0, 0.45, true) * 100) / 100, 0.5); assert.equal(focusBlend(0.9, 1, true), 1);
   assert.equal(Math.round(focusBlend(1, 0.3, false) * 100) / 100, 0.5); assert.equal(focusBlend(0.1, 1, false), 0);
+});
+test('the marker stands ten metres in front of the board and a car is at it within three metres', () => {
+  assert.deepEqual(MARKER, { ahead: 10, r: 3 });
+  const m = markerPos(board);
+  assert.deepEqual(m, { x: 100, z: -40 });
+  assert.deepEqual(markerPos({ ...board, fx: 1, fz: 0 }), { x: 110, z: -50 }, 'follows the facing');
+  assert.ok(atMarker({ x: 101, z: -42 }, m)); assert.ok(atMarker({ x: 103, z: -40 }, m), 'on the ring');
+  assert.ok(!atMarker({ x: 103.1, z: -40 }, m), 'just outside'); assert.ok(!atMarker({ x: 100, z: -50 }, m), 'at the board itself');
+  assert.ok(nearBoard(m, board), 'the marker is inside the still-nearby zone');
 });
 test('nearBoard: in front and within 20 m, never behind', () => {
   assert.ok(nearBoard({ x: 100, z: -40 }, board)); assert.ok(!nearBoard({ x: 100, z: -60 }, board), 'behind');

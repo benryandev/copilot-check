@@ -24,6 +24,14 @@ export function focusPose(board, fovDeg, aspect, { inset = 0, viewH = 0 } = {}) 
 /** Blend 0..1: rises while the zoom is on, falls once it ends. */
 export const focusBlend = (k, dt, on) => (on ? Math.min(1, k + dt / FOCUS.in) : Math.max(0, k - dt / FOCUS.out));
 
+// The marker (Ben, 4 Nov 2026): a pad-style ring in front of the board, so the zoom is found by driving into it
+// rather than by parking nearby by chance
+export const MARKER = { ahead: 10, r: 3 }; // m in front of the board's centre; the ring's radius, the pads' own
+/** Where the marker stands: `ahead` m in front of the board's centre, on the ground. */
+export const markerPos = (board, ahead = MARKER.ahead) => ({ x: board.x + board.fx * ahead, z: board.z + board.fz * ahead });
+/** True when a position is on or inside the marker's ring. */
+export const atMarker = (pos, m, r = MARKER.r) => Math.hypot(pos.x - m.x, pos.z - m.z) <= r;
+
 /** True when a position is within `near` m of the board's centre and on its printed side. */
 export function nearBoard(pos, board, near = FOCUS.near) {
   const dx = pos.x - board.x, dz = pos.z - board.z;
