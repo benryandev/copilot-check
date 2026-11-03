@@ -36,6 +36,10 @@ html, body { touch-action: manipulation; }
 .hud-title,
 .hud-actions { pointer-events: auto; }
 .hud-title {
+  min-height: 44px; /* the chips' height, so the row reads as one */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   padding: var(--space-2xs) var(--space-sm);
   border-radius: 0.75rem;
   background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
@@ -68,6 +72,7 @@ body:has(#race-hud:not([hidden])) .hud-title { display: none; }
   backdrop-filter: blur(6px);
 }
 .chip:hover { border-color: var(--text-primary); }
+#theme { min-width: 4.5rem; } /* "Light" is wider than "Dark": the same width in both themes, so the title never wraps in one of them */
 
 .hud-prompt {
   left: 50%;
@@ -239,6 +244,12 @@ body:has(dialog[open]) :is(.hud-foot, .touch, .hud-top, .race-hud, .hud-prompt, 
 .sheet .muted { color: var(--text-secondary); font-size: 0.95rem; }
 .sheet .muted a { color: inherit; text-decoration: underline; text-underline-offset: 0.15em; } /* the kit's link colour fails contrast on the dark sheet */
 .sheet-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+/* A sheet's own action row stays in view while a long sheet scrolls (on a phone the way out sat below the fold); it
+   carries the sheet's bottom padding. A guide mounted inside the sheet keeps its page's row in flow. */
+.sheet > .sheet-actions { position: sticky; bottom: calc(-1 * var(--space-xl)); z-index: 1; margin: var(--space-md) calc(-1 * var(--space-xl)) calc(-1 * var(--space-xl)); padding: var(--space-sm) var(--space-xl) var(--space-xl); background: var(--bg-surface); } /* bottom reaches past the sheet's padding, which the sticky constraint otherwise excludes */
+@media (max-width: 1000px) { .sheet > .sheet-actions { bottom: calc(-1 * var(--space-lg)); margin-left: calc(-1 * var(--space-lg)); margin-right: calc(-1 * var(--space-lg)); margin-bottom: calc(-1 * var(--space-lg)); padding: var(--space-sm) var(--space-lg) var(--space-lg); } }
+/* A sheet opens with its heading focused (main.js show); the ring belongs on controls, not on the title a shared link lands on */
+.sheet :is(h1, h2)[tabindex="-1"]:focus { outline: none; }
 /* Phones: the intro's primary pill on its own row and the two secondaries side by side (wrapping left "Map view" alone on a third row) */
 @media (max-width: 480px) {
   #intro .sheet-actions { display: grid; grid-template-columns: repeat(2, max-content); }
@@ -550,7 +561,7 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
 /* The card's eyebrow and hint take the title's ink and halo: the grey measured about 2:1 over grass and road */
 .arrive .br-label { color: var(--text-primary); font-size: 0.8125rem; margin-bottom: var(--space-xs); }
 .arrive-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(2.25rem, 7vw, 5rem); line-height: 1; letter-spacing: -0.02em; color: var(--text-primary); text-shadow: 0 2px 28px var(--bg-page), 0 0 2px var(--bg-page); }
-.arrive-hint { margin-top: var(--space-md); font-family: var(--font-mono); font-size: 0.8125rem; letter-spacing: 0.08rem; text-transform: uppercase; color: var(--text-primary); }
+.arrive-hint { margin-top: var(--space-lg); font-family: var(--font-mono); font-size: 0.8125rem; letter-spacing: 0.08rem; text-transform: uppercase; color: var(--text-primary); }
 .arrive-tap { display: none; }
 body:has(#touch:not([hidden])) .arrive-tap { display: inline; }
 body:has(#touch:not([hidden])) .arrive-key { display: none; }
@@ -592,7 +603,8 @@ body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transitio
 .race-row { display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
 .race-row .br-input { flex: 1 1 12rem; min-width: 0; min-height: 44px; }
 .race-row .br-button { flex: 0 0 auto; }
-.race-top { margin: var(--space-2xs) 0 0; padding-left: 1.6rem !important; }
+.race-top { margin: var(--space-2xs) 0 0; padding-left: 2rem !important; } /* room for "10." */
+#map-groups > * + .map-group-row { margin-top: var(--space-lg); } /* the next district's row keeps its distance from the top 10 as well as from a list */
 .race-top li { font-size: 0.95rem; }
 .race-top li::marker { font-family: var(--font-mono); color: var(--text-secondary); }
 .race-top li span:first-child { overflow-wrap: anywhere; }
@@ -611,7 +623,9 @@ body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transitio
 /* ── Live races ─────────────────────────────────────────────────────── */
 .race-go { margin-top: var(--space-2xs); pointer-events: auto; }
 .race-go[hidden] { display: none; }
-.race-invite .prompt-card { cursor: default; pointer-events: auto; gap: var(--space-sm); flex-wrap: wrap; }
+.race-invite .prompt-card { --prompt-colour: #0fb89c; cursor: default; pointer-events: auto; gap: var(--space-sm); flex-wrap: wrap; } /* the Raceway's teal, as on the lap clock */
+.chip.chip--fill { background: var(--text-primary); color: var(--bg-page); border-color: var(--text-primary); } /* the invite's Join: the two chips read as one otherwise (doubled so it outranks the light theme's opaque-chip rule) */
+.chip.chip--fill:hover { border-color: var(--text-primary); opacity: 0.9; }
 .race-invite-actions { display: flex; gap: var(--space-2xs); }
 .hud-prompt { max-width: calc(100vw - 1rem); }
 @media (max-width: 480px) { .race-invite-actions { flex: 1 1 100%; justify-content: flex-end; } } /* the chips under the message, which they had squeezed to a word a line */
