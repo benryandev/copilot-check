@@ -251,7 +251,10 @@ export function monumentsTick(dt) {
   const t = monuments.get("monument-token"); if (t) tickStake(t, dt);
 }
 export function monumentValues() {
-  return state.seeded ? { slpFillsHour: hourString(hourFigure(state.fills, state.since, Date.now())) } : {};
+  // Before the seed lands the line is loading, not "Not available" (the smoke caught a sheet opened in that gap, 3 Nov);
+  // after a failed seed with nothing held it is honestly unavailable until the next try succeeds
+  if (!state.seeded) return { slpFillsHour: state.ok ? "Loading" : "Not available" };
+  return { slpFillsHour: hourString(hourFigure(state.fills, state.since, Date.now())) };
 }
 export const onMonumentStats = (f) => listeners.push(f);
 /** QA: feed fills as a poll would. */

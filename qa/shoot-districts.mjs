@@ -1,7 +1,8 @@
 // Per-district stills for the layout review (dev only): for every ring district, the driver's eye 24 m inside the HQ
 // mouth facing the centre, a three-quarter aerial from 40 m beyond the mouth at 45 m up, and a top-down, at 1440×900.
 // Usage: node qa/shoot-districts.mjs [baseUrl] [--themes=dark,light]
-// Writes qa/shots/district-<key>-{eye,aerial,top}[-light].png and prints one line per still; exits 1 on any page error.
+// Writes qa/shots/district-<key>-{eye,aerial,top}[-light].png, plus district-<key>-monument for a district with a monument (the car
+// 14 m from the centre on the HQ side, facing it), and prints one line per still; exits 1 on any page error.
 // The 3D renders in software (SwiftShader): the world gets 9 s for its models and each still 3 s to settle.
 import { mkdir } from 'node:fs/promises';
 import { execSync } from 'node:child_process';
@@ -43,6 +44,15 @@ for (const theme of THEMES) {
       e.placeCar(x, z, Math.atan2(-dx / l, -dz / l));
     }, d);
     await shot(`${d.key}-eye`, 3200);
+  }
+  const withMonument = await page.evaluate(async () => { const C = await import('/ecosystem/js/content.js'); return C.STOPS.filter(C.isMonument).map((s) => s.district); });
+  for (const d of districts.filter((d) => withMonument.includes(d.key))) {
+    await page.evaluate((d) => {
+      const e = window.__eco, [cx, cz] = d.centre, h = d.hubDir;
+      const x = cx + h[0] * 14, z = cz + h[1] * 14;
+      e.placeCar(x, z, Math.atan2(h[0], h[1])); // facing the centre, as the eye still does
+    }, d);
+    await shot(`${d.key}-monument`, 3200);
   }
   for (const d of districts) {
     await page.evaluate((d) => { const [cx, cz] = d.centre, h = d.hubDir; window.__eco.overview(cx + h[0] * (d.radius + 40), 45, cz + h[1] * (d.radius + 40), cx, cz); }, d);
