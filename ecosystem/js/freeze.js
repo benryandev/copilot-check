@@ -7,9 +7,9 @@
 // `deep`, its whole subtree (the car, whose wheels turn inside it). Code that moves a frozen object afterwards calls
 // moved(o) so its matrix is composed again (a pad slid out to clear a model's footprint). The frozen state is invisible
 // to the rest of the code: a frozen child of a moving parent still takes its world matrix from the parent each frame,
-// and getWorldPosition, updateWorldMatrix and obbOf read frozen matrices as they always did. qa/freeze-smoke.mjs checks
+// and getWorldPosition, updateWorldMatrix and obbOf read frozen matrices as they always did. qa/scene-walk-smoke.mjs checks
 // that nothing frozen is moved behind three.js's back.
-export function markLive(o, deep = false) { o.userData.live = deep ? "deep" : true; return o; }
+export function markLive(o, deep = false) { o.userData.live = deep ? "deep" : true; o.matrixAutoUpdate = true; return o; } // marked after a freeze, it composes again
 /** Kept out of the geometry merge: a node the code finds by name later, a pad whose own material pulses, a group that is referenced. */
 export function markKeep(o) { o.userData.keep = true; return o; }
 /** Freeze the static objects under `root` (root included); live objects and the subtrees of deep-live ones are left as they are. Returns how many were frozen. */

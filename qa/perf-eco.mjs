@@ -51,7 +51,7 @@ const runs = args.includes('--ab')
 const browser = browserName === 'webkit'
   ? await pw.webkit.launch({ headless: false })
   : await pw.chromium.launch({ channel: 'chrome', headless: false, args: ['--ignore-gpu-blocklist', ...(jitless ? ['--js-flags=--jitless'] : [])] });
-console.log(`${browserName}${jitless ? ' (jit off)' : ''} · ${width}×${height} at ${dpr}× · ratio ×${scale} · cpu ${cpu}× · ${seconds} s driving · ${base}`);
+console.log(`${browserName}${jitless && browserName !== 'webkit' ? ' (jit off)' : ''} · ${width}×${height} at ${dpr}× · ratio ×${scale} · cpu ${cpu}× · ${seconds} s driving · ${base}`);
 console.log('| setting | tier | still: avg / worst ms | driving: avg / worst ms | js ms (draw) | gpu ms | calls | tris |');
 console.log('|---|---|---|---|---|---|---|---|');
 
@@ -73,6 +73,7 @@ for (const [label, tier, patch] of runs) {
   try {
     await page.goto(`${base}/ecosystem/?fps=1&mp=0&arrive=0&sound=0`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__eco && document.getElementById('intro').open, null, { timeout: 90000 });
+    await page.evaluate(async () => { const b = await import('/ecosystem/js/build.js'); await b.modelsReady(); }); // the models in, and with them the matrix freeze and the geometry merge (main.js), before anything is read
     if (patch || scale !== 1) await page.evaluate(([t, p, s]) => { const tr = window.__eco.tiers[t]; Object.assign(tr, p || {}); tr.ratio *= s; window.__eco.quality(t); }, [tier, patch, scale]);
     await page.click('#start');
     await sleep(2000); // the sheet closes, shaders compile, the first second's figures land
@@ -86,6 +87,7 @@ for (const [label, tier, patch] of runs) {
       const render = median(() => renderer.render(scene, camera), 9);
       return { objects, auto, drawables, umw, render };
     });
+    await sleep(1200); // the walk's own stall lands in a second the samples below never read
     const perSecond = [];
     const sample = async secs => {
       const out = [];

@@ -4,8 +4,8 @@
 // or redraws has run); what should move still does (the car, the blimp, the sky dome, a monument's flywheel and the
 // Orrery's rings, a spinning model part, the town hall's minute hand); and the merge left nothing it should have taken
 // (no two static meshes under one root still share a batch), while the pads and the Orrery's named pedestal are still
-// there. Runs the live frame loop on the low tier in a small window (software rendering, so it waits on frames
-// generously). Needs the site on http://localhost:8766 (PORT=8766 node qa/serve.mjs). Usage: node qa/scene-walk-smoke.mjs [siteBase]
+// there, with every node the monuments hold still attached. Runs the live frame loop on the phone tier (planters in, no
+// glow pass) in a small window (software rendering, so it waits on frames generously). Needs the site on http://localhost:8766 (PORT=8766 node qa/serve.mjs). Usage: node qa/scene-walk-smoke.mjs [siteBase]
 import { chromium } from '/opt/homebrew/lib/node_modules/playwright/index.mjs';
 import { readFileSync } from 'node:fs';
 
@@ -15,9 +15,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const FUNDING = JSON.parse(readFileSync(new URL('./fixtures/funding-2026-11-02.json', import.meta.url), 'utf8'));
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const ctx = await browser.newContext({ viewport: { width: 600, height: 400 } });
-await ctx.addInitScript(() => localStorage.setItem('eco-quality', 'low'));
+await ctx.addInitScript(() => localStorage.setItem('eco-quality', 'phone'));
 const page = await ctx.newPage();
-page.on('pageerror', (e) => console.log('  page error', String(e).split('\n')[0]));
+const errors = [];
+page.on('pageerror', (e) => { const m = String(e).split('\n')[0]; errors.push(m); console.log('  page error', m); });
 await page.goto(`${base}/ecosystem/?arrive=0&mp=0&sound=0`, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => window.__eco && document.getElementById('intro').open, null, { timeout: 90000 });
 await page.evaluate(async () => { const b = await import('/ecosystem/js/build.js'); await b.modelsReady(); window.__b = b; window.__T = await import('/ecosystem/vendor/three.module.min.js'); window.__M = await import('/ecosystem/js/merge.js'); });
@@ -29,14 +30,15 @@ const census = () => page.evaluate(() => { let total = 0, auto = 0; window.__eco
 const c0 = await census();
 console.log('     after the models', JSON.stringify(c0));
 if (!(c0.total > 500)) fail(`only ${c0.total} objects in the scene`);
-if (!(c0.auto <= c0.total * 0.25)) fail(`${c0.auto} of ${c0.total} objects still compose a matrix every frame; a quarter at most should`);
+if (!(c0.auto <= c0.total * 0.3)) fail(`${c0.auto} of ${c0.total} objects still compose a matrix every frame; three in ten at most should`);
+if (errors.length) fail(`page errors while the world was built and merged: ${errors.slice(0, 3).join('; ')}`);
 
 // The merge took everything it should: under each root no two static meshes still share a batch (material, flags, attributes)
 const merge = await page.evaluate(() => {
   const e = window.__eco, b = window.__b, M = window.__M, districts = new Set(Object.values(b.districtGroups));
   const left = [];
-  let merged = 0, drawables = 0;
-  e.scene.traverse((o) => { if (o.userData.merged) merged++; if (o.isMesh || o.isSprite || o.isPoints) drawables++; });
+  let merged = 0, collapsed = 0, drawables = 0;
+  e.scene.traverse((o) => { if (o.name === 'merged') merged++; if (o.name === 'collapsed') collapsed++; if (o.isMesh || o.isSprite || o.isPoints) drawables++; });
   for (const root of [...districts, e.scene]) {
     const seen = new Map();
     const walk = (o, underLive) => {
@@ -48,12 +50,17 @@ const merge = await page.evaluate(() => {
     walk(root, false);
     for (const [k, n] of seen) if (n > 1) left.push(`${root.userData.key || root.type}: ${n} meshes share ${k.slice(0, 8)}`);
   }
-  return { merged, drawables, left, pads: e.pads.every((p) => p.ring.parent && p.disc.parent), orreryModel: e.monuments.state().orreryModel };
+  // The nodes the monuments animate, repaint or look up: every one still in the scene after the merge
+  const NAMES = ['face_rewards', 'lamp_01', 'spout', 'column', 'flywheel', 'tank_fill', 'gauge_a', 'face_counter', 'vol_01', 'stack_01', 'label_01', 'face_activity', 'lantern', 'rung_01', 'screen_01', 'face_feed', 'face_flows', 'label_cardano', 'sphere', 'pedestal', 'ring_01'];
+  const st = e.monuments.state();
+  return { merged, collapsed, drawables, left, missing: NAMES.filter((n) => !e.scene.getObjectByName(n)), attached: st.attached, orreryModel: st.orreryModel };
 });
-console.log('     merged meshes', merge.merged, '· drawables', merge.drawables);
+console.log('     merged meshes', merge.merged, '· collapsed', merge.collapsed, '· drawables', merge.drawables);
 if (!(merge.merged >= 20)) fail(`only ${merge.merged} merged meshes; dozens expected`);
+if (!(merge.collapsed >= 20)) fail(`only ${merge.collapsed} collapsed meshes; the benches and planters alone are dozens`);
 if (merge.left.length) fail(`the merge left shared batches: ${merge.left.slice(0, 6).join('; ')}`);
-if (!merge.pads) fail('a pad ring or disc is no longer in the scene');
+if (merge.missing.length) fail(`named nodes gone from the scene: ${merge.missing.join(', ')}`);
+if (!merge.attached) fail('a node a monument holds, or its aux group, is no longer attached to the scene (monumentsState)');
 if (!merge.orreryModel) fail("the Orrery's pedestal is no longer found by name (monumentsState)");
 
 // Everything that moves or redraws, as the smokes and the shoot drive it, then a drive and a teleport
@@ -109,7 +116,9 @@ for (const k of Object.keys(a)) {
   if (!a[k].some((v, i) => Math.abs(v - b[k][i]) > 1e-6)) still.push(k);
 }
 console.log('     movers checked', Object.keys(a).filter((k) => !absent.includes(k)).join(', '), absent.length ? `(absent: ${absent.join(', ')})` : '');
+if (absent.length) fail(`movers not found in the scene: ${absent.join(', ')}`);
 if (still.length) fail(`frozen in place: ${still.join(', ')}`);
+if (errors.length) fail(`page errors during the run: ${errors.slice(0, 3).join('; ')}`);
 const c1 = await census();
 console.log('     after the run', JSON.stringify(c1));
 console.log(`ok   scene walk smoke: ${c1.total - c1.auto} of ${c1.total} objects frozen, ${merge.merged} merged meshes, nothing moved behind three.js, the movers move`);

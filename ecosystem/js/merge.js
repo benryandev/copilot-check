@@ -18,22 +18,29 @@ import * as THREE from "../vendor/three.module.min.js";
 import { mergeGeometries } from "../vendor/BufferGeometryUtils.js";
 
 export const mergeable = (o) => o.isMesh && !o.isInstancedMesh && !o.isSkinnedMesh && o.visible && !o.userData.keep && !o.userData.live
-  && !Array.isArray(o.material) && !o.material.transparent && !!o.geometry?.attributes.position;
+  && !Array.isArray(o.material) && !o.material.transparent && !!o.geometry?.attributes.position
+  && o.matrixWorld.determinant() >= 0; // a mirrored mesh draws its faces the other way round, per object: left as it is
 /** The batch a mesh can join: one material, one set of shadow flags, one render order, one attribute set. */
-export const batchKey = (o) => [o.material.uuid, +o.castShadow, +o.receiveShadow, o.renderOrder, +o.frustumCulled, Object.keys(o.geometry.attributes).sort().join(","), Object.keys(o.geometry.morphAttributes).sort().join(",")].join("|");
+export const batchKey = (o) => [o.material.uuid, +o.castShadow, +o.receiveShadow, o.renderOrder, +o.frustumCulled, o.layers.mask, Object.keys(o.geometry.attributes).sort().join(","), Object.keys(o.geometry.morphAttributes).sort().join(",")].join("|");
+/** Take a merged mesh out of the tree; whatever hangs under it (a kept face, a sprite, a live lamp) moves up to its parent, in place. */
+function take(o, removed) {
+  for (const c of [...o.children]) o.parent.attach(c);
+  o.parent.remove(o);
+  removed.push(o);
+}
 
 /** Merge under `root`, not entering subtrees `boundary(o)` names (the district groups, when the root is the scene). Returns the meshes taken out. */
 export function mergeStatic(root, boundary = () => false) {
   root.updateWorldMatrix(true, true);
   const rootInv = root.matrixWorld.clone().invert();
   const batches = new Map();
-  const walk = (o, underLive) => {
+  const walk = (o, underLive, hidden) => {
     if (o.userData.live === "deep" || (o !== root && o.userData.keep)) return;
-    const live = underLive || !!o.userData.live;
-    if (!live && mergeable(o)) { const k = batchKey(o); if (!batches.has(k)) batches.set(k, []); batches.get(k).push(o); }
-    for (const c of o.children) if (!boundary(c)) walk(c, live);
+    const live = underLive || !!o.userData.live, hid = hidden || (o !== root && !o.visible); // under a hidden group a mesh stays put, or it would show through the merged one
+    if (!live && !hid && mergeable(o)) { const k = batchKey(o); if (!batches.has(k)) batches.set(k, []); batches.get(k).push(o); }
+    for (const c of o.children) if (!boundary(c)) walk(c, live, hid);
   };
-  walk(root, false);
+  walk(root, false, false);
   const removed = [], rel = new THREE.Matrix4();
   for (const list of batches.values()) {
     if (list.length < 2) continue;
@@ -47,7 +54,7 @@ export function mergeStatic(root, boundary = () => false) {
     mesh.name = "merged"; mesh.userData.merged = list.length;
     mesh.matrixAutoUpdate = false; mesh.updateMatrix(); // the geometry is in the root's frame already
     root.add(mesh);
-    for (const o of list) { o.parent.remove(o); removed.push(o); }
+    for (const o of list) take(o, removed);
   }
   return removed;
 }
@@ -58,8 +65,8 @@ export function mergeStatic(root, boundary = () => false) {
  * meshes; kept or live pieces inside, and everything under them, stay as they are. Returns the meshes taken out. */
 export function collapseStatic(group) {
   const found = [];
-  const walk = (o) => { for (const c of o.children) { if (c.userData.live || c.userData.keep) continue; if (mergeable(c)) found.push(c); walk(c); } };
-  walk(group);
+  const walk = (o, hidden) => { for (const c of o.children) { if (c.userData.live || c.userData.keep) continue; const hid = hidden || !c.visible; if (!hid && mergeable(c)) found.push(c); walk(c, hid); } };
+  walk(group, false);
   if (found.length < 2) return [];
   group.updateWorldMatrix(true, true);
   const inv = group.matrixWorld.clone().invert(), rel = new THREE.Matrix4();
@@ -88,7 +95,7 @@ export function collapseStatic(group) {
     mesh.name = "collapsed"; mesh.userData.merged = list.length;
     mesh.matrixAutoUpdate = false; mesh.updateMatrix();
     group.add(mesh);
-    for (const o of list) { o.parent.remove(o); removed.push(o); }
+    for (const o of list) take(o, removed);
   }
   pruneEmpty(group);
   return removed;

@@ -306,8 +306,11 @@ The smoke checks that a quarter of the objects at most still compose a matrix af
 moved behind three.js's back once everything that moves or redraws has run (a frozen object's matrix must still equal its
 position, rotation and scale), that the car, the blimp, the sky dome, the flywheel, the Orrery's rings, a spin_ node and the
 minute hand still move, that no two static meshes under one root still share a batch, and that the pads and the Orrery's
-named pedestal are still there. Rule for new code: anything that moves after the world is built is marked live (or calls
-`moved`), and anything found by name or repainted later is marked keep.
+named pedestal are still there, and that every node the monuments hold is still attached. Rule for new code: anything that
+moves after the world is built is marked live (or calls `moved`); anything found by name, repainted (`.material =`), shown or
+hidden (`.visible`), read for a world position, or given children later is marked keep, and so is a group that must survive
+being emptied. A kept or live node under a static mesh is re-attached to the mesh's parent when the mesh merges, so it
+survives, but its place in the tree changes: better not to export one that way.
 
 ## Stops page (3 Nov): 8.3
 

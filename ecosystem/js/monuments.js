@@ -41,7 +41,7 @@ function findMonument(key) {
   const d = DISTRICTS[pad.stop.district];
   let m = monuments.get(key);
   if (!m) {
-    const aux = new THREE.Group(); // kerb, sparks and rings live beside the building, not in it: a model swap empties the group
+    const aux = markKeep(new THREE.Group()); // kerb, sparks and rings live beside the building, not in it: a model swap empties the group; kept whole through the merge (merge.js), so a kerb rebuilt later still has its home
     aux.position.copy(pad.group.position); aux.rotation.copy(pad.group.rotation);
     pad.group.parent.add(aux);
     m = { key, pad, g: pad.group, aux, d, nodes: {}, kerb: null };
@@ -514,6 +514,7 @@ export function monumentValues() {
 export const onMonumentStats = (f) => listeners.push(f);
 /** QA: feed fills as a poll would. */
 export function injectSlpFills(list) { state.seeded = true; takeFills(pickFills({ fills: list }), Date.now()); }
+const inScene = (o) => { for (let p = o; p; p = p.parent) if (p.isScene) return true; return false; };
 export const monumentsState = () => {
   const e = monuments.get("monument-earn");
   const t = monuments.get("monument-token");
@@ -523,7 +524,8 @@ export const monumentsState = () => {
   const o = monuments.get("monument-developers");
   const y = monuments.get("monument-chains");
   const pc = monuments.get("monument-partners");
-  return { orreryRings: pc?.nodes.rings?.filter(Boolean).map((r) => r.rotation.y) ?? [], orreryModel: !!pc?.g?.getObjectByName("pedestal"), // the Orrery: y-rotation of each ring, and whether the glb is in (the blockout has no "pedestal"); "rings" below is the Engine's count
+  return { attached: [...monuments.values()].every((m) => inScene(m.aux) && Object.values(m.nodes).flat().every((n) => !n || inScene(n))), // every node a monument holds is still in the scene after the geometry merge (merge.js)
+    orreryRings: pc?.nodes.rings?.filter(Boolean).map((r) => r.rotation.y) ?? [], orreryModel: !!pc?.g?.getObjectByName("pedestal"), // the Orrery: y-rotation of each ring, and whether the glb is in (the blockout has no "pedestal"); "rings" below is the Engine's count
     pylonsFace: y?.faceText ?? null,
     fillsOk: state.ok, feed: state.feed.length, feedLast: state.feed.at(-1) ?? null, stream: state.streamStatus, obeliskFace: o?.faceText ?? null,
     rungs: b?.nodes.rungs?.filter((r) => r?.visible).length ?? 0, pulse: b?.pulse ?? null, beaconFace: b?.faceText ?? null, cars: state.cars,
