@@ -3,7 +3,7 @@
 // GPU timer queries (Chrome on a desktop; Safari does not) the GPU's own time per frame is shown too. QA scripts read the
 // same figures from window.__eco.fps.stats() (qa/perf-eco.mjs). The frame loop marks its sections (mark("car") after the car's
 // step, and so on); the readout's last line lists them by their mean time per frame, so a slow phone shows where its frame goes.
-import { frameStats, formatFps, sectionMeans } from "./fps-math.js";
+import { frameStats, formatFps, sectionMeans, loopMs } from "./fps-math.js";
 
 export function createFps({ renderer, tier }) {
   if (new URLSearchParams(location.search).get("fps") !== "1") return null;
@@ -15,6 +15,7 @@ export function createFps({ renderer, tier }) {
   el.setAttribute("aria-hidden", "true");
   el.textContent = formatFps(null, tier(), renderer.info.render);
   document.body.append(el);
+  const loop = loopMs(); // the fixed loop's time, once: a few ms with a JIT, tens without
   let intervals = [], scripts = [], draws = [], gpus = [], pending = [], query = null, sums = {};
   let last = performance.now(), t0 = last, tDraw = last, lastMark = last, shownAt = last, lastStats = null;
   const mark = (name) => { const now = performance.now(); sums[name] = (sums[name] || 0) + (now - lastMark); lastMark = now; };
@@ -41,8 +42,8 @@ export function createFps({ renderer, tier }) {
       }
       if (now - shownAt < 1000) return;
       const r = renderer.info.render, sections = sectionMeans(sums, intervals.length);
-      lastStats = { ...frameStats(intervals, scripts, draws, gpus), tier: tier(), calls: r.calls, triangles: r.triangles, sections, at: now };
-      el.textContent = formatFps(lastStats, tier(), r, sections);
+      lastStats = { ...frameStats(intervals, scripts, draws, gpus), tier: tier(), calls: r.calls, triangles: r.triangles, sections, loop, at: now };
+      el.textContent = formatFps(lastStats, tier(), r, sections, loop);
       intervals = []; scripts = []; draws = []; gpus = []; sums = {}; shownAt = now;
     },
     stats: () => lastStats, // the last whole second's figures, or null before the first
