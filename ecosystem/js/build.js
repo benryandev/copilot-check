@@ -8,6 +8,7 @@ import { roads, jumps, ROAD_HALF, terrainHeight, builderSlots, roadInfo, kerbGap
 import { tint, setDark } from "./colours.js";
 import { benchSpots } from "./furniture-math.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
+import { markLive, moved } from "./freeze.js";
 
 // Everything in a district lives in its group, so far-away districts can be skipped when drawing
 export const districtGroups = {};
@@ -143,7 +144,7 @@ const SHAPES = {
     g.add(spire);
     const orb = mesh(new THREE.OctahedronGeometry(1.1), A, 0, 14.6, 0);
     g.add(orb);
-    if (!reduceMotion) animated.push((t) => { orb.rotation.y = t * 0.8; orb.position.y = 14.6 + Math.sin(t * 1.5) * 0.25; });
+    if (!reduceMotion) { markLive(orb); animated.push((t) => { orb.rotation.y = t * 0.8; orb.position.y = 14.6 + Math.sin(t * 1.5) * 0.25; }); } // whatever animated moves is marked live, so the matrix freeze (freeze.js) leaves it alone
     return 16;
   },
   exchange(g, A) {
@@ -165,7 +166,7 @@ const SHAPES = {
     const dish = mesh(new THREE.SphereGeometry(1.8, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2.4), A, 0, 13, 0);
     dish.rotation.x = Math.PI;
     g.add(dish);
-    if (!reduceMotion) animated.push((t) => (dish.rotation.y = t * 0.6));
+    if (!reduceMotion) { markLive(dish); animated.push((t) => (dish.rotation.y = t * 0.6)); }
     return 15;
   },
   twin(g, A) {
@@ -200,7 +201,7 @@ const SHAPES = {
     const hand = box(0.18, 1.3, 0.1, A, 0, 0, 0);
     pivot.add(hand);
     g.add(pivot);
-    if (!reduceMotion) animated.push((t) => (pivot.rotation.z = -t * 0.8));
+    if (!reduceMotion) { markLive(pivot); animated.push((t) => (pivot.rotation.z = -t * 0.8)); }
     g.add(box(4.4, 0.4, 4.4, M.trim, 0, 11, 0));
     return 13;
   },
@@ -213,7 +214,7 @@ const SHAPES = {
     flag.position.set(1.5, -0.9, 0);
     holder.add(flag);
     g.add(holder);
-    if (!reduceMotion) animated.push((t) => (holder.rotation.y = Math.sin(t * 1.4) * 0.35));
+    if (!reduceMotion) { markLive(holder); animated.push((t) => (holder.rotation.y = Math.sin(t * 1.4) * 0.35)); }
     return 12;
   },
   dome(g, A) {
@@ -228,7 +229,7 @@ const SHAPES = {
     const door = mesh(new THREE.CylinderGeometry(1.9, 1.9, 0.4, 28), A, 0, 3, 3.1);
     door.rotation.x = Math.PI / 2;
     g.add(door, box(7.4, 0.4, 6.4, M.trim, 0, 6, 0));
-    if (!reduceMotion) animated.push((t) => (door.rotation.y = t * 0.3));
+    if (!reduceMotion) { markLive(door); animated.push((t) => (door.rotation.y = t * 0.3)); }
     return 7;
   },
   coins(g, A) {
@@ -273,7 +274,7 @@ const SHAPES = {
     const coin = realfiCoin();
     coin.position.y = 6.3 + 2.2 + 1.9;
     g.add(coin);
-    if (!reduceMotion) animated.push((t) => (coin.rotation.y = t * 0.9));
+    if (!reduceMotion) { markLive(coin); animated.push((t) => (coin.rotation.y = t * 0.9)); }
     return 12.4;
   },
   // Builders' Row: a shopfront with the project's name over the door
@@ -616,9 +617,11 @@ async function swapInModel(g, file, A, colliderIndex) {
   model.traverse((o) => {
     // Multi-material nodes load as a group of meshes: spin the outermost spin_ node
     if (o.name.startsWith("spin_") && !o.parent?.name.startsWith("spin_") && !reduceMotion) {
+      markLive(o); // the matrix freeze (freeze.js) leaves live nodes alone
       animated.push((t) => (o.rotation.y = t * 0.9));
     }
     if (o.name.startsWith("turn_") && !o.parent?.name.startsWith("turn_") && !reduceMotion) {
+      markLive(o);
       animated.push((t) => (o.rotation.z = t * 0.35));
     }
     if (!o.isMesh) return;
@@ -665,6 +668,7 @@ async function swapInModel(g, file, A, colliderIndex) {
     // Town hall clock: the visitor's local time
     if (o.name === "clockhand_h" || o.name === "clockhand_m") {
       const hour = o.name === "clockhand_h";
+      markLive(o);
       animated.push(() => {
         const d = new Date();
         const m = d.getMinutes() + d.getSeconds() / 60;
@@ -691,10 +695,11 @@ async function swapInModel(g, file, A, colliderIndex) {
     pad.pos.set(g.position.x + pad.dir.x * reach, pad.pos.y, g.position.z + pad.dir.z * reach);
     pad.ring.position.set(pad.pos.x, pad.ring.position.y, pad.pos.z);
     pad.disc.position.set(pad.pos.x, pad.disc.position.y, pad.pos.z);
+    moved(pad.ring); moved(pad.disc); // frozen with the world (freeze.js): composed again here
   }
   // Float the label just above the model's top
   const label = g.children.find((c) => c.isSprite);
-  if (label) label.position.y = b.max.y + 2.2;
+  if (label) { label.position.y = b.max.y + 2.2; moved(label); }
   modelHooks.get(pad?.stop.key)?.(g); // a monument re-attaches its motion to the model's named nodes
 }
 // Stop key → (group) => void, run after a model replaces the blockout (monuments.js registers the monuments' before buildStops)
@@ -1209,7 +1214,7 @@ export function addProp(parent, kind, x, z, rotY = 0, lift = 0) {
   const p = PROP[kind]();
   p.m.position.set(x, terrainHeight(x, z) + p.h + lift, z);
   p.m.rotation.y = rotY;
-  parent.add(p.m);
+  parent.add(markLive(p.m)); // knocked about by the car: its matrix stays automatic (freeze.js); the pieces inside it are frozen with the world
   crates.push({ ...p, kind, v: new THREE.Vector2(), spin: 0, tilt: 0, lift, redraw: () => {} });
 }
 
@@ -1321,7 +1326,7 @@ export function addCrates(scene, tickers, cx, cz, colour) {
     const r = 4.5 + ring * 2.1;
     m.position.set(cx + Math.cos(a) * r, s / 2, cz + Math.sin(a) * r);
     m.rotation.y = a;
-    parent.add(m);
+    parent.add(markLive(m)); // knocked about by the car (freeze.js)
     crates.push({ m, v: new THREE.Vector2(), spin: 0, tilt: 0, r: 0.9, h: 0.75, lift: 0, redraw });
   });
 }

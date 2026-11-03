@@ -7,6 +7,7 @@ import { roads, RIDGE_ROAD, RIDGE_FADE, terrainHeight, ridgeSeries, roadRibbon, 
 import { RIDGE, candleIndex, candleDir } from "./ridge-math.js";
 import { canvasTexture, redraws, accent, box } from "./build.js";
 import { DISTRICTS } from "./content.js";
+import { freezeStatic, moved } from "./freeze.js";
 
 const UP = new THREE.Color(0x4ade80), DOWN = new THREE.Color(0xf87171), TINT = 0.26, BLEND = 3; // tint strength; metres either side of a point averaged, so candle boundaries drift rather than band
 const LABELS = ["24h", "18h", "12h", "6h", "now"];
@@ -88,11 +89,12 @@ export function buildRidge(scene, palette) {
     g.add(post);
     return post;
   });
-  function placePosts() { for (const post of posts) post.position.y = terrainHeight(post.position.x, post.position.z); }
+  function placePosts() { for (const post of posts) { post.position.y = terrainHeight(post.position.x, post.position.z); moved(post); } } // frozen with the world (freeze.js): composed again when the ridge moves
 
   function refresh() {
     for (const o of [...dyn.children]) { dyn.remove(o); o.geometry.dispose(); }
     dyn.add(buildPatch(), buildRoad());
+    freezeStatic(dyn); // laid once, never moved
     placePosts();
   }
   g.userData = { refresh, recolour: (p) => { pal = p; roadMat.color.set(p.dirt); refresh(); } };

@@ -3,6 +3,7 @@
 // are sprites, so they face whoever is looking.
 import * as THREE from "../vendor/three.module.min.js";
 import { EMOTES, emoteKey, bubblePose } from "./emote-math.js";
+import { markLive } from "./freeze.js";
 
 const $ = (id) => document.getElementById(id);
 const SIZE = 2.6; // metres across at full size
@@ -87,7 +88,7 @@ export function showBubble(key, e) {
   sprite.position.y = key === "me" ? 2.4 : 4.1; // over the name tag on someone else's car
   sprite.renderOrder = 6;
   sprite.scale.set(0.01, 0.01, 1);
-  group.add(sprite);
+  group.add(markLive(sprite)); // pops and fades: its matrix stays automatic (freeze.js)
   active.set(key, { sprite, group, start: performance.now(), e });
 }
 function drop(key) {

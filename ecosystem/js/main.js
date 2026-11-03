@@ -36,6 +36,7 @@ import { createPost, toGlow } from "./post.js";
 import { initArcade, openArcade, arcadeOpen, injectArcadeBoard } from "./arcade.js";
 import { createFps } from "./fps.js";
 import { TIERS, startTier, nextTier, SLOW_MS, WINDOW } from "./quality-math.js";
+import { markLive, freezeStatic } from "./freeze.js";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -83,6 +84,7 @@ sun.castShadow = true;
 Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 160 });
 sun.shadow.bias = -0.0005;
 scene.add(hemi, sun, sun.target);
+markLive(sun); markLive(sun.target); // the sun follows the car (placeCamera); the matrix freeze (freeze.js) leaves live objects alone
 
 // ── World ─────────────────────────────────────────────────────────────
 // Built in steps with a painted frame between them, so the loader reports real progress
@@ -141,15 +143,19 @@ function applyTier() {
   if (grass) { scene.remove(grass); grass.geometry.dispose(); grass.material.dispose(); }
   grass = createGrass(t.grass, pal(), !reduceMotion);
   scene.add(grass);
+  freezeStatic(grass); // the tier's new pieces sit at the origin for good, like everything frozen below
   if (dust) { scene.remove(dust); dust.geometry.dispose(); dust.material.dispose(); }
   dust = createDust(t.dust, pal());
   scene.add(dust);
+  freezeStatic(dust);
   if (spray) { scene.remove(spray); spray.geometry.dispose(); spray.material.dispose(); }
   spray = createDust(Math.round(t.dust / 2), pal(), "spray");
   scene.add(spray);
+  freezeStatic(spray);
   if (waterMesh) { scene.remove(waterMesh); waterMesh.geometry.dispose(); waterMesh.material.dispose(); }
   waterMesh = buildWater(pal(), { tier: tierName, reduceMotion });
   scene.add(waterMesh);
+  freezeStatic(waterMesh);
   post.enable(t.bloom);
   resize();
   document.querySelectorAll("[data-quality]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.quality === qualityPref)));
@@ -1136,6 +1142,10 @@ placeCamera(0, true);
 updateWhere();
 refresh();
 setInterval(refresh, 30_000);
+// Nearly nothing above moves once built: freeze its matrices (freeze.js), now and again once the Blender models have replaced
+// their blockouts (the models' static nodes are frozen then; the live ones were marked when their motion was attached)
+freezeStatic(scene);
+modelsReady().then(() => freezeStatic(scene));
 requestAnimationFrame(frame);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 await load.step("Fetching the car and live figures");

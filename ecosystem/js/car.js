@@ -4,6 +4,7 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { M, paint, box, mesh, colliders } from "./build.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
+import { markLive } from "./freeze.js";
 import { groundHeight, onDirt, onWater, racewayWeight, jumpAt, WORLD } from "./terrain.js";
 
 import { glowIntensity } from "./post.js";
@@ -14,7 +15,7 @@ export const CAR_R = 1.6;
 const MAX_F = 24, MAX_R = 9, ACCEL = 16, BRAKE = 34, ROLL = 5, TURN = 2.2;
 
 export function createCar(colour) {
-  const car = new THREE.Group();
+  const car = markLive(new THREE.Group(), true); // the car and everything inside it moves: never frozen (freeze.js)
   const tilt = new THREE.Group(); // pitch, roll and squash live here
   car.add(tilt);
   const A = paint(colour);

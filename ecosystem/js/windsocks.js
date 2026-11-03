@@ -9,6 +9,7 @@ import { roads, terrainHeight } from "./terrain.js";
 import { WINDSOCKS, sockState, sockLabel, polePositions, segmentAngles } from "./windsock-math.js";
 import { canvasTexture, redraws, animated, box, cyl, M } from "./build.js";
 import { DISTRICTS } from "./content.js";
+import { markLive } from "./freeze.js";
 
 const TONES = { up: new THREE.Color(0x4ade80), down: new THREE.Color(0xf87171), none: new THREE.Color(0x9aa3ad) };
 const WHITE = new THREE.Color(0xffffff);
@@ -74,7 +75,7 @@ export function buildWindsocks(scene, palette, { reduceMotion = false } = {}) {
   const cloth = new THREE.InstancedMesh(new THREE.CylinderGeometry(SEG_R0 * TAPER, SEG_R0, SEG_LEN, 10, 1, true), new THREE.MeshLambertMaterial({ side: THREE.DoubleSide }), socks.length * n);
   cloth.castShadow = true;
   cloth.frustumCulled = false;
-  g.add(cloth);
+  g.add(markLive(cloth)); // posed every frame (through its instance matrices; its own matrix is marked live all the same, freeze.js)
   const m = new THREE.Matrix4(), qt = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), dirV = new THREE.Vector3(), sc = new THREE.Vector3(), c = new THREE.Vector3();
   function colour() {
     for (const sock of socks) for (let k = 0; k < n; k++) cloth.setColorAt(sock.first + k, k % 2 ? TONES[sock.tone] : WHITE);

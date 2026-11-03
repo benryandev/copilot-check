@@ -5,6 +5,7 @@
 // there are no shooting stars.
 
 import * as THREE from "../vendor/three.module.min.js";
+import { markLive } from "./freeze.js";
 
 const CLOUDS = 30, PUFFS = 10, CLOUD_RANGE = 250; // clouds within this of the camera, wrapping round
 // Low enough to sit in the band of sky the driving camera sees (its top edge is about 12° up),
@@ -221,7 +222,7 @@ export function createSky({ reduceMotion = false } = {}) {
   const clouds = buildClouds(reduceMotion);
   const stars = buildStars(reduceMotion);
   const shooter = reduceMotion ? null : buildShooter();
-  const dome = new THREE.Group(); // stars and shooting stars ride with the camera
+  const dome = markLive(new THREE.Group()); // stars and shooting stars ride with the camera: its matrix stays automatic (freeze.js)
   dome.add(stars.points);
   if (shooter) dome.add(shooter.points);
   group.add(clouds.mesh, dome);
