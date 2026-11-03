@@ -85,8 +85,7 @@
 
   <div class="touch" id="touch" hidden>
     <div class="touch-group">
-      <button type="button" class="pad-btn" data-key="left" aria-label="Steer left"><span class="tri tri-left"></span></button>
-      <button type="button" class="pad-btn" data-key="right" aria-label="Steer right"><span class="tri tri-right"></span></button>
+      <div class="stick" id="stick" role="slider" aria-label="Steer" aria-orientation="horizontal" aria-valuemin="-1" aria-valuemax="1" aria-valuenow="0" aria-valuetext="straight" tabindex="-1"><span class="tri tri-left"></span><span class="stick-knob"></span><span class="tri tri-right"></span></div>
     </div>
     <div class="touch-group touch-mid">
       <button type="button" class="emote-btn" id="emote-chip" aria-label="Emotes">🙂</button>
@@ -117,7 +116,7 @@
       <li><span class="key">M</span> map view</li>
       <li><span class="key">E</span> wave at someone</li>
     </ul>
-    <p class="muted"><span class="touch-tip">On a phone, use the buttons at the bottom of the screen. </span>Looking for something? Map view jumps you straight there. Race a lap puts you on the RealFi Raceway start line, with a live top 10. The Fill Yard, off the road to Perpetuals, shows every trade on Strike as it happens. Other visitors can see your car and the name you chose. Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>; the code is <a href="https://github.com/benryandev/copilot-check" target="_blank" rel="noopener">on GitHub</a>.</p>
+    <p class="muted"><span class="touch-tip">On a phone, steer with the pad on the left and drive with the buttons on the right. </span>Looking for something? Map view jumps you straight there. Race a lap puts you on the RealFi Raceway start line, with a live top 10. The Fill Yard, off the road to Perpetuals, shows every trade on Strike as it happens. Other visitors can see your car and the name you chose. Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>; the code is <a href="https://github.com/benryandev/copilot-check" target="_blank" rel="noopener">on GitHub</a>.</p>
     <p class="muted">Prefer to read? <a href="/ecosystem/stops/" data-guide-link>Every stop as text</a> · <a href="/ecosystem/guides/" data-guide-link>Start here: learn Strike from zero</a>.</p>
     <div class="sheet-actions">
       <button type="button" class="br-button" id="start" autofocus><span class="br-button-label">Start driving</span></button>

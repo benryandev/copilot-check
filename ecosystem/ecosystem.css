@@ -168,6 +168,38 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .pad-btn.is-down .tri-down { border-top-color: var(--bg-page); }
 .pad-gas { width: 5.25rem; height: 5.25rem; }
 
+/* The steering stick (stick.js): a pill with a knob that follows the thumb; where the thumb lands is neutral */
+.stick {
+  position: relative;
+  width: 6.75rem;
+  height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.7rem;
+  border-radius: 10rem;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.stick.is-down { background: color-mix(in srgb, var(--bg-surface) 95%, transparent); }
+.stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--text-primary);
+  transform: translate(calc(-50% + var(--stick-x, 0px)), -50%);
+  transition: transform 90ms ease; /* the snap back to centre on release; while held the knob tracks the thumb directly */
+  pointer-events: none;
+}
+.stick.is-down .stick-knob { transition: none; }
+
 .tri { width: 0; height: 0; border: 0.7rem solid transparent; }
 .tri-left { border-right: 1rem solid var(--text-primary); border-left-width: 0; }
 .tri-right { border-left: 1rem solid var(--text-primary); border-right-width: 0; }
@@ -368,6 +400,7 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
   .hud-foot { font-size: 0.65rem; }
   .pad-btn { width: 4rem; height: 4rem; }
   .pad-gas { width: 4.75rem; height: 4.75rem; }
+  .stick { width: 6rem; height: 4rem; }
 }
 .foot-short { display: none; }
 @media (max-width: 400px) { /* the smallest phones: the shorter disclosure keeps the credit on screen */
@@ -377,6 +410,7 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
 @media (max-height: 500px) { /* a phone on its side: less height to spend */
   .pad-btn { width: 3.5rem; height: 3.5rem; }
   .pad-gas { width: 4rem; height: 4rem; }
+  .stick { width: 5.25rem; height: 3.5rem; }
   .hud-prompt { bottom: 7rem; }
 }
 
@@ -494,7 +528,7 @@ body:has(#touch:not([hidden])) .arrive-tap { display: inline; }
 body:has(#touch:not([hidden])) .arrive-key { display: none; }
 .hud, .touch { transition: opacity 700ms ease; }
 body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transition: none; } /* gone at once; they fade back in */
-@media (prefers-reduced-motion: reduce) { .arrive, .hud, .touch { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .arrive, .hud, .touch, .stick-knob { transition: none; } }
 .loader-mark { width: 7.5rem; height: 7.5rem; animation: loader-turn 2.4s linear infinite; }
 .loader-text { margin: 0; font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
 @keyframes loader-turn { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
