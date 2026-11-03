@@ -29,7 +29,7 @@ const hex = (n) => "#" + new THREE.Color(tint(n)).getHexString();
 
 // Materials painted in a district colour, re-tinted on theme change
 export const tinted = [];
-const tintedBasic = (colour, opts) => {
+export const tintedBasic = (colour, opts) => {
   const m = new THREE.MeshBasicMaterial({ color: tint(colour), ...opts });
   tinted.push({ m, colour });
   return m;
@@ -494,7 +494,7 @@ function signBoard(text, w, h, x, y, z) {
 }
 
 // ── Labels ─────────────────────────────────────────────────────────────
-function makeLabel(text, colour, y, parent) {
+export function makeLabel(text, colour, y, parent) {
   const { tex, redraw } = canvasTexture(1024, 192, (ctx, w, h, p) => {
     ctx.clearRect(0, 0, w, h);
     ctx.font = "600 88px 'Atkinson Hyperlegible Next', Arial, sans-serif";

@@ -168,6 +168,38 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .pad-btn.is-down .tri-down { border-top-color: var(--bg-page); }
 .pad-gas { width: 5.25rem; height: 5.25rem; }
 
+/* The steering stick (stick.js): a pill with a knob that follows the thumb; where the thumb lands is neutral */
+.stick {
+  position: relative;
+  width: 9rem; /* about the two old buttons and their gap, as on a tablet; narrower where a phone cannot fit it (below) */
+  height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.7rem;
+  border-radius: 10rem;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.stick.is-down { background: color-mix(in srgb, var(--bg-surface) 95%, transparent); }
+.stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--text-primary);
+  transform: translate(calc(-50% + var(--stick-x, 0px)), -50%);
+  transition: transform 90ms ease; /* the snap back to centre on release; while held the knob tracks the thumb directly */
+  pointer-events: none;
+}
+.stick.is-down .stick-knob { transition: none; }
+
 .tri { width: 0; height: 0; border: 0.7rem solid transparent; }
 .tri-left { border-right: 1rem solid var(--text-primary); border-left-width: 0; }
 .tri-right { border-left: 1rem solid var(--text-primary); border-right-width: 0; }
@@ -239,7 +271,7 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .arcade-frame:focus { outline: none; }
 /* A phone on its side: the sheet takes the height and the frame takes what the header leaves */
 @media (max-height: 520px) {
-  .sheet--arcade { display: flex; flex-direction: column; height: calc(100dvh - 1rem); max-height: none; width: min(40rem, calc(100vw - 1rem)); padding: var(--space-xs) var(--space-sm); }
+  .sheet--arcade[open] { display: flex; flex-direction: column; height: calc(100dvh - 1rem); max-height: none; width: min(40rem, calc(100vw - 1rem)); padding: var(--space-xs) var(--space-sm); }
   .sheet--arcade > * + * { margin-top: var(--space-2xs); }
   .sheet--arcade .arcade-credit, .sheet--arcade .arcade-board { display: none; }
   .arcade-frame { flex: 1; min-height: 0; height: auto; }
@@ -368,15 +400,18 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
   .hud-foot { font-size: 0.65rem; }
   .pad-btn { width: 4rem; height: 4rem; }
   .pad-gas { width: 4.75rem; height: 4.75rem; }
+  .stick { width: 7.5rem; height: 4rem; }
 }
 .foot-short { display: none; }
 @media (max-width: 400px) { /* the smallest phones: the shorter disclosure keeps the credit on screen */
+  .stick { width: 6.5rem; } /* and the stick leaves room for the emote button and the two driving buttons */
   .foot-long { display: none; }
   .foot-short { display: inline; }
 }
 @media (max-height: 500px) { /* a phone on its side: less height to spend */
   .pad-btn { width: 3.5rem; height: 3.5rem; }
   .pad-gas { width: 4rem; height: 4rem; }
+  .stick { width: 7.5rem; height: 3.5rem; }
   .hud-prompt { bottom: 7rem; }
 }
 
@@ -493,8 +528,12 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
 body:has(#touch:not([hidden])) .arrive-tap { display: inline; }
 body:has(#touch:not([hidden])) .arrive-key { display: none; }
 .hud, .touch { transition: opacity 700ms ease; }
+/* The footer fades while driving (hud-math.js sets body.is-driving): out in 0.4 s with a small slide, back in 0.6 s once the car has been still a moment */
+.hud-foot { transition: opacity 600ms ease, transform 600ms ease; }
+body.is-driving .hud-foot { opacity: 0; transform: translate(-50%, 0.5rem); transition-duration: 400ms; }
+body.is-driving .hud-foot a { pointer-events: none; }
 body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transition: none; } /* gone at once; they fade back in */
-@media (prefers-reduced-motion: reduce) { .arrive, .hud, .touch { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .arrive, .hud, .touch, .stick-knob { transition: none; } }
 .loader-mark { width: 7.5rem; height: 7.5rem; animation: loader-turn 2.4s linear infinite; }
 .loader-text { margin: 0; font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
 @keyframes loader-turn { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
@@ -547,6 +586,11 @@ body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transitio
 .race-go[hidden] { display: none; }
 .race-invite .prompt-card { cursor: default; pointer-events: auto; gap: var(--space-sm); }
 .race-invite-actions { display: flex; gap: var(--space-2xs); }
+
+/* The board zoom (main.js focusBoard): the HUD and the driving controls go, a bar with Save the board and Back stays */
+.focus-bar { left: 50%; bottom: max(var(--space-sm), env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: var(--space-2xs); pointer-events: auto; }
+.focus-bar[hidden] { display: none; }
+body.is-focus :is(.hud:not(.focus-bar), .touch) { visibility: hidden; }
 .race-live-line { margin: 0 0 var(--space-2xs); font-family: var(--font-mono); font-size: 0.875rem; letter-spacing: 0.04em; color: var(--text-secondary); }
 .race-live-line[hidden] { display: none; }
 .race-actions { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; margin: var(--space-sm) 0; }

@@ -299,3 +299,22 @@ article and on the stops page's guide line; the fixture image inside the sheet's
 underline every line; FAQ headings spaced from the box title. Local Lighthouse (mobile / desktop): guide page 99 / 100,
 index 100, stops page with the HQ still 99, all four categories at 100 otherwise; LCP 1.5–1.7 s mobile. The blind
 re-score runs before the deploy, on the real S0 and S1 pages.
+
+## UX controls (3 Nov): the steering stick, the footer fade, the board zoom
+
+`qa/ux-smoke.mjs` drives the three changes from IBuyTheTop's note and Ben's ideas end to end, against the worktree's
+server on 8767 (`PORT=8767 node qa/serve.mjs`; the race and arcade API allow 8766 only, so their CORS and 403 console
+lines are ignored there):
+
+```sh
+node qa/ux-smoke.mjs http://localhost:8767                      # every part
+node qa/ux-smoke.mjs http://localhost:8767 --part=zoom --shots  # the zoomed state to qa/shots/eco-focus-<w>-<theme>.png
+node qa/ux-smoke.mjs http://localhost:8767 --part=zoom,footer --reduced
+```
+
+Parts: `stick` (the floating stick on a 375 px touch page: value, knob, full lock past the edge, release on blur),
+`footer` (fades after a moment on the throttle, back after a moment still, the touch bar never moves), `zoom` (the
+camera lands on the board pose while the car stops where it is, the HUD hides, Escape or Back returns), `landscape`
+(no closed sheet paints at 844 by 390), `triggers` (See it on the board, the Zoom in card, Not now) and `save` (the
+PNG download). The world's clock runs slower than the wall clock under software rendering, so every check waits on
+the state it expects rather than on a timer.

@@ -25,6 +25,11 @@ const REMOVED = ['cardanocube', 'adastack', 'cardano-org-apps', 'dexhunter', 'li
 // Case-insensitive for the content rules; the STRIKE price rule is case-sensitive, since "Strike prices it per unit" and a
 // collateral token's own price are fine
 const BANNED = [/recommend|\bAPR\b|loss cover|you should|best setting/i, /STRIKE (token )?price/];
+// Ben's copy rule (3 Nov 2026): plain sentences, no colons, semicolons or dashes inside them, no per-fact check dates.
+// A clock time (00:05 UTC) keeps its colon and a hyphen inside a word (sub-account) is not a dash. A date that is a fact
+// (V1 launched in May 2025) stays; a date that says when a fact was looked at (as seen on 3 November 2026) goes.
+const COPY_PUNCT = /[;\u2013\u2014]| - |(?<!\d\d):|:(?!\d\d)/;
+const CHECK_DATE = /\b(checked|as (seen|listed|of|at)|seen (in|on)|read (in|on)|(app|feed|page|site) on)\b[^.]*\b20\d\d\b/i;
 const keysIn = (d) => STOPS.filter((s) => s.district === d && s.row !== 'builders').map((s) => s.key);
 
 for (const [d, keys] of Object.entries(PLAN)) test(`${d} holds exactly the planned stops, in order`, () => assert.deepEqual(keysIn(d), keys));
@@ -52,6 +57,14 @@ test('stop names fit the pad label (22 characters; makeLabel draws 88 px type on
 test('no sheet carries a banned word', () => {
   for (const s of STOPS) for (const t of [s.summary, ...s.points]) for (const re of BANNED) assert.doesNotMatch(t, re, `${s.key}: "${t}"`);
 });
+test("every sheet obeys Ben's copy rule: plain sentences, no colon, semicolon or dash inside one, no check date", () => {
+  const bad = [];
+  for (const s of STOPS) for (const t of [s.summary, ...s.points]) {
+    if (COPY_PUNCT.test(t)) bad.push(`${s.key} punctuation: "${t}"`);
+    if (CHECK_DATE.test(t)) bad.push(`${s.key} check date: "${t}"`);
+  }
+  assert.deepEqual(bad, [], bad.join('\n'));
+});
 test('merged sheets keep the names they absorbed', () => {
   const text = (k) => { const s = STOPS.find((x) => x.key === k); assert.ok(s, k); return [s.summary, ...s.points].join(' '); };
   for (const w of ['CardanoCube', 'Adastack', 'cardano.org']) assert.match(text('directories'), new RegExp(w));
@@ -76,7 +89,7 @@ test('monuments: eight, one a plaza, placed by hand, their sheets name every fig
   for (const s of ms) {
     assert.ok(s.pos && s.face, s.key); assert.ok(s.live === null || s.live.length >= 3, s.key); assert.match(s.docs, /^(https:\/\/(app|docs)\.strikefinance\.org\/|\/ecosystem\/)/); // the Orrery has no figures and links to the stops page; // the figures' source pages: the app for Earn and Token, the docs for the rest (app.strikefinance.org/stats is a 404)
     for (const t of [s.summary, ...s.points]) for (const re of MONUMENT_BANNED) assert.doesNotMatch(t, re, `${s.key}: "${t}"`);
-    // Ben's copy rule (3 Nov 2026): plain sentences, no colons, semicolons or dashes inside them, no per-fact check dates
-    for (const t of [s.summary, ...s.points]) { assert.doesNotMatch(t, /[:;\u2014\u2013]/, `${s.key} punctuation: "${t}"`); assert.doesNotMatch(t, /\b20\d\d\b/, `${s.key} date stamp: "${t}"`); }
+    // A monument's figures are live, so its sheet carries no date at all (Ben's copy rule itself is checked for every sheet above)
+    for (const t of [s.summary, ...s.points]) assert.doesNotMatch(t, /\b20\d\d\b/, `${s.key} date stamp: "${t}"`);
   }
 });
