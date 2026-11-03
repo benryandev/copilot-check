@@ -384,6 +384,22 @@ const SHAPES = {
     g.add(signBoard(stop.name, 4.0, 0.9, 0, 7.0, -1.2));
     return 7.5;
   },
+  // The Beacon (the Community monument, Part B2): a plinth with a panel for the activity face and the name, a column with
+  // thirty rungs (yesterday on top; monuments.js scales each across to the day's active traders against the best of the
+  // thirty), a lantern on top pulsing with the cars here now. 7.9 m tall, 4 m across; the same node names in the Blender model.
+  beacon(g, A, stop) {
+    g.add(box(4, 1.0, 4, M.trim, 0, 0, 0), box(1.0, 5.6, 1.0, M.build, 0, 1.0, 0), box(3.6, 1.2, 0.3, M.trim, 0, 1.0, 1.7));
+    for (let i = 0; i < 30; i++) {
+      const r = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.1, 0.24), M.build); r.name = `rung_${String(i + 1).padStart(2, "0")}`;
+      r.position.set(0, 6.46 - i * 0.14, 0); r.castShadow = r.receiveShadow = true; g.add(r);
+    }
+    g.add(cyl(0.1, 0.3, M.trim, 0, 6.6, 0, 8));
+    const lantern = new THREE.Mesh(new THREE.OctahedronGeometry(0.55), A); lantern.name = "lantern"; lantern.position.set(0, 7.3, 0); g.add(lantern);
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.0), M.trim); face.name = "face_activity"; face.userData.blockout = true;
+    face.position.set(0, 1.6, 1.86); g.add(face);
+    g.add(signBoard(stop.name, 3.4, 0.7, 0, 0.5, 2.08));
+    return 7.9;
+  },
   grid(g, A) {
     for (let i = -1; i <= 1; i++)
       for (let j = -1; j <= 1; j++) {

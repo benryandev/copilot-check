@@ -10,7 +10,8 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, isMonument } from "./content.js";
 import { pads, accent, M, obbOf, modelHooks, canvasTexture, redraws, themePalette } from "./build.js";
 import { slpVaultId, usd, int } from "./data.js";
-import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale } from "./monument-math.js";
+import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale, BEACON, rungScales, carsHere, pulsePeriod } from "./monument-math.js";
+import { onPeers, peersState } from "./peers.js";
 
 const API = "https://api.strikefinance.org";
 const KERB = { lift: 0.8, gap: (40 * Math.PI) / 180, radius: 0.14 }; // the kerb arc: 0.8 m outside the footprint, open ±40° towards the pad
@@ -24,6 +25,7 @@ const state = {
   slp: null, staking: null, high: null, // the last SLP and staking picks; the highest SLP equity seen this session
   fills: [], since: null, seeded: false, lastAt: 0, lastOkAt: 0, ok: true, forceSeed: false, startedAt: 0, // the fills poll
   collateral: null, // the Collateral Stacks: the last pick
+  activity: null, cars: { status: "off", n: 0 }, // the Beacon: the users series and the presence room's state
   series: null, seriesOk: true, seriesAt: 0, summary: null, // the Chart Plinth: the two daily series (hourly) and the all-time counter
 };
 const monuments = new Map(); // district key → { g, aux, nodes, ... }
@@ -311,6 +313,40 @@ function tickStacks(m, dt) {
   }
 }
 
+// ── The Beacon ──
+function attachBeacon(m) {
+  m.nodes = { rungs: names("rung", BEACON.days).map((n) => node(m.g, n)), lantern: node(m.g, "lantern"), face: node(m.g, "face_activity") };
+  buildKerb(m);
+  if (m.nodes.lantern) { // its own material, so the pulse touches no other mesh
+    const lm = accent(m.d.colour).clone(); if (lm.emissive) lm.emissive.set(m.d.colour); lm.emissiveIntensity = 1;
+    setMaterial(m.nodes.lantern, lm); m.lanternMat = lm;
+  }
+  makeFace(m); bindFace(m, m.nodes.face); // yesterday's traders and the cars here now, blank until the first series
+  m.pulse = m.pulse ?? pulsePeriod(1); m.phase = m.phase ?? 0;
+  applyBeacon(m);
+}
+function applyBeacon(m) {
+  if (!m?.nodes.rungs) return;
+  const a = state.activity;
+  if (a) {
+    const scales = rungScales(a.days);
+    m.nodes.rungs.forEach((r, i) => {
+      if (!r) return;
+      const s = scales[i];
+      r.visible = s != null; r.userData.target = s ?? 0.02;
+      if (s != null) setMaterial(r, accent(m.d.colour));
+      if (opts.reduceMotion) r.scale.x = r.userData.target;
+    });
+  }
+  const cars = carsHere(state.cars.status, state.cars.n);
+  m.pulse = pulsePeriod(Number(cars) || 1);
+  if (a?.days.length) setFaceText(m, [["Active traders, yesterday", int(a.days.at(-1).n)], ["Cars here now", cars ?? "—"]]);
+}
+function tickBeacon(m, dt) {
+  for (const r of m.nodes.rungs) if (r?.visible && r.userData.target != null) r.scale.x = ease(r.scale.x, r.userData.target, dt, 1.5);
+  if (m.lanternMat) { m.phase += dt; m.lanternMat.emissiveIntensity = opts.reduceMotion ? 1 : 0.5 + 0.9 * (0.5 + 0.5 * Math.sin((2 * Math.PI * m.phase) / m.pulse)); }
+}
+
 // ── The fills poll ──
 async function pollFills(now = Date.now()) {
   const id = slpVaultId();
@@ -344,7 +380,7 @@ function takeFills(incoming, now, seed = false) {
 // ── Public ──
 export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
   opts = { coarse, reduceMotion };
-  const attach = { "monument-earn": attachEngine, "monument-token": attachStake, "monument-analytics": attachPlinth, "monument-collateral": attachStacks };
+  const attach = { "monument-earn": attachEngine, "monument-token": attachStake, "monument-analytics": attachPlinth, "monument-collateral": attachStacks, "monument-community": attachBeacon };
   for (const stop of STOPS.filter(isMonument)) {
     const fn = attach[stop.key];
     if (!fn) continue;
@@ -352,6 +388,8 @@ export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
     modelHooks.set(stop.key, go);
     go();
   }
+  const room = (s) => { state.cars = { status: s.status, n: s.peers.length }; applyBeacon(monuments.get("monument-community")); listeners.forEach((f) => f()); };
+  room(peersState()); onPeers(room); // the Beacon's lantern and its "Cars here now"
   setInterval(() => { pollFills(); pollSeries(); }, 1000);
   pollFills(); pollSeries();
 }
@@ -366,6 +404,7 @@ export function applyMonuments(monuments) {
   if (monuments.staking) { state.staking = monuments.staking; const m = findMonument("monument-token"); if (m) applyStake(m); }
   if (monuments.summary) { state.summary = monuments.summary; applyPlinth(findMonument("monument-analytics")); }
   if (monuments.collateral) { state.collateral = monuments.collateral; applyStacks(findMonument("monument-collateral")); } // a failed fetch keeps the last stacks
+  if (monuments.activity) { state.activity = monuments.activity; applyBeacon(findMonument("monument-community")); }
 }
 export function monumentsTick(dt) {
   const now = Date.now();
@@ -373,13 +412,15 @@ export function monumentsTick(dt) {
   const t = monuments.get("monument-token"); if (t) tickStake(t, dt);
   const a = monuments.get("monument-analytics"); if (a?.nodes.vol) tickPlinth(a, dt);
   const c = monuments.get("monument-collateral"); if (c?.nodes.stacks) tickStacks(c, dt);
+  const b = monuments.get("monument-community"); if (b?.nodes.rungs) tickBeacon(b, dt);
 }
 export function monumentValues() {
   // Before the seed lands the line is loading, not "Not available" (the smoke caught a sheet opened in that gap, 3 Nov);
   // after a failed seed with nothing held it is honestly unavailable until the next try succeeds
   const line = fillsLine(state.fills, state.since, Date.now());
   const p = plinthValues(state.series), pending = state.seriesOk || !state.seriesAt ? "Loading" : "Not available";
-  return { slpFillsHour: line ?? (state.ok ? "Loading" : "Not available"), volume30d: p.volume30d ?? pending, revenue30d: p.revenue30d ?? pending };
+  return { slpFillsHour: line ?? (state.ok ? "Loading" : "Not available"), volume30d: p.volume30d ?? pending, revenue30d: p.revenue30d ?? pending,
+    carsHere: carsHere(state.cars.status, state.cars.n) ?? (state.cars.status === "connecting" ? "Loading" : "Not available") };
 }
 export const onMonumentStats = (f) => listeners.push(f);
 /** QA: feed fills as a poll would. */
@@ -389,7 +430,9 @@ export const monumentsState = () => {
   const t = monuments.get("monument-token");
   const a = monuments.get("monument-analytics");
   const c = monuments.get("monument-collateral");
-  return { stacks: c?.stackList?.length ?? 0, stackRings: c?.rings?.count ?? 0, stackNames: c?.stackList?.map((x) => x.name) ?? [],
+  const b = monuments.get("monument-community");
+  return { rungs: b?.nodes.rungs?.filter((r) => r?.visible).length ?? 0, pulse: b?.pulse ?? null, beaconFace: b?.faceText ?? null, cars: state.cars,
+    stacks: c?.stackList?.length ?? 0, stackRings: c?.rings?.count ?? 0, stackNames: c?.stackList?.map((x) => x.name) ?? [],
     bars: a?.nodes.vol?.filter((b) => b?.visible).length ?? 0, litBar: a?.litBar ?? null, plinthFace: a?.faceText ?? null, seriesAt: state.seriesAt,
     fills: state.fills.length, since: state.since, seeded: state.seeded, sparks: e?.sparks?.live.length ?? 0, rings: e?.rings?.count ?? 0, wheel: e?.wheelSpeed ?? 0,
     column: t?.nodes.column?.scale.y ?? null, lampsLit: t?.nodes.lamps.filter((l) => l?.material?.userData.accent).length ?? 0, drips: t?.drips?.live.length ?? 0, face: t?.faceText ?? null };
