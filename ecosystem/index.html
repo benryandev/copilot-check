@@ -25,6 +25,9 @@
   <script src="/src/theme.js"></script>
   <link rel="stylesheet" href="/css/br.css">
   <link rel="stylesheet" href="/ecosystem/ecosystem.css">
+  <link rel="preload" href="/fonts/AtkinsonHyperlegibleNext-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/geist-mono-variable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="modulepreload" href="/ecosystem/vendor/three.module.min.js">
   <link rel="preload" href="/ecosystem/models/car.glb" as="fetch" crossorigin>
   <link rel="preload" href="/ecosystem/img/strike-mark.svg" as="image">
@@ -171,13 +174,8 @@
     <div class="arcade-board" id="arcade-board"></div>
   </dialog>
   <dialog id="map" class="sheet" aria-labelledby="map-title">
-    <div class="sheet-head">
-      <div>
-        <p class="br-label">Map view</p>
-        <h2 id="map-title">Where to?</h2>
-      </div>
-      <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Keep driving</span></button>
-    </div>
+    <p class="br-label">Map view</p>
+    <h2 id="map-title">Where to?</h2>
     <p class="muted">Pick a feature to drive straight to it, or read about it here.</p>
     <dl class="stats" id="map-live"></dl>
     <div id="map-groups"></div>

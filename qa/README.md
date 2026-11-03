@@ -375,7 +375,16 @@ the automated audit). Branch `awwwards`.
    defects (the last line cut above the buttons, the action bar floating above the sheet's edge, a blank Join in
    the light theme) were those fixes, measured flush and legible afterwards. It added one real point, the guide
    lede at 78 characters against the kit's 46ch, fixed. A third read runs on the gate shoot's frames.
-5. The gate: `pnpm test`, the monuments, UX, guide and deep-link smokes, the twelve-width shoot, Lighthouse through
+5. The third blind read, on the gate shoot's frames at 375, 1280 and 1440: 6.5 (hierarchy 7, layout 6, typography
+   7, colour and kit rules 7, accessibility 7, states 6). Its real points, fixed: scrolled text under the pinned
+   row read as cut mid-line (a soft fade now sits over the row's top margin); Map view carried two "Keep driving"
+   pills once the row was pinned (the header one went); the intro's keycaps stretched to their grid column; the
+   stop labels floating over the world showed above a sheet's edge like a heading (hidden while a sheet is open);
+   a deep-linked sheet's figures rendered in the fallback face before the mono font arrived (the three kit fonts
+   are preloaded); a shared link's sheet said "Keep driving" to someone who had not driven ("Start driving" there).
+   Left: the arcade game's start screen taller than its frame, the two boards on that sheet, mono-caps chips beside
+   Atkinson pills, the lap sheet's five pills, the guide title's hyphen, Map view as a list.
+6. The gate, run again after those fixes: `pnpm test`, the monuments, UX, guide and deep-link smokes, the twelve-width shoot, Lighthouse through
    the SEO toolkit on the local world page (accessibility 100, was 92 in production; best practices 96; SEO 100;
    performance reported, not gated).
 

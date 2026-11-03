@@ -520,6 +520,7 @@ export function makeLabel(text, colour, y, parent) {
   sprite.scale.set(10, 1.875, 1);
   sprite.position.y = y;
   sprite.renderOrder = 2;
+  sprite.userData.isLabel = true; // main.js hides the labels while a sheet is open (a big one at the sheet's edge read as its heading)
   parent.add(sprite);
 }
 

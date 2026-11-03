@@ -248,6 +248,8 @@ body:has(dialog[open]) :is(.hud-foot, .touch, .hud-top, .race-hud, .hud-prompt, 
    carries the sheet's bottom padding. A guide mounted inside the sheet keeps its page's row in flow. */
 .sheet > .sheet-actions { position: sticky; bottom: calc(-1 * var(--space-xl)); z-index: 1; margin: var(--space-md) calc(-1 * var(--space-xl)) calc(-1 * var(--space-xl)); padding: var(--space-sm) var(--space-xl) var(--space-xl); background: var(--bg-surface); } /* bottom reaches past the sheet's padding, which the sticky constraint otherwise excludes */
 @media (max-width: 1000px) { .sheet > .sheet-actions { bottom: calc(-1 * var(--space-lg)); margin-left: calc(-1 * var(--space-lg)); margin-right: calc(-1 * var(--space-lg)); margin-bottom: calc(-1 * var(--space-lg)); padding: var(--space-sm) var(--space-lg) var(--space-lg); } }
+/* A soft edge above the pinned row: content scrolling under it fades over the row's top margin instead of being cut mid-line */
+.sheet > .sheet-actions::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: var(--space-md); background: linear-gradient(to bottom, transparent, var(--bg-surface)); pointer-events: none; }
 /* A sheet opens with its heading focused (main.js show); the ring belongs on controls, not on the title a shared link lands on */
 .sheet :is(h1, h2)[tabindex="-1"]:focus { outline: none; }
 /* Phones: the intro's primary pill on its own row and the two secondaries side by side (wrapping left "Map view" alone on a third row) */
@@ -285,11 +287,6 @@ body:has(dialog[open]) :is(.hud-foot, .touch, .hud-top, .race-hud, .hud-prompt, 
 .sheet--arcade { width: min(40rem, calc(100vw - 2rem)); padding: var(--space-md); }
 .sheet--arcade > * + * { margin-top: var(--space-sm); }
 .arcade-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-sm); }
-/* A sheet head with the exit pill at the top right (Map view, the longest sheet; the guide and arcade heads do the same) */
-.sheet-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-sm); }
-.sheet-head .br-button { flex: none; }
-.sheet-head > div > * { margin: 0; }
-.sheet-head > div > * + * { margin-top: var(--space-2xs); }
 .arcade-head h2 { font-size: 1.5rem; }
 .arcade-head .br-button { flex: none; }
 .arcade-credit { font-size: 0.9rem !important; }
@@ -331,7 +328,7 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
 
 .keys { list-style: none; padding: 0 !important; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2xs); }
 .keys li + li { margin-top: 0; }
-.keys li { display: grid; grid-template-columns: 5.5rem 1fr; align-items: baseline; } /* the descriptions line up in one column */
+.keys li { display: grid; grid-template-columns: 5.5rem 1fr; align-items: baseline; justify-items: start; } /* the descriptions line up in one column; a keycap keeps its own width */
 .key {
   display: inline-block;
   margin-right: var(--space-3xs);

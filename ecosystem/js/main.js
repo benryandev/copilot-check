@@ -637,6 +637,7 @@ const anyOpen = () => dialogs.some((d) => d.open);
 dialogs.forEach((d) => {
   d.addEventListener("close", () => {
     paused = anyOpen();
+    if (!paused) setWorldLabels(true);
     if (celebrationPending && !paused) { const c = celebrationPending; celebrationPending = null; showCelebration(c); }
   });
   d.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => d.close()));
@@ -648,12 +649,18 @@ dialogs.forEach((d) => {
     if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) d.close();
   });
 });
+// The stop labels floating over the world (build.js makeLabel) hide while a sheet is open: a large one at the sheet's
+// top edge read as the sheet's own heading. Visibility only, so nothing frozen moves.
+function setWorldLabels(visible) {
+  scene.traverse((o) => { if (o.isSprite && o.userData.isLabel) o.visible = visible; });
+}
 function show(d) {
   dialogs.forEach((o) => o !== d && o.open && o.close());
   releaseKeys();
   closeEmotes();
   $("board-prompt").hidden = true;
   paused = true;
+  setWorldLabels(false);
   d.showModal();
   // The browser's default focus goes to the first control, which on a tall sheet sits past the fold (the sheet opened
   // scrolled past its title) and on the name forms raises a phone's keyboard: focus the heading instead, unless the
@@ -682,6 +689,7 @@ let openKey = null;
 function openStop(stop) {
   openKey = stop.key;
   if (stop.arcade) { openArcade(stop); return; } // a cabinet: the game in its own sheet
+  $("stop").querySelector("[data-close] .br-button-label").textContent = "Keep driving";
   $("stop-eyebrow").textContent = DISTRICTS[stop.district].name;
   $("stop-title").textContent = stop.name;
   $("stop-summary").textContent = stop.summary;
@@ -1264,7 +1272,7 @@ await paint(); // a drawn frame behind it
 const deepLink = parseDeepLink(location.search, STOPS.map((s) => s.key), Object.keys(DISTRICTS));
 if (deepLink.kind === "start") { toStart(); paused = false; }
 else if (deepLink.kind === "district") { if (deepLink.key === "hub") placeCar(SPAWN.x, SPAWN.z, SPAWN.heading); else teleportDistrict(deepLink.key); paused = false; }
-else if (deepLink.kind === "stop") { const s = STOPS.find((x) => x.key === deepLink.key); teleport(s); openStop(s); }
+else if (deepLink.kind === "stop") { const s = STOPS.find((x) => x.key === deepLink.key); teleport(s); openStop(s); $("stop").querySelector("[data-close] .br-button-label").textContent = "Start driving"; } // nobody has driven yet; openStop puts "Keep driving" back next time
 // The flight starts under the loader, so the first frame anyone sees is already moving
 else if (wantsArrival()) {
   const fx = -Math.sin(car.s.heading), fz = -Math.cos(car.s.heading);
