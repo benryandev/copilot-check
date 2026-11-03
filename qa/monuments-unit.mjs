@@ -3,7 +3,7 @@
 // Part B in the Strike repo). The picks keep only the named fields, so no APR or price field can reach the world.
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pickStaking, pickSlp, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, columnScale, lampsLit, periodLabel, usdExact, stakeValues, engineValues, MONUMENT_BANNED, STAKE, ENGINE, PLINTH, STACKS, dailyTotals, lastDays, pickSeries, barScales, plinthValues, pickSummary, pickCollateral, stackScale, collateralValues, pickActivity, rungScales, activityHigh, beaconValues, carsHere, pulsePeriod, seriesDue, ringLayout, carsLine, tradeLine, feedLines, flowValues, compassAngles } from '../ecosystem/js/monument-math.js';
+import { pickStaking, pickSlp, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, columnScale, lampsLit, periodLabel, usdExact, stakeValues, engineValues, MONUMENT_BANNED, STAKE, ENGINE, PLINTH, STACKS, dailyTotals, lastDays, pickSeries, barScales, plinthValues, pickSummary, pickCollateral, stackScale, collateralValues, pickActivity, rungScales, activityHigh, beaconValues, carsHere, pulsePeriod, seriesDue, ringLayout, carsLine, tradeLine, feedLines, flowValues, compassAngles, signedUsd } from '../ecosystem/js/monument-math.js';
 import { LABELS } from '../ecosystem/js/data.js';
 const fx = (n) => JSON.parse(readFileSync(new URL(`./fixtures/${n}-2026-11-03.json`, import.meta.url)));
 const staking = fx('liquid-staking-summary'), vaults = fx('vaults'), positions = fx('slp-positions'), fills = fx('slp-fills-100');
@@ -258,4 +258,9 @@ test('compassAngles: an arm per pad, in the monument\'s frame, straight behind i
   assert.deepEqual(arms.map((a) => a.key), ['a', 'b', 'c']);
   assert.ok(Math.abs(arms[0].angle) < 1e-9); assert.ok(Math.abs(arms[1].angle - Math.PI / 2) < 1e-9); assert.ok(Math.abs(Math.abs(arms[2].angle) - Math.PI) < 1e-9);
   const turned = compassAngles([5, 5], Math.PI / 2, [{ key: 'b', name: 'B', x: 15, z: 5 }]); assert.ok(Math.abs(turned[0].angle) < 1e-9, 'a monument turned to face +x sees a pad at +x straight ahead');
+});
+// Review fixes (3 Nov, B3)
+test('a negative difference reads with a minus, never raw digits', () => {
+  assert.deepEqual(flowValues({ depositsUsd: 1e6, withdrawalsUsd: 6e6 }), { depositsAllTime: '$1.0M', withdrawalsAllTime: '$6.0M', netDeposits: '-$5.0M' });
+  assert.equal(signedUsd(-5e6), '-$5.0M'); assert.equal(signedUsd(1559552.6), '$1.6M'); assert.equal(signedUsd(0), '$0');
 });

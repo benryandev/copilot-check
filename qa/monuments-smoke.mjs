@@ -148,6 +148,11 @@ const dial0 = state.dial;
 await page.waitForFunction((d) => window.__eco.monuments.state().dial > d + 0.01, dial0, { timeout: 15000 }).catch(() => {}); // software rendering is slow; give it a few frames
 state = await page.evaluate(() => window.__eco.monuments.state());
 check(state.dial > dial0, `the dial turns (${dial0.toFixed(3)} → ${state.dial.toFixed(3)} rad)`);
+// (22) a sheet without live keys open while the fills poll lands must not throw (the reviewer's catch: it broke the SLP poll and the room)
+const sparksBefore = state.sparks;
+const threw = await page.evaluate(() => { try { window.__eco.monuments.injectSlpFills([1, 2, 3].map((i) => ({ id: 2e9 + i, symbol: 'BTC-USD', side: 'buy', size: '0.01', price: '77000', timestamp: Date.now() }))); return null; } catch (e) { return e.message; } });
+state = await page.evaluate(() => window.__eco.monuments.state());
+check(threw === null && state.fillsOk && state.sparks === sparksBefore + 3, `fills landing under the Compass's sheet keep the poll and the sparks (${threw ?? 'no throw'}, ok ${state.fillsOk}, sparks ${sparksBefore} → ${state.sparks})`);
 
 // (5) no page error
 check(errors === 0, `no page error (${errors})`);

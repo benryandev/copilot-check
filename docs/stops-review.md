@@ -187,11 +187,11 @@ The vaults, Borrow and Earn, copy trading, points and the LP program.
 
 ### The SLP Engine
 
-The plaza's engine runs on the SLP vault's own trades. New fills land as sparks on the flywheel, which spins faster the more the vault fills; the tank is the vault's size, and the gauges are the user vaults.
+The plaza's engine runs on the SLP vault's own trades. New fills land as sparks on the flywheel, which spins faster the more the vault fills. The tank is the vault's size and the gauges are the user vaults.
 
-- Strike's Liquidity Provider vault quotes bids and asks across the markets, so it fills often: around a thousand fills an hour on 3 November 2026, across dozens of symbols, more or less as the markets move.
-- One glowing ring round the base for each position the vault has open (up to 72); the tank's level is the vault's size against the highest seen while you have been here.
-- The three gauges show the user vaults by size. Figures are read from Strike's public API every 30 seconds; fills every 10.
+- Strike's Liquidity Provider vault quotes bids and asks across the markets, so it fills often. Around a thousand fills an hour is normal, across dozens of symbols, more or less as the markets move.
+- One glowing ring round the base for each position the vault has open, up to 72. The tank's level is the vault's size against the highest seen while you have been here.
+- The three gauges show the user vaults by size. Figures are read from Strike's public API every 30 seconds and fills every 10.
 
 Link: [Vaults on Strike](https://app.strikefinance.org/vaults) · [Docs: SLP Vault](https://docs.strikefinance.org/perpetuals/vaults/slp-vault) · live: SLP fills, last hour, SLP open positions, SLP vault size, User vaults by size
 
@@ -273,11 +273,11 @@ What you can deposit, and what you can borrow against.
 
 ### The Collateral Stacks
 
-One coin stack for each asset Strike's Borrow and Earn accepts as collateral, as tall as the value held, with a ring round the stack for every open credit line against it. Five assets on 3 November 2026.
+One coin stack for each asset Strike's Borrow and Earn accepts as collateral, as tall as the value held, with a ring round the stack for every open credit line against it.
 
-- Height runs on a log scale so a small stack still shows: a thousand dollars held is a fifth of full height and a million is full. enzoBTC and sUSDrf carried most of the value on 3 November 2026; ADA carried most of the lines.
-- An asset the API lists is a stack even when little is held against it yet; USDM and USDC are what you borrow, not what you post, so they have no stack.
-- Figures are read from Strike's public API every 30 seconds: units held and open lines per asset, the units valued as Strike values them.
+- Height runs on a log scale so a small stack still shows. A thousand dollars held is a fifth of full height and a million is full. The tallest stacks carry most of the value and the busiest stack carries most of the lines.
+- An asset the API lists is a stack even when little is held against it yet. USDM and USDC are what you borrow, not what you post, so they have no stack.
+- Figures are read from Strike's public API every 30 seconds, the units held and the open lines per asset, with the units valued as Strike values them.
 
 Link: [Docs: Credit API](https://docs.strikefinance.org/api/credit) · [Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn) · live: Collateral assets, Collateral held by asset, Open credit lines by asset, Open credit lines
 
@@ -351,11 +351,11 @@ Protocols Strike works with, and the apps that plug Strike in.
 
 ### The Compass
 
-A compass rose at the heart of Partners: one arm for each partner on the plaza, each pointing at that partner's own stop, so the district reads from the middle. The dial turns slowly; the arms do not.
+A compass rose at the heart of Partners. One arm for each partner on the plaza, each pointing at that partner's own stop, so the district reads from the middle. The dial turns slowly and the arms do not.
 
-- The partners on 3 November 2026: RealFi, SundaeSwap, Aave V3, Unifold, DEX Aggregators, Hizz and Lorenzo, each with a stop round the rim that tells its own story.
+- The arms name RealFi, SundaeSwap, Aave V3, Unifold, DEX Aggregators, Hizz and Lorenzo, each with a stop round the rim that tells its own story.
 - Nothing live here. The compass is a map of the plaza, laid out from the stops themselves, so a new partner gets an arm the day its stop is added.
-- Pick an arm and drive the way it points: the pad it names is on the rim ahead.
+- Pick an arm and drive the way it points. The pad it names is on the rim ahead.
 
 Link: [Every partner stop](/ecosystem/stops/#district-partners)
 
@@ -480,11 +480,11 @@ Link: [Visit Hizz](https://www.hizz.io/) · [On X](https://x.com/hizz_io)
 
 ### The Feed Obelisk
 
-The obelisk carries Strike's live trade stream, the same public feed the Fill Yard runs on: every fill on every market as it happens, scrolled as text on four screens, newest at the bottom.
+The obelisk carries Strike's live trade stream, the same public feed the Fill Yard runs on. Every fill on every market as it happens, scrolled as text on four screens, newest at the bottom.
 
-- Each line is one fill: the market, the side, the size and the level it filled at, straight from the public websocket (channel trade), no key needed. Partial fills of one order arrive as separate lines here, where the yard merges them into one crate.
-- The counter below the screens is the last minute's fill count, the dollars traded in the last ten minutes and the busiest market of those ten minutes: the Fill Yard's own figures, from the same stream.
-- When the stream drops, the screens keep their last lines and say so on the bottom line until it is back; the figures stop counting until then.
+- Each line is one fill, with the market, the side, the size and the level it filled at, straight from the public websocket with no key needed. Partial fills of one order arrive as separate lines here, where the yard merges them into one crate.
+- The counter below the screens is the last minute's fill count, the dollars traded in the last ten minutes and the busiest market of those ten minutes. They are the Fill Yard's own figures, from the same stream.
+- When the stream drops, the screens keep their last lines and say so on the bottom line until it is back. The figures stop counting until then.
 
 Link: [Docs: Websocket API](https://docs.strikefinance.org/api/market/websocket) · [API: Getting Started](https://docs.strikefinance.org/api/getting-started) · live: Fills, last minute, Traded, last 10 min, Busiest market, 10 min
 
@@ -540,11 +540,11 @@ Where Strike's numbers and listings live elsewhere.
 
 ### The Chart Plinth
 
-The plaza's plinth is Strike's last 30 days in bars: trading volume along the back row, protocol revenue along the front, one bar a day with today's lit. The counter on the front is the exchange all time.
+The plaza's plinth is Strike's last 30 days in bars. Trading volume runs along the back row and protocol revenue along the front, one bar a day with today's lit. The counter on the front is the exchange all time.
 
-- Each bar is one day's total across every market, read from Strike's public daily statistics once an hour; the tallest bar in a row is that row's busiest day, and today's bar grows through the day.
-- Volume is the dollar value traded; revenue is what the protocol earned from it in fees. The two rows share their days, so a busy day stands tall in both.
-- The counter shows volume and users since Strike opened. Figures come from Strike's public API: the daily series hourly, the counter every 30 seconds.
+- Each bar is one day's total across every market, read from Strike's public daily statistics once an hour. The tallest bar in a row is that row's busiest day, and today's bar grows through the day.
+- Volume is the dollar value traded. Revenue is what the protocol earned from it in fees. The two rows share their days, so a busy day stands tall in both.
+- The counter shows volume and users since Strike opened. Figures come from Strike's public API, the daily series hourly and the counter every 30 seconds.
 
 Link: [Docs: Daily Statistics API](https://docs.strikefinance.org/api/platform-stats/daily-statistics) · [Platform Dashboard API](https://docs.strikefinance.org/api/platform-stats/platform-dashboard) · live: Volume, last 30 days, Revenue, last 30 days, Volume, all time, Users, all time
 
@@ -591,11 +591,11 @@ Referrals, clans, the leaderboard and Strike's own channels.
 
 ### The Beacon
 
-The plaza's beacon is Strike's people: thirty rungs up the column, one for each of the last thirty days, lit as far as that day's active traders reached, yesterday on top; the lantern pulses faster the more cars are in this world right now.
+The plaza's beacon is Strike's people. Thirty rungs up the column, one for each of the last thirty days, lit as far as that day's active traders reached, yesterday on top. The lantern pulses faster the more cars are in this world right now.
 
-- A rung's length is that day's active traders against the best day of the thirty, so the column reads as a chart from the road: 277 traders yesterday against a high of 343 on 3 November 2026.
-- The lantern is this world's own count: drivers here now, from the same room that shows their cars. Alone it breathes slowly; with eight or more it races.
-- Daily traders come from Strike's public API every 30 seconds; the referral figures stay on the district board.
+- A rung's length is that day's active traders against the best day of the thirty, so the column reads as a chart from the road.
+- The lantern is this world's own count of drivers here now, from the same room that shows their cars. Alone it breathes slowly. With eight or more it races.
+- Daily traders come from Strike's public API every 30 seconds. The referral figures stay on the district board.
 
 Link: [Docs: Platform Dashboard API](https://docs.strikefinance.org/api/platform-stats/platform-dashboard) · [Daily Statistics API](https://docs.strikefinance.org/api/platform-stats/daily-statistics) · live: Active traders, yesterday, Active traders, 30-day high, Cars here now
 
@@ -670,8 +670,8 @@ The STRIKE token, staking and revenue share.
 
 A column of STRIKE that rises with how much is staked, a ring of lamps lit by how many stake it, and a plinth that counts the rewards building for the current period.
 
-- The column's height is STRIKE staked against 30 million; 21.8 million was staked on 3 November 2026. The lamps light in proportion to active stakers.
-- Rewards build from the end of the last distribution and are paid out every 15 days as USDM; the plinth shows the running total and the last payout with its dates.
+- The column's height is STRIKE staked against 30 million, so a full column would mean 30 million staked. The lamps light in proportion to active stakers.
+- Rewards build from the end of the last distribution and are paid out every 15 days as USDM. The plinth shows the running total and the last payout with its dates.
 - A drip runs when a new distribution appears. Figures come from Strike's public staking summary every 30 seconds.
 
 Link: [Staking on Strike](https://app.strikefinance.org/staking) · [Docs: Staking](https://docs.strikefinance.org/tokenomics/markdown) · live: STRIKE staked, Active stakers, Rewards building this period, Last distribution, Distributions so far, Distributed all time
@@ -719,11 +719,11 @@ The chains Strike settles on, the custody contracts, validators and the backstop
 
 ### The Three Pylons
 
-Three pylons for the three chains you can deposit from: Cardano, Ethereum and Solana. The base carries what has come into Strike and gone out since it opened, and the difference between the two.
+Three pylons for the three chains you can deposit from, Cardano, Ethereum and Solana. The base carries what has come into Strike and gone out since it opened, and the difference between the two.
 
 - Deposits and withdrawals are platform totals in dollars from Strike's public dashboard summary, read every 30 seconds. No per-chain split is public, so the three pylons stand equal and the figures sit on the base.
-- The difference is deposits less withdrawals: what has stayed on the exchange over its life. It is not a balance sheet and says nothing about any one account.
-- The chains' own stops and the bridge stand round the plaza; the pylons only mark the three ways in.
+- The difference is deposits less withdrawals, what has stayed on the exchange over its life. It is not a balance sheet and says nothing about any one account.
+- The chains' own stops and the bridge stand round the plaza. The pylons only mark the three ways in.
 
 Link: [Docs: Platform Dashboard API](https://docs.strikefinance.org/api/platform-stats/platform-dashboard) · [Getting started on Strike](https://docs.strikefinance.org/getting-started/welcome) · live: Deposits, all time, Withdrawals, all time, Deposits less withdrawals
 

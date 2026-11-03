@@ -55,7 +55,8 @@ const seen = new Set(); // trade ids, so the backfill and the stream don't count
 let symbols = [];
 let ws = null, backoff = 1000, subId = 0;
 const statsListeners = [];
-const tradeListeners = [], statusListeners = []; // the Feed Obelisk (monuments.js) reads the stream and its status from here
+const tradeListeners = [], statusListeners = [];
+let streamed = false; // a live trade has reached the listeners: the backfill then stays off the obelisk's screens // the Feed Obelisk (monuments.js) reads the stream and its status from here
 const crateGeo = new THREE.BoxGeometry(1, 1, 1);
 const doorMat = new THREE.MeshStandardMaterial({ color: 0x0b0d10, roughness: 0.95 });
 
@@ -376,6 +377,7 @@ function takeTrade(ev) {
   if (!(usdv > 0) || !remember(ev.t)) return;
   const f = { sym: base(ev.s), buy: !ev.m, usd: usdv, t: Number(ev.T) || Date.now() };
   record(f);
+  streamed = true;
   tradeListeners.forEach((fn) => fn(ev)); // the raw message: symbol, side, size and level for the obelisk's screens
   const q = state.queue.at(-1);
   if (q && q.sym === f.sym && q.buy === f.buy && f.t - q.t < MERGE_MS) { q.usd += f.usd; q.t = f.t; return; }
@@ -435,7 +437,7 @@ async function backfill() {
       .filter((f) => f.t >= since && f.usd > 0 && remember(f.id))
       .sort((a, b) => a.t - b.t);
     for (const f of all) record(f);
-    for (const f of all.slice(-14)) tradeListeners.forEach((fn) => fn(f.raw)); // the obelisk's screens start with the last lines, not blank
+    if (!streamed) for (const f of all.slice(-14)) tradeListeners.forEach((fn) => fn(f.raw)); // the obelisk's screens start with the last lines, not blank; never over live ones (reviewer, 3 Nov)
     // The last few orders (partials merged), already through the yard
     const orders = [];
     for (const f of all) {

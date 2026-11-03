@@ -76,5 +76,7 @@ test('monuments: eight, one a plaza, placed by hand, their sheets name every fig
   for (const s of ms) {
     assert.ok(s.pos && s.face, s.key); assert.ok(s.live === null || s.live.length >= 3, s.key); assert.match(s.docs, /^(https:\/\/(app|docs)\.strikefinance\.org\/|\/ecosystem\/)/); // the Compass has no figures and links to the stops page; // the figures' source pages: the app for Earn and Token, the docs for the rest (app.strikefinance.org/stats is a 404)
     for (const t of [s.summary, ...s.points]) for (const re of MONUMENT_BANNED) assert.doesNotMatch(t, re, `${s.key}: "${t}"`);
+    // Ben's copy rule (3 Nov 2026): plain sentences, no colons, semicolons or dashes inside them, no per-fact check dates
+    for (const t of [s.summary, ...s.points]) { assert.doesNotMatch(t, /[:;\u2014\u2013]/, `${s.key} punctuation: "${t}"`); assert.doesNotMatch(t, /\b20\d\d\b/, `${s.key} date stamp: "${t}"`); }
   }
 });

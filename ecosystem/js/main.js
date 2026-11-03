@@ -899,7 +899,7 @@ function openMap() {
 $("open-map").addEventListener("click", openMap);
 // The Fill Yard's figures tick every second while its sheet is open
 onYardStats(() => { if ($("stop").open && (openKey === "fillyard" || openKey === "monument-developers")) fillStats($("stop-live"), STOPS.find((x) => x.key === openKey).live); });
-onMonumentStats(() => { if ($("stop").open && openKey?.startsWith("monument-")) fillStats($("stop-live"), STOPS.find((x) => x.key === openKey).live); });
+onMonumentStats(() => { const ks = $("stop").open && openKey?.startsWith("monument-") ? STOPS.find((x) => x.key === openKey)?.live : null; if (ks) fillStats($("stop-live"), ks); }); // the Compass has no live keys: nothing to refresh (reviewer, 3 Nov)
 onBoard(() => {
   const el = $("map-race-top");
   if (el) el.replaceChildren(el.firstChild, topList());

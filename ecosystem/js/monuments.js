@@ -10,7 +10,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, isMonument } from "./content.js";
 import { pads, accent, M, obbOf, modelHooks, canvasTexture, redraws, themePalette } from "./build.js";
 import { slpVaultId, usd, int } from "./data.js";
-import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale, ringLayout, BEACON, rungScales, carsHere, carsLine, pulsePeriod, FEED, tradeLine, feedLines, COMPASS, compassAngles } from "./monument-math.js";
+import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale, ringLayout, BEACON, rungScales, carsHere, carsLine, pulsePeriod, FEED, tradeLine, feedLines, COMPASS, compassAngles, signedUsd } from "./monument-math.js";
 import { onPeers, peersState } from "./peers.js";
 import { onTrade, onYardStatus, onYardStats, yardValues } from "./flow.js";
 
@@ -26,7 +26,7 @@ const state = {
   slp: null, staking: null, high: null, // the last SLP and staking picks; the highest SLP equity seen this session
   fills: [], since: null, seeded: false, lastAt: 0, lastOkAt: 0, ok: true, forceSeed: false, startedAt: 0, // the fills poll
   collateral: null, // the Collateral Stacks: the last pick
-  feed: [], feedDirty: false, streamStatus: "offline", // the Feed Obelisk: the last lines of the trade stream and its status
+  feed: [], feedDirty: false, feedSeen: false, streamStatus: "offline", // the Feed Obelisk: the last lines of the trade stream and its status
   activity: null, cars: { status: "off", n: 0 }, // the Beacon: the users series and the presence room's state
   series: null, seriesOk: true, seriesAt: 0, summary: null, // the Chart Plinth: the two daily series (hourly) and the all-time counter
 };
@@ -373,8 +373,8 @@ function attachObelisk(m) {
 }
 function applyObelisk(m) {
   if (!m?.nodes.screens) return;
+  if (!state.feedSeen) return; // nothing seen yet: the face stays blank; after the first fill a quiet spell shows its real zero (reviewer, 3 Nov)
   const v = yardValues();
-  if (v.busiest === "No fills in 10 min" && v.fillsPerMin === "0") return; // nothing seen yet: the face stays blank
   setFaceText(m, [["Fills, last minute", v.fillsPerMin], ["Busiest, 10 min", v.busiest.split(" (")[0]]]);
 }
 function tickObelisk(m, dt) {
@@ -402,7 +402,7 @@ function applyPylons(m) {
   const c = state.summary, text = [];
   if (c?.depositsUsd != null) text.push(["Deposits, all time", usd(c.depositsUsd)]);
   if (c?.withdrawalsUsd != null) text.push(["Withdrawals, all time", usd(c.withdrawalsUsd)]);
-  if (c?.depositsUsd != null && c?.withdrawalsUsd != null) text.push(["Deposits less withdrawals", usd(c.depositsUsd - c.withdrawalsUsd)]);
+  if (c?.depositsUsd != null && c?.withdrawalsUsd != null) text.push(["Deposits less withdrawals", signedUsd(c.depositsUsd - c.withdrawalsUsd)]);
   if (text.length) setFaceText(m, text);
 }
 
@@ -475,7 +475,7 @@ export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
   }
   const room = (s) => { state.cars = { status: s.status, n: s.peers.length }; applyBeacon(monuments.get("monument-community")); listeners.forEach((f) => f()); };
   room(peersState()); onPeers(room); // the Beacon's lantern and its "Cars here now"
-  onTrade((ev) => { const line = tradeLine(ev); if (line) { state.feed = feedLines(state.feed, line); state.feedDirty = true; } }); // the Feed Obelisk's screens
+  onTrade((ev) => { const line = tradeLine(ev); if (line) { state.feed = feedLines(state.feed, line); state.feedDirty = true; state.feedSeen = true; } }); // the Feed Obelisk's screens
   onYardStatus((s) => { state.streamStatus = s; state.feedDirty = true; });
   onYardStats(() => applyObelisk(monuments.get("monument-developers")));
   setInterval(() => { pollFills(); pollSeries(); }, 1000);
@@ -526,7 +526,7 @@ export const monumentsState = () => {
   const pc = monuments.get("monument-partners");
   return { arms: pc?.nodes.arms?.filter((a) => a?.visible).length ?? 0, armNames: pc?.arms?.map((a) => a.name) ?? [], dial: pc?.nodes.dial?.rotation.y ?? null,
     pylonsFace: y?.faceText ?? null,
-    feed: state.feed.length, feedLast: state.feed.at(-1) ?? null, stream: state.streamStatus, obeliskFace: o?.faceText ?? null,
+    fillsOk: state.ok, feed: state.feed.length, feedLast: state.feed.at(-1) ?? null, stream: state.streamStatus, obeliskFace: o?.faceText ?? null,
     rungs: b?.nodes.rungs?.filter((r) => r?.visible).length ?? 0, pulse: b?.pulse ?? null, beaconFace: b?.faceText ?? null, cars: state.cars,
     stacks: c?.stackList?.length ?? 0, stackRings: c?.rings?.count ?? 0, stackNames: c?.stackList?.map((x) => x.name) ?? [],
     bars: a?.nodes.vol?.filter((b) => b?.visible).length ?? 0, litBar: a?.litBar ?? null, plinthFace: a?.faceText ?? null, seriesAt: state.seriesAt,

@@ -240,12 +240,14 @@ export function tradeLine(ev) {
 }
 export const feedLines = (held, line, max = FEED.lines) => (line == null ? held : [...held, line].slice(-max));
 /** Deposits and withdrawals all time and the difference; a missing figure leaves its line out, the difference needs both. */
+/** A dollar figure that may be negative: the sign in front of the usual short form. */
+export const signedUsd = (n) => (n < 0 ? `-${usd(-n)}` : usd(n));
 export function flowValues(summary) {
   if (summary == null) return {};
   const d = num(summary.depositsUsd), w = num(summary.withdrawalsUsd), out = {};
   if (d != null) out.depositsAllTime = usd(d);
   if (w != null) out.withdrawalsAllTime = usd(w);
-  if (d != null && w != null) out.netDeposits = usd(d - w);
+  if (d != null && w != null) out.netDeposits = signedUsd(d - w);
   return out;
 }
 /** The bearing from the centre to each pad in the monument's own frame (its heading about +y), wrapped to (−π, π]. */
