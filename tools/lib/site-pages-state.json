@@ -4,11 +4,11 @@
     "lastmod": "2026-11-03"
   },
   "/ecosystem/": {
-    "hash": "f097c86a9d618131",
+    "hash": "93324cb753edf97d",
     "lastmod": "2026-11-03"
   },
   "/ecosystem/stops/": {
-    "hash": "0b4243d1716babc9",
+    "hash": "54ac22e27ee40794",
     "lastmod": "2026-11-03"
   },
   "/ecosystem/submit/": {
@@ -16,7 +16,7 @@
     "lastmod": "2026-11-02"
   },
   "/ecosystem/guides/": {
-    "hash": "52a2a8f448b3848c",
+    "hash": "fed74d23d13b670c",
     "lastmod": "2026-11-03"
   },
   "/ecosystem/guides/what-is-strike/": {
@@ -28,11 +28,15 @@
     "lastmod": "2026-11-03"
   },
   "/ecosystem/guides/long-short-leverage/": {
-    "hash": "a36842cd327679ca",
+    "hash": "79de156e84c90285",
     "lastmod": "2026-11-03"
   },
   "/ecosystem/guides/liquidation/": {
-    "hash": "8080a57d652365bb",
+    "hash": "4cc8d61967d78fc0",
+    "lastmod": "2026-11-03"
+  },
+  "/ecosystem/guides/your-first-trade/": {
+    "hash": "00d16188beabe19e",
     "lastmod": "2026-11-03"
   }
 }

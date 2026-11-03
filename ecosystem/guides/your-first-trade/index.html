@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your first trade on Strike: fund, buy, set a stop, close · Strike guides</title>
+  <meta name="description" content="A real $10 trade on Strike from start to finish: moving funds, placing a market order at 1x, attaching a stop-loss, and closing it, with every screen shown.">
+  <link rel="canonical" href="https://strike.benryan.com.au/ecosystem/guides/your-first-trade/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Strike Ecosystem">
+  <meta property="og:title" content="Your first trade on Strike: fund, buy, set a stop, close · Strike guides">
+  <meta property="og:description" content="A real $10 trade on Strike from start to finish: moving funds, placing a market order at 1x, attaching a stop-loss, and closing it, with every screen shown.">
+  <meta property="og:url" content="https://strike.benryan.com.au/ecosystem/guides/your-first-trade/">
+  <meta property="og:image" content="https://strike.benryan.com.au/ecosystem/guides/img/your-first-trade/cover.png">
+  <meta property="og:image:width" content="1500">
+  <meta property="og:image:height" content="600">
+  <meta property="og:image:alt" content="Your first trade on Strike: fund, buy, set a stop, close">
+  <meta property="article:published_time" content="2026-11-03">
+  <meta property="article:modified_time" content="2026-11-03">
+  <meta property="article:author" content="https://benryan.com.au">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Your first trade on Strike: fund, buy, set a stop, close · Strike guides">
+  <meta name="twitter:description" content="A real $10 trade on Strike from start to finish: moving funds, placing a market order at 1x, attaching a stop-loss, and closing it, with every screen shown.">
+  <meta name="twitter:image" content="https://strike.benryan.com.au/ecosystem/guides/img/your-first-trade/cover.png">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Article","@id":"https://strike.benryan.com.au/ecosystem/guides/your-first-trade/#article","headline":"Your first trade on Strike: fund, buy, set a stop, close","description":"A real $10 trade on Strike from start to finish: moving funds, placing a market order at 1x, attaching a stop-loss, and closing it, with every screen shown.","image":"https://strike.benryan.com.au/ecosystem/guides/img/your-first-trade/cover.png","datePublished":"2026-11-03","dateModified":"2026-11-03","author":{"@type":"Person","name":"Ben Ryan","url":"https://benryan.com.au"},"publisher":{"@type":"Organization","name":"Copilot Check","url":"https://strike.benryan.com.au/"},"mainEntityOfPage":"https://strike.benryan.com.au/ecosystem/guides/your-first-trade/","isPartOf":{"@type":"WebSite","name":"Copilot Check","url":"https://strike.benryan.com.au/"},"inLanguage":"en","isAccessibleForFree":true,"wordCount":684,"about":{"@type":"Thing","name":"Strike Finance"}},{"@type":"FAQPage","@id":"https://strike.benryan.com.au/ecosystem/guides/your-first-trade/#faq","mainEntity":[{"@type":"Question","name":"How much do I need to start?","acceptedAnswer":{"@type":"Answer","text":"Enough to cover the minimum order, $10 when this was checked, plus some room. $25 covered one trade comfortably."}},{"@type":"Question","name":"Do I have to use a sub-account?","acceptedAnswer":{"@type":"Answer","text":"No. It keeps the learning money separate from anything else, and it is one click to create, so it is worth it."}},{"@type":"Question","name":"What happens if the price hits my stop while I am away?","acceptedAnswer":{"@type":"Answer","text":"Strike closes the position at market once the mark price reaches the stop. You lose about the distance to the stop, not the whole margin."}},{"@type":"Question","name":"Why was the fee shown as $0.00?","acceptedAnswer":{"@type":"Answer","text":"At this size the fee rounds to zero on screen. On bigger orders the base taker fee is 0.050% of the order's value."}}]},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Strike ecosystem","item":"https://strike.benryan.com.au/ecosystem/"},{"@type":"ListItem","position":2,"name":"Guides","item":"https://strike.benryan.com.au/ecosystem/guides/"},{"@type":"ListItem","position":3,"name":"Your first trade on Strike: fund, buy, set a stop, close","item":"https://strike.benryan.com.au/ecosystem/guides/your-first-trade/"}]}]}</script>
+  <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/img/favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <link rel="preload" href="/fonts/AtkinsonHyperlegibleNext-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/br-fonts.css">
+  <link rel="stylesheet" href="/css/br-tokens.css">
+  <link rel="stylesheet" href="/css/br-base.css">
+  <link rel="stylesheet" href="/css/br-components.css">
+  <link rel="stylesheet" href="/css/page.css">
+  <link rel="stylesheet" href="/ecosystem/ecosystem.css">
+  <link rel="stylesheet" href="/ecosystem/guides/guides.css">
+  <link rel="stylesheet" href="/ecosystem/guides/stills.css">
+  <script src="/src/theme.js"></script>
+</head>
+<body class="guide-page" data-stop="getting-started">
+  <a class="skip" href="#main">Skip to the guide</a>
+  <div class="guide-back" aria-hidden="true"></div>
+  <header class="hud hud-top">
+    <div class="hud-title">
+      <p class="br-label">Strike ecosystem · guide</p>
+      <p class="hud-district">Strike HQ</p>
+    </div>
+    <div class="hud-actions">
+      <a class="chip" href="/ecosystem/guides/">All guides</a>
+      <a class="chip" href="/ecosystem/">Drive</a>
+      <button class="theme-toggle" type="button" aria-label="Switch to dark mode" id="theme-toggle">
+          <svg class="theme-toggle-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <g class="theme-toggle-rays">
+              <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </g>
+            <path class="theme-toggle-path" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
+          </svg>
+        </button>
+    </div>
+  </header>
+  <main id="main" class="sheet guide-sheet">
+    <article class="guide-article">
+      <p class="br-label">Start here · 5 of 5</p>
+      <h1 id="guide-title">Your first trade on Strike: fund, buy, set a stop, close</h1>
+      <p class="guide-sub">A real $10 trade on Strike from start to finish: moving funds, placing a market order at 1x, attaching a stop-loss, and closing it, with every screen shown.</p>
+      <p class="guide-meta">Published 3 Nov 2026 · Facts checked 3 Nov 2026 · By <a href="https://benryan.com.au">Ben Ryan</a></p>
+      <p class="muted guide-disclosure">Not affiliated with Strike. Not financial advice.</p>
+      <section class="guide-minute">
+        <h2 id="in-one-minute">In one minute</h2>
+        <ul>
+<li><strong>What it is:</strong> a walkthrough of one small, real trade on Strike: a $10 long on Bitcoin at 1x, with a stop-loss, opened and closed within minutes.</li>
+<li><strong>Who it's for:</strong> anyone who has read the first four guides and wants to see every screen before touching their own money.</li>
+<li><strong>The one thing to know:</strong> the first trade is for learning the screens, not for making money. Keep it small, keep leverage at 1x, and set the stop before you place the order.</li>
+</ul>
+      </section>
+      <div class="guide-body">
+<h2 id="what-a-first-trade-looks-like">What a first trade looks like</h2>
+<p>Every trade on Strike runs through the same four screens: the account you trade from, the order panel, the position row, and the close dialog. This guide walks through them with a real order placed on 3 November 2026 on a fresh sub-account funded with $25.</p>
+<p>A <strong>sub-account</strong> is a separate trading account under your main one, with its own balance. It is a tidy way to learn: the money at risk is exactly what you moved in. Strike creates one from the <strong>+</strong> button in the bottom bar.</p>
+<div class="table"><table>
+<thead><tr><th>Step</th><th>What was done</th><th>What the screen showed</th></tr></thead>
+<tbody>
+<tr><td>Fund</td><td>Transfer $25 from the main account</td><td>Account Value $25.00</td></tr>
+<tr><td>Set up</td><td>Isolated margin, 1x leverage</td><td>Shown at the top of the order panel</td></tr>
+<tr><td>Buy</td><td>Market order, 0.00014 BTC</td><td>Filled at $76,708, order size $10.74</td></tr>
+<tr><td>Protect</td><td>Stop-loss at 72,900</td><td>About 5% below the entry</td></tr>
+<tr><td>Close</td><td>Close Position, 100%</td><td>Sold at $76,790, close PnL about $0.01</td></tr>
+</tbody>
+</table></div>
+<h2 id="who-it-s-for">Who it's for</h2>
+<ul>
+<li><strong>You have never placed a perp order.</strong> Seeing the real dialogs removes most of the fear.</li>
+<li><strong>You want to practise with a small amount.</strong> $25 in a sub-account and a $10 order is enough to learn every screen.</li>
+<li><strong>You plan to copy a trader later.</strong> Knowing what a position row and a stop look like makes the copied positions legible.</li>
+</ul>
+<h2 id="how-to-place-and-close-a-first-trade">How to place and close a first trade</h2>
+<ol>
+<li><strong>Fund the account.</strong> Deposit by card or crypto, or move money into a sub-account with <strong>Transfer</strong>. The Account Overview on the right shows what is available to trade.</li>
+<li><strong>Set the margin mode and leverage</strong> at the top of the order panel: Isolated, then 1x. Guide 3 covers why.</li>
+<li><strong>Enter the order.</strong> Market, Long/Buy, a size at or above the minimum. The panel shows the order size in dollars, the margin it will take and the estimated liquidation price.</li>
+<li><strong>Tick TP/SL and type a stop-loss price</strong> a few percent below the entry. The panel shows the loss as a percentage next to it.</li>
+<li><strong>Place Order.</strong> A confirmation names the fill price. The position appears in the Positions table with its entry price, margin and the stop.</li>
+<li><strong>Close it</strong> with the Close button on the row. The dialog shows the estimated exit price and PnL; Close Position sells the whole position at market.</li>
+</ol>
+<figure><img src="/ecosystem/guides/img/your-first-trade/order.png" alt="The order panel filled in: Isolated, 1x, Market, Long/Buy, 0.00014 BTC (about $10.74), TP/SL ticked with a stop-loss at 72,900, shown as −4.99%" width="560" height="1260" loading="lazy"><figcaption>The order panel filled in: Isolated, 1x, Market, Long/Buy, 0.00014 BTC (about $10.74), TP/SL ticked with a stop-loss at 72,900, shown as −4.99%</figcaption></figure>
+<figure><img src="/ecosystem/guides/img/your-first-trade/position.png" alt="The Positions table after the fill: LONG BTC, 1x leverage, 0.00014 BTC, entry 76,708, margin $10.73 isolated, the stop at 72,900, and the Close button" width="1300" height="311" loading="lazy"><figcaption>The Positions table after the fill: LONG BTC, 1x leverage, 0.00014 BTC, entry 76,708, margin $10.73 isolated, the stop at 72,900, and the Close button</figcaption></figure>
+<figure><img src="/ecosystem/guides/img/your-first-trade/close.png" alt="The Close Position dialog: Market, 100%, estimated exit price, the margin returning to the balance, estimated close PnL" width="848" height="1040" loading="lazy"><figcaption>The Close Position dialog: Market, 100%, estimated exit price, the margin returning to the balance, estimated close PnL</figcaption></figure>
+<h2 id="a-worked-example">A worked example</h2>
+<p><em>This is the real trade, not a suggestion.</em> The account held $25. The order bought 0.00014 BTC, worth $10.74 at the fill price of $76,708, with $10.74 of margin behind it at 1x. The stop at 72,900 sat 4.99% below the entry, so the most the stop could lose was about 54 cents.</p>
+<p>Closing a few minutes later sold at $76,790, 82 dollars higher per Bitcoin, which on 0.00014 BTC came to about one cent. The trade history rounds that to $0.00, and the fee on each fill showed as $0.00 at this size. The point was never the cent: it was seeing every screen once with real money and no leverage.</p>
+<h2 id="things-worth-knowing">Things worth knowing</h2>
+<ul>
+<li><strong>There is a minimum order size.</strong> The panel refused $9.20 and said so: the minimum was $10 on the day. Enter a little more than the minimum so rounding does not block the order.</li>
+<li><strong>The stop-loss is tied to the position.</strong> Closing the position removed the stop with it; nothing was left in Open Orders.</li>
+<li><strong>A market order fills at the going price.</strong> The fill came in a few dollars from the quoted mark price. For larger orders a limit order sets the price you are willing to pay.</li>
+<li><strong>Sub-accounts keep risk separate.</strong> Nothing on the main account changed during the walkthrough.</li>
+</ul>
+
+      </div>
+      <section class="guide-faq">
+        <h2 id="questions-people-ask">Questions people ask</h2>
+        <h3>How much do I need to start?</h3>
+        <p>Enough to cover the minimum order, $10 when this was checked, plus some room. $25 covered one trade comfortably.</p>
+        <h3>Do I have to use a sub-account?</h3>
+        <p>No. It keeps the learning money separate from anything else, and it is one click to create, so it is worth it.</p>
+        <h3>What happens if the price hits my stop while I am away?</h3>
+        <p>Strike closes the position at market once the mark price reaches the stop. You lose about the distance to the stop, not the whole margin.</p>
+        <h3>Why was the fee shown as $0.00?</h3>
+        <p>At this size the fee rounds to zero on screen. On bigger orders the base taker fee is 0.050% of the order's value.</p>
+      </section>
+      <div class="guide-body">
+<h2 id="how-i-use-it">How I use it</h2>
+<blockquote>
+<p>I do not trade by hand any more; copying is my whole method. But this walkthrough is exactly how I checked the platform the first time, and the sub-account created for it was emptied back to the main account the same day.</p>
+</blockquote>
+<h2 id="next">Next</h2>
+<ul>
+<li>You have finished Start here. The feature guides follow: trading stocks and gold on Strike, copy trading, and Borrow and Earn.</li>
+<li>Back to the start: <a href="/ecosystem/guides/what-is-strike/">What is Strike?</a></li>
+<li>Official docs: <a href="https://docs.strikefinance.org/perpetuals/deposits-and-withdrawals" rel="noopener">Deposits and Withdrawals</a> and <a href="https://docs.strikefinance.org/perpetuals/order-types" rel="noopener">Order Types</a></li>
+<li>Try it: <a href="https://app.strikefinance.org/trade/BTC?referralCode=BenRyan" rel="noopener">open Strike</a> (my referral link, 5% off fees)</li>
+</ul>
+      </div>
+      <p class="muted guide-disclosure">Not financial advice.</p>
+      <div class="sheet-actions">
+        <a class="br-button guide-drive" href="/ecosystem/?stop=getting-started"><span class="br-button-label">Drive there</span></a>
+        <a class="br-button br-button--secondary" href="/ecosystem/guides/"><span class="br-button-label">All guides</span></a>
+      </div>
+    </article>
+  </main>
+  <footer class="hud hud-foot">
+    <span class="foot-live">Live data: Strike public API ·</span>
+    <span class="foot-credit">Made with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></span>
+    <span><span class="foot-long">Independent, not affiliated with Strike</span><span class="foot-short">Not affiliated with Strike</span></span>
+    <span class="foot-by">· Built by <a href="https://benryan.com.au" target="_blank" rel="noopener">Ben Ryan</a> · <a href="https://github.com/benryandev/copilot-check" target="_blank" rel="noopener">Source</a></span>
+  </footer>
+  <script src="/src/theme-toggle.js"></script>
+</body>
+</html>

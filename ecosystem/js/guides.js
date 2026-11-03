@@ -31,6 +31,14 @@ export const GUIDES = [
     "series": "start-here",
     "order": 3,
     "path": "/ecosystem/guides/liquidation/"
+  },
+  {
+    "slug": "your-first-trade",
+    "title": "Your first trade on Strike: fund, buy, set a stop, close",
+    "stop": "getting-started",
+    "series": "start-here",
+    "order": 4,
+    "path": "/ecosystem/guides/your-first-trade/"
   }
 ];
 export const guidesForStop = (stopKey) => GUIDES.filter((g) => g.stop === stopKey);

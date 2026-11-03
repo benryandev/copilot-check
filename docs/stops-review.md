@@ -30,6 +30,8 @@ A first visit, from sign-in to a funded account. Sign in with a wallet on Cardan
 
 Link: [Docs: Deposits & Withdrawals](https://docs.strikefinance.org/perpetuals/deposits-and-withdrawals) · [Open Strike](https://app.strikefinance.org/trade/BTC?referralCode=BenRyan)
 
+Guide: Your first trade on Strike: fund, buy, set a stop, close (/ecosystem/guides/your-first-trade/)
+
 ## Perpetuals & Trading
 
 Trading on Strike: the markets, the matching engine, orders, margin, liquidations and the bots.
