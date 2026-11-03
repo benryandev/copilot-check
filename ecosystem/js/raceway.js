@@ -5,7 +5,7 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, RACE_TRACK, raceLocal } from "./content.js";
 import { raceGates, trackAt, terrainHeight, TRACK_HALF, GATE_HALF } from "./terrain.js";
-import { MARKER, markerPos } from "./focus-math.js";
+import { MARKER, markerPos, drapedRing, drapedDisc } from "./focus-math.js";
 import {
   M, accent, box, cyl, mesh, canvasTexture, colliders, redraws, groupFor, addCollider, addProp, orientedBox, tintedBasic, makeLabel,
   drawLogo, realfiLogo, REALFI,
@@ -229,16 +229,14 @@ function buildBoard(parent) {
 let marker = null;
 function buildMarker(parent) {
   const b = boardPose(), m = markerPos(b);
-  const y = terrainHeight(m.x, m.z);
-  const ring = new THREE.Mesh(new THREE.RingGeometry(2.3, MARKER.r, 40), tintedBasic(D().colour, { transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.set(m.x, y + 0.18, m.z);
-  const disc = new THREE.Mesh(new THREE.CircleGeometry(2.3, 40), tintedBasic(D().colour, { transparent: true, opacity: 0.14 }));
-  disc.rotation.x = -Math.PI / 2;
-  disc.position.set(m.x, y + 0.16, m.z);
+  // The infield is not level, so the ring and the disc are draped over the terrain point by point (focus-math.js)
+  const geo = ({ positions, indices }) => { const gm = new THREE.BufferGeometry(); gm.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3)); gm.setIndex(indices); gm.computeVertexNormals(); return gm; };
+  const ring = new THREE.Mesh(geo(drapedRing(m.x, m.z, 2.3, MARKER.r, 48, terrainHeight, 0.18)), tintedBasic(D().colour, { transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+  const disc = new THREE.Mesh(geo(drapedDisc(m.x, m.z, 2.3, 48, terrainHeight, 0.16)), tintedBasic(D().colour, { transparent: true, opacity: 0.14, side: THREE.DoubleSide }));
   // The label floats between the ring and the board at six tenths of a pad label's size: a full one at the ring sat over the car
+  const lx = m.x + b.fx * 2.5, lz = m.z + b.fz * 2.5;
   const g = new THREE.Group();
-  g.position.set(m.x + b.fx * 2.5, y, m.z + b.fz * 2.5);
+  g.position.set(lx, terrainHeight(lx, lz), lz);
   g.scale.setScalar(0.6);
   makeLabel("Top 10 board", D().colour, 3.2 / 0.6, g);
   parent.add(ring, disc, g);

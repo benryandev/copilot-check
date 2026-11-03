@@ -1,6 +1,6 @@
 // The board zoom's camera maths (no three.js): node --test qa/focus-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { FOCUS, MARKER, frameDistance, focusPose, focusBlend, nearBoard, markerPos, atMarker } from '../ecosystem/js/focus-math.js';
+import { FOCUS, MARKER, frameDistance, focusPose, focusBlend, nearBoard, markerPos, atMarker, drapedRing, drapedDisc } from '../ecosystem/js/focus-math.js';
 const board = { x: 100, y: 12, z: -50, fx: 0, fz: 1, w: 14, h: 10 };
 
 test('frameDistance fits the height on a wide screen and the width on a portrait one', () => {
@@ -40,6 +40,24 @@ test('the marker stands ten metres in front of the board and a car is at it with
   assert.ok(atMarker({ x: 101, z: -42 }, m)); assert.ok(atMarker({ x: 103, z: -40 }, m), 'on the ring');
   assert.ok(!atMarker({ x: 103.1, z: -40 }, m), 'just outside'); assert.ok(!atMarker({ x: 100, z: -50 }, m), 'at the board itself');
   assert.ok(nearBoard(m, board), 'the marker is inside the still-nearby zone');
+});
+test('the marker drapes over the ground: every vertex of the ring and the disc sits on the terrain plus its lift', () => {
+  const slope = (x, z) => 0.1 * x + 0.05 * z + 3; // a tilted ground
+  const ring = drapedRing(10, -20, 2.3, 3, 8, slope, 0.18);
+  assert.equal(ring.positions.length, 8 * 2 * 3, 'two vertices a segment, x y z each');
+  assert.equal(ring.indices.length, 8 * 6, 'two triangles a segment');
+  for (let i = 0; i < ring.positions.length; i += 3) {
+    const [x, y, z] = [ring.positions[i], ring.positions[i + 1], ring.positions[i + 2]];
+    assert.ok(Math.abs(y - (slope(x, z) + 0.18)) < 1e-9, `ring vertex ${i / 3} on the ground`);
+    const r = Math.hypot(x - 10, z + 20);
+    assert.ok(Math.abs(r - 2.3) < 1e-9 || Math.abs(r - 3) < 1e-9, `on the inner or the outer radius (${r})`);
+  }
+  assert.ok(Math.max(...ring.indices) < 16 && Math.min(...ring.indices) === 0, 'indices address the vertices');
+  const disc = drapedDisc(10, -20, 2.3, 8, slope, 0.16);
+  assert.equal(disc.positions.length, (8 + 1) * 3, 'the centre plus one vertex a segment');
+  assert.equal(disc.indices.length, 8 * 3, 'one triangle a segment');
+  assert.ok(Math.abs(disc.positions[1] - (slope(10, -20) + 0.16)) < 1e-9, 'the centre on the ground');
+  for (let i = 3; i < disc.positions.length; i += 3) assert.ok(Math.abs(disc.positions[i + 1] - (slope(disc.positions[i], disc.positions[i + 2]) + 0.16)) < 1e-9, `disc vertex ${i / 3} on the ground`);
 });
 test('nearBoard: in front and within 20 m, never behind', () => {
   assert.ok(nearBoard({ x: 100, z: -40 }, board)); assert.ok(!nearBoard({ x: 100, z: -60 }, board), 'behind');

@@ -32,6 +32,31 @@ export const markerPos = (board, ahead = MARKER.ahead) => ({ x: board.x + board.
 /** True when a position is on or inside the marker's ring. */
 export const atMarker = (pos, m, r = MARKER.r) => Math.hypot(pos.x - m.x, pos.z - m.z) <= r;
 
+// The infield is not level (a flat ring there sat half sunk, half floating, Ben's screenshot of 4 Nov 2026), so the
+// marker's ring and disc are draped over the terrain point by point: `heightAt(x, z)` is the ground, `lift` the gap
+// above it. Both return world positions as x y z triples and triangle indices for a BufferGeometry.
+export function drapedRing(cx, cz, rIn, rOut, segments, heightAt, lift = 0) {
+  const positions = [], indices = [];
+  for (let i = 0; i < segments; i++) {
+    const a = (i / segments) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a);
+    for (const r of [rIn, rOut]) { const x = cx + c * r, z = cz + s * r; positions.push(x, heightAt(x, z) + lift, z); }
+  }
+  for (let i = 0; i < segments; i++) {
+    const a = i * 2, b = a + 1, c = ((i + 1) % segments) * 2, d = c + 1;
+    indices.push(a, c, b, b, c, d);
+  }
+  return { positions, indices };
+}
+export function drapedDisc(cx, cz, r, segments, heightAt, lift = 0) {
+  const positions = [cx, heightAt(cx, cz) + lift, cz], indices = [];
+  for (let i = 0; i < segments; i++) {
+    const a = (i / segments) * Math.PI * 2, x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+    positions.push(x, heightAt(x, z) + lift, z);
+  }
+  for (let i = 0; i < segments; i++) indices.push(0, 1 + i, 1 + ((i + 1) % segments));
+  return { positions, indices };
+}
+
 /** True when a position is within `near` m of the board's centre and on its printed side. */
 export function nearBoard(pos, board, near = FOCUS.near) {
   const dx = pos.x - board.x, dz = pos.z - board.z;
