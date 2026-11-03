@@ -328,6 +328,25 @@ const SHAPES = {
     g.add(signBoard(stop.name, 5.6, 1.1, 1.2, 1.3, 2.6));
     return 8;
   },
+  // The Stake (the Token monument, Part B1): a plinth, a coin column whose origin is its base (monuments.js scales it with
+  // STRIKE staked), twelve lamps round it lit by stakers, a face on the plinth for the period's rewards, a spout at the column's
+  // top for the drip. 7.9 m tall, 10 m across; the same node names in the Blender model.
+  stake(g, A, stop) {
+    g.add(box(6, 1.2, 6, M.trim, 0, 0, 0));
+    const column = new THREE.Group(); column.name = "column"; column.position.set(0, 1.2, 0);
+    for (let i = 0; i < 13; i++) column.add(cyl(1.3, 0.5, i % 2 ? A : M.build, 0, i * 0.5, 0, 24));
+    const spout = new THREE.Group(); spout.name = "spout"; spout.position.set(0, 6.5, 1.3); column.add(spout);
+    g.add(column);
+    for (let i = 0; i < 12; i++) { // round the back and sides over 260°, so none stands across the face on the pad side
+      const a = Math.PI + (((i - 5.5) / 11) * 260 * Math.PI) / 180, x = Math.sin(a) * 4.6, z = Math.cos(a) * 4.6;
+      g.add(cyl(0.06, 0.9, M.trim, x, 0, z, 8));
+      const lamp = box(0.4, 0.4, 0.4, M.build, x, 0.9, z); lamp.name = `lamp_${String(i + 1).padStart(2, "0")}`; g.add(lamp);
+    }
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 1.1), M.trim); face.name = "face_rewards"; face.userData.blockout = true;
+    face.position.set(0, 0.6, 3.01); g.add(face);
+    g.add(signBoard(stop.name, 4.0, 0.9, 0, 2.15, 3.05));
+    return 8;
+  },
   grid(g, A) {
     for (let i = -1; i <= 1; i++)
       for (let j = -1; j <= 1; j++) {

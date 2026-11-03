@@ -8,14 +8,15 @@
 // SLP vault's fills every 10 s (seeded once with a thousand, the API's cap, so the hour figure fills in over the first hour).
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, isMonument } from "./content.js";
-import { pads, accent, M, obbOf, modelHooks } from "./build.js";
+import { pads, accent, M, obbOf, modelHooks, canvasTexture, redraws, themePalette } from "./build.js";
 import { slpVaultId } from "./data.js";
-import { FILLS, ENGINE, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget } from "./monument-math.js";
+import { FILLS, ENGINE, STAKE, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel } from "./monument-math.js";
 
 const API = "https://api.strikefinance.org";
 const KERB = { lift: 0.8, gap: (40 * Math.PI) / 180, radius: 0.14 }; // the kerb arc: 0.8 m outside the footprint, open ±40° towards the pad
 const RINGS = { perCircle: 24, step: 1.2, first: 0.9, max: 72, r: 0.35, tube: 0.06 };
 const SPARK = { life: 0.8, gravity: 9.8, speed: 4 };
+const DRIP = { seconds: 10, every: 0.4, cap: 12, gravity: 6 };
 
 let opts = { coarse: false, reduceMotion: false };
 const listeners = [];
@@ -131,6 +132,70 @@ function tickEngine(m, dt, now) {
   stepSparks(m, dt);
 }
 
+// ── The Stake ──
+function attachStake(m) {
+  m.nodes = { column: node(m.g, "column"), spout: node(m.g, "spout"), face: node(m.g, "face_rewards"), lamps: Array.from({ length: STAKE.lamps }, (_, i) => node(m.g, `lamp_${String(i + 1).padStart(2, "0")}`)) };
+  buildKerb(m);
+  if (!m.face) {
+    // The plinth's face: two lines, blank until the first staking figure, repainted on a theme change or a new value
+    m.faceText = null;
+    m.face = canvasTexture(1024, 200, (ctx, w, h, p) => {
+      ctx.fillStyle = p.panel; ctx.fillRect(0, 0, w, h);
+      if (!m.faceText) return;
+      ctx.textBaseline = "middle";
+      m.faceText.forEach(([label, value], i) => {
+        const y = 52 + i * 92, labelFont = "500 36px 'Atkinson Hyperlegible Next', Arial, sans-serif";
+        ctx.font = labelFont; ctx.textAlign = "left"; ctx.fillStyle = p.sub; ctx.fillText(label, 40, y);
+        const room = w - 80 - ctx.measureText(label).width - 30; // the value squeezes rather than runs into its label
+        ctx.textAlign = "right"; ctx.fillStyle = p.text; ctx.font = "600 46px 'Atkinson Hyperlegible Next', Arial, sans-serif"; ctx.fillText(value, w - 40, y, room);
+      });
+    });
+    redraws.push(m.face.redraw);
+    m.faceMat = new THREE.MeshBasicMaterial({ map: m.face.tex, toneMapped: false });
+  }
+  if (m.nodes.face) {
+    m.face.tex.flipY = !!m.nodes.face.userData.blockout; // glTF UVs run top-down
+    m.face.tex.needsUpdate = true;
+    m.nodes.face.material = m.faceMat; m.nodes.face.castShadow = false;
+    if (themePalette()) m.face.redraw(themePalette());
+  }
+  if (!m.drips) {
+    const mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.14, 6, 4), accent(m.d.colour), DRIP.cap);
+    mesh.count = 0; mesh.frustumCulled = false; m.aux.add(mesh);
+    m.drips = { mesh, live: [], until: 0, next: 0 };
+  }
+  applyStake(m);
+}
+function applyStake(m) {
+  const s = state.staking; if (!s || !m.nodes.column) return;
+  m.columnTarget = columnScale(s.staked ?? 0);
+  if (opts.reduceMotion || m.columnTarget == null) m.nodes.column.scale.y = m.columnTarget;
+  const lit = lampsLit(s.stakers ?? 0);
+  m.nodes.lamps.forEach((l, i) => { if (l) l.material = i < lit ? accent(m.d.colour) : M.build; }); // unlit in the building colour: trim is white at night
+  const text = [["Rewards building this period", s.upcomingUsd != null ? usdExact(s.upcomingUsd) : ""]];
+  if (s.latest?.amountUsd != null) text.push(["Last distribution", `${usdExact(s.latest.amountUsd)} · ${periodLabel(s.latest.start, s.latest.end)}`]);
+  const key = JSON.stringify(text);
+  if (key !== m.faceKey) { m.faceKey = key; m.faceText = text; if (themePalette()) m.face.redraw(themePalette()); }
+  if (m.lastDistributions != null && s.distributions > m.lastDistributions && !opts.reduceMotion) m.drips.until = performance.now() / 1000 + DRIP.seconds;
+  if (s.distributions != null) m.lastDistributions = s.distributions;
+}
+function tickStake(m, dt) {
+  const { column, spout } = m.nodes;
+  if (column && m.columnTarget != null) column.scale.y = ease(column.scale.y, m.columnTarget, dt, 1.5);
+  const d = m.drips; if (!d) return;
+  const t = performance.now() / 1000;
+  if (t < d.until && t >= d.next && d.live.length < DRIP.cap && spout) {
+    d.next = t + DRIP.every;
+    const p = m.aux.worldToLocal(spout.getWorldPosition(new THREE.Vector3()));
+    d.live.push({ p, v: new THREE.Vector3(0, 0, 0.6), life: 3 });
+  }
+  const mat = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(1, 1, 1);
+  d.live = d.live.filter((k) => (k.life -= dt) > 0 && k.p.y > 0.2);
+  d.live.forEach((k, i) => { k.v.y -= DRIP.gravity * dt; k.p.addScaledVector(k.v, dt); mat.compose(k.p, q, sc); d.mesh.setMatrixAt(i, mat); });
+  d.mesh.count = d.live.length;
+  if (d.live.length) d.mesh.instanceMatrix.needsUpdate = true;
+}
+
 // ── The fills poll ──
 async function pollFills(now = Date.now()) {
   const id = slpVaultId();
@@ -160,7 +225,7 @@ function takeFills(incoming, now, seed = false) {
 // ── Public ──
 export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
   opts = { coarse, reduceMotion };
-  const attach = { "monument-earn": attachEngine };
+  const attach = { "monument-earn": attachEngine, "monument-token": attachStake };
   for (const stop of STOPS.filter(isMonument)) {
     const fn = attach[stop.key];
     if (!fn) continue;
@@ -178,11 +243,12 @@ export function applyMonuments(monuments) {
     if (monuments.slp.equity != null) state.high = Math.max(state.high ?? 0, monuments.slp.equity);
     const m = findMonument("monument-earn"); if (m) layRings(m);
   }
-  if (monuments.staking) state.staking = monuments.staking;
+  if (monuments.staking) { state.staking = monuments.staking; const m = findMonument("monument-token"); if (m) applyStake(m); }
 }
 export function monumentsTick(dt) {
   const now = Date.now();
   const e = monuments.get("monument-earn"); if (e) tickEngine(e, dt, now);
+  const t = monuments.get("monument-token"); if (t) tickStake(t, dt);
 }
 export function monumentValues() {
   return state.seeded ? { slpFillsHour: hourString(hourFigure(state.fills, state.since, Date.now())) } : {};
@@ -192,5 +258,7 @@ export const onMonumentStats = (f) => listeners.push(f);
 export function injectSlpFills(list) { state.seeded = true; takeFills(pickFills({ fills: list }), Date.now()); }
 export const monumentsState = () => {
   const e = monuments.get("monument-earn");
-  return { fills: state.fills.length, since: state.since, seeded: state.seeded, sparks: e?.sparks?.live.length ?? 0, rings: e?.rings?.count ?? 0, wheel: e?.wheelSpeed ?? 0 };
+  const t = monuments.get("monument-token");
+  return { fills: state.fills.length, since: state.since, seeded: state.seeded, sparks: e?.sparks?.live.length ?? 0, rings: e?.rings?.count ?? 0, wheel: e?.wheelSpeed ?? 0,
+    column: t?.nodes.column?.scale.y ?? null, lampsLit: t?.nodes.lamps.filter((l) => l?.material?.userData.accent).length ?? 0, drips: t?.drips?.live.length ?? 0, face: t?.faceText ?? null };
 };
