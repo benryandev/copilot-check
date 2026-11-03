@@ -21,11 +21,12 @@ test('the start tier: the saved choice, else phone on a touch screen and high el
   assert.equal(startTier(null, false), 'high');
 });
 
-test('the drop rule: a quarter of slow frames drops one step, not within four seconds of the last drop, never below low', () => {
-  assert.equal(SLOW_MS, 25); assert.equal(SLOW_SHARE, 0.25); assert.equal(DROP_GAP_S, 4);
-  assert.equal(nextTier(0.25, 'medium', 30, 0), 'phone');
+test('the drop rule: half the frames slow drops one step, not within four seconds of the last drop, never below low', () => {
+  assert.equal(SLOW_MS, 28); assert.equal(SLOW_SHARE, 0.5); assert.equal(DROP_GAP_S, 4);
+  assert.equal(nextTier(0.5, 'medium', 30, 0), 'phone');
   assert.equal(nextTier(0.6, 'high', 30, 0), 'medium');
-  assert.equal(nextTier(0.24, 'medium', 30, 0), null, 'under a quarter holds');
+  assert.equal(nextTier(0.35, 'phone', 30, 0), null, 'a third of frames doubled holds (a 44 fps phone stays crisp)');
+  assert.equal(nextTier(0.49, 'medium', 30, 0), null, 'under half holds');
   assert.equal(nextTier(0.9, 'phone', 7, 4), null, 'too soon after the last drop');
   assert.equal(nextTier(0.9, 'phone', 9, 4), 'low');
   assert.equal(nextTier(1, 'low', 60, 0), null, 'nothing below low');

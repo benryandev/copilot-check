@@ -15,11 +15,13 @@ export const ORDER = ["high", "medium", "phone", "low"]; // the auto rule steps 
 /** The tier to start on: the saved choice when it names a tier, else phone on a touch screen and high elsewhere. */
 export const startTier = (pref, coarse) => (TIERS[pref] ? pref : coarse ? "phone" : "high");
 
-// Auto quality. A frame past SLOW_MS has missed at least one refresh on a 60 Hz screen (three on 120 Hz); when a quarter
-// of a window's frames are slow the tier drops one step, at most once every DROP_GAP_S seconds. The old rule (the average
-// over 1/38 s) needed most frames doubled before it moved, so a phone flipping between 60 and 30 fps felt laggy and never
-// dropped. No climbing back: a tier change rebuilds the grass and recompiles every shader, a hitch worth paying once.
-export const SLOW_MS = 25, WINDOW = 120, SLOW_SHARE = 0.25, DROP_GAP_S = 4;
+// Auto quality. A frame past SLOW_MS has taken two refreshes on a 60 Hz screen (four on 120 Hz); when half of a window's
+// frames are slow the tier drops one step, at most once every DROP_GAP_S seconds. Counting frames rather than averaging
+// them keeps one long hitch (a shader compiling, a texture landing) from moving the tier, and the bar sits where the
+// blur of a lower tier is the lesser evil: Ben's phone at 44 fps on the phone tier, a third of its frames doubled, stays
+// crisp (4 Nov 2026). No climbing back: a tier change rebuilds the grass and recompiles every shader, a hitch worth
+// paying once.
+export const SLOW_MS = 28, WINDOW = 120, SLOW_SHARE = 0.5, DROP_GAP_S = 4;
 
 /** The tier to drop to after a window in which `share` of the frames were slow, or null to hold. */
 export function nextTier(share, tierName, t, lastDrop) {
