@@ -58,3 +58,12 @@ test('merged sheets keep the names they absorbed', () => {
   assert.match(text('staking'), /single address mode/);
   assert.match(text('medium'), /2026/);
 });
+
+test('no model is used twice in Perpetuals (3 Nov 2026: scale, pair trading and funding comparison were swapped)', () => {
+  const shapes = STOPS.filter((s) => s.district === 'perps').map((s) => s.shape);
+  const dup = shapes.filter((s, i) => shapes.indexOf(s) !== i && s !== 'flag');
+  assert.deepEqual(dup, [], `duplicates: ${dup}`);
+  assert.equal(STOPS.find((s) => s.key === 'scale').shape, 'pillar');
+  assert.equal(STOPS.find((s) => s.key === 'pair-trading').shape, 'bridgegate');
+  assert.equal(STOPS.find((s) => s.key === 'funding-comparison').shape, 'observatory');
+});

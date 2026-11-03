@@ -1073,13 +1073,7 @@ export function addProps(scene, { planters = true } = {}) {
       addProp(parent, "bale", j.ox + j.fx * u + j.rx * (v - j.side * (half - j.width / 2)), j.oz + j.fz * u + j.rz * (v - j.side * (half - j.width / 2)), Math.atan2(j.fx, j.fz));
     }
   });
-  // A tower of STRIKE coins in Token & Governance
-  const t = DISTRICTS.token;
-  if (t) {
-    const [hx, hz] = t.hubDir;
-    const cx = t.centre[0] + hx * 6, cz = t.centre[1] + hz * 6;
-    for (let i = 0; i < 14; i++) addProp(groupFor(scene, "token"), "coin", cx + (Math.random() - 0.5) * 0.08, cz + (Math.random() - 0.5) * 0.08, Math.random() * 6, i * 0.21);
-  }
+  // (The fourteen-coin tower that stood 6 m inside Token's plaza went on 3 Nov 2026; the Stake monument takes its place.)
   // Benches between the pads on every plaza, facing the centre, a planter either side (not on the low tier). HQ gets none:
   // nine road mouths round a 24 m plaza leave no stretch of rim 4 m clear of a road, and that is right for the hub (ruling, 2 Nov 2026).
   for (const d of Object.values(DISTRICTS)) {

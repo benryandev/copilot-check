@@ -197,7 +197,7 @@ export const STOPS = [
     key: "pair-trading",
     district: "perps",
     name: "Pair trading",
-    shape: "twin",
+    shape: "bridgegate",
     summary:
       "The Pair Trading Terminal is a mode of the trade page, with no docs page of its own: one or more long legs against one or more short legs, sized by a split, with the basket's weighted ratio charted. As seen in the app on 3 November 2026.",
     points: [
@@ -258,7 +258,7 @@ export const STOPS = [
     key: "scale",
     district: "perps",
     name: "Scale Orders",
-    shape: "tower",
+    shape: "pillar",
     summary:
       "Splits one order into a ladder of up to 100 limit orders across a price range you set, instead of one order at one price.",
     points: [
@@ -273,7 +273,7 @@ export const STOPS = [
     key: "funding-comparison",
     district: "perps",
     name: "Funding Comparison", // the Carry Scanner shares the sheet; the full name clipped the pad label
-    shape: "antenna",
+    shape: "observatory",
     summary:
       "Two pages in the app's Tools menu, with no docs page of their own. Funding Comparison lays Strike's hourly funding on every market beside Binance, Bybit, OKX, Hyperliquid, Lighter, Extended and Variational; the Carry Scanner ranks long/short pairs on Strike by funding carry against spread risk. As seen on 3 November 2026.",
     points: [
