@@ -37,7 +37,7 @@ export const DISTRICTS = {
 };
 // A plaza's radius follows how many stops it lays out (3 Nov 2026 audit: four stops in a 54 m plaza read as a car park).
 // Monuments and hand-placed stops are not counted; roads, kerbs, cobbles and furniture all derive from this number.
-export const radiusFor = (n) => (n >= 9 ? 54 : n >= 6 ? 48 : 42);
+export const radiusFor = (n) => (n >= 15 ? 64 : n >= 9 ? 54 : n >= 6 ? 48 : 42); // 15 or more: twelve outer and the rest in alternate gaps need 64 m to keep 13.5 m and the back open
 ORDER.forEach(([key, name, colour, board], i) => {
   const a = (i / ORDER.length) * Math.PI * 2;
   const auto = STOPS.filter((s) => s.district === key && !s.pos && !s.row).length;
@@ -199,52 +199,87 @@ export const MULTIPLAYER = true;
 //     (ten at 54 m); the rest sit at r−28 in alternate gaps between outer slots, each slid within its gap so that its
 //     bearing from the entrance is at least 3° from every other pad, so no inner pad lines up with an outer one and no
 //     label stacks from the entrance.
-export const LAYOUT = { oneRowMax: 8, arc: [100, 260], outerArc: [95, 265], outerInset: 12, innerInset: 28, innerClear: 6, charWidth: 0.42, labelHeight: 1.0, minBearing: 1.5, minGap: 14, minGapWide: 13.5, keepOff180: 5 };
-export function layoutStops(stops = STOPS, districts = DISTRICTS) {
+export const LAYOUT = {
+  oneRowMax: 8, arc: [100, 260], outerArc: [95, 265], outerInset: 12, innerInset: 28, innerClear: 6,
+  minGap: 14, minGapWide: 13.5, keepOff180: 5,
+  mouthClear: 22, // degrees either side of a road that arrives head-on (the Chart Ridge): no pad in front of it
+  // The label as drawn (build.js makeLabel): 88 px text on a 1024 px canvas shown 10 m wide, so about 0.45 m a
+  // character plus 96 px of padding (0.94 m); the panel is 132 of 192 px of a 1.875 m sprite, 1.29 m
+  charWidth: 0.45, labelPad: 0.94, labelHeight: 1.29, minBearing: 1.0,
+  // Where a visitor judges the entrance from: on foot at the rim, and the chase camera with the car 24 m in
+  views: [{ inset: 0, eye: 1.6 }, { inset: 13, eye: 6.5 }],
+};
+export function layoutStops(stops = STOPS, districts = DISTRICTS, roads = ROADS) {
   const out = new Map();
   const deg = Math.PI / 180;
   const slots = (m, [from, to]) => Array.from({ length: m }, (_, i) => (m === 1 ? (from + to) / 2 : from + ((to - from) * i) / (m - 1)));
+  const angDist = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
   for (const d of Object.values(districts)) {
     if (!d.hubDir) continue;
     const auto = stops.filter((s) => s.district === d.key && !s.pos && !s.row);
     const n = auto.length;
     if (!n) continue;
     const base = Math.atan2(d.hubDir[1], d.hubDir[0]); // pointing at HQ
-    const put = (stop, a, r) => out.set(stop.key, [d.centre[0] + Math.cos(base + a * deg) * r, d.centre[1] + Math.sin(base + a * deg) * r]);
+    const rel = (p) => ((((Math.atan2(p[1] - d.centre[1], p[0] - d.centre[0]) - base) / deg) % 360) + 360) % 360;
+    const at = (a, r) => [d.centre[0] + Math.cos(base + a * deg) * r, d.centre[1] + Math.sin(base + a * deg) * r];
+    // Roads that arrive at this plaza head-on (within 60° of radial): no pad within mouthClear of their mouth. The spoke and
+    // the ring roads are already outside the arcs; this catches the Chart Ridge. The Raceway link leaves Partners along the
+    // rim, so it is exempt.
+    const mouths = [];
+    for (const r of roads) for (const [end, next] of [[r.points[0], r.points[1]], [r.points[r.points.length - 1], r.points[r.points.length - 2]]]) {
+      const dm = Math.hypot(end[0] - d.centre[0], end[1] - d.centre[1]);
+      if (dm > d.radius + 6 || dm < d.radius - 6) continue;
+      const dir = [next[0] - end[0], next[1] - end[1]], l = Math.hypot(...dir) || 1;
+      const inward = [(d.centre[0] - end[0]) / dm, (d.centre[1] - end[1]) / dm];
+      if (Math.abs((dir[0] * inward[0] + dir[1] * inward[1]) / l) >= 0.5) mouths.push(rel(end));
+    }
+    const clearOfMouths = (a) => mouths.every((m) => angDist(a, m) >= LAYOUT.mouthClear);
+    // Pick `count` slots on an arc: even slots, more of them as needed, dropping any in front of a mouth and then those
+    // nearest 180° (the larger of a tie) until `count` remain, so an odd count or a blocked slot leaves the back open.
+    const pickSlots = (count, arc) => {
+      for (let m = count; m < count + 24; m++) {
+        let valid = slots(m, arc).filter(clearOfMouths);
+        while (valid.length > count) { let worst = 0; valid.forEach((a, i) => { if (angDist(a, 180) <= angDist(valid[worst], 180)) worst = i; }); valid.splice(worst, 1); }
+        if (valid.length === count && valid.every((a) => angDist(a, 180) >= LAYOUT.keepOff180)) return valid;
+      }
+      return slots(count, arc); // nothing fits the rules: even slots, as before
+    };
+    const put = (stop, a, r) => out.set(stop.key, at(a, r));
     if (n <= LAYOUT.oneRowMax) {
-      const angles = slots(n % 2 ? n + 1 : n, LAYOUT.arc);
-      if (n % 2) angles.splice(Math.ceil((angles.length - 1) / 2), 1); // the slot nearest 180°, the larger on a tie
+      const angles = pickSlots(n, LAYOUT.arc);
       auto.forEach((s, i) => put(s, angles[i], d.radius - LAYOUT.outerInset));
       continue;
     }
     const rOut = d.radius - LAYOUT.outerInset;
     const span = (LAYOUT.outerArc[1] - LAYOUT.outerArc[0]) * deg * rOut; // arc length of the outer row
-    const k = Math.min(n, Math.floor(span / LAYOUT.minGapWide) + 1);
+    const kMax = Math.floor(span / LAYOUT.minGapWide) + 1; // slots that keep minGapWide on the outer arc
+    const k = Math.min(n, kMax - (kMax % 2)); // an odd row would take k+1 slots (the one nearest 180° left open), so stay even
     const tallest = new Set(auto.slice().sort((a, b) => heightOf(b.shape) - heightOf(a.shape)).slice(0, k).map((s) => s.key));
     const outer = auto.filter((s) => tallest.has(s.key)), inner = auto.filter((s) => !tallest.has(s.key)); // STOPS order within each row
-    const oa = slots(k, LAYOUT.outerArc);
+    const oa = pickSlots(k, LAYOUT.outerArc); // even slots, or k+1 with the one nearest 180° left open when k is odd
     outer.forEach((s, i) => put(s, oa[i], rOut));
-    // Inner pads take alternate gaps between outer slots (gap 1, 3, 5, …; every gap if there are more inner stops than
-    // that). Labels float over the buildings, so what must not collide from the entrance is label against label: each
-    // label's width is taken as 0.42 m a character (the label canvas), seen from the HQ mouth. Every assignment of inner
-    // stops to gaps is tried; within its gap each pad slides, 6° clear of both outer angles, to the angle that keeps the
-    // most clearance from every pad already placed; the assignment with the best worst-case clearance wins. Exact
-    // midpoints in stop order gave 2° at best and stacked two labels (3 Nov 2026).
+    // Inner pads take gaps between outer slots: alternate gaps (1, 3, 5, …) when they suffice, otherwise gaps spread evenly.
+    // Labels float over the buildings, so what must not collide from the entrance is label against label, seen from each of
+    // LAYOUT.views: a label's drawn width and height at its distance, sideways or vertically. Every assignment of inner stops
+    // to gaps is tried; within its gap each pad slides, innerClear° off both outer angles, to the angle that keeps the most
+    // clearance from every pad already placed; the assignment with the best worst-case clearance wins. Exact midpoints in
+    // stop order gave 2° at best and stacked two labels (3 Nov 2026).
     const rIn = d.radius - LAYOUT.innerInset;
-    const mouth = [d.centre[0] + d.hubDir[0] * d.radius, d.centre[1] + d.hubDir[1] * d.radius];
-    const at = (a, r) => [d.centre[0] + Math.cos(base + a * deg) * r, d.centre[1] + Math.sin(base + a * deg) * r];
-    // A label as seen from the mouth: bearing and width sideways, elevation and height up (the sprite sits 2.2 m over the
-    // model, its text about 1 m tall). Two labels are clear when they miss sideways or miss vertically.
-    const seen = (stop, p) => {
-      const dist = Math.hypot(p[0] - mouth[0], p[1] - mouth[1]);
-      return { p, b: Math.atan2(p[1] - mouth[1], p[0] - mouth[0]) / deg, w: ((LAYOUT.charWidth * String(stop.name ?? stop.key).length) / dist) / deg, e: Math.atan((heightOf(stop.shape) + 2.2) / dist) / deg, h: (LAYOUT.labelHeight / dist) / deg };
-    };
-    // ... and the buildings themselves keep at least `minBearing` apart from the mouth, so an inner one never stands
-    // square in front of an outer one.
-    const clearance = (x, y) => Math.min(Math.max(Math.abs(x.b - y.b) - (x.w + y.w) / 2, Math.abs(x.e - y.e) - (x.h + y.h) / 2), Math.abs(x.b - y.b) - LAYOUT.minBearing);
-    const outerSeen = outer.map((s) => seen(s, out.get(s.key)));
-    const gapsAll = Array.from({ length: k - 1 }, (_, i) => i), gapsAlt = gapsAll.filter((i) => i % 2 === 1);
-    const gaps = gapsAlt.length >= inner.length ? gapsAlt : gapsAll;
+    const views = LAYOUT.views.map((v) => ({ at: [d.centre[0] + d.hubDir[0] * (d.radius - v.inset), d.centre[1] + d.hubDir[1] * (d.radius - v.inset)], eye: v.eye }));
+    const seen = (stop, p) => views.map((v) => {
+      const dist = Math.hypot(p[0] - v.at[0], p[1] - v.at[1]);
+      return { b: Math.atan2(p[1] - v.at[1], p[0] - v.at[0]) / deg, w: ((LAYOUT.charWidth * String(stop.name ?? stop.key).length + LAYOUT.labelPad) / dist) / deg, e: Math.atan((heightOf(stop.shape) + 2.2 - v.eye) / dist) / deg, h: (LAYOUT.labelHeight / dist) / deg };
+    });
+    // ... and the buildings themselves keep at least minBearing apart, so an inner one never stands square in front of an outer one
+    const clearance = (xs, ys) => Math.min(...xs.map((x, i) => { const y = ys[i]; return Math.min(Math.max(Math.abs(x.b - y.b) - (x.w + y.w) / 2, Math.abs(x.e - y.e) - (x.h + y.h) / 2), Math.abs(x.b - y.b) - LAYOUT.minBearing); }));
+    const outerSeen = outer.map((s) => ({ p: out.get(s.key), v: seen(s, out.get(s.key)) }));
+    // Usable gaps: those with an angle innerClear° off both outer slots and keepOff180° off 180 (the back stays open for the
+    // monument's corridor in the inner row too). Alternate gaps when they suffice, otherwise usable gaps spread evenly.
+    const window = (g) => { const lo = oa[g] + LAYOUT.innerClear, hi = oa[g + 1] - LAYOUT.innerClear; return lo <= hi && (angDist(lo, 180) >= LAYOUT.keepOff180 || angDist(hi, 180) >= LAYOUT.keepOff180); };
+    const usable = Array.from({ length: oa.length - 1 }, (_, i) => i).filter(window);
+    const gapsAlt = usable.filter((_, i) => i % 2 === 1);
+    const step = usable.length / inner.length;
+    const gaps = gapsAlt.length >= inner.length ? gapsAlt : Array.from({ length: inner.length }, (_, i) => usable[Math.min(usable.length - 1, Math.floor(i * step + step / 2))]);
     const permutations = (arr) => (arr.length <= 1 ? [arr] : arr.flatMap((x, i) => permutations([...arr.slice(0, i), ...arr.slice(i + 1)]).map((rest) => [x, ...rest])));
     const orders = inner.length <= 6 ? permutations(inner) : [inner];
     let bestRun = null;
@@ -255,14 +290,19 @@ export function layoutStops(stops = STOPS, districts = DISTRICTS) {
         const g = gaps[i];
         let best = null;
         for (let a = oa[g] + LAYOUT.innerClear; a <= oa[g + 1] - LAYOUT.innerClear + 1e-9; a += 0.1) {
-          const v = seen(stop, at(a, rIn));
-          if (placed.some((q) => Math.hypot(q.p[0] - v.p[0], q.p[1] - v.p[1]) < LAYOUT.minGapWide)) continue;
-          const c = Math.min(...placed.map((q) => clearance(q, v)));
-          if (!best || c > best.c) best = { v, c };
+          if (angDist(a, 180) < LAYOUT.keepOff180) continue;
+          const p = at(a, rIn);
+          if (placed.some((q) => Math.hypot(q.p[0] - p[0], q.p[1] - p[1]) < LAYOUT.minGapWide)) continue;
+          const v = seen(stop, p), c = Math.min(...placed.map((q) => clearance(q.v, v)));
+          if (!best || c > best.c) best = { p, v, c };
         }
-        const v = best ? best.v : seen(stop, at((oa[g] + oa[g + 1]) / 2, rIn)); // nothing clears the spacing: the midpoint
-        worst = Math.min(worst, best ? best.c : -Infinity);
-        placed.push(v); spots.push([stop, v.p]);
+        if (!best) { // nothing in the gap keeps the spacing: the midpoint, and say so
+          const p = at((oa[g] + oa[g + 1]) / 2, rIn);
+          best = { p, v: seen(stop, p), c: -Infinity };
+          if (typeof console !== "undefined") console.warn(`layoutStops: ${d.key}: no spot for ${stop.key} keeps ${LAYOUT.minGapWide} m; placed at the gap's midpoint`);
+        }
+        worst = Math.min(worst, best.c);
+        placed.push({ p: best.p, v: best.v }); spots.push([stop, best.p]);
       });
       if (!bestRun || worst > bestRun.worst) bestRun = { worst, spots };
     }

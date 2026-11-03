@@ -1,5 +1,6 @@
 // Terrain sampling (node can import it): node --test qa/terrain-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
+import { builderSlots } from '../ecosystem/js/terrain.js';
 import { groundHeight, roadInfo, racewayWeight, inRaceway, trackAt } from '../ecosystem/js/terrain.js';
 
 test('ground is continuous where a wide road\'s blend meets a narrow one\'s (Ben\'s invisible wall at 241, 95)', () => {
@@ -105,4 +106,12 @@ test('the kerb: a 12 cm lip 0.3 m inside the rim, flat 2 m in, none at a road mo
   for (let d = r - 2; d <= r + 1; d += 0.05) { const a = north(d), b = north(d + 0.05); worstSlope = Math.max(worstSlope, Math.abs(groundHeight(b.x, b.z) - groundHeight(a.x, a.z)) / 0.05); }
   assert.ok(worstRise < 0.25 && worstSlope < 0.9, `rise ${worstRise.toFixed(2)} over 0.5 m, slope ${worstSlope.toFixed(2)}: a bump, not a wall`);
   assert.equal(kerbGapsOf(p).length, 3);
+});
+
+test('Builders\' Row starts just outside the Developers rim and steps 13 m back, whatever the plaza radius', () => {
+  const d = DISTRICTS.developers;
+  const first = builderSlots[0], second = builderSlots[1];
+  const out = (s) => Math.hypot(s.x - d.centre[0], s.z - d.centre[1]) - d.radius;
+  assert.ok(out(first) >= 4 && out(first) <= 12, `first shop ${out(first).toFixed(1)} m outside the rim`);
+  assert.ok(Math.abs(Math.hypot(second.face[0] - first.face[0], second.face[1] - first.face[1]) - 13) < 2, 'the next faces the road 13 m further back (and stands on the other side)');
 });

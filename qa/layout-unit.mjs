@@ -73,6 +73,14 @@ test('nine or more: tallest stops outer on 95 to 265, the rest inner in alternat
   const nine = fake('nine', 9, 54, shapes); // the outer row takes as many as fit at 13.5 m (ten at 54 m), so all nine stand outer
   const p9 = layoutStops(nine.s, nine.d);
   for (const s of nine.s) assert.ok(Math.abs(dist(p9.get(s.key), nine.d.nine.centre) - 42) < 0.01, 'nine fit the outer row');
+  for (const s of nine.s) assert.ok(Math.abs(degFromHQ(nine.d.nine, p9.get(s.key)) - 180) >= LAYOUT.keepOff180, `${s.key} stands behind the centre`);
+  // Perpetuals with one more stop: five inner pads spread over the gaps, still 13.5 m apart, none at 180
+  const more = STOPS.filter((s) => s.district === 'perps' && !s.pos && !s.row).concat([{ key: 'extra', district: 'perps', shape: 'kiosk', name: 'Extra stop' }]);
+  const d15 = { perps: { ...DISTRICTS.perps, radius: radiusFor(more.length) } }; // 64 m: the radius rule grows with the count
+  assert.equal(d15.perps.radius, 64);
+  const p15 = layoutStops(more, d15), pts15 = more.map((s) => p15.get(s.key));
+  for (let i = 0; i < pts15.length; i++) for (let j = i + 1; j < pts15.length; j++) assert.ok(dist(pts15[i], pts15[j]) >= 13.5, `fifteen: ${more[i].key} and ${more[j].key} ${dist(pts15[i], pts15[j]).toFixed(1)} m`);
+  for (const s of more) assert.ok(Math.abs(degFromHQ(DISTRICTS.perps, p15.get(s.key)) - 180) >= LAYOUT.keepOff180, `fifteen: ${s.key} behind the centre`);
   const perps = DISTRICTS.perps, placed = layoutStops();
   const auto = STOPS.filter((s) => s.district === 'perps' && !s.pos && !s.row);
   const outer = auto.filter((s) => Math.abs(dist(placed.get(s.key), perps.centre) - 42) < 0.01);
@@ -103,7 +111,7 @@ test('from the HQ mouth no two buildings share a bearing: 3 degrees in one row, 
 });
 
 test('plaza radius follows the auto stop count, monuments never counted', () => {
-  assert.deepEqual([radiusFor(4), radiusFor(5), radiusFor(6), radiusFor(8), radiusFor(9), radiusFor(15)], [42, 42, 48, 48, 54, 54]);
+  assert.deepEqual([radiusFor(4), radiusFor(5), radiusFor(6), radiusFor(8), radiusFor(9), radiusFor(14), radiusFor(15)], [42, 42, 48, 48, 54, 54, 64]);
   const want = { perps: 54, earn: 48, collateral: 48, partners: 48, developers: 42, analytics: 42, community: 48, token: 42, chains: 42 };
   for (const [k, r] of Object.entries(want)) assert.equal(DISTRICTS[k].radius, r, k);
   assert.equal(DISTRICTS.hub.radius, 24); assert.equal(DISTRICTS.yard.radius, 24);
@@ -119,19 +127,40 @@ test('things placed by hand stay clear of the shrunk rims', () => {
   assert.ok(dist(flag.pos, DISTRICTS.perps.centre) <= DISTRICTS.perps.radius - 8, 'Funding rates inside Perpetuals');
 });
 
-test('from the HQ mouth no two labels overlap: clear sideways (0.42 m a character) or clear vertically (label 2.2 m over the model, 1 m tall)', () => {
+test('from the mouth and from the car\'s camera just inside it, no two labels overlap: clear sideways (the drawn panel) or vertically', () => {
   const placed = layoutStops();
   for (const d of Object.values(DISTRICTS)) {
     if (!d.hubDir) continue;
     const mouth = [d.centre[0] + d.hubDir[0] * d.radius, d.centre[1] + d.hubDir[1] * d.radius];
-    const rows = STOPS.filter((s) => s.district === d.key && placed.has(s.key)).map((s) => {
-      const p = placed.get(s.key), dist = Math.hypot(p[0] - mouth[0], p[1] - mouth[1]), r2d = 180 / Math.PI;
-      return { key: s.key, b: Math.atan2(p[1] - mouth[1], p[0] - mouth[0]) * r2d, w: ((0.42 * s.name.length) / dist) * r2d, e: Math.atan((HEIGHT[s.shape] + 2.2) / dist) * r2d, h: (1.0 / dist) * r2d };
-    });
-    for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++) {
-      const a = rows[i], b = rows[j];
-      const clear = Math.max(Math.abs(a.b - b.b) - (a.w + b.w) / 2, Math.abs(a.e - b.e) - (a.h + b.h) / 2);
-      assert.ok(clear >= 0.3, `${d.key}: "${a.key}" and "${b.key}" labels overlap by ${(-clear).toFixed(1)} degrees from the mouth`);
+    for (const [name, inset, eye] of [['rim', 0, 1.6], ['camera', 13, 6.5]]) { // on foot at the mouth; the chase camera with the car 24 m in
+      const view = [d.centre[0] + d.hubDir[0] * (d.radius - inset), d.centre[1] + d.hubDir[1] * (d.radius - inset)];
+      const rows = STOPS.filter((s) => s.district === d.key && placed.has(s.key)).map((s) => {
+        const p = placed.get(s.key), dist = Math.hypot(p[0] - view[0], p[1] - view[1]), r2d = 180 / Math.PI;
+        return { key: s.key, b: Math.atan2(p[1] - view[1], p[0] - view[0]) * r2d, w: ((LAYOUT.charWidth * s.name.length + LAYOUT.labelPad) / dist) * r2d, e: Math.atan((HEIGHT[s.shape] + 2.2 - eye) / dist) * r2d, h: (LAYOUT.labelHeight / dist) * r2d };
+      });
+      for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++) {
+        const a = rows[i], b = rows[j];
+        const clear = Math.max(Math.abs(a.b - b.b) - (a.w + b.w) / 2, Math.abs(a.e - b.e) - (a.h + b.h) / 2);
+        assert.ok(clear >= 0.3, `${d.key}: "${a.key}" and "${b.key}" labels overlap by ${(-clear).toFixed(1)} degrees from the ${name}`);
+      }
+    }
+  }
+});
+
+test('no pad stands in front of any road that meets the plaza, the Chart Ridge and the Raceway link included', () => {
+  const placed = layoutStops();
+  for (const d of Object.values(DISTRICTS)) {
+    if (!d.hubDir) continue;
+    for (const r of ROADS) for (const [end, next] of [[r.points[0], r.points[1]], [r.points[r.points.length - 1], r.points[r.points.length - 2]]]) {
+      const dm = dist(end, d.centre);
+      if (dm > d.radius + 6 || dm < d.radius - 6) continue; // not a mouth of this plaza
+      const dir = [next[0] - end[0], next[1] - end[1]], l = Math.hypot(...dir), inward = [(d.centre[0] - end[0]) / dm, (d.centre[1] - end[1]) / dm];
+      if (Math.abs((dir[0] * inward[0] + dir[1] * inward[1]) / l) < 0.5) continue; // along the rim, like the Raceway link: not in anyone's way
+      const mouth = degFromHQ(d, end);
+      for (const s of STOPS.filter((x) => x.district === d.key && placed.has(x.key))) {
+        const a = degFromHQ(d, placed.get(s.key)), da = Math.abs(((a - mouth + 540) % 360) - 180);
+        assert.ok(da >= LAYOUT.mouthClear, `${d.key}: ${s.key} is ${da.toFixed(0)} degrees from the ${r.kind} mouth at ${mouth.toFixed(0)}`);
+      }
     }
   }
 });

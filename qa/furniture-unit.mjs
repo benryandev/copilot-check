@@ -62,6 +62,12 @@ test('benchSpots: three benches between the buildings at r-20, on the building s
   for (const b of benches) assert.ok(mids.some((m) => Math.abs(fromHQ(perps, b.x, b.z) - m) < 0.01), `between two pads, not ${fromHQ(perps, b.x, b.z).toFixed(1)}`);
   const angles = benches.map((b) => fromHQ(perps, b.x, b.z)).sort((p, q) => p - q);
   assert.ok(angles[2] - angles[0] >= 80, 'spread along the arc, not bunched');
+  assert.ok(Math.abs(angles[1] - 180) <= 20.5, `the third bench sits in the middle of the arc, not beside an end one (got ${angles[1].toFixed(0)})`); // five pads: the midpoints nearest the middle are 160 and 200
+  // an eight-pad arc across the ±180° seam (Community's case): the ends and the middle, measured from HQ, not by raw angle
+  const community = DISTRICTS.community;
+  const pads8 = [100, 123, 146, 169, 191, 214, 237, 260].map((deg) => onArc(community, deg, community.radius - 12));
+  const b8 = benchSpots(community, pads8, kerbGaps(community, roads), () => 10).benches.map((b) => fromHQ(community, b.x, b.z)).sort((p, q) => p - q);
+  assert.ok(b8[0] <= 125 && b8[2] >= 235 && Math.abs(b8[1] - 180) <= 15, `ends and middle: ${b8.map((a) => a.toFixed(0)).join(' ')}`);
   assert.equal(benchSpots(perps, pads, gaps, () => 10, { planters: false }).planters.length, 0);
   const one = benchSpots(yard, [{ x: yard.centre[0] + 10, z: yard.centre[1] }], kerbGaps(yard, roads), () => 10);
   assert.equal(one.benches.length, BENCH.perPlaza, 'one pad still gives three benches');

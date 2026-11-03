@@ -113,14 +113,17 @@ export function benchSpots(plaza, pads, gaps, clearance = () => Infinity, { plan
     .map((c) => ({ ...c, score: Math.min(padDist(c.s), clearance(c.s.x, c.s.z), ...gaps.map((g) => R * Math.min(Math.abs(norm(c.a - g.a0)), Math.abs(norm(c.a - g.a1))))) }))
     .sort((p, q) => q.score - p.score);
   const benches = [];
-  // Best spread first: of the candidates that pass, keep the three furthest apart round the arc (greedy from the ends)
-  const pool = scored.slice().sort((p, q) => p.a - q.a);
+  // Best spread: of the candidates that pass, the two ends of the building arc and the one nearest its middle, measured
+  // from the HQ direction so an arc across the ±π seam (Community) still finds its real ends
+  const hq = plaza.hubDir ? Math.atan2(plaza.hubDir[1], plaza.hubDir[0]) : 0;
+  const rel = (a) => ((norm(a - hq) % TAU) + TAU) % TAU; // 0..2π from HQ
+  const pool = scored.slice().sort((p, q) => rel(p.a) - rel(q.a));
   const pick = (c) => benches.push({ ...c.s, a: c.a, yaw: Math.atan2(cx - c.s.x, cz - c.s.z) });
   if (pool.length <= BENCH.perPlaza) pool.forEach(pick);
   else {
-    pick(pool[0]); pick(pool[pool.length - 1]);
-    const mid = pool.slice(1, -1).sort((p, q) => Math.abs(norm(q.a - pool[0].a) - norm(pool[pool.length - 1].a - q.a)) - Math.abs(norm(p.a - pool[0].a) - norm(pool[pool.length - 1].a - p.a)))[0];
-    if (mid) pick(mid);
+    const first = pool[0], last = pool[pool.length - 1], middle = (rel(first.a) + rel(last.a)) / 2;
+    pick(first); pick(last);
+    pick(pool.slice(1, -1).sort((p, q) => Math.abs(rel(p.a) - middle) - Math.abs(rel(q.a) - middle))[0]);
   }
   const pots = [];
   if (planters) for (const b of benches) {

@@ -188,13 +188,15 @@ function jumpHeight(x, z) {
 const freeJumpPads = jumps.filter((j) => j.road == null).map((j) => ({ x: j.ox + j.fx * j.length / 2, z: j.oz + j.fz * j.length / 2, r: j.length / 2 + 3 }));
 
 // ── Builders' Row: shop plots along the last stretch of the road into Developers ──
-// Alternate sides every 13 m, facing the road; each slot is flattened.
+// The first slot 8 m back from the road's end (so about 6 m outside the rim, whatever the plaza's radius; 3 Nov 2026,
+// when Developers shrank to 42 m a fraction of the road left a 20 m gap), then alternate sides every 13 m, facing the
+// road; each slot is flattened.
 const ROW_STOPS = STOPS.filter((s) => s.row === "builders");
 export const builderSlots = (() => {
   const r = roads.find((x) => x.kind === "spoke" && x.to === "developers");
   if (!r) return [];
   return ROW_STOPS.map((stop, i) => {
-    const t = 0.88 - (i * 13) / r.len;
+    const t = 1 - (8 + i * 13) / r.len;
     const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
     const side = i % 2 ? 1 : -1;
     const nx = -tan.z * side, nz = tan.x * side; // away from the road
