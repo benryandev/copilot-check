@@ -357,7 +357,7 @@ A compass rose at the heart of Partners: one arm for each partner on the plaza, 
 - Nothing live here. The compass is a map of the plaza, laid out from the stops themselves, so a new partner gets an arm the day its stop is added.
 - Pick an arm and drive the way it points: the pad it names is on the rim ahead.
 
-Link: [Every partner stop](/ecosystem/stops/#district-partners) · [Open Strike](https://app.strikefinance.org/trade)
+Link: [Every partner stop](/ecosystem/stops/#district-partners)
 
 ### RealFi
 

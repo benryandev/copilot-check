@@ -7,7 +7,7 @@
 // and their nodes carry the offsets: they are read with `translations: true`, which is what three.js renders.
 import { readFileSync } from 'node:fs';
 
-export const TRANSLATED = new Set(['slp-engine.glb', 'stake.glb', 'chart-plinth.glb', 'collateral-stacks.glb', 'beacon.glb']);
+export const TRANSLATED = new Set(['slp-engine.glb', 'stake.glb', 'chart-plinth.glb', 'collateral-stacks.glb', 'beacon.glb', 'feed-obelisk.glb', 'three-pylons.glb', 'compass.glb']);
 
 export function glbHeight(path, { translations = false } = {}) {
   const b = readFileSync(path);

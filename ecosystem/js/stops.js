@@ -680,8 +680,6 @@ export const STOPS = [
     live: null,
     docs: "/ecosystem/stops/#district-partners",
     docsLabel: "Every partner stop",
-    site: "https://app.strikefinance.org/trade",
-    siteLabel: "Open Strike",
   },
   {
     key: "realfi",
