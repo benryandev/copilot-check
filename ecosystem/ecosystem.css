@@ -171,7 +171,7 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 /* The steering stick (stick.js): a pill with a knob that follows the thumb; where the thumb lands is neutral */
 .stick {
   position: relative;
-  width: 6.75rem;
+  width: 9rem; /* about the two old buttons and their gap, as on a tablet; narrower where a phone cannot fit it (below) */
   height: 4.5rem;
   display: flex;
   align-items: center;
@@ -400,17 +400,18 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
   .hud-foot { font-size: 0.65rem; }
   .pad-btn { width: 4rem; height: 4rem; }
   .pad-gas { width: 4.75rem; height: 4.75rem; }
-  .stick { width: 6rem; height: 4rem; }
+  .stick { width: 7.5rem; height: 4rem; }
 }
 .foot-short { display: none; }
 @media (max-width: 400px) { /* the smallest phones: the shorter disclosure keeps the credit on screen */
+  .stick { width: 6.5rem; } /* and the stick leaves room for the emote button and the two driving buttons */
   .foot-long { display: none; }
   .foot-short { display: inline; }
 }
 @media (max-height: 500px) { /* a phone on its side: less height to spend */
   .pad-btn { width: 3.5rem; height: 3.5rem; }
   .pad-gas { width: 4rem; height: 4rem; }
-  .stick { width: 5.25rem; height: 3.5rem; }
+  .stick { width: 7.5rem; height: 3.5rem; }
   .hud-prompt { bottom: 7rem; }
 }
 

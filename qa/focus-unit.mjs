@@ -16,6 +16,18 @@ test('focusPose stands in front of the board at its centre height, looking at th
   assert.deepEqual(p.look, { x: 100, y: 12, z: -50 });
   assert.equal(p.cam.x, 100); assert.equal(p.cam.y, 12); assert.equal(Math.round(p.cam.z * 10) / 10, -50 + 11);
 });
+test('focusPose frames the board in the band above a bar at the bottom of the viewport', () => {
+  const aspect = 844 / 390, t = Math.tan((55 * Math.PI) / 360);
+  const plain = focusPose(board, 55, aspect);
+  const p = focusPose(board, 55, aspect, { inset: 60, viewH: 390 });
+  // the band is 330 of 390 px, so the height term grows by 390/330 (the height governs at this aspect)
+  assert.equal(Math.round((p.cam.z - board.z) * 100) / 100, Math.round(frameDistance(14, 10, 55, aspect) * (390 / 330) * 100) / 100);
+  assert.ok(p.cam.y < plain.cam.y && p.look.y < plain.look.y, 'the camera and the look drop together');
+  assert.equal(p.cam.y, p.look.y, 'still level');
+  const d = p.cam.z - board.z;
+  assert.equal(Math.round((board.y - p.look.y) * 1000) / 1000, Math.round((60 / 390) * d * t * 1000) / 1000, 'the drop centres the board in the band');
+  assert.deepEqual(focusPose(board, 55, aspect, { inset: 0, viewH: 390 }), plain, 'no bar, no change');
+});
 test('focusBlend eases in over 0.9 s and out over 0.6 s', () => {
   assert.equal(Math.round(focusBlend(0, 0.45, true) * 100) / 100, 0.5); assert.equal(focusBlend(0.9, 1, true), 1);
   assert.equal(Math.round(focusBlend(1, 0.3, false) * 100) / 100, 0.5); assert.equal(focusBlend(0.1, 1, false), 0);

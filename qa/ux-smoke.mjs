@@ -116,7 +116,7 @@ if (parts.includes('footer')) {
 
 if (parts.includes('zoom')) {
   const until = (page, fn, ms = 20_000) => page.waitForFunction(fn, null, { timeout: ms }).then(() => true, () => false);
-  for (const [w, h, touch] of [[1280, 800, false], [375, 812, true]]) for (const theme of shots ? ['light', 'dark'] : ['dark']) {
+  for (const [w, h, touch] of [[1280, 800, false], [375, 812, true], [844, 390, true]]) for (const theme of shots ? ['light', 'dark'] : ['dark']) {
     const tag = `zoom ${w}${shots ? ' ' + theme : ''}`;
     const { ctx, page, errs } = await open({ width: w, height: h, touch, theme });
     await page.evaluate(() => window.__eco.toStart());
@@ -133,15 +133,30 @@ if (parts.includes('zoom')) {
     const st = await page.evaluate(() => {
       const vis = (sel) => getComputedStyle(document.querySelector(sel)).visibility;
       const s = window.__eco.car.s, b = window.__eco.boardPose(), c = window.__eco.camera.position;
-      return { speed: s.speed, x: s.x, z: s.z, bar: getComputedStyle(document.getElementById('focus-bar')).display, top: vis('.hud-top'), foot: vis('.hud-foot'), touch: vis('#touch'), inFront: (c.x - b.x) * b.fx + (c.z - b.z) * b.fz, height: c.y - b.y };
+      return { speed: s.speed, x: s.x, z: s.z, bar: getComputedStyle(document.getElementById('focus-bar')).display, top: vis('.hud-top'), foot: vis('.hud-foot'), touch: vis('#touch'), inFront: (c.x - b.x) * b.fx + (c.z - b.z) * b.fz, level: Math.abs(c.y - window.__eco.focus.look.y), below: b.y - c.y };
     });
     check(st.speed === 0 && Math.abs(st.x - at.x) < 1e-6 && Math.abs(st.z - at.z) < 1e-6, `${tag}: the car stopped where it was (speed ${st.speed}, moved ${Math.hypot(st.x - at.x, st.z - at.z).toFixed(3)} m)`);
     check(st.bar !== 'none', `${tag}: the Save and Back bar shows`);
     check(st.top === 'hidden' && st.foot === 'hidden' && st.touch === 'hidden', `${tag}: the HUD and the touch controls hide (${st.top}, ${st.foot}, ${st.touch})`);
-    check(st.inFront > 5 && Math.abs(st.height) < 0.01, `${tag}: the camera stands in front of the printed side at the board's height (${st.inFront.toFixed(1)} m, ${st.height.toFixed(2)} m)`);
+    // The view is level (the camera at its look point's height) and sits at or a little below the board's centre, which
+    // is how the board centres in the band above the bar
+    check(st.inFront > 5 && st.level < 0.01 && st.below >= 0 && st.below < 2, `${tag}: the camera stands in front of the printed side, level, ${st.below.toFixed(2)} m under the centre (${st.inFront.toFixed(1)} m out)`);
+    // Every corner of the board is on screen and its bottom edge sits above the Save and Back bar
+    const fit = await page.evaluate(() => {
+      const e = window.__eco, b = e.boardPose(), rx = b.fz, rz = -b.fx; // the board's own x axis in the world
+      const corners = [[-1, 1], [1, 1], [-1, -1], [1, -1]].map(([sx, sy]) => e.project(b.x + rx * sx * b.w / 2, b.y + sy * b.h / 2, b.z + rz * sx * b.w / 2));
+      const barTop = document.getElementById('focus-bar').getBoundingClientRect().top;
+      return { corners: corners.map((c) => `${Math.round(c.x)},${Math.round(c.y)}`), onScreen: corners.every((c) => c.x >= 0 && c.x <= innerWidth && c.y >= 0 && c.y <= innerHeight), clear: corners.slice(2).every((c) => c.y < barTop), barTop: Math.round(barTop) };
+    });
+    check(fit.onScreen && fit.clear, `${tag}: the whole board is on screen above the bar (corners ${fit.corners.join(' ')}, bar top ${fit.barTop})`);
     if (touch) await page.click('#focus-back'); else await page.keyboard.press('Escape');
     check(await until(page, () => !document.body.classList.contains('is-focus') && window.__eco.focus.k === 0, 30_000), `${tag}: ${touch ? 'Back' : 'Escape'} brings the chase camera back`);
     check((await page.evaluate(() => getComputedStyle(document.getElementById('focus-bar')).display)) === 'none', `${tag}: the bar is gone`);
+    // A teleport (Map view's Drive in, a guide's Drive there) during the zoom ends it
+    await page.evaluate(() => window.__eco.focusBoard());
+    check(await until(page, () => window.__eco.focus.k >= 1, 30_000), `${tag}: zoomed again`);
+    await page.evaluate(() => window.__eco.teleport('slp'));
+    check(await until(page, () => !document.body.classList.contains('is-focus') && window.__eco.focus.k === 0 && document.getElementById('focus-bar').hidden, 5000), `${tag}: a teleport ends the zoom`);
     check(errs.length === 0, `${tag}: no page errors${errs.length ? ' ' + errs.join(' | ') : ''}`);
     await ctx.close();
   }
@@ -181,6 +196,8 @@ if (parts.includes('triggers')) {
   check(await until(page, () => document.body.classList.contains('is-focus'), 5000), 'triggers: Zoom in zooms');
   check(await page.evaluate(() => document.getElementById('board-prompt')?.hidden === true), 'triggers: the card is gone while zoomed');
   await page.evaluate(() => window.__eco.focusEnd());
+  check(await until(page, () => window.__eco.focus.k === 0, 30_000), 'triggers: back from Zoom in');
+  check(!(await until(page, () => !document.getElementById('board-prompt').hidden, 2500)), 'triggers: Back by the board holds the card until the car leaves');
   check(errs.length === 0, `triggers: no page errors${errs.length ? ' ' + errs.join(' | ') : ''}`);
   await ctx.close();
 }
