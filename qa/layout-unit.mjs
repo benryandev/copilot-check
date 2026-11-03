@@ -86,7 +86,7 @@ test('nine or more: tallest stops outer on 95 to 265, the rest inner in alternat
   for (const s of auto) assert.ok(Math.abs(degFromHQ(perps, placed.get(s.key)) - 180) >= LAYOUT.keepOff180, s.key);
 });
 
-test('from the HQ mouth no two pads share a bearing (within 3 degrees), so no label stacks', () => {
+test('from the HQ mouth no two buildings share a bearing: 3 degrees in one row, 1.5 across Perpetuals rows', () => {
   const placed = layoutStops();
   for (const d of Object.values(DISTRICTS)) {
     if (!d.hubDir) continue;
@@ -94,8 +94,10 @@ test('from the HQ mouth no two pads share a bearing (within 3 degrees), so no la
     const rows = STOPS.filter((s) => s.district === d.key && placed.has(s.key)).map((s) => { const p = placed.get(s.key); return { key: s.key, h: HEIGHT[s.shape], b: (Math.atan2(p[1] - mouth[1], p[0] - mouth[0]) * 180) / Math.PI }; }).sort((a, b) => a.b - b.b);
     for (let i = 1; i < rows.length; i++) {
       const gap = rows[i].b - rows[i - 1].b;
-      // Perpetuals' inner pads slide within their gaps to earn this (3 Nov 2026): exact midpoints gave 2° at best
-      assert.ok(gap >= 3, `${d.key}: ${rows[i - 1].key} and ${rows[i].key} ${gap.toFixed(1)} degrees apart from the mouth`);
+      // Labels are guarded by the two-dimensional test below; this keeps the buildings themselves apart from the entrance:
+      // 3° in a single row, LAYOUT.minBearing (1.5°) in Perpetuals' two rows, where an inner model stands in front of a
+      // taller outer one (3 Nov 2026 ruling)
+      assert.ok(gap >= (d.key === 'perps' ? LAYOUT.minBearing : 3), `${d.key}: ${rows[i - 1].key} and ${rows[i].key} ${gap.toFixed(1)} degrees apart from the mouth`);
     }
   }
 });
@@ -115,4 +117,21 @@ test('things placed by hand stay clear of the shrunk rims', () => {
   assert.ok(Math.abs(dist(ridge.points[6], DISTRICTS.developers.centre) - DISTRICTS.developers.radius) < 0.01, 'and reaches the Developers rim');
   const flag = STOPS.find((s) => s.key === 'funding-rates');
   assert.ok(dist(flag.pos, DISTRICTS.perps.centre) <= DISTRICTS.perps.radius - 8, 'Funding rates inside Perpetuals');
+});
+
+test('from the HQ mouth no two labels overlap: clear sideways (0.42 m a character) or clear vertically (label 2.2 m over the model, 1 m tall)', () => {
+  const placed = layoutStops();
+  for (const d of Object.values(DISTRICTS)) {
+    if (!d.hubDir) continue;
+    const mouth = [d.centre[0] + d.hubDir[0] * d.radius, d.centre[1] + d.hubDir[1] * d.radius];
+    const rows = STOPS.filter((s) => s.district === d.key && placed.has(s.key)).map((s) => {
+      const p = placed.get(s.key), dist = Math.hypot(p[0] - mouth[0], p[1] - mouth[1]), r2d = 180 / Math.PI;
+      return { key: s.key, b: Math.atan2(p[1] - mouth[1], p[0] - mouth[0]) * r2d, w: ((0.42 * s.name.length) / dist) * r2d, e: Math.atan((HEIGHT[s.shape] + 2.2) / dist) * r2d, h: (1.0 / dist) * r2d };
+    });
+    for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++) {
+      const a = rows[i], b = rows[j];
+      const clear = Math.max(Math.abs(a.b - b.b) - (a.w + b.w) / 2, Math.abs(a.e - b.e) - (a.h + b.h) / 2);
+      assert.ok(clear >= 0.3, `${d.key}: "${a.key}" and "${b.key}" labels overlap by ${(-clear).toFixed(1)} degrees from the mouth`);
+    }
+  }
 });

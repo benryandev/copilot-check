@@ -199,7 +199,7 @@ export const MULTIPLAYER = true;
 //     (ten at 54 m); the rest sit at r−28 in alternate gaps between outer slots, each slid within its gap so that its
 //     bearing from the entrance is at least 3° from every other pad, so no inner pad lines up with an outer one and no
 //     label stacks from the entrance.
-export const LAYOUT = { oneRowMax: 8, arc: [100, 260], outerArc: [95, 265], outerInset: 12, innerInset: 28, innerClear: 6, minGap: 14, minGapWide: 13.5, keepOff180: 5 };
+export const LAYOUT = { oneRowMax: 8, arc: [100, 260], outerArc: [95, 265], outerInset: 12, innerInset: 28, innerClear: 6, charWidth: 0.42, labelHeight: 1.0, minBearing: 1.5, minGap: 14, minGapWide: 13.5, keepOff180: 5 };
 export function layoutStops(stops = STOPS, districts = DISTRICTS) {
   const out = new Map();
   const deg = Math.PI / 180;
@@ -225,28 +225,48 @@ export function layoutStops(stops = STOPS, districts = DISTRICTS) {
     const oa = slots(k, LAYOUT.outerArc);
     outer.forEach((s, i) => put(s, oa[i], rOut));
     // Inner pads take alternate gaps between outer slots (gap 1, 3, 5, …; every gap if there are more inner stops than
-    // that). Within its gap each pad slides, 6° clear of both outer angles, to the angle whose bearing from the HQ mouth
-    // is furthest from every pad already placed: exact midpoints gave 2° at best, which stacked two labels from the
-    // entrance; sliding reaches 3°.
+    // that). Labels float over the buildings, so what must not collide from the entrance is label against label: each
+    // label's width is taken as 0.42 m a character (the label canvas), seen from the HQ mouth. Every assignment of inner
+    // stops to gaps is tried; within its gap each pad slides, 6° clear of both outer angles, to the angle that keeps the
+    // most clearance from every pad already placed; the assignment with the best worst-case clearance wins. Exact
+    // midpoints in stop order gave 2° at best and stacked two labels (3 Nov 2026).
     const rIn = d.radius - LAYOUT.innerInset;
     const mouth = [d.centre[0] + d.hubDir[0] * d.radius, d.centre[1] + d.hubDir[1] * d.radius];
-    const bearing = (p) => Math.atan2(p[1] - mouth[1], p[0] - mouth[0]) / deg;
     const at = (a, r) => [d.centre[0] + Math.cos(base + a * deg) * r, d.centre[1] + Math.sin(base + a * deg) * r];
-    const placed = outer.map((s) => out.get(s.key));
-    const gaps = Array.from({ length: k - 1 }, (_, i) => i).filter((i) => i % 2 === 1);
-    const order = gaps.length >= inner.length ? gaps : Array.from({ length: k - 1 }, (_, i) => i);
-    inner.forEach((s, i) => {
-      const g = order[i];
-      let best = null;
-      for (let a = oa[g] + LAYOUT.innerClear; a <= oa[g + 1] - LAYOUT.innerClear + 1e-9; a += 0.1) {
-        const p = at(a, rIn), b = bearing(p);
-        if (placed.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < LAYOUT.minGapWide)) continue;
-        const sep = Math.min(...placed.map((q) => Math.abs(bearing(q) - b)));
-        if (!best || sep > best.sep) best = { a, p, sep };
-      }
-      const p = best ? best.p : at((oa[g] + oa[g + 1]) / 2, rIn); // nothing clears the spacing: the midpoint, as before
-      out.set(s.key, p); placed.push(p);
-    });
+    // A label as seen from the mouth: bearing and width sideways, elevation and height up (the sprite sits 2.2 m over the
+    // model, its text about 1 m tall). Two labels are clear when they miss sideways or miss vertically.
+    const seen = (stop, p) => {
+      const dist = Math.hypot(p[0] - mouth[0], p[1] - mouth[1]);
+      return { p, b: Math.atan2(p[1] - mouth[1], p[0] - mouth[0]) / deg, w: ((LAYOUT.charWidth * String(stop.name ?? stop.key).length) / dist) / deg, e: Math.atan((heightOf(stop.shape) + 2.2) / dist) / deg, h: (LAYOUT.labelHeight / dist) / deg };
+    };
+    // ... and the buildings themselves keep at least `minBearing` apart from the mouth, so an inner one never stands
+    // square in front of an outer one.
+    const clearance = (x, y) => Math.min(Math.max(Math.abs(x.b - y.b) - (x.w + y.w) / 2, Math.abs(x.e - y.e) - (x.h + y.h) / 2), Math.abs(x.b - y.b) - LAYOUT.minBearing);
+    const outerSeen = outer.map((s) => seen(s, out.get(s.key)));
+    const gapsAll = Array.from({ length: k - 1 }, (_, i) => i), gapsAlt = gapsAll.filter((i) => i % 2 === 1);
+    const gaps = gapsAlt.length >= inner.length ? gapsAlt : gapsAll;
+    const permutations = (arr) => (arr.length <= 1 ? [arr] : arr.flatMap((x, i) => permutations([...arr.slice(0, i), ...arr.slice(i + 1)]).map((rest) => [x, ...rest])));
+    const orders = inner.length <= 6 ? permutations(inner) : [inner];
+    let bestRun = null;
+    for (const order of orders) {
+      const placed = outerSeen.slice(), spots = [];
+      let worst = Infinity;
+      order.forEach((stop, i) => {
+        const g = gaps[i];
+        let best = null;
+        for (let a = oa[g] + LAYOUT.innerClear; a <= oa[g + 1] - LAYOUT.innerClear + 1e-9; a += 0.1) {
+          const v = seen(stop, at(a, rIn));
+          if (placed.some((q) => Math.hypot(q.p[0] - v.p[0], q.p[1] - v.p[1]) < LAYOUT.minGapWide)) continue;
+          const c = Math.min(...placed.map((q) => clearance(q, v)));
+          if (!best || c > best.c) best = { v, c };
+        }
+        const v = best ? best.v : seen(stop, at((oa[g] + oa[g + 1]) / 2, rIn)); // nothing clears the spacing: the midpoint
+        worst = Math.min(worst, best ? best.c : -Infinity);
+        placed.push(v); spots.push([stop, v.p]);
+      });
+      if (!bestRun || worst > bestRun.worst) bestRun = { worst, spots };
+    }
+    for (const [stop, p] of bestRun.spots) out.set(stop.key, p);
   }
   return out;
 }
