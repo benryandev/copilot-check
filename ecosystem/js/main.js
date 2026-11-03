@@ -612,7 +612,7 @@ function checkPads() {
       $("prompt-label").textContent = `Open ${found.stop.name}`;
       $("prompt-district").textContent = d.name;
       $("prompt-btn").style.setProperty("--prompt-colour", "#" + new THREE.Color(tint(d.colour)).getHexString());
-      $("prompt-hint").hidden = coarse;
+      $("prompt-hint").textContent = coarse ? "Tap" : "Enter"; // on a touch screen the card itself is the button; without a cue it read as a label
     }
   }
 }
@@ -655,6 +655,14 @@ function show(d) {
   $("board-prompt").hidden = true;
   paused = true;
   d.showModal();
+  // The browser's default focus goes to the first control, which on a tall sheet sits past the fold (the sheet opened
+  // scrolled past its title) and on the name forms raises a phone's keyboard: focus the heading instead, unless the
+  // sheet names its own autofocus (the intro's Start driving, the arcade's frame).
+  if (!d.querySelector("[autofocus]")) {
+    const h = d.querySelector("h1, h2");
+    if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+  }
+  d.scrollTop = 0;
 }
 
 function fillStats(dl, ks) {
@@ -906,10 +914,12 @@ function drawPeers(state) {
 }
 function fillPeersSheet(state) {
   const list = $("peers-list"), st = $("peers-status");
-  list.replaceChildren(...[...(state.me ? [{ ...state.me, district: `you · ${whereText}` }] : []), ...state.peers].map(peerItem));
+  list.replaceChildren(...[...(state.me ? [{ ...state.me, district: ownDistrict(state.me) }] : []), ...state.peers].map(peerItem));
   st.textContent = state.status === "on" ? (state.peers.length ? "" : "Nobody else right now. Send a friend the link.") : state.status === "offline" ? "The room is away. Reconnecting." : "Multiplayer is off for this session.";
   if (document.activeElement !== $("peers-name")) $("peers-name").value = state.me?.name || "";
 }
+// Your own row: the "you" tag only once a name is chosen (the default name is "You", so the row read "You you")
+const ownDistrict = (me) => (me.name === "You" ? whereText : `you · ${whereText}`);
 function fillMapPeers(state) {
   const old = $("map-peers");
   if (old) old.remove();
@@ -918,7 +928,7 @@ function fillMapPeers(state) {
   wrap.id = "map-peers";
   const ul = document.createElement("ul");
   ul.className = "peers-list";
-  ul.append(...state.peers.map(peerItem));
+  ul.append(...[...(state.me ? [{ ...state.me, district: ownDistrict(state.me) }] : []), ...state.peers].map(peerItem)); // the count above includes you, so the list does too
   wrap.append(Object.assign(document.createElement("p"), { className: "map-group", textContent: `Driving now: ${state.peers.length + 1}` }), ul);
   $("map-live").after(wrap);
 }

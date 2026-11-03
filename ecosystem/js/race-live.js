@@ -157,7 +157,7 @@ export function raceReset() { if (race) clear(); draw(); }
 
 function showInvite(m) {
   if (entered) return;
-  $("race-invite-text").textContent = `${m.name} started a race on the Raceway. 20 s to the grid.`;
+  $("race-invite-text").textContent = `${m.name} started a race on the Raceway. 20 s to the grid.`;
   $("race-invite").hidden = false;
 }
 function hideInvite() { $("race-invite").hidden = true; }

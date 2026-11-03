@@ -128,12 +128,14 @@ body:has(#race-hud:not([hidden])) .hud-title { display: none; }
 /* Light theme: HUD panels go opaque. At 88% the grey labels on them dropped to ~3.9:1 over
    dark scenery; on solid white they are 4.8:1 whatever is behind. */
 .light :is(.hud-title, .chip, .race-hud, .prompt-card, .hud-foot) { background: var(--bg-surface); }
+.light :is(.hud-title, .chip, .hud-foot) { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); } /* white pills dissolved into the clouds */
 /* While a sheet is open the HUD goes: the footer and driving buttons would only crowd its edges, and the corner
    panels read as live controls behind the backdrop (below ~1140px a 34rem sheet cut them mid-word as well). The
    sheet's own eyebrow names the district. */
 body:has(dialog[open]) :is(.hud-foot, .touch, .hud-top, .race-hud, .hud-prompt, .emote-row) { visibility: hidden; } /* the pad prompt too: at 1001 px it peeked out under the sheet's edge */
-/* The phone tip in the intro only matters on touch screens */
+/* The phone tip in the intro only matters on touch screens; on a phone the intro keeps to the tip, Map view and the links */
 @media (pointer: fine) { .touch-tip { display: none; } }
+@media (max-width: 600px) { .intro-more { display: none; } }
 /* The district name wraps the same way in both themes */
 .hud-district { text-wrap: balance; }
 
@@ -225,13 +227,14 @@ body:has(dialog[open]) :is(.hud-foot, .touch, .hud-top, .race-hud, .hud-prompt, 
   box-shadow: 0 12px 40px var(--shadow-heavy);
 }
 .sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
+.light .sheet::backdrop { background: rgba(255, 255, 255, 0.45); } /* a black scrim turned the daylight scene muddy behind every white sheet */
 .sheet > * { margin: 0; }
 .sheet > * + * { margin-top: var(--space-md); }
 .sheet h1 { font-size: 2.25rem; }
 .sheet h2 { font-size: 2rem; }
-.sheet p { font-size: 1.0625rem; max-width: var(--measure); }
+.sheet p { font-size: 1.0625rem; max-width: var(--measure); text-wrap: pretty; }
 .sheet ul { padding-left: 1.1rem; }
-.sheet li { font-size: 1rem; line-height: 1.5; }
+.sheet li { font-size: 1rem; line-height: 1.5; text-wrap: pretty; }
 .sheet li + li { margin-top: var(--space-2xs); }
 .sheet .muted { color: var(--text-secondary); font-size: 0.95rem; }
 .sheet .muted a { color: inherit; text-decoration: underline; text-underline-offset: 0.15em; } /* the kit's link colour fails contrast on the dark sheet */
@@ -254,7 +257,7 @@ body:has(dialog[open]) :is(.hud-foot, .touch, .hud-top, .race-hud, .hud-prompt, 
    article rules from guides.css (loaded when the sheet first opens) */
 .sheet--guide { width: min(44rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); padding: var(--space-lg); }
 .sheet--guide > * + * { margin-top: var(--space-sm); }
-.guide-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); }
+.guide-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-sm); } /* on a narrow phone the pill drops under the eyebrow rather than squeezing it */
 .guide-head .br-button { flex: none; }
 .sheet--guide .guide-sheet, .sheet--guide main { position: static; margin: 0; width: auto; max-width: none; border: 0; box-shadow: none; padding: 0; background: transparent; }
 .sheet--guide :is(.stops-head > .wrap, .stops-body) { width: auto; margin: 0; padding: 0; background: transparent; border: 0; box-shadow: none; }
@@ -270,7 +273,12 @@ body:has(dialog[open]) :is(.hud-foot, .touch, .hud-top, .race-hud, .hud-prompt, 
 /* The arcade cabinet's sheet: the game in a frame, Keep driving above it so it stays reachable on a phone */
 .sheet--arcade { width: min(40rem, calc(100vw - 2rem)); padding: var(--space-md); }
 .sheet--arcade > * + * { margin-top: var(--space-sm); }
-.arcade-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-sm); }
+.arcade-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-sm); }
+/* A sheet head with the exit pill at the top right (Map view, the longest sheet; the guide and arcade heads do the same) */
+.sheet-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-sm); }
+.sheet-head .br-button { flex: none; }
+.sheet-head > div > * { margin: 0; }
+.sheet-head > div > * + * { margin-top: var(--space-2xs); }
 .arcade-head h2 { font-size: 1.5rem; }
 .arcade-head .br-button { flex: none; }
 .arcade-credit { font-size: 0.9rem !important; }
@@ -312,6 +320,7 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
 
 .keys { list-style: none; padding: 0 !important; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2xs); }
 .keys li + li { margin-top: 0; }
+.keys li { display: grid; grid-template-columns: 5.5rem 1fr; align-items: baseline; } /* the descriptions line up in one column */
 .key {
   display: inline-block;
   margin-right: var(--space-3xs);
@@ -350,6 +359,7 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
   font-size: 1.25rem;
   font-variant-numeric: tabular-nums;
 }
+.stats div:last-child:nth-child(odd) { grid-column: 1 / -1; } /* an odd last tile takes the row, instead of sitting beside an empty cell */
 
 .map-list { list-style: none; padding: 0 !important; }
 .map-item { display: flex; gap: var(--space-2xs); align-items: stretch; }
@@ -387,6 +397,10 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
   cursor: pointer;
 }
 .map-go:hover { border-color: var(--text-primary); }
+/* The card is the drive-to button: a chevron at its edge says so (READ beside it looked like the only control) */
+.map-go { position: relative; padding-right: 2.25rem; }
+.map-go::after { content: "›"; position: absolute; right: var(--space-sm); top: 50%; transform: translateY(-50%); font-family: var(--font-mono); font-size: 1.5rem; line-height: 1; color: var(--text-secondary); }
+.map-go:hover::after { color: var(--text-primary); }
 .map-list strong { font-family: var(--font-body); font-size: 1rem; }
 .map-list span { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.4; }
 
@@ -484,7 +498,7 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
 }
 .prompt-card:hover { border-color: var(--text-primary); border-left-color: var(--prompt-colour, var(--text-primary)); }
 .prompt-text { display: flex; flex-direction: column; gap: 0.1rem; }
-.prompt-eyebrow { font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
+.prompt-eyebrow { font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); white-space: nowrap; }
 .prompt-name { font-family: var(--font-display); font-weight: 600; font-size: 1.125rem; line-height: 1.2; }
 .prompt-key {
   padding: 0.45rem 0.7rem;
@@ -533,9 +547,10 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
 }
 .arrive.is-in { opacity: 1; transform: none; }
 .arrive p { margin: 0; text-shadow: 0 0 10px var(--bg-page), 0 0 2px var(--bg-page); }
-.arrive .br-label { color: var(--text-secondary); margin-bottom: var(--space-xs); }
+/* The card's eyebrow and hint take the title's ink and halo: the grey measured about 2:1 over grass and road */
+.arrive .br-label { color: var(--text-primary); font-size: 0.8125rem; margin-bottom: var(--space-xs); }
 .arrive-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(2.25rem, 7vw, 5rem); line-height: 1; letter-spacing: -0.02em; color: var(--text-primary); text-shadow: 0 2px 28px var(--bg-page), 0 0 2px var(--bg-page); }
-.arrive-hint { margin-top: var(--space-md); font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.08rem; text-transform: uppercase; color: var(--text-secondary); }
+.arrive-hint { margin-top: var(--space-md); font-family: var(--font-mono); font-size: 0.8125rem; letter-spacing: 0.08rem; text-transform: uppercase; color: var(--text-primary); }
 .arrive-tap { display: none; }
 body:has(#touch:not([hidden])) .arrive-tap { display: inline; }
 body:has(#touch:not([hidden])) .arrive-key { display: none; }
@@ -596,8 +611,10 @@ body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transitio
 /* ── Live races ─────────────────────────────────────────────────────── */
 .race-go { margin-top: var(--space-2xs); pointer-events: auto; }
 .race-go[hidden] { display: none; }
-.race-invite .prompt-card { cursor: default; pointer-events: auto; gap: var(--space-sm); }
+.race-invite .prompt-card { cursor: default; pointer-events: auto; gap: var(--space-sm); flex-wrap: wrap; }
 .race-invite-actions { display: flex; gap: var(--space-2xs); }
+.hud-prompt { max-width: calc(100vw - 1rem); }
+@media (max-width: 480px) { .race-invite-actions { flex: 1 1 100%; justify-content: flex-end; } } /* the chips under the message, which they had squeezed to a word a line */
 
 /* The board zoom (main.js focusBoard): the HUD and the driving controls go, a bar with Save the board and Back stays */
 .focus-bar { left: 50%; bottom: max(var(--space-sm), env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: var(--space-2xs); pointer-events: auto; }

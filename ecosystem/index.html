@@ -125,7 +125,7 @@
       <li><span class="key">M</span> map view</li>
       <li><span class="key">E</span> wave at someone</li>
     </ul>
-    <p class="muted"><span class="touch-tip">On a phone, steer with the pad on the left and drive with the buttons on the right. </span>Looking for something? Map view jumps you straight there. Race a lap puts you on the RealFi Raceway start line, with a live top 10. The Fill Yard, off the road to Perpetuals, shows every trade on Strike as it happens. Other visitors can see your car and the name you chose. Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>; the code is <a href="https://github.com/benryandev/copilot-check" target="_blank" rel="noopener">on GitHub</a>.</p>
+    <p class="muted"><span class="touch-tip">On a phone, steer with the stick on the left and drive with the buttons on the right. </span>Looking for something? Map view jumps you straight there. <span class="intro-more">Race a lap puts you on the RealFi Raceway start line, with a live top 10. The Fill Yard, off the road to Perpetuals, shows every trade on Strike as it happens. Other visitors can see your car and the name you chose. </span>Built with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>, and the code is <a href="https://github.com/benryandev/copilot-check" target="_blank" rel="noopener">on GitHub</a>.</p>
     <p class="muted">Prefer to read? <a href="/ecosystem/stops/" data-guide-link>Every stop as text</a> · <a href="/ecosystem/guides/" data-guide-link>Start here: learn Strike from zero</a>.</p>
     <div class="sheet-actions">
       <button type="button" class="br-button" id="start" autofocus><span class="br-button-label">Start driving</span></button>
@@ -171,8 +171,13 @@
     <div class="arcade-board" id="arcade-board"></div>
   </dialog>
   <dialog id="map" class="sheet" aria-labelledby="map-title">
-    <p class="br-label">Map view</p>
-    <h2 id="map-title">Where to?</h2>
+    <div class="sheet-head">
+      <div>
+        <p class="br-label">Map view</p>
+        <h2 id="map-title">Where to?</h2>
+      </div>
+      <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Keep driving</span></button>
+    </div>
     <p class="muted">Pick a feature to drive straight to it, or read about it here.</p>
     <dl class="stats" id="map-live"></dl>
     <div id="map-groups"></div>
@@ -195,7 +200,7 @@
       <button type="button" class="chip" data-music="off">Off</button>
     </fieldset>
     <div class="sheet-actions">
-      <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Back to the world</span></button>
+      <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Keep driving</span></button>
     </div>
   </dialog>
 
@@ -209,11 +214,11 @@
         <button type="submit" class="br-button"><span class="br-button-label">Save</span></button>
       </div>
     </form>
-    <div class="race-actions"><button type="button" class="br-button br-button--secondary" id="peers-race"><span class="br-button-label">Start a race</span></button><span class="muted race-actions-hint">20 s to the grid, up to 8 cars, lap times still count for the leaderboard.</span></div>
+    <div class="race-actions"><button type="button" class="br-button br-button--secondary" id="peers-race"><span class="br-button-label">Start a race</span></button><span class="muted race-actions-hint">20&nbsp;s to the grid, up to 8&nbsp;cars, lap times still count for the leaderboard.</span></div>
     <ul class="peers-list" id="peers-list"></ul>
     <p class="muted" id="peers-status" role="status" aria-live="polite"></p>
     <div class="sheet-actions">
-      <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Back to the world</span></button>
+      <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Keep driving</span></button>
     </div>
   </dialog>
 
@@ -238,7 +243,7 @@
     <div class="sheet-actions">
       <button type="button" class="br-button br-button--secondary" id="race-board"><span class="br-button-label">See it on the board</span></button>
       <button type="button" class="br-button br-button--secondary" id="race-again"><span class="br-button-label">Race again</span></button>
-      <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Back to the world</span></button>
+      <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Keep driving</span></button>
     </div>
   </dialog>
 
