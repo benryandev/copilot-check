@@ -127,8 +127,9 @@ export function buildWindsocks(scene, palette, { reduceMotion = false } = {}) {
     });
     redraws.push(redraw);
     redraw(pal);
+    const face = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }); // one material for both faces (merge.js)
     for (const [z, ry] of [[0.1, 0], [-0.1, Math.PI]]) {
-      const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.575), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.575), face);
       plane.position.set(0, 2.1, z); plane.rotation.y = ry; grp.add(plane);
     }
     grp.add(box(3.8, 1.8, 0.12, M.build, 0, 1.2, 0));

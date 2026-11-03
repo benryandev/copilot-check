@@ -37,6 +37,7 @@ import { initArcade, openArcade, arcadeOpen, injectArcadeBoard } from "./arcade.
 import { createFps } from "./fps.js";
 import { TIERS, startTier, nextTier, SLOW_MS, WINDOW } from "./quality-math.js";
 import { markLive, freezeStatic } from "./freeze.js";
+import { mergeStatic, disposeOrphans, pruneEmpty } from "./merge.js";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -1145,7 +1146,15 @@ setInterval(refresh, 30_000);
 // Nearly nothing above moves once built: freeze its matrices (freeze.js), now and again once the Blender models have replaced
 // their blockouts (the models' static nodes are frozen then; the live ones were marked when their motion was attached)
 freezeStatic(scene);
-modelsReady().then(() => freezeStatic(scene));
+// Then each district's static geometry becomes one mesh per material (merge.js), and so does what stands outside the districts
+function mergeWorld() {
+  const districts = new Set(Object.values(districtGroups));
+  const removed = Object.values(districtGroups).flatMap((g) => mergeStatic(g));
+  removed.push(...mergeStatic(scene, (o) => districts.has(o)));
+  disposeOrphans(scene, removed);
+  pruneEmpty(scene, (o) => districts.has(o));
+}
+modelsReady().then(() => { freezeStatic(scene); mergeWorld(); });
 requestAnimationFrame(frame);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 await load.step("Fetching the car and live figures");

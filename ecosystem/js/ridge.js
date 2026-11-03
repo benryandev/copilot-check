@@ -7,7 +7,7 @@ import { roads, RIDGE_ROAD, RIDGE_FADE, terrainHeight, ridgeSeries, roadRibbon, 
 import { RIDGE, candleIndex, candleDir } from "./ridge-math.js";
 import { canvasTexture, redraws, accent, box } from "./build.js";
 import { DISTRICTS } from "./content.js";
-import { freezeStatic, moved } from "./freeze.js";
+import { freezeStatic, markKeep, moved } from "./freeze.js";
 
 const UP = new THREE.Color(0x4ade80), DOWN = new THREE.Color(0xf87171), TINT = 0.26, BLEND = 3; // tint strength; metres either side of a point averaged, so candle boundaries drift rather than band
 const LABELS = ["24h", "18h", "12h", "6h", "now"];
@@ -71,7 +71,7 @@ export function buildRidge(scene, palette) {
   const seg = (r.len - 2 * RIDGE.run) / RIDGE.candles;
   const posts = LABELS.map((text, k) => {
     const s = k < 4 ? RIDGE.run + k * 6 * seg : r.len - RIDGE.run, p = at(s, r.half + 1.2);
-    const post = new THREE.Group();
+    const post = markKeep(new THREE.Group()); // rises and falls with the ridge: kept out of the geometry merge (merge.js)
     post.position.set(p.x, 0, p.z);
     post.rotation.y = Math.atan2(p.tx, p.tz);
     post.add(box(0.22, 1.35, 0.22, accent(DISTRICTS.analytics.colour), 0, 0, 0));

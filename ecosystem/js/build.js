@@ -8,7 +8,7 @@ import { roads, jumps, ROAD_HALF, terrainHeight, builderSlots, roadInfo, kerbGap
 import { tint, setDark } from "./colours.js";
 import { benchSpots } from "./furniture-math.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
-import { markLive, moved } from "./freeze.js";
+import { markLive, markKeep, moved } from "./freeze.js";
 
 // Everything in a district lives in its group, so far-away districts can be skipped when drawing
 export const districtGroups = {};
@@ -485,8 +485,9 @@ function signBoard(text, w, h, x, y, z) {
   const g = new THREE.Group();
   g.position.set(x, y, z);
   g.add(box(w + 0.2, h + 0.2, 0.15, M.trim, 0, -(h + 0.2) / 2, 0));
+  const face = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }); // one material for both faces: the merge (merge.js) takes them as one mesh
   for (const [dz, ry] of [[0.09, 0], [-0.09, Math.PI]]) {
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, h), face);
     plane.position.z = dz;
     plane.rotation.y = ry;
     g.add(plane);
@@ -813,7 +814,7 @@ export function buildStops(scene) {
     const disc = new THREE.Mesh(discGeo, tintedBasic(d.colour, { transparent: true, opacity: 0.14 }));
     disc.rotation.x = -Math.PI / 2;
     disc.position.copy(padPos).setY(0.16);
-    parent.add(ring, disc);
+    parent.add(markKeep(ring), markKeep(disc)); // each ring pulses on its own material: never merged (merge.js)
     const pad = { stop, pos: padPos, ring, disc, dir: toCentre, group: g };
     pads.push(pad);
     g.userData.pad = pad;
@@ -1040,8 +1041,9 @@ function buildArch(parent, road, d, back = 5, { start = false } = {}) {
   });
   redraws.push(redraw);
   const bw = half * 2 + 1, bh = bw * (160 / 1024);
+  const face = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }); // one material for both faces (merge.js)
   for (const [z, ry] of [[-0.52, Math.PI], [0.52, 0]]) {
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(bw, bh), face);
     plane.position.set(0, 5.4, z);
     plane.rotation.y = ry;
     g.add(plane);

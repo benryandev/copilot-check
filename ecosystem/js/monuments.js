@@ -41,7 +41,7 @@ function findMonument(key) {
   const d = DISTRICTS[pad.stop.district];
   let m = monuments.get(key);
   if (!m) {
-    const aux = markKeep(new THREE.Group()); // kerb, sparks and rings live beside the building, not in it: a model swap empties the group
+    const aux = new THREE.Group(); // kerb, sparks and rings live beside the building, not in it: a model swap empties the group
     aux.position.copy(pad.group.position); aux.rotation.copy(pad.group.rotation);
     pad.group.parent.add(aux);
     m = { key, pad, g: pad.group, aux, d, nodes: {}, kerb: null };
@@ -53,8 +53,9 @@ function findMonument(key) {
 const node = (g, name) => g.getObjectByName(name) || null;
 const names = (prefix, n) => Array.from({ length: n }, (_, i) => `${prefix}_${String(i + 1).padStart(2, "0")}`);
 const setMaterial = (n, mat) => n.traverse((o) => { if (o.isMesh) o.material = mat; });
-// The nodes a monument moves stay live through the matrix freeze (freeze.js); the ones it finds by name and repaints stay out of the
-// geometry merge (merge.js). Both run after the model lands, so the blockout's nodes and the model's are marked alike.
+// The nodes a monument moves stay live through the matrix freeze (freeze.js); every other node it holds on to (repainted, read for a
+// position, looked up by name) is kept out of the geometry merge and the pruning (merge.js). Both run after the model lands, so the
+// blockout's nodes and the model's are marked alike.
 const live = (...nodes) => { for (const n of nodes.flat()) if (n) markLive(n); };
 const keep = (...nodes) => { for (const n of nodes.flat()) if (n) markKeep(n); };
 
@@ -180,7 +181,7 @@ function tickEngine(m, dt, now) {
 // ── The Stake ──
 function attachStake(m) {
   m.nodes = { column: node(m.g, "column"), spout: node(m.g, "spout"), face: node(m.g, "face_rewards"), lamps: Array.from({ length: STAKE.lamps }, (_, i) => node(m.g, `lamp_${String(i + 1).padStart(2, "0")}`)) };
-  live(m.nodes.column); keep(m.nodes.face, m.nodes.lamps);
+  live(m.nodes.column); keep(m.nodes.spout, m.nodes.face, m.nodes.lamps);
   buildKerb(m);
   makeFace(m); bindFace(m, m.nodes.face); // the plinth's face: two lines, blank until the first staking figure
   if (!m.drips) {
@@ -422,7 +423,7 @@ function applyPylons(m) {
 // ── The Orrery ──
 function attachOrrery(m) {
   m.nodes = { rings: names("ring", 3).map((n) => node(m.g, n)), sphere: node(m.g, "sphere") };
-  live(m.nodes.rings);
+  live(m.nodes.rings); keep(m.nodes.sphere, node(m.g, "pedestal")); // the pedestal says the glb is in (monumentsState)
   buildKerb(m);
 }
 function tickOrrery(m, dt) {
