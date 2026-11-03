@@ -54,10 +54,10 @@ const names = (prefix, n) => Array.from({ length: n }, (_, i) => `${prefix}_${St
 const setMaterial = (n, mat) => n.traverse((o) => { if (o.isMesh) o.material = mat; });
 
 /** A two-line label/value face (canvas), blank until its first text, repainted on a theme change or a new value. */
-function makeFace(m) {
+function makeFace(m, lines = 2) {
   if (m.face) return;
   m.faceText = null;
-  m.face = canvasTexture(1024, 200, (ctx, w, h, p) => {
+  m.face = canvasTexture(1024, 16 + 92 * lines, (ctx, w, h, p) => {
     ctx.fillStyle = p.panel; ctx.fillRect(0, 0, w, h);
     if (!m.faceText) return;
     ctx.textBaseline = "middle";
@@ -382,6 +382,30 @@ function tickObelisk(m, dt) {
   if (state.feedDirty && m.repaintIn <= 0 && themePalette()) { m.screen.redraw(themePalette()); state.feedDirty = false; m.repaintIn = FEED.repaintMs / 1000; }
 }
 
+// ── The Three Pylons ──
+function attachPylons(m) {
+  m.nodes = { face: node(m.g, "face_flows"), labels: ["cardano", "ethereum", "solana"].map((c) => node(m.g, `label_${c}`)) };
+  buildKerb(m);
+  if (!m.labels) m.labels = ["Cardano", "Ethereum", "Solana"].map((text) => {
+    const l = { text };
+    l.face = canvasTexture(512, 128, (ctx, w, h, p) => { ctx.fillStyle = p.panel; ctx.fillRect(0, 0, w, h); ctx.fillStyle = p.text; ctx.font = "600 56px 'Atkinson Hyperlegible Next', Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(l.text, w / 2, h / 2 + 2, w - 40); });
+    redraws.push(l.face.redraw);
+    l.mat = new THREE.MeshBasicMaterial({ map: l.face.tex, toneMapped: false });
+    return l;
+  });
+  m.nodes.labels.forEach((n, i) => { if (!n) return; const l = m.labels[i]; l.face.tex.flipY = !!n.userData.blockout; l.face.tex.needsUpdate = true; n.material = l.mat; n.castShadow = false; if (themePalette()) l.face.redraw(themePalette()); });
+  makeFace(m, 3); bindFace(m, m.nodes.face); // deposits, withdrawals and the difference, blank until the first summary
+  applyPylons(m);
+}
+function applyPylons(m) {
+  if (!m?.nodes.face) return;
+  const c = state.summary, text = [];
+  if (c?.depositsUsd != null) text.push(["Deposits, all time", usd(c.depositsUsd)]);
+  if (c?.withdrawalsUsd != null) text.push(["Withdrawals, all time", usd(c.withdrawalsUsd)]);
+  if (c?.depositsUsd != null && c?.withdrawalsUsd != null) text.push(["Deposits less withdrawals", usd(c.depositsUsd - c.withdrawalsUsd)]);
+  if (text.length) setFaceText(m, text);
+}
+
 // ── The fills poll ──
 async function pollFills(now = Date.now()) {
   const id = slpVaultId();
@@ -415,7 +439,7 @@ function takeFills(incoming, now, seed = false) {
 // ── Public ──
 export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
   opts = { coarse, reduceMotion };
-  const attach = { "monument-earn": attachEngine, "monument-token": attachStake, "monument-analytics": attachPlinth, "monument-collateral": attachStacks, "monument-community": attachBeacon, "monument-developers": attachObelisk };
+  const attach = { "monument-earn": attachEngine, "monument-token": attachStake, "monument-analytics": attachPlinth, "monument-collateral": attachStacks, "monument-community": attachBeacon, "monument-developers": attachObelisk, "monument-chains": attachPylons };
   for (const stop of STOPS.filter(isMonument)) {
     const fn = attach[stop.key];
     if (!fn) continue;
@@ -440,7 +464,7 @@ export function applyMonuments(monuments) {
     const m = findMonument("monument-earn"); if (m) layRings(m);
   }
   if (monuments.staking) { state.staking = monuments.staking; const m = findMonument("monument-token"); if (m) applyStake(m); }
-  if (monuments.summary) { state.summary = monuments.summary; applyPlinth(findMonument("monument-analytics")); }
+  if (monuments.summary) { state.summary = monuments.summary; applyPlinth(findMonument("monument-analytics")); applyPylons(findMonument("monument-chains")); }
   if (monuments.collateral) { state.collateral = monuments.collateral; applyStacks(findMonument("monument-collateral")); } // a failed fetch keeps the last stacks
   if (monuments.activity) { state.activity = monuments.activity; applyBeacon(findMonument("monument-community")); }
 }
@@ -471,7 +495,9 @@ export const monumentsState = () => {
   const c = monuments.get("monument-collateral");
   const b = monuments.get("monument-community");
   const o = monuments.get("monument-developers");
-  return { feed: state.feed.length, feedLast: state.feed.at(-1) ?? null, stream: state.streamStatus, obeliskFace: o?.faceText ?? null,
+  const y = monuments.get("monument-chains");
+  return { pylonsFace: y?.faceText ?? null,
+    feed: state.feed.length, feedLast: state.feed.at(-1) ?? null, stream: state.streamStatus, obeliskFace: o?.faceText ?? null,
     rungs: b?.nodes.rungs?.filter((r) => r?.visible).length ?? 0, pulse: b?.pulse ?? null, beaconFace: b?.faceText ?? null, cars: state.cars,
     stacks: c?.stackList?.length ?? 0, stackRings: c?.rings?.count ?? 0, stackNames: c?.stackList?.map((x) => x.name) ?? [],
     bars: a?.nodes.vol?.filter((b) => b?.visible).length ?? 0, litBar: a?.litBar ?? null, plinthFace: a?.faceText ?? null, seriesAt: state.seriesAt,
