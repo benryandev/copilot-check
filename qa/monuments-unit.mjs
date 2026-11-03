@@ -3,7 +3,7 @@
 // Part B in the Strike repo). The picks keep only the named fields, so no APR or price field can reach the world.
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pickStaking, pickSlp, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, columnScale, lampsLit, periodLabel, usdExact, stakeValues, engineValues, MONUMENT_BANNED, STAKE, ENGINE, PLINTH, STACKS, dailyTotals, lastDays, pickSeries, barScales, plinthValues, pickSummary, pickCollateral, stackScale, collateralValues, pickActivity, rungScales, activityHigh, beaconValues, carsHere, pulsePeriod } from '../ecosystem/js/monument-math.js';
+import { pickStaking, pickSlp, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, columnScale, lampsLit, periodLabel, usdExact, stakeValues, engineValues, MONUMENT_BANNED, STAKE, ENGINE, PLINTH, STACKS, dailyTotals, lastDays, pickSeries, barScales, plinthValues, pickSummary, pickCollateral, stackScale, collateralValues, pickActivity, rungScales, activityHigh, beaconValues, carsHere, pulsePeriod, seriesDue } from '../ecosystem/js/monument-math.js';
 import { LABELS } from '../ecosystem/js/data.js';
 const fx = (n) => JSON.parse(readFileSync(new URL(`./fixtures/${n}-2026-11-03.json`, import.meta.url)));
 const staking = fx('liquid-staking-summary'), vaults = fx('vaults'), positions = fx('slp-positions'), fills = fx('slp-fills-100');
@@ -194,4 +194,8 @@ test('carsHere and pulsePeriod: the room\'s states and the lantern\'s pace', () 
 });
 test('the new labels exist and fetchLive\'s value keys are labelled', () => {
   for (const k of ['volume30d', 'revenue30d', 'collateralAssets', 'collateralHeld', 'collateralLines', 'activeTradersHigh30d', 'carsHere']) assert.ok(LABELS[k], k);
+});
+test('seriesDue: the hourly series poll, sooner after a failure', () => {
+  assert.equal(seriesDue(1000, 0, true), true); assert.equal(seriesDue(10_000 + 3_599_000, 10_000, true), false); assert.equal(seriesDue(10_000 + 3_600_000, 10_000, true), true);
+  assert.equal(seriesDue(10_000 + 29_000, 10_000, false), false); assert.equal(seriesDue(10_000 + 30_000, 10_000, false), true);
 });

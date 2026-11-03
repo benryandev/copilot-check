@@ -899,7 +899,7 @@ function openMap() {
 $("open-map").addEventListener("click", openMap);
 // The Fill Yard's figures tick every second while its sheet is open
 onYardStats(() => { if ($("stop").open && openKey === "fillyard") fillStats($("stop-live"), ["fillsPerMin", "usd10m", "busiest"]); });
-onMonumentStats(() => { if ($("stop").open && openKey === "monument-earn") fillStats($("stop-live"), STOPS.find((x) => x.key === openKey).live); });
+onMonumentStats(() => { if ($("stop").open && openKey?.startsWith("monument-")) fillStats($("stop-live"), STOPS.find((x) => x.key === openKey).live); });
 onBoard(() => {
   const el = $("map-race-top");
   if (el) el.replaceChildren(el.firstChild, topList());

@@ -9,8 +9,8 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, isMonument } from "./content.js";
 import { pads, accent, M, obbOf, modelHooks, canvasTexture, redraws, themePalette } from "./build.js";
-import { slpVaultId } from "./data.js";
-import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel } from "./monument-math.js";
+import { slpVaultId, usd, int } from "./data.js";
+import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues } from "./monument-math.js";
 
 const API = "https://api.strikefinance.org";
 const KERB = { lift: 0.8, gap: (40 * Math.PI) / 180, radius: 0.14 }; // the kerb arc: 0.8 m outside the footprint, open ±40° towards the pad
@@ -23,6 +23,7 @@ const listeners = [];
 const state = {
   slp: null, staking: null, high: null, // the last SLP and staking picks; the highest SLP equity seen this session
   fills: [], since: null, seeded: false, lastAt: 0, lastOkAt: 0, ok: true, forceSeed: false, startedAt: 0, // the fills poll
+  series: null, seriesOk: true, seriesAt: 0, summary: null, // the Chart Plinth: the two daily series (hourly) and the all-time counter
 };
 const monuments = new Map(); // district key → { g, aux, nodes, ... }
 const glass = M.glass.clone(); glass.transparent = true; glass.opacity = 0.35; glass.depthWrite = false;
@@ -44,6 +45,38 @@ function findMonument(key) {
   return m;
 }
 const node = (g, name) => g.getObjectByName(name) || null;
+const names = (prefix, n) => Array.from({ length: n }, (_, i) => `${prefix}_${String(i + 1).padStart(2, "0")}`);
+const setMaterial = (n, mat) => n.traverse((o) => { if (o.isMesh) o.material = mat; });
+
+/** A two-line label/value face (canvas), blank until its first text, repainted on a theme change or a new value. */
+function makeFace(m) {
+  if (m.face) return;
+  m.faceText = null;
+  m.face = canvasTexture(1024, 200, (ctx, w, h, p) => {
+    ctx.fillStyle = p.panel; ctx.fillRect(0, 0, w, h);
+    if (!m.faceText) return;
+    ctx.textBaseline = "middle";
+    m.faceText.forEach(([label, value], i) => {
+      const y = 52 + i * 92, labelFont = "500 36px 'Atkinson Hyperlegible Next', Arial, sans-serif";
+      ctx.font = labelFont; ctx.textAlign = "left"; ctx.fillStyle = p.sub; ctx.fillText(label, 40, y);
+      const room = w - 80 - ctx.measureText(label).width - 30; // the value squeezes rather than runs into its label
+      ctx.textAlign = "right"; ctx.fillStyle = p.text; ctx.font = "600 46px 'Atkinson Hyperlegible Next', Arial, sans-serif"; ctx.fillText(value, w - 40, y, room);
+    });
+  });
+  redraws.push(m.face.redraw);
+  m.faceMat = new THREE.MeshBasicMaterial({ map: m.face.tex, toneMapped: false });
+}
+function bindFace(m, faceNode) {
+  if (!faceNode) return;
+  m.face.tex.flipY = !!faceNode.userData.blockout; // glTF UVs run top-down
+  m.face.tex.needsUpdate = true;
+  faceNode.material = m.faceMat; faceNode.castShadow = false;
+  if (themePalette()) m.face.redraw(themePalette());
+}
+function setFaceText(m, text) {
+  const key = JSON.stringify(text);
+  if (key !== m.faceKey) { m.faceKey = key; m.faceText = text; if (themePalette()) m.face.redraw(themePalette()); }
+}
 
 /** The kerb arc round the footprint, rebuilt when the model lands (its footprint differs from the blockout's). */
 function buildKerb(m) {
@@ -136,29 +169,7 @@ function tickEngine(m, dt, now) {
 function attachStake(m) {
   m.nodes = { column: node(m.g, "column"), spout: node(m.g, "spout"), face: node(m.g, "face_rewards"), lamps: Array.from({ length: STAKE.lamps }, (_, i) => node(m.g, `lamp_${String(i + 1).padStart(2, "0")}`)) };
   buildKerb(m);
-  if (!m.face) {
-    // The plinth's face: two lines, blank until the first staking figure, repainted on a theme change or a new value
-    m.faceText = null;
-    m.face = canvasTexture(1024, 200, (ctx, w, h, p) => {
-      ctx.fillStyle = p.panel; ctx.fillRect(0, 0, w, h);
-      if (!m.faceText) return;
-      ctx.textBaseline = "middle";
-      m.faceText.forEach(([label, value], i) => {
-        const y = 52 + i * 92, labelFont = "500 36px 'Atkinson Hyperlegible Next', Arial, sans-serif";
-        ctx.font = labelFont; ctx.textAlign = "left"; ctx.fillStyle = p.sub; ctx.fillText(label, 40, y);
-        const room = w - 80 - ctx.measureText(label).width - 30; // the value squeezes rather than runs into its label
-        ctx.textAlign = "right"; ctx.fillStyle = p.text; ctx.font = "600 46px 'Atkinson Hyperlegible Next', Arial, sans-serif"; ctx.fillText(value, w - 40, y, room);
-      });
-    });
-    redraws.push(m.face.redraw);
-    m.faceMat = new THREE.MeshBasicMaterial({ map: m.face.tex, toneMapped: false });
-  }
-  if (m.nodes.face) {
-    m.face.tex.flipY = !!m.nodes.face.userData.blockout; // glTF UVs run top-down
-    m.face.tex.needsUpdate = true;
-    m.nodes.face.material = m.faceMat; m.nodes.face.castShadow = false;
-    if (themePalette()) m.face.redraw(themePalette());
-  }
+  makeFace(m); bindFace(m, m.nodes.face); // the plinth's face: two lines, blank until the first staking figure
   if (!m.drips) {
     const mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.14, 6, 4), accent(m.d.colour), DRIP.cap);
     mesh.count = 0; mesh.frustumCulled = false; m.aux.add(mesh);
@@ -175,8 +186,7 @@ function applyStake(m) {
   }
   const text = [["Rewards building this period", s.upcomingUsd != null ? usdExact(s.upcomingUsd) : ""]];
   if (s.latest?.amountUsd != null) text.push(["Last distribution", `${usdExact(s.latest.amountUsd)} · ${periodLabel(s.latest.start, s.latest.end)}`]);
-  const key = JSON.stringify(text);
-  if (key !== m.faceKey) { m.faceKey = key; m.faceText = text; if (themePalette()) m.face.redraw(themePalette()); }
+  setFaceText(m, text);
   if (m.lastDistributions != null && s.distributions > m.lastDistributions && !opts.reduceMotion) m.drips.until = performance.now() / 1000 + DRIP.seconds;
   if (s.distributions != null) m.lastDistributions = s.distributions;
 }
@@ -195,6 +205,53 @@ function tickStake(m, dt) {
   d.live.forEach((k, i) => { k.v.y -= DRIP.gravity * dt; k.p.addScaledVector(k.v, dt); mat.compose(k.p, q, sc); d.mesh.setMatrixAt(i, mat); });
   d.mesh.count = d.live.length;
   if (d.live.length) d.mesh.instanceMatrix.needsUpdate = true;
+}
+
+// ── The Chart Plinth ──
+function attachPlinth(m) {
+  m.nodes = { vol: names("vol", PLINTH.days).map((n) => node(m.g, n)), rev: names("rev", PLINTH.days).map((n) => node(m.g, n)), face: node(m.g, "face_counter") };
+  for (const b of [...m.nodes.vol, ...m.nodes.rev]) if (b && b.userData.fullY == null) b.userData.fullY = b.scale.y;
+  buildKerb(m);
+  makeFace(m); bindFace(m, m.nodes.face); // the all-time counter, blank until the first summary
+  applyPlinth(m);
+}
+/** A row of bars takes its targets: an empty slot hides, the newest filled slot is lit in the accent; returns that slot. */
+function layRow(m, row, targets) {
+  const last = targets.reduce((k, t, i) => (t == null ? k : i), -1);
+  row.forEach((b, i) => {
+    if (!b) return;
+    const t = targets[i];
+    b.visible = t != null; b.userData.target = t ?? 0.02;
+    if (t != null) setMaterial(b, i === last ? accent(m.d.colour) : M.build);
+    if (opts.reduceMotion) b.scale.y = b.userData.target * b.userData.fullY;
+  });
+  return last < 0 ? null : last;
+}
+function applyPlinth(m) {
+  if (!m?.nodes.vol) return;
+  const s = state.series;
+  if (s?.volume) m.litBar = layRow(m, m.nodes.vol, barScales(s.volume));
+  if (s?.revenue) layRow(m, m.nodes.rev, barScales(s.revenue));
+  const c = state.summary, text = [];
+  if (c?.volumeUsd != null) text.push(["Volume, all time", usd(c.volumeUsd)]);
+  if (c?.users != null) text.push(["Users, all time", int(c.users)]);
+  if (text.length) setFaceText(m, text);
+}
+function tickPlinth(m, dt) {
+  for (const b of [...m.nodes.vol, ...m.nodes.rev]) if (b?.visible && b.userData.target != null) b.scale.y = ease(b.scale.y, b.userData.target * b.userData.fullY, dt, 1.5);
+}
+/** The two daily series once an hour (30 s after a failure, not while the tab is hidden); a failed side keeps its last days. */
+async function pollSeries(now = Date.now()) {
+  if (document.hidden || !seriesDue(now, state.seriesAt, state.seriesOk)) return;
+  state.seriesAt = now;
+  const get = async (p) => { try { const r = await fetch(`${API}${p}`, { cache: "no-store" }); return r.ok ? await r.json() : null; } catch { return null; } };
+  const [v, r] = await Promise.all([get("/stat/v1/dashboard/volumes"), get("/stat/v1/dashboard/revenue")]);
+  const s = pickSeries(v, r), prev = state.series;
+  state.seriesOk = !!(v && r);
+  if (s) state.series = { volume: s.volume ?? prev?.volume ?? null, revenue: s.revenue ?? prev?.revenue ?? null };
+  if (!state.seriesOk) console.warn("[eco] daily series:", v ? "revenue" : "volumes", "failed");
+  applyPlinth(monuments.get("monument-analytics"));
+  listeners.forEach((f) => f());
 }
 
 // ── The fills poll ──
@@ -230,7 +287,7 @@ function takeFills(incoming, now, seed = false) {
 // ── Public ──
 export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
   opts = { coarse, reduceMotion };
-  const attach = { "monument-earn": attachEngine, "monument-token": attachStake };
+  const attach = { "monument-earn": attachEngine, "monument-token": attachStake, "monument-analytics": attachPlinth };
   for (const stop of STOPS.filter(isMonument)) {
     const fn = attach[stop.key];
     if (!fn) continue;
@@ -238,8 +295,8 @@ export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
     modelHooks.set(stop.key, go);
     go();
   }
-  setInterval(() => pollFills(), 1000);
-  pollFills();
+  setInterval(() => { pollFills(); pollSeries(); }, 1000);
+  pollFills(); pollSeries();
 }
 export function applyMonuments(monuments) {
   if (!monuments) return;
@@ -250,17 +307,20 @@ export function applyMonuments(monuments) {
     const m = findMonument("monument-earn"); if (m) layRings(m);
   }
   if (monuments.staking) { state.staking = monuments.staking; const m = findMonument("monument-token"); if (m) applyStake(m); }
+  if (monuments.summary) { state.summary = monuments.summary; applyPlinth(findMonument("monument-analytics")); }
 }
 export function monumentsTick(dt) {
   const now = Date.now();
   const e = monuments.get("monument-earn"); if (e) tickEngine(e, dt, now);
   const t = monuments.get("monument-token"); if (t) tickStake(t, dt);
+  const a = monuments.get("monument-analytics"); if (a?.nodes.vol) tickPlinth(a, dt);
 }
 export function monumentValues() {
   // Before the seed lands the line is loading, not "Not available" (the smoke caught a sheet opened in that gap, 3 Nov);
   // after a failed seed with nothing held it is honestly unavailable until the next try succeeds
   const line = fillsLine(state.fills, state.since, Date.now());
-  return { slpFillsHour: line ?? (state.ok ? "Loading" : "Not available") };
+  const p = plinthValues(state.series), pending = state.seriesOk || !state.seriesAt ? "Loading" : "Not available";
+  return { slpFillsHour: line ?? (state.ok ? "Loading" : "Not available"), volume30d: p.volume30d ?? pending, revenue30d: p.revenue30d ?? pending };
 }
 export const onMonumentStats = (f) => listeners.push(f);
 /** QA: feed fills as a poll would. */
@@ -268,6 +328,8 @@ export function injectSlpFills(list) { state.seeded = true; takeFills(pickFills(
 export const monumentsState = () => {
   const e = monuments.get("monument-earn");
   const t = monuments.get("monument-token");
-  return { fills: state.fills.length, since: state.since, seeded: state.seeded, sparks: e?.sparks?.live.length ?? 0, rings: e?.rings?.count ?? 0, wheel: e?.wheelSpeed ?? 0,
+  const a = monuments.get("monument-analytics");
+  return { bars: a?.nodes.vol?.filter((b) => b?.visible).length ?? 0, litBar: a?.litBar ?? null, plinthFace: a?.faceText ?? null, seriesAt: state.seriesAt,
+    fills: state.fills.length, since: state.since, seeded: state.seeded, sparks: e?.sparks?.live.length ?? 0, rings: e?.rings?.count ?? 0, wheel: e?.wheelSpeed ?? 0,
     column: t?.nodes.column?.scale.y ?? null, lampsLit: t?.nodes.lamps.filter((l) => l?.material?.userData.accent).length ?? 0, drips: t?.drips?.live.length ?? 0, face: t?.faceText ?? null };
 };

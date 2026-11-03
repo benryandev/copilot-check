@@ -210,3 +210,5 @@ export const beaconValues = (activity) => (activity?.days?.length ? { activeTrad
 export const carsHere = (status, peersCount) => (status === "on" ? String(peersCount + 1) : status === "off" ? "1" : null);
 /** The lantern's pulse period in seconds: slow alone, fast with eight or more cars here. */
 export const pulsePeriod = (cars) => BEACON.pulseSlow - (BEACON.pulseSlow - BEACON.pulseFast) * Math.min(1, Math.max(0, cars - 1) / (BEACON.fullCars - 1));
+/** The daily series poll is due once an hour, or 30 s after a failure. */
+export const seriesDue = (now, lastAt, ok) => !lastAt || now - lastAt >= (ok ? SERIES.pollMs : SERIES.retryMs);

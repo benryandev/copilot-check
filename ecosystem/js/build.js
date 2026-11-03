@@ -348,6 +348,25 @@ const SHAPES = {
     g.add(signBoard(stop.name, 4.0, 0.9, 0, 2.15, 3.05));
     return 8;
   },
+  // The Chart Plinth (the Analytics monument, Part B2): two steps, thirty volume bars along the back row and thirty revenue bars
+  // along the front, each a group whose origin is its base (monuments.js scales them to the day against the row's busiest),
+  // today's in the accent; the all-time counter on the lower step's face, the name on a board above the bars. 7.2 m tall,
+  // 10 m wide; the same node names in the Blender model.
+  plinth(g, A, stop) {
+    g.add(box(10, 1.4, 4, M.trim, 0, 0, 0), box(9.4, 0.6, 2.2, M.build, 0, 1.4, -0.9));
+    const bars = (prefix, z, y, h) => {
+      for (let i = 0; i < 30; i++) {
+        const b = new THREE.Group(); b.name = `${prefix}_${String(i + 1).padStart(2, "0")}`; b.position.set(-4.35 + i * 0.3, y, z);
+        b.add(box(0.22, h, 0.22, i === 29 ? A : M.build, 0, 0, 0)); g.add(b);
+      }
+    };
+    bars("vol", -1.2, 2.0, 3.0); bars("rev", 0.4, 1.4, 2.2);
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 1.1), M.trim); face.name = "face_counter"; face.userData.blockout = true;
+    face.position.set(0, 0.7, 2.01); g.add(face);
+    for (const x of [-2.6, 2.6]) g.add(cyl(0.08, 4.4, M.trim, x, 2.0, -1.2, 8));
+    g.add(signBoard(stop.name, 5.6, 1.1, 0, 6.4, -1.2));
+    return 7.2;
+  },
   grid(g, A) {
     for (let i = -1; i <= 1; i++)
       for (let j = -1; j <= 1; j++) {
