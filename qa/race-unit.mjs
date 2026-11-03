@@ -1,5 +1,6 @@
 // Pure parts of the race client (no three.js, no DOM): node --test qa/race-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { offerBest, retryAfterMs, recordBest, markPosted } from '../ecosystem/js/race-post.js';
 
 test('offerBest: the device best is offered when it beats this lap and has not been posted', () => {
@@ -43,4 +44,43 @@ test('celebrateOnce: one set of fireworks per record, however many ways the news
   assert.equal(r.fire, true);
   r = celebrateOnce(r.seen, { name: 'Aveli', ms: 24650 }, 4000 + 21_000); // the same news much later (a reconnect replay): fire
   assert.equal(r.fire, true);
+});
+
+// ---- the device token: people who share one public address each get their own row on the board (4 Nov 2026) ----
+
+const fakeStore = (init = {}) => { const m = new Map(Object.entries(init)); return { m, getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)) }; };
+const bytes = (n) => Uint8Array.from({ length: n }, (_, i) => (i * 17) % 256);
+const hex = (u8) => [...u8].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+test('deviceToken: 16 random bytes as 32 hex characters, made once, kept in storage, the same on the next call', async () => {
+  const { deviceToken, DEVICE_KEY } = await import('../ecosystem/js/race-post.js');
+  const store = fakeStore();
+  const t = deviceToken(store, bytes);
+  assert.equal(t, hex(bytes(16)));
+  assert.match(t, /^[0-9a-f]{32}$/);
+  assert.equal(DEVICE_KEY, 'eco-device'); assert.equal(store.getItem(DEVICE_KEY), t);
+  assert.equal(deviceToken(store, () => bytes(16).map((b) => b ^ 255)), t, 'a second call returns the stored token, not a new one');
+});
+
+test('deviceToken: a malformed stored value is replaced; a store that cannot keep it gives null (the worker then keys by address)', async () => {
+  const { deviceToken, DEVICE_KEY } = await import('../ecosystem/js/race-post.js');
+  for (const bad of ['', 'abc', 'G'.repeat(32), 'f'.repeat(31), 'f'.repeat(33), 'F'.repeat(32)]) {
+    const store = fakeStore({ [DEVICE_KEY]: bad });
+    assert.equal(deviceToken(store, bytes), hex(bytes(16)), JSON.stringify(bad));
+  }
+  const throwing = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } };
+  assert.equal(deviceToken(throwing, bytes), null);
+  const forgetful = { getItem: () => null, setItem() {} }; // writes vanish (private mode): no token rather than a new one per post
+  assert.equal(deviceToken(forgetful, bytes), null);
+  assert.match(deviceToken(fakeStore()), /^[0-9a-f]{32}$/, 'the real random source');
+});
+
+test('race.js posts the device token with a lap and words address_full for the finish sheet', () => {
+  const src = readFileSync(new URL('../ecosystem/js/race.js', import.meta.url), 'utf8');
+  assert.match(src, /import \{[^}]*\bdeviceToken\b[^}]*\} from "\.\/race-post\.js"/, 'imported from race-post.js');
+  assert.match(src, /\w+\.device = device;/, 'the post body carries the token when the browser has one');
+  const reason = src.match(/address_full:\s*"([^"]+)"/);
+  assert.ok(reason, 'REASONS has address_full');
+  assert.equal(reason[1], 'This network already has five names on the board.');
+  assert.doesNotMatch(reason[1], /[:;–—]| - /, 'a plain sentence: no colon, semicolon or dash inside it');
 });
