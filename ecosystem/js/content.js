@@ -5,6 +5,17 @@
 import { STOPS } from "./stops.js";
 export { STOPS };
 
+// Height of every building shape in metres: the glTF models measured from their files (tools/model-heights.mjs,
+// pinned by qa/model-heights-unit.mjs) and the primitives from their SHAPES in build.js. The layout sorts the taller
+// models to a plaza's outer row (3 Nov 2026), so this must be read before any model loads.
+export const HEIGHT = {
+  tower: 14.1, twin: 12.9, pillar: 14.0, terminal: 17.2, grid: 11.4, townhall: 14.9, slpvault: 12.7, rotunda: 12.8,
+  gatehouse: 11.7, bridgegate: 11.6, exchange: 10.4, hq: 14.4, cluster: 9.0, cliff: 8.8, shop: 8.7, coinstack: 8.2,
+  dome: 7.9, arch: 7.5, vault: 7.1, observatory: 6.0, coins: 5.7, antenna: 5.5, kiosk: 5.3, plot: 3.2,
+  clock: 11, flag: 11, cabinet: 2.2, depot: 5, pitbox: 6.3,
+};
+export const heightOf = (shape) => HEIGHT[shape] ?? 8; // a shape missing from the table counts as a middling 8 m
+
 const RING = 190; // distance from HQ to each district's centre
 
 // Clockwise from north. Neighbours share themes: Earn next to Collateral (Borrow and Earn spans
