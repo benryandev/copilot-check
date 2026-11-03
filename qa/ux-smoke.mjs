@@ -1,6 +1,8 @@
 // The UX controls end to end (dev only): PORT=8767 node qa/serve.mjs & node qa/ux-smoke.mjs [baseUrl] [--part=stick,footer,zoom,triggers,save] [--shots] [--reduced]
 //   stick     the floating steering stick on a 375 px touch screen: the value and the knob follow the thumb, full lock past
 //             the pad's edge, a window blur releases it
+//   footer    the footer pill fades out after a moment on the throttle and comes back after a moment still; the touch bar
+//             never moves
 // Each part opens its own page. Exits 1 on any failure. Runs against http://localhost:8767 by default (the worktree's
 // server); the leaderboard is offline on that origin, which none of these checks need. The room is off (?mp=0) and
 // the opening flight is skipped (arrive=0).
@@ -15,7 +17,7 @@ try { ({ chromium } = await import('playwright')); } catch {
 const args = process.argv.slice(2);
 const base = (args.find((a) => !a.startsWith('--')) || 'http://localhost:8767').replace(/\/$/, '');
 const opt = (k) => args.find((a) => a.startsWith(`--${k}=`))?.split('=')[1]?.split(',');
-const parts = opt('part') || ['stick'];
+const parts = opt('part') || ['stick', 'footer'];
 const reduced = args.includes('--reduced');
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const failures = [];
@@ -65,6 +67,43 @@ if (parts.includes('stick')) {
   }
   check(errs.length === 0, `stick: no page errors${errs.length ? ' ' + errs.join(' | ') : ''}`);
   await ctx.close();
+}
+
+if (parts.includes('footer')) {
+  const foot = (page) => page.evaluate(() => ({ driving: document.body.classList.contains('is-driving'), opacity: +getComputedStyle(document.querySelector('.hud-foot')).opacity, speed: window.__eco.car.s.speed }));
+  // The world's clock runs slower than the wall clock under software rendering (dt is capped per frame), so every
+  // check waits on the state it expects rather than on a timer; only the CSS fades run on the wall clock
+  const until = (page, fn, ms = 20_000) => page.waitForFunction(fn, null, { timeout: ms }).then(() => true, () => false);
+  // A keyboard page on the start straight, where a stretch on the throttle meets nothing
+  const { ctx, page, errs } = await open({ width: 1280, height: 800 });
+  await page.evaluate(() => window.__eco.toStart());
+  await sleep(300);
+  const before = await foot(page);
+  check(!before.driving && before.opacity === 1, `footer: shown at rest (${JSON.stringify(before)})`);
+  await page.keyboard.down('ArrowUp');
+  check(await until(page, () => window.__eco.car.s.speed > 2), 'footer: the car gets going on the throttle');
+  check(await until(page, () => document.body.classList.contains('is-driving')), 'footer: body.is-driving once the car has been moving a moment');
+  check(await until(page, () => +getComputedStyle(document.querySelector('.hud-foot')).opacity < 0.05, 5000), `footer: faded out (${(await foot(page)).opacity})`);
+  await page.keyboard.up('ArrowUp'); await page.keyboard.down('ArrowDown');
+  // The brake takes a capped frame's worth of speed at a time, so it can cross zero between two samples: wait for the
+  // crossing, then let the car roll to a stop
+  check(await until(page, () => window.__eco.car.s.speed <= 0.5), 'footer: the brake stops the car');
+  await page.keyboard.up('ArrowDown');
+  check(await until(page, () => !document.body.classList.contains('is-driving'), 40_000), `footer: back after a moment still (speed ${(await foot(page)).speed.toFixed(2)})`);
+  check(await until(page, () => +getComputedStyle(document.querySelector('.hud-foot')).opacity === 1, 5000), `footer: fully shown again (${(await foot(page)).opacity})`);
+  check(errs.length === 0, `footer: no page errors${errs.length ? ' ' + errs.join(' | ') : ''}`);
+  await ctx.close();
+  // A touch page: the driving buttons and the stick stay put while the footer fades
+  const t = await open({ width: 375, height: 812, touch: true });
+  await t.page.evaluate(() => window.__eco.toStart());
+  await sleep(300);
+  const barBefore = await t.page.locator('#touch').boundingBox();
+  await t.page.evaluate(() => { window.__eco.keys.up = true; });
+  check(await until(t.page, () => document.body.classList.contains('is-driving')), 'footer: fades on the touch page too');
+  const barDriving = await t.page.locator('#touch').boundingBox();
+  check(JSON.stringify(barBefore) === JSON.stringify(barDriving), `footer: the touch bar never moves (${JSON.stringify(barBefore)} vs ${JSON.stringify(barDriving)})`);
+  await t.page.evaluate(() => { window.__eco.keys.up = false; });
+  await t.ctx.close();
 }
 
 await browser.close();

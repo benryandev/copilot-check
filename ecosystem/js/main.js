@@ -11,6 +11,7 @@ import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInf
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.js";
 import { initStick } from "./stick.js";
+import { footStep } from "./hud-math.js";
 import { buildBlimp } from "./blimp.js";
 import { buildRidge } from "./ridge.js";
 import { buildWindsocks } from "./windsocks.js";
@@ -433,6 +434,7 @@ function cameraBlock(x, y, z, to) {
   return best;
 }
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+let foot = { driving: false, t: 0 }; // the footer's driving state (hud-math.js)
 // The epic jump's camera state lives up here because a snap (teleport, grid, placeCar) ends it; see stuntTick below
 const stunt = { k: 0, on: false, cam: new THREE.Vector3(), look: new THREE.Vector3() };
 function placeCamera(dt, snap = false) {
@@ -1066,6 +1068,8 @@ function frame() {
     checkPads();
     updateWhere();
   }
+  foot = footStep(foot, paused ? 0 : car.s.speed, dt); // the footer fades while driving and comes back after a moment still
+  if (foot.driving !== document.body.classList.contains("is-driving")) document.body.classList.toggle("is-driving", foot.driving);
   if (paused) sound.pauseEngine(); // a sheet is open: engine off, not idling behind the text
   stepCrates(dt);
   flowTick(dt);
