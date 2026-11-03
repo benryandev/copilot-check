@@ -13,8 +13,12 @@ export const HEIGHT = {
   gatehouse: 11.7, bridgegate: 11.6, exchange: 10.4, hq: 14.4, cluster: 9.0, cliff: 8.8, shop: 8.7, coinstack: 8.2,
   dome: 7.9, arch: 7.5, vault: 7.1, observatory: 6.0, coins: 5.7, antenna: 5.5, kiosk: 5.3, plot: 3.2,
   clock: 11, flag: 11, cabinet: 2.2, depot: 5, pitbox: 6.3,
+  slpengine: 8, stake: 8, // the monuments (Part B1): capped at 8 m by the design; measured once the models land
 };
 export const heightOf = (shape) => HEIGHT[shape] ?? 8; // a shape missing from the table counts as a middling 8 m
+// A monument (Part B1, 3 Nov 2026): a stop placed by hand at its plaza's centre; never counted by the radius rule, never laid out,
+// no floating label (an 8 m monument's label overlapped "Protocol Vaults" from Earn's rim by 1.0° under the label model below)
+export const isMonument = (s) => s.key.startsWith("monument-");
 
 const RING = 190; // distance from HQ to each district's centre
 

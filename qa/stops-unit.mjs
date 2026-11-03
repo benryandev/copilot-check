@@ -4,18 +4,20 @@
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { STOPS, DISTRICTS } from '../ecosystem/js/content.js';
 import { LABELS } from '../ecosystem/js/data.js';
+import { isMonument } from '../ecosystem/js/content.js';
+import { MONUMENT_BANNED } from '../ecosystem/js/monument-math.js';
 
 // The places after the merges, moves and six new stops (3 Nov 2026). Order matters where layoutStops lays a row
 // (perps, earn): it is the STOPS order. Builders' Row (row: "builders") is checked apart.
 const PLAN = {
   hub: ['strike', 'getting-started'],
   perps: ['perpetuals', 'node', 'markets', 'order-types', 'rfq', 'margin', 'liquidations', 'subaccounts', 'pair-trading', 'twap', 'trailing', 'grid', 'scale', 'funding-comparison', 'funding-rates'],
-  earn: ['slp', 'insurance-fund', 'borrow-earn', 'user-vaults', 'protocol-vaults', 'copy-trading', 'points', 'lp-program'],
+  earn: ['monument-earn', 'slp', 'insurance-fund', 'borrow-earn', 'user-vaults', 'protocol-vaults', 'copy-trading', 'points', 'lp-program'],
   collateral: ['usdm', 'usdc', 'ada', 'usdcx-usdm-lp', 'ausdc', 'susdrf', 'enzobtc'],
   partners: ['realfi', 'sundaeswap', 'aave-v3', 'unifold', 'dex-aggregators', 'hizz', 'lorenzo'], // lorenzo: Strike's own ecosystem graphic, 2 Nov 2026 (Ben: add now, 3 Nov)
   analytics: ['defillama', 'coingecko', 'bendingai', 'directories'],
   community: ['arcade-flappy-coin', 'referrals', 'clans', 'leaderboard', 'x', 'discord', 'docs', 'medium'],
-  token: ['strike-token', 'staking', 'revenue-share', 'dao-treasury'],
+  token: ['monument-token', 'strike-token', 'staking', 'revenue-share', 'dao-treasury'],
   chains: ['cardano', 'ethereum', 'solana', 'validators', 'lockers'],
   raceway: ['raceway'], yard: ['fillyard'],
 };
@@ -66,4 +68,13 @@ test('no model is used twice in Perpetuals (3 Nov 2026: scale, pair trading and 
   assert.equal(STOPS.find((s) => s.key === 'scale').shape, 'pillar');
   assert.equal(STOPS.find((s) => s.key === 'pair-trading').shape, 'bridgegate');
   assert.equal(STOPS.find((s) => s.key === 'funding-comparison').shape, 'observatory');
+});
+
+test('monuments: one each in Earn and Token, placed by hand, their sheets name every figure and carry no banned word', () => {
+  const ms = STOPS.filter(isMonument);
+  assert.deepEqual(ms.map((s) => s.key), ['monument-earn', 'monument-token']);
+  for (const s of ms) {
+    assert.ok(s.pos && s.face, s.key); assert.ok(s.live.length >= 4, s.key); assert.match(s.docs, /^https:\/\/app\.strikefinance\.org\//);
+    for (const t of [s.summary, ...s.points]) for (const re of MONUMENT_BANNED) assert.doesNotMatch(t, re, `${s.key}: "${t}"`);
+  }
 });

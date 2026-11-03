@@ -2,7 +2,7 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { glowIntensity } from "./post.js";
-import { DISTRICTS, STOPS, ROADS, layoutStops, boardSpot } from "./content.js";
+import { DISTRICTS, STOPS, ROADS, layoutStops, boardSpot, isMonument } from "./content.js";
 import { LABELS } from "./data.js";
 import { roads, jumps, ROAD_HALF, terrainHeight, builderSlots, roadInfo, kerbGapsOf } from "./terrain.js";
 import { tint, setDark } from "./colours.js";
@@ -534,7 +534,10 @@ async function swapInModel(g, file, A, colliderIndex) {
   // Float the label just above the model's top
   const label = g.children.find((c) => c.isSprite);
   if (label) label.position.y = b.max.y + 2.2;
+  modelHooks.get(pad?.stop.key)?.(g); // a monument re-attaches its motion to the model's named nodes
 }
+// Stop key → (group) => void, run after a model replaces the blockout (monuments.js registers the monuments' before buildStops)
+export const modelHooks = new Map();
 
 // ── Ticker board: a scrolling strip of live prices on screen_ meshes ────
 const ticker = canvasTexture(8192, 192, (ctx, w, h, p) => {
@@ -633,7 +636,7 @@ export function buildStops(scene) {
     parent.add(g);
     const bb = addCollider(g); // before the label, whose sprite would widen the box
     const colliderIndex = colliders.length - 1;
-    makeLabel(stop.name, d.colour, height + 2.2, g);
+    if (!isMonument(stop)) makeLabel(stop.name, d.colour, height + 2.2, g); // a monument's name is on its base
     const modelFile = MODELS[stop.shape] || MODELS[shape]; // a landmark may have no blockout shape of its own
     if (modelFile) swapInModel(g, modelFile, A, colliderIndex);
     const reach = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 2 + 4.5;
@@ -1078,7 +1081,7 @@ export function addProps(scene, { planters = true } = {}) {
   // nine road mouths round a 24 m plaza leave no stretch of rim 4 m clear of a road, and that is right for the hub (ruling, 2 Nov 2026).
   for (const d of Object.values(DISTRICTS)) {
     if (d.plaza === false) continue;
-    const padsHere = pads.filter((p) => p.stop.district === d.key).map((p) => ({ x: p.pos.x, z: p.pos.z }));
+    const padsHere = pads.filter((p) => p.stop.district === d.key && !isMonument(p.stop)).map((p) => ({ x: p.pos.x, z: p.pos.z }));
     const { benches, planters: pots } = benchSpots(d, padsHere, kerbGapsOf(d), clearance, { planters });
     for (const b of benches) addProp(groupFor(scene, d.key), "bench", b.x, b.z, b.yaw);
     for (const q of pots) addProp(groupFor(scene, d.key), "planter", q.x, q.z, Math.random() * 6);

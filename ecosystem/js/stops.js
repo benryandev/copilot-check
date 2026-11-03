@@ -411,6 +411,27 @@ export const STOPS = [
     docsLabel: "Market websocket",
   },
   // ── Generated districts (merge.py) ──
+  // The monuments (Part B1, 3 Nov 2026) stand at their plaza's centre with an explicit pos and face; the stops page lists them first.
+  {
+    key: "monument-earn",
+    district: "earn",
+    name: "The SLP Engine",
+    shape: "slpengine",
+    pos: [122.13, -145.55], // Earn's centre (ring index 1: [sin 40° × 190, −cos 40° × 190]); the layout never counts a monument
+    face: [91.28, -108.78], // the HQ mouth: centre + hubDir × 48
+    summary:
+      "The plaza's engine runs on the SLP vault's own trades. Every fill the vault makes lands as a spark on the flywheel, which spins faster the more it fills; the tank is the vault's size, and the gauges are the user vaults.",
+    points: [
+      "Strike's Liquidity Provider vault quotes bids and asks across the markets, so it fills often: around a thousand fills an hour on 3 November 2026, across dozens of symbols, more or less as the markets move.",
+      "One glowing ring round the base for each position the vault has open; the tank's level is the vault's size against the highest seen while you have been here.",
+      "The three gauges show the user vaults by size. Figures are read from Strike's public API every 30 seconds; fills every 10.",
+    ],
+    live: ["slpFillsHour", "slpOpenPositions", "slpEquity", "userVaultSizes"],
+    docs: "https://app.strikefinance.org/vaults",
+    docsLabel: "Vaults on Strike",
+    site: "https://docs.strikefinance.org/perpetuals/vaults/slp-vault",
+    siteLabel: "Docs: SLP Vault",
+  },
   {
     key: "slp",
     district: "earn",
@@ -978,6 +999,26 @@ export const STOPS = [
     live: null,
     docs: "https://medium.com/@strikecardano",
     docsLabel: "Strike on Medium",
+  },
+  {
+    key: "monument-token",
+    district: "token",
+    name: "The Stake",
+    shape: "stake",
+    pos: [-187.11, -32.99], // Token's centre (ring index 7: [sin 280° × 190, −cos 280° × 190])
+    face: [-145.75, -25.70], // the HQ mouth: centre + hubDir × 42
+    summary:
+      "A column of STRIKE that rises with how much is staked, a ring of lamps lit by how many stake it, and a plinth that counts the rewards building for the current period.",
+    points: [
+      "The column's height is STRIKE staked against 30 million; 21.8 million was staked on 3 November 2026. The lamps light in proportion to active stakers.",
+      "Rewards build from the end of the last distribution and are paid out every 15 days as USDM; the plinth shows the running total and the last payout with its dates.",
+      "A drip runs when a new distribution appears. Figures come from Strike's public staking summary every 30 seconds.",
+    ],
+    live: ["stakedStrike", "stakers", "rewardsThisPeriod", "lastDistribution", "distributions", "distributedAllTime"],
+    docs: "https://app.strikefinance.org/staking",
+    docsLabel: "Staking on Strike",
+    site: "https://docs.strikefinance.org/tokenomics/markdown",
+    siteLabel: "Docs: Staking",
   },
   {
     key: "strike-token",

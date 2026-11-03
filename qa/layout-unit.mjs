@@ -2,7 +2,7 @@
 // layoutStops (content.js) places every stop without a fixed pos round the far side of its plaza; the hand-placed ones
 // must keep off the roads and clear of their neighbours; nothing in the hub may open a sheet as the car lands.
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { STOPS, DISTRICTS, ROADS, SPAWN, layoutStops, LAYOUT, HEIGHT, radiusFor } from '../ecosystem/js/content.js';
+import { isMonument, STOPS, DISTRICTS, ROADS, SPAWN, layoutStops, LAYOUT, HEIGHT, radiusFor } from '../ecosystem/js/content.js';
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const base = (d) => Math.atan2(d.hubDir[1], d.hubDir[0]);
 const degFromHQ = (d, p) => { let a = ((Math.atan2(p[1] - d.centre[1], p[0] - d.centre[0]) - base(d)) * 180) / Math.PI; return ((a % 360) + 360) % 360; };
@@ -163,4 +163,16 @@ test('no pad stands in front of any road that meets the plaza, the Chart Ridge a
       }
     }
   }
+});
+
+test('a monument stands at its plaza\'s centre, faces the HQ mouth, and is never counted or laid out', () => {
+  const placed = layoutStops();
+  for (const s of STOPS.filter(isMonument)) {
+    const d = DISTRICTS[s.district];
+    assert.ok(dist(s.pos, d.centre) < 0.05, `${s.key} at the centre`);
+    assert.ok(dist(s.face, [d.centre[0] + d.hubDir[0] * d.radius, d.centre[1] + d.hubDir[1] * d.radius]) < 0.05, `${s.key} faces the mouth`);
+    assert.ok(!placed.has(s.key), `${s.key} is not auto-laid`);
+    assert.ok(HEIGHT[s.shape] <= 8, `${s.key} under 8 m`);
+  }
+  assert.equal(DISTRICTS.earn.radius, 48); assert.equal(DISTRICTS.token.radius, 42); // the count rule ignores them
 });

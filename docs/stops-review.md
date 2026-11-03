@@ -1,6 +1,6 @@
 # Ecosystem world: every sheet for review (generated 2026-11-03)
 
-Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 71 stops. Empty Builders' Row plots and arcade cabinets are left out.
+Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 73 stops. Empty Builders' Row plots and arcade cabinets are left out.
 
 ## Strike HQ
 
@@ -184,6 +184,16 @@ Link: [Docs: Funding Rates](https://docs.strikefinance.org/perpetuals/funding-ra
 ## Earn & Vaults
 
 The vaults, Borrow and Earn, copy trading, points and the LP program.
+
+### The SLP Engine
+
+The plaza's engine runs on the SLP vault's own trades. Every fill the vault makes lands as a spark on the flywheel, which spins faster the more it fills; the tank is the vault's size, and the gauges are the user vaults.
+
+- Strike's Liquidity Provider vault quotes bids and asks across the markets, so it fills often: around a thousand fills an hour on 3 November 2026, across dozens of symbols, more or less as the markets move.
+- One glowing ring round the base for each position the vault has open; the tank's level is the vault's size against the highest seen while you have been here.
+- The three gauges show the user vaults by size. Figures are read from Strike's public API every 30 seconds; fills every 10.
+
+Link: [Vaults on Strike](https://app.strikefinance.org/vaults) · [Docs: SLP Vault](https://docs.strikefinance.org/perpetuals/vaults/slp-vault) · live: SLP fills, last hour, SLP open positions, SLP vault size, User vaults by size
 
 ### SLP Vault
 
@@ -605,6 +615,16 @@ Link: [Strike on Medium](https://medium.com/@strikecardano)
 ## Token & Governance
 
 The STRIKE token, staking and revenue share.
+
+### The Stake
+
+A column of STRIKE that rises with how much is staked, a ring of lamps lit by how many stake it, and a plinth that counts the rewards building for the current period.
+
+- The column's height is STRIKE staked against 30 million; 21.8 million was staked on 3 November 2026. The lamps light in proportion to active stakers.
+- Rewards build from the end of the last distribution and are paid out every 15 days as USDM; the plinth shows the running total and the last payout with its dates.
+- A drip runs when a new distribution appears. Figures come from Strike's public staking summary every 30 seconds.
+
+Link: [Staking on Strike](https://app.strikefinance.org/staking) · [Docs: Staking](https://docs.strikefinance.org/tokenomics/markdown) · live: STRIKE staked, Active stakers, Rewards building this period, Last distribution, Distributions so far, Distributed all time
 
 ### STRIKE
 
