@@ -165,7 +165,7 @@ export function createDust(max, palette, key = "dust") {
       p.vx *= k; p.vz *= k; p.vy = p.vy * k + 0.4 * dt;
       p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
       const age = 1 - p.life / p.max;
-      pos.set([p.x, p.y, p.z], i * 3);
+      pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z; // written straight in: no array per particle per frame
       size[i] = p.s * (0.6 + age * 1.6);
       alpha[i] = Math.min(1, age * 6) * (1 - age) * 0.7;
     }
@@ -278,8 +278,8 @@ export function createFireworks(max = 1400) {
       p.vx *= k; p.vz *= k; p.vy = p.vy * k - FW_G * dt * (p.rocket ? 1 : 0.7);
       p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
       const age = 1 - p.life / p.max;
-      pos.set([p.x, p.y, p.z], i * 3);
-      col.set([p.r, p.g, p.b], i * 3);
+      pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z;
+      col[i * 3] = p.r; col[i * 3 + 1] = p.g; col[i * 3 + 2] = p.b;
       size[i] = p.rocket ? p.s : p.s * (1 - age * 0.5);
       const tw = p.flicker ? 0.75 + 0.25 * Math.sin(clock * p.flicker + i) : 1;
       alpha[i] = (p.rocket ? 0.9 : Math.min(1, age * 8) * (1 - age * age)) * tw;

@@ -293,8 +293,8 @@ function stepCrates(dt) {
       const ox = p.x - o.m.position.x, oz = p.z - o.m.position.z;
       const od = Math.hypot(ox, oz), md = c.r + o.r;
       if (od < md && od > 0) {
-        wake(o);
         const push = (md - od) / 2, nx = ox / od, nz = oz / od;
+        if (o.asleep && push > 0.005) wake(o); // a real push wakes a sleeper; two wedged crates pushing each other apart each frame are let settle
         p.x += nx * push; p.z += nz * push;
         o.m.position.x -= nx * push; o.m.position.z -= nz * push;
         const rel = (c.v.x - o.v.x) * nx + (c.v.y - o.v.y) * nz;
@@ -350,8 +350,9 @@ function stepCrates(dt) {
         if (Math.abs(q.x - p.x) < span && Math.abs(q.z - p.z) < span && Math.abs(q.y - o.h - (wasY + c.h)) < 0.3) wake(o);
       }
     }
-    // Still for a moment on the ground: sleep, squared up on its face
-    if (c.air || Math.abs(c.v.x) + Math.abs(c.v.y) > 0.02 || Math.abs(c.spin) > 0.02) c.still = 0;
+    // Still for a moment on the ground: sleep, squared up on its face. Position is what counts, so a crate wedged between
+    // the shed and a neighbour, pushed one way and back each frame, goes quiet rather than looping for ever
+    if (c.air || Math.abs(c.spin) > 0.02 || Math.abs(p.x - wasX) + Math.abs(p.y - wasY) + Math.abs(p.z - wasZ) > 1e-3) c.still = 0;
     else if ((c.still = (c.still || 0) + dt) > SLEEP_AFTER) {
       c.asleep = true;
       c.v.set(0, 0); c.spin = 0;

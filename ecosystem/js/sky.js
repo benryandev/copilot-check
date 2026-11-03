@@ -58,10 +58,13 @@ function buildClouds(reduceMotion) {
     mesh.instanceMatrix.needsUpdate = true;
   }
   place();
-  // Drift with the wind; a cloud that falls too far behind the camera comes round ahead of it
+  // Drift with the wind; a cloud that falls too far behind the camera comes round ahead of it. The instance matrices are
+  // laid again every fourth frame (a few centimetres of drift, at a hundred metres or more) or when a cloud wraps: laying
+  // all three hundred every frame was a visible share of a phone's frame without a JIT (4 Nov 2026).
+  let frame = 0;
   function tick(dt, cam) {
     if (!reduceMotion) for (const c of clouds) { c.x += WIND.x * dt; c.z += WIND.z * dt; }
-    let moved = !reduceMotion;
+    let moved = !reduceMotion && (++frame & 3) === 0;
     for (const c of clouds) {
       const dx = c.x - cam.x, dz = c.z - cam.z;
       if (dx * dx + dz * dz > CLOUD_RANGE * CLOUD_RANGE) {

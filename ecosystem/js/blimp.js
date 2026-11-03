@@ -58,8 +58,10 @@ export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
   // The soft shadow: a dark ellipse laid on the ground down-sun of the ship, the envelope's footprint, fading to nothing
   // at its edge. A small patch draped on the terrain (a flat plane sank into the hills beyond a plaza's rim) with the
   // fade in a four-part vertex colour (vertex alpha; a canvas texture drew nothing here), 22 × 11 m at 1 m cells, every
-  // vertex just above the plaza discs and rims; re-laid each tick as the ship moves.
-  const BW = 22, BH = 11, NX = 22, NZ = 11;
+  // vertex just above the plaza discs and rims. Laid again every sixth frame (276 ground heights a lay, which at every
+  // frame was the largest share of a phone's frame without a JIT, 4 Nov 2026) and slid with the ship in between: the
+  // ship makes 4 m/s, so the heights lag the spot by under half a metre, well inside the lift above the ground.
+  const BW = 22, BH = 11, NX = 22, NZ = 11, LAY_EVERY = 6;
   const blobGeo = new THREE.BufferGeometry();
   const bpos = new Float32Array((NX + 1) * (NZ + 1) * 3), bcol = new Float32Array((NX + 1) * (NZ + 1) * 4), bidx = [];
   for (let i = 0; i <= NX; i++) for (let j = 0; j <= NZ; j++) {
@@ -74,7 +76,9 @@ export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
   blob.renderOrder = 1;
   blob.frustumCulled = false;
   scene.add(blob);
+  let laid = null, sinceLay = 0; // the spot the blob was last laid for, and the frames since
   function layBlob(sp) {
+    laid = sp; sinceLay = 0; blob.position.set(0, 0, 0);
     const ax = -Math.sin(sp.heading), az = -Math.cos(sp.heading), cx = -az, cz = ax; // along the ship, and across it
     for (let i = 0; i <= NX; i++) for (let j = 0; j <= NZ; j++) {
       const u = (i / NX - 0.5) * BW, v = (j / NZ - 0.5) * BH, q = (i * (NZ + 1) + j) * 3;
@@ -92,12 +96,14 @@ export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
     g.position.set(p.x, p.y + (reduceMotion ? 0 : Math.sin(t * 0.45) * 0.5), p.z);
     g.rotation.y = p.heading;
     g.rotation.z = reduceMotion ? 0 : Math.sin(t * 0.3) * 0.03;
-    layBlob(shadowSpot(p));
+    const sp = shadowSpot(p);
+    if (!laid || ++sinceLay >= LAY_EVERY) layBlob(sp);
+    else blob.position.set(sp.x - laid.x, 0, sp.z - laid.z); // slides with the ship between lays
   };
   tick(0);
   g.frustumCulled = false;
   scene.add(g);
-  g.userData = { tick, redraw, setAngle: (a) => { fixed = a; tick(0); }, pose: () => blimpPose(Date.now(), fixed), setLivery: (name) => { if (LIVERIES[name]) { livery = LIVERIES[name]; redraw(current); } }, liveries: Object.keys(LIVERIES) };
+  g.userData = { tick, redraw, setAngle: (a) => { fixed = a; laid = null; tick(0); }, pose: () => blimpPose(Date.now(), fixed), setLivery: (name) => { if (LIVERIES[name]) { livery = LIVERIES[name]; redraw(current); } }, liveries: Object.keys(LIVERIES) };
   return g;
 }
 export { BLIMP };
