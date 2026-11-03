@@ -75,9 +75,9 @@ export function topVaults(userVaults, n = ENGINE.gauges) {
   return top;
 }
 export const columnScale = (staked) => Math.min(1, Math.max(0.05, staked / STAKE.fullStaked));
-export const lampsLit = (stakers) => Math.round(STAKE.lamps * Math.min(1, stakers / STAKE.fullStakers));
 /** Sparks to fire for one poll: the new fills, within what the live cap leaves free. */
 export const sparkBudget = (added, live, cap) => Math.max(0, Math.min(added, cap - live));
+export const lampsLit = (stakers) => Math.round(STAKE.lamps * Math.min(1, stakers / STAKE.fullStakers));
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** "14 to 29 Oct 2026" when the two UTC dates share a month and year, else "28 Sep to 13 Oct 2026". */

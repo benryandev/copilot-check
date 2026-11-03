@@ -78,3 +78,8 @@ test('no monument value or label carries a banned word; every value key has a la
   const all = { ...stakeValues(pickStaking(staking)), ...engineValues(pickSlp(vaults, positions), { n: 1, minutes: 60, complete: true }) };
   for (const [k, v] of Object.entries(all)) { assert.ok(LABELS[k], `label for ${k}`); for (const re of MONUMENT_BANNED) { assert.doesNotMatch(v, re, k); assert.doesNotMatch(LABELS[k], re, k); } }
 });
+
+import { sparkBudget } from '../ecosystem/js/monument-math.js';
+test('sparkBudget never exceeds the live cap, and fires nothing for a quiet poll', () => {
+  assert.equal(sparkBudget(0, 0, 60), 0); assert.equal(sparkBudget(100, 0, 60), 60); assert.equal(sparkBudget(5, 58, 60), 2); assert.equal(sparkBudget(3, 20, 20), 0); assert.equal(sparkBudget(3, 25, 20), 0);
+});

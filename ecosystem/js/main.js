@@ -28,6 +28,7 @@ import { createSound } from "./sound.js";
 import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive, raceReset } from "./race-live.js";
 import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview, refreshGhost } from "./race.js";
 import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
+import { initMonuments, applyMonuments, monumentsTick, monumentValues, onMonumentStats, injectSlpFills, monumentsState } from "./monuments.js";
 import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer, sendEmote, peerGroup } from "./peers.js";
 import { initEmotes, openEmotes, closeEmotes, toggleEmotes, emoteKeydown, showBubble, emoteTick, activeEmotes } from "./emote.js";
 import { loader, paint, wantsArrival, startArrival } from "./arrive.js";
@@ -104,6 +105,7 @@ scene.add(sky);
 await load.step("Raising the districts");
 buildStops(scene);
 buildLamps(scene); // plaza furniture: a lamp beside every pad (needs the pads and the buildings' colliders)
+initMonuments({ coarse, reduceMotion }); // the live centrepieces (monuments.js): attach to the pads' groups, poll the SLP fills
 buildBollards(scene); // and bollards either side of every road mouth
 buildRoadSigns(scene);
 addProps(scene, { planters: tier().planters }); // includes the plaza benches and planters (furniture-math.js)
@@ -564,7 +566,7 @@ function fillStats(dl, ks) {
       const div = document.createElement("div");
       div.append(
         Object.assign(document.createElement("dt"), { textContent: LABELS[k] }),
-        Object.assign(document.createElement("dd"), { textContent: yardValues()[k] ?? (live ? live.values[k] ?? "Not available" : "Loading") }),
+        Object.assign(document.createElement("dd"), { textContent: monumentValues()[k] ?? yardValues()[k] ?? (live ? live.values[k] ?? "Not available" : "Loading") }),
       );
       return div;
     }),
@@ -897,6 +899,7 @@ function openMap() {
 $("open-map").addEventListener("click", openMap);
 // The Fill Yard's figures tick every second while its sheet is open
 onYardStats(() => { if ($("stop").open && openKey === "fillyard") fillStats($("stop-live"), ["fillsPerMin", "usd10m", "busiest"]); });
+onMonumentStats(() => { if ($("stop").open && openKey === "monument-earn") fillStats($("stop-live"), STOPS.find((x) => x.key === openKey).live); });
 onBoard(() => {
   const el = $("map-race-top");
   if (el) el.replaceChildren(el.firstChild, topList());
@@ -983,6 +986,7 @@ async function refresh() {
     }
     boards.forEach((b) => b(pal()));
     setTicker(live.quotes, live.values);
+    applyMonuments(live.monuments);
     if ($("stop").open && openKey) {
       const s = STOPS.find((x) => x.key === openKey);
       if (s.live) fillStats($("stop-live"), s.live);
@@ -1062,6 +1066,7 @@ function frame() {
   if (paused) sound.pauseEngine(); // a sheet is open: engine off, not idling behind the text
   stepCrates(dt);
   flowTick(dt);
+  monumentsTick(dt);
   peersTick(dt, camera.position);
   emoteTick();
   dust?.userData.step(dt);
@@ -1132,7 +1137,7 @@ $("loader").classList.add("is-done");
 setTimeout(() => $("loader").remove(), 450);
 
 // Test hook for automated checks (no effect on play)
-window.__eco = { car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, placeCar, colliders, pads, deepLink, paused: () => paused,
+window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, placeCar, colliders, pads, deepLink, paused: () => paused,
   blimp: { setAngle: (deg) => blimp.userData.setAngle(deg == null ? null : (deg * Math.PI) / 180), pose: () => blimp.userData.pose(), setLivery: (n) => blimp.userData.setLivery(n), liveries: () => blimp.userData.liveries },
   stunt: () => { const j = jumps.find((o) => o.stunt && o.fx < 0); const lip = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length }; Object.assign(car.s, { x: lip.x + j.fx * 6, z: lip.z, heading: Math.atan2(-j.fx, -j.fz), speed: 24, air: true, vy: 2, airTime: 0.3 }); car.s.y = groundHeight(lip.x, lip.z) + j.height + 1.2; placeCamera(0, true); stuntStart(j); stunt.k = 1; stuntTick(0); } /* the snap first: it resets the stunt */, stuntState: () => ({ k: stunt.k, on: stunt.on }), // QA: mid-flight over the river with the side-on camera up
   splash: (age = 0.35) => { sprayBurst(car.s.x, Math.max(car.s.y, WATER_LEVEL), car.s.z, 40); spray?.userData.step(age); } /* pre-aged, so a still catches the burst spread rather than under the car */, sprayCount: () => sprayCount, // river QA: an entry burst on demand, and how many puffs have flown

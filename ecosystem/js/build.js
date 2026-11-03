@@ -303,6 +303,31 @@ const SHAPES = {
     for (const x of [-4.6, 4.6]) g.add(box(0.5, 5, 0.5, A, x, 0, 3.0));
     return 5.4;
   },
+  // The SLP Engine (the Earn monument, Part B1): a vault body with a flywheel on its left, two pistons on its right, a glass
+  // tank on top and three gauges on the front; monuments.js animates the named nodes (the same names in the Blender model).
+  // The flywheel's axle runs along its local x; tank_fill and the gauge needles pivot at their own origin. 7.8 m tall, 10 m wide.
+  slpengine(g, A, stop) {
+    g.add(box(6, 4, 5, M.build, 1.2, 0, 0), box(6.4, 0.3, 5.4, M.trim, 1.2, 4, 0));
+    for (const z of [-0.9, 0.9]) g.add(box(0.5, 4.5, 0.5, M.trim, -2.8, 0, z)); // the axle's posts
+    const wheel = new THREE.Group(); wheel.name = "flywheel"; wheel.position.set(-2.8, 4.5, 0);
+    const disc = mesh(new THREE.CylinderGeometry(2.4, 2.4, 0.5, 28), A, 0, 0, 0); disc.rotation.z = Math.PI / 2;
+    const hub = mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.9, 16), M.trim, 0, 0, 0); hub.rotation.z = Math.PI / 2;
+    for (let i = 0; i < 4; i++) { const spoke = box(0.3, 4.2, 0.2, M.trim, 0, -2.1, 0); spoke.rotation.x = (i * Math.PI) / 4; wheel.add(spoke); }
+    wheel.add(disc, hub); g.add(wheel);
+    for (const [name, z] of [["piston_a", -1.2], ["piston_b", 1.2]]) {
+      g.add(box(0.9, 1.2, 0.9, M.build, 4.7, 3.1, z)); // the cylinder housing
+      const p = new THREE.Group(); p.name = name; p.position.set(4.7, 4.3, z); p.add(box(0.6, 1.6, 0.6, M.trim, 0, 0, 0)); g.add(p);
+    }
+    const tank = cyl(1.4, 3.5, M.glass, 1.2, 4.3, -0.8, 24); tank.name = "tank"; g.add(tank); // see-through (monuments.js); its fill is a column whose origin is its base
+    const fill = new THREE.Group(); fill.name = "tank_fill"; fill.position.set(1.2, 4.35, -0.8); fill.add(cyl(1.3, 3.4, A, 0, 0, 0, 24)); g.add(fill);
+    [["gauge_a", -0.2], ["gauge_b", 1.2], ["gauge_c", 2.6]].forEach(([name, x]) => {
+      const face = mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.1, 20), M.trim, x, 3.0, 2.55); face.rotation.x = Math.PI / 2; g.add(face);
+      const needle = new THREE.Group(); needle.name = name; needle.position.set(x, 3.0, 2.62); needle.add(box(0.08, 0.5, 0.06, A, 0, 0, 0)); g.add(needle);
+    });
+    const anchor = new THREE.Group(); anchor.name = "ring_anchor"; g.add(anchor);
+    g.add(signBoard(stop.name, 5.6, 1.1, 1.2, 1.3, 2.6));
+    return 8;
+  },
   grid(g, A) {
     for (let i = -1; i <= 1; i++)
       for (let j = -1; j <= 1; j++) {
