@@ -1,10 +1,13 @@
 // The monuments against the live API (dev only): the Stake's six sheet lines equal the strings monument-math makes from a
 // fresh /v2/liquid-staking/summary; the SLP Engine's open-position count is within 5 of /v2/positions, its fills line has the
-// honest shape, the seed lands (more than 100 fills held) and three injected fills make three sparks.
+// honest shape, the seed lands (more than 100 fills held) and three injected fills make three sparks. Part B2: the Chart
+// Plinth's 30-day lines equal the strings from the two daily series and its thirty bars stand with today's lit; the Collateral
+// Stacks' lines equal the strings from the collateral assets and the stacks and rings count; the Beacon's lines equal the users
+// series, "Cars here now" reads 1 with the room off, thirty rungs stand and the lantern pulses slowly.
 // Usage: node qa/monuments-smoke.mjs [baseUrl]   (exit 1 on any failure or page error; one line per check)
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { pickStaking, pickSlp, stakeValues, engineValues } from '../ecosystem/js/monument-math.js';
+import { pickStaking, pickSlp, stakeValues, engineValues, pickSeries, plinthValues, pickCollateral, collateralValues, pickActivity, beaconValues, STACKS } from '../ecosystem/js/monument-math.js';
 
 let chromium;
 try { ({ chromium } = await import('playwright')); } catch {
@@ -71,6 +74,41 @@ await page.evaluate(() => window.__eco.monuments.injectSlpFills([1, 2, 3].map((i
 await sleep(150);
 state = await page.evaluate(() => window.__eco.monuments.state());
 check(state.sparks === before + 3, `three injected fills made exactly three sparks (${before} → ${state.sparks})`);
+
+// (10) and (11): the Chart Plinth
+const plinthWant = async () => { const [v, r] = await Promise.all([api('/stat/v1/dashboard/volumes'), api('/stat/v1/dashboard/revenue')]); return plinthValues(pickSeries(v, r)); };
+let pw = await plinthWant();
+await open('monument-analytics');
+got = await sheet();
+let plinthOff = () => [['Volume, last 30 days', pw.volume30d], ['Revenue, last 30 days', pw.revenue30d]].filter(([l, w]) => got[l] !== w);
+let off = plinthOff();
+if (off.length) { pw = await plinthWant(); off = plinthOff(); } // the hour can roll between the two reads
+check(off.length === 0, `the Chart Plinth's 30-day lines match the daily series${off.length ? `: ${off.map(([l, w]) => `${l} "${got[l]}" vs "${w}"`).join('; ')}` : ` ("${got['Volume, last 30 days']}", "${got['Revenue, last 30 days']}")`}`);
+check(/^\$[\d.]+[KMB]?$/.test(got['Volume, all time'] || '') && /^[\d,]+$/.test(got['Users, all time'] || ''), `the counter lines are figures ("${got['Volume, all time']}", "${got['Users, all time']}")`);
+state = await page.evaluate(() => window.__eco.monuments.state());
+check(state.bars === 30 && state.litBar === 29, `thirty bars stand with today's lit (${state.bars}, lit ${state.litBar})`);
+
+// (12) and (13): the Collateral Stacks
+const stacksWant = async () => pickCollateral(await api('/v2/credit/collateral-assets'));
+let cw = await stacksWant(), cv = collateralValues(cw);
+await open('monument-collateral');
+got = await sheet();
+let stacksOff = () => [['Collateral assets', cv.collateralAssets], ['Open credit lines by asset', cv.collateralLines], ['Collateral held by asset', cv.collateralHeld]].filter(([l, w]) => got[l] !== w);
+off = stacksOff();
+if (off.length) { cw = await stacksWant(); cv = collateralValues(cw); off = stacksOff(); } // the units and their valuation move
+check(off.length === 0, `the Collateral Stacks' lines match the collateral assets${off.length ? `: ${off.map(([l, w]) => `${l} "${got[l]}" vs "${w}"`).join('; ')}` : ` ("${got['Collateral held by asset']}")`}`);
+state = await page.evaluate(() => window.__eco.monuments.state());
+const ringsWant = cw.slice(0, STACKS.slots).reduce((s, a) => s + Math.min(a.lines ?? 0, STACKS.ringsCap), 0);
+check(state.stacks === Math.min(cw.length, STACKS.slots) && state.stackRings === ringsWant, `${state.stacks} stacks and ${state.stackRings} rings (the API: ${cw.length} assets, ${ringsWant} lines)`);
+
+// (14) and (15): the Beacon
+const activity = pickActivity(await api('/stat/v1/dashboard/users')), bv = beaconValues(activity);
+await open('monument-community');
+got = await sheet();
+const yesterday = activity.days.at(-1).n.toLocaleString('en-AU');
+check(got['Active traders, yesterday'] === yesterday && got['Active traders, 30-day high'] === bv.activeTradersHigh30d && got['Cars here now'] === '1', `the Beacon's lines match the users series and read one car with the room off ("${got['Active traders, yesterday']}", "${got['Active traders, 30-day high']}", "${got['Cars here now']}")`);
+state = await page.evaluate(() => window.__eco.monuments.state());
+check(state.rungs === 30 && state.pulse === 3, `thirty rungs stand and the lantern pulses every 3 s (${state.rungs}, ${state.pulse})`);
 
 // (5) no page error
 check(errors === 0, `no page error (${errors})`);
