@@ -1,6 +1,8 @@
 // Live figures from Strike's public API (no key; CORS open; allowed by the site CSP's connect-src).
 // Never an APR or yield: those stay off the page by design.
 
+import { pickStaking, pickSlp, stakeValues, engineValues } from "./monument-math.js";
+
 const API = "https://api.strikefinance.org";
 
 async function getJson(path) {
@@ -40,14 +42,24 @@ export async function fetchFunding(f = fetch) {
   }
 }
 
-const usd = (n) =>
+export const usd = (n) =>
   n >= 1e9 ? `$${(n / 1e9).toFixed(2)}B`
   : n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M`
   : n >= 1e3 ? `$${(n / 1e3).toFixed(0)}K`
   : `$${n.toFixed(0)}`;
-const int = (n) => Number(n).toLocaleString("en-AU");
+export const int = (n) => Number(n).toLocaleString("en-AU");
 
 export const LABELS = {
+  // The monuments (Part B1, 3 Nov 2026): the SLP Engine in Earn and the Stake in Token
+  slpFillsHour: "SLP fills, last hour",
+  slpOpenPositions: "SLP open positions",
+  userVaultSizes: "User vaults by size",
+  stakedStrike: "STRIKE staked",
+  stakers: "Active stakers",
+  rewardsThisPeriod: "Rewards building this period",
+  lastDistribution: "Last distribution",
+  distributions: "Distributions so far",
+  distributedAllTime: "Distributed all time",
   markets: "Markets trading",
   maxLeverage: "Max leverage",
   volume24h: "24 h volume",
@@ -72,8 +84,12 @@ export const LABELS = {
 // Per-collateral credit lines get their labels from the asset name
 export const lineKey = (asset) => `lines:${asset}`;
 
+// The SLP vault's id, resolved from /v2/vaults by type on every fetch; the monuments' fills poll needs it
+let slpId = null;
+export const slpVaultId = () => slpId;
+
 export async function fetchLive() {
-  const [mk, tickers, summary, oiRows, vaults, copy, credit, referral, users] = await Promise.all([
+  const [mk, tickers, summary, oiRows, vaults, copy, credit, referral, users, stakingBody] = await Promise.all([
     getJson("/v2/markets"),
     soft("/price/v2/ticker/24hr"),
     soft("/stat/v1/dashboard/summary"),
@@ -83,7 +99,12 @@ export async function fetchLive() {
     soft("/v2/credit/collateral-assets"),
     soft("/stat/v1/stats/referral-leaderboard?limit=1"),
     soft("/stat/v1/dashboard/users"),
+    soft("/v2/liquid-staking/summary"),
   ]);
+  // The monuments read only the fields monument-math.js names; every APR and price field in these bodies stops here
+  slpId = vaults?.vaults?.find((v) => v.type === "protocol")?.vault_id ?? slpId;
+  const positionsBody = slpId ? await soft(`/v2/positions?vault_id=${slpId}`) : null;
+  const monuments = { staking: pickStaking(stakingBody), slp: pickSlp(vaults, positionsBody) };
   const list = Object.values(mk.markets).filter((m) => m.status === "trading");
   const values = {
     markets: String(list.length),
@@ -133,5 +154,6 @@ export async function fetchLive() {
     .map((t) => ({ sym: t.symbol.replace("-USD", ""), price: Number(t.lastPrice), change: Number(t.priceChangePercent), vol: Number(t.quoteVolume) }))
     .filter((q) => q.price > 0)
     .sort((a, b) => b.vol - a.vol);
-  return { tickers: list.map((m) => m.base_asset).sort(), values, quotes };
+  Object.assign(values, stakeValues(monuments.staking), engineValues(monuments.slp, null));
+  return { tickers: list.map((m) => m.base_asset).sort(), values, quotes, monuments };
 }
