@@ -10,7 +10,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, isMonument } from "./content.js";
 import { pads, accent, M, obbOf, modelHooks, canvasTexture, redraws, themePalette } from "./build.js";
 import { slpVaultId, usd, int } from "./data.js";
-import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale, BEACON, rungScales, carsHere, pulsePeriod } from "./monument-math.js";
+import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale, ringLayout, BEACON, rungScales, carsHere, carsLine, pulsePeriod } from "./monument-math.js";
 import { onPeers, peersState } from "./peers.js";
 
 const API = "https://api.strikefinance.org";
@@ -249,16 +249,16 @@ async function pollSeries(now = Date.now()) {
   state.seriesAt = now;
   const get = async (p) => { try { const r = await fetch(`${API}${p}`, { cache: "no-store" }); return r.ok ? await r.json() : null; } catch { return null; } };
   const [v, r] = await Promise.all([get("/stat/v1/dashboard/volumes"), get("/stat/v1/dashboard/revenue")]);
-  const s = pickSeries(v, r), prev = state.series;
-  state.seriesOk = !!(v && r);
-  if (s) state.series = { volume: s.volume ?? prev?.volume ?? null, revenue: s.revenue ?? prev?.revenue ?? null };
-  if (!state.seriesOk) console.warn("[eco] daily series:", v ? "revenue" : "volumes", "failed");
+  const s = pickSeries(v, r) ?? { volume: null, revenue: null }, prev = state.series;
+  state.seriesOk = !!(s.volume && s.revenue); // a side with no usable day counts as failed: the 30 s retry, the last days kept
+  state.series = { volume: s.volume ?? prev?.volume ?? null, revenue: s.revenue ?? prev?.revenue ?? null };
+  if (!state.seriesOk) console.warn("[eco] daily series:", [s.volume ? null : "volumes", s.revenue ? null : "revenue"].filter(Boolean).join(" and "), "failed");
   applyPlinth(monuments.get("monument-analytics"));
   listeners.forEach((f) => f());
 }
 
 // ── The Collateral Stacks ──
-const STACK_RING = { r: 0.7, tube: 0.05, first: 0.3, step: 0.12, minStep: 0.04 };
+const STACK_RING = { r: 0.7, tube: 0.05 };
 function attachStacks(m) {
   m.nodes = { stacks: names("stack", STACKS.slots).map((n) => node(m.g, n)), labels: names("label", STACKS.slots).map((n) => node(m.g, n)) };
   for (const s of m.nodes.stacks) if (s && s.userData.fullY == null) { s.userData.fullY = s.scale.y; s.userData.fullH = new THREE.Box3().setFromObject(s).getSize(new THREE.Vector3()).y / (s.scale.y || 1); }
@@ -297,10 +297,9 @@ function layStackRings(m) {
   let k = 0;
   (m.stackList ?? []).forEach((a, i) => {
     const s = m.nodes.stacks[i]; if (!s) return;
-    const n = Math.min(a.lines ?? 0, STACKS.ringsCap); if (!n) return;
+    const { count, step } = ringLayout(s.userData.target * s.userData.fullH, a.lines); if (!count) return; // no ring above the stack's top
     m.aux.worldToLocal(s.getWorldPosition(p));
-    const h = s.userData.target * s.userData.fullH, step = Math.min(STACK_RING.step, Math.max(STACK_RING.minStep, (h - STACK_RING.first - 0.1) / n));
-    for (let j = 0; j < n && k < m.rings.instanceMatrix.count; j++, k++) { mat.compose(new THREE.Vector3(p.x, p.y + STACK_RING.first + j * step, p.z), q, sc); m.rings.setMatrixAt(k, mat); }
+    for (let j = 0; j < count && k < m.rings.instanceMatrix.count; j++, k++) { mat.compose(new THREE.Vector3(p.x, p.y + STACKS.ringFirst + j * step, p.z), q, sc); m.rings.setMatrixAt(k, mat); }
   });
   m.rings.count = k;
   m.rings.instanceMatrix.needsUpdate = true;
@@ -420,7 +419,7 @@ export function monumentValues() {
   const line = fillsLine(state.fills, state.since, Date.now());
   const p = plinthValues(state.series), pending = state.seriesOk || !state.seriesAt ? "Loading" : "Not available";
   return { slpFillsHour: line ?? (state.ok ? "Loading" : "Not available"), volume30d: p.volume30d ?? pending, revenue30d: p.revenue30d ?? pending,
-    carsHere: carsHere(state.cars.status, state.cars.n) ?? (state.cars.status === "connecting" ? "Loading" : "Not available") };
+    carsHere: carsLine(state.cars.status, state.cars.n) };
 }
 export const onMonumentStats = (f) => listeners.push(f);
 /** QA: feed fills as a poll would. */

@@ -125,7 +125,7 @@ export const MONUMENT_BANNED = [/recommend|\bAPR\b|\byield\b|\breturn\b|loss cov
 
 // ── Part B2 (3 Nov 2026): the Chart Plinth in Analytics, the Collateral Stacks in Collateral, the Beacon in Community ──
 export const PLINTH = { days: 30, minBar: 0.03 };
-export const STACKS = { slots: 8, low: 1e3, high: 1e6, floor: 0.2, min: 0.05, ringsCap: 48 }; // $1K is a fifth of full height, $1M is full
+export const STACKS = { slots: 8, low: 1e3, high: 1e6, floor: 0.2, min: 0.05, ringsCap: 48, ringFirst: 0.3, ringStep: 0.12, ringMinStep: 0.04 }; // $1K is a fifth of full height, $1M is full
 export const BEACON = { days: 30, minRung: 0.08, pulseSlow: 3, pulseFast: 0.5, fullCars: 8 };
 export const SERIES = { pollMs: 3_600_000, retryMs: 30_000 }; // the two daily series, once an hour
 export const COLLATERAL_NAMES = { ADA: "ADA", LP_SUNDAE_USDCx_USDM: "USDCx/USDM LP", SCALED_AAVE_V3_ETH_aUSDC: "aUSDC", sUSDrf: "sUSDrf", enzoBTC: "enzoBTC" }; // the Collateral sheets' names; an unknown key shows as itself
@@ -145,8 +145,9 @@ export function dailyTotals(rows) {
 export const lastDays = (totals, n = PLINTH.days) => totals.slice(-n);
 export function pickSeries(volumesBody, revenueBody) {
   if (volumesBody == null && revenueBody == null) return null;
-  const side = (body, key) => (body == null ? null : lastDays(dailyTotals(body[key])));
-  return { volume: side(volumesBody, "total_volume_daily"), revenue: side(revenueBody, "total_revenue_daily") };
+  const side = (body, key) => { const d = body == null ? [] : lastDays(dailyTotals(body[key])); return d.length ? d : null; }; // a 200 with no usable day is a failed side, so the last days are kept
+  const s = { volume: side(volumesBody, "total_volume_daily"), revenue: side(revenueBody, "total_revenue_daily") };
+  return s.volume || s.revenue ? s : null;
 }
 /** Exactly n slots, oldest first, null where there is no day; a bar is its day against the row's busiest, never below minBar. */
 export function barScales(days, n = PLINTH.days) {
@@ -171,8 +172,8 @@ export function pickCollateral(body) {
   for (const [key, a] of Object.entries(body.assets)) {
     const units = num(a?.total_collateral_units);
     if (units == null) continue;
-    const price = num(a?.price);
-    list.push({ key, name: COLLATERAL_NAMES[key] ?? key, units, usd: price == null ? null : units * price, lines: num(a?.open_lines) });
+    const price = a?.price_available === false ? null : num(a?.price); // the API flags an unavailable price; a zero values nothing
+    list.push({ key, name: COLLATERAL_NAMES[key] ?? key, units, usd: price == null || price <= 0 ? null : units * price, lines: num(a?.open_lines) });
   }
   return list.sort((x, y) => (x.usd == null) - (y.usd == null) || (y.usd ?? 0) - (x.usd ?? 0) || (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
 }
@@ -182,6 +183,14 @@ export function stackScale(usd) {
   const span = Math.log10(STACKS.high) - Math.log10(STACKS.low);
   const f = STACKS.floor + (1 - STACKS.floor) * ((Math.log10(Math.max(1, usd)) - Math.log10(STACKS.low)) / span);
   return Math.min(1, Math.max(STACKS.min, f));
+}
+/** How many rings fit on a stack of height h for n lines: the usual step, compressed to the minimum, then no more than fit. */
+export function ringLayout(h, n, cap = STACKS.ringsCap) {
+  const want = Math.min(n ?? 0, cap);
+  const room = h - STACKS.ringFirst - 0.1;
+  const step = want > 0 ? Math.min(STACKS.ringStep, Math.max(STACKS.ringMinStep, room / want)) : STACKS.ringStep;
+  const fit = room <= 0 ? 0 : Math.floor(room / step);
+  return { count: Math.max(0, Math.min(want, fit)), step };
 }
 export function collateralValues(list) {
   if (list == null) return {};
@@ -195,7 +204,7 @@ export function pickActivity(body) {
   const rows = body?.daily_active_users;
   if (!Array.isArray(rows) || rows.length < 2) return null;
   const days = rows.slice(0, -1).map((r) => ({ ts: num(r?.[0]), n: num(r?.[1]) })).filter((d) => d.ts != null && d.n != null);
-  return { days: days.slice(-BEACON.days) };
+  return days.length ? { days: days.slice(-BEACON.days) } : null; // every full day malformed: no activity, the last one is kept
 }
 export const activityHigh = (days) => (days?.length ? Math.max(...days.map((d) => d.n)) : null);
 /** Exactly n rungs, newest first (yesterday on top), null padding at the end; a rung is its day against the best of them, never below minRung. */
@@ -208,6 +217,8 @@ export function rungScales(days, n = BEACON.days) {
 export const beaconValues = (activity) => (activity?.days?.length ? { activeTradersHigh30d: int(activityHigh(activity.days)) } : {});
 /** "Cars here now": the room's count plus you when it is on, you alone when it is off by choice, unknown while connecting or offline. */
 export const carsHere = (status, peersCount) => (status === "on" ? String(peersCount + 1) : status === "off" ? "1" : null);
+/** The sheet line: the count, or "Not available" while the room is connecting or offline (never "Loading": a room that never connects would load forever). */
+export const carsLine = (status, peersCount) => carsHere(status, peersCount) ?? "Not available";
 /** The lantern's pulse period in seconds: slow alone, fast with eight or more cars here. */
 export const pulsePeriod = (cars) => BEACON.pulseSlow - (BEACON.pulseSlow - BEACON.pulseFast) * Math.min(1, Math.max(0, cars - 1) / (BEACON.fullCars - 1));
 /** The daily series poll is due once an hour, or 30 s after a failure. */

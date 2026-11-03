@@ -3,7 +3,7 @@
 // Part B in the Strike repo). The picks keep only the named fields, so no APR or price field can reach the world.
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pickStaking, pickSlp, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, columnScale, lampsLit, periodLabel, usdExact, stakeValues, engineValues, MONUMENT_BANNED, STAKE, ENGINE, PLINTH, STACKS, dailyTotals, lastDays, pickSeries, barScales, plinthValues, pickSummary, pickCollateral, stackScale, collateralValues, pickActivity, rungScales, activityHigh, beaconValues, carsHere, pulsePeriod, seriesDue } from '../ecosystem/js/monument-math.js';
+import { pickStaking, pickSlp, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, columnScale, lampsLit, periodLabel, usdExact, stakeValues, engineValues, MONUMENT_BANNED, STAKE, ENGINE, PLINTH, STACKS, dailyTotals, lastDays, pickSeries, barScales, plinthValues, pickSummary, pickCollateral, stackScale, collateralValues, pickActivity, rungScales, activityHigh, beaconValues, carsHere, pulsePeriod, seriesDue, ringLayout, carsLine } from '../ecosystem/js/monument-math.js';
 import { LABELS } from '../ecosystem/js/data.js';
 const fx = (n) => JSON.parse(readFileSync(new URL(`./fixtures/${n}-2026-11-03.json`, import.meta.url)));
 const staking = fx('liquid-staking-summary'), vaults = fx('vaults'), positions = fx('slp-positions'), fills = fx('slp-fills-100');
@@ -198,4 +198,33 @@ test('the new labels exist and fetchLive\'s value keys are labelled', () => {
 test('seriesDue: the hourly series poll, sooner after a failure', () => {
   assert.equal(seriesDue(1000, 0, true), true); assert.equal(seriesDue(10_000 + 3_599_000, 10_000, true), false); assert.equal(seriesDue(10_000 + 3_600_000, 10_000, true), true);
   assert.equal(seriesDue(10_000 + 29_000, 10_000, false), false); assert.equal(seriesDue(10_000 + 30_000, 10_000, false), true);
+});
+// Review fixes (3 Nov evening)
+test('a collateral asset whose price is unavailable or zero is priceless, never "$0"', () => {
+  const ada = collateral.assets.ADA;
+  const flagged = pickCollateral({ assets: { ADA: { ...ada, price_available: false, price: '0' } } });
+  assert.equal(flagged[0].usd, null); assert.equal(flagged[0].lines, 39);
+  assert.deepEqual(collateralValues(flagged), { collateralAssets: '1', collateralHeld: 'None', collateralLines: 'ADA 39' });
+  assert.equal(pickCollateral({ assets: { ADA: { ...ada, price: '0' } } })[0].usd, null, 'a zero price values nothing');
+  assert.equal(pickCollateral({ assets: { ADA: { ...ada, price_available: false } } })[0].usd, null, 'the flag alone is enough');
+  assert.ok(pickCollateral({ assets: { ADA: { ...ada, price_fresh: false } } })[0].usd > 0, 'a stale price still values the units (the sheet says every 30 s)');
+});
+test('ringLayout keeps the rings on the stack: compressed when short, dropped when there is no room', () => {
+  assert.deepEqual(ringLayout(6, 39), { count: 39, step: 0.12 });
+  const full = ringLayout(6, 100); assert.equal(full.count, 48); assert.ok(full.step < 0.12 && 0.3 + 47 * full.step <= 5.9, 'the cap compresses to fit the stack');
+  const short = ringLayout(1.1, 39); assert.equal(short.step, 0.04); assert.equal(short.count, 17); // 0.7 m of room at the minimum step
+  assert.deepEqual(ringLayout(0.28, 5), { count: 0, step: 0.04 });
+  assert.deepEqual(ringLayout(6, 0), { count: 0, step: 0.12 });
+});
+test('carsLine: the sheet string for every room state, never "Loading"', () => {
+  assert.equal(carsLine('on', 2), '3'); assert.equal(carsLine('off', 0), '1');
+  assert.equal(carsLine('connecting', 0), 'Not available'); assert.equal(carsLine('offline', 4), 'Not available');
+});
+test('a 200 body with no usable days is a failed side, not an empty plinth; the same for the users series', () => {
+  assert.equal(pickSeries({ total_volume_daily: [] }, revenue).volume, null, 'no rows: the side failed');
+  assert.equal(pickSeries({ wrong: 1 }, revenue).volume, null, 'a body without the key: the side failed');
+  assert.equal(pickSeries({ total_volume_daily: [[1, 'A', null]] }, revenue).volume, null, 'every row malformed: the side failed');
+  assert.equal(pickSeries({ total_volume_daily: [] }, { total_revenue_daily: [] }), null, 'both empty: nothing');
+  assert.equal(pickSeries(volumes, revenue).volume.length, 30);
+  assert.equal(pickActivity({ daily_active_users: [[1, null], [2, 'x'], [3, 4]] }), null, 'every full day malformed: no activity');
 });
