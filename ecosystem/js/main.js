@@ -34,6 +34,7 @@ import { initEmotes, openEmotes, closeEmotes, toggleEmotes, emoteKeydown, showBu
 import { loader, paint, wantsArrival, startArrival } from "./arrive.js";
 import { createPost, toGlow } from "./post.js";
 import { initArcade, openArcade, arcadeOpen, injectArcadeBoard } from "./arcade.js";
+import { createFps } from "./fps.js";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -75,6 +76,7 @@ const tier = () => TIERS[tierName];
 const canvas = $("world");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const fps = createFps({ renderer, tier: () => tierName }); // ?fps=1: the frame-time readout (fps.js), nothing otherwise
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 320);
 const post = createPost(renderer, scene, camera);
@@ -1058,6 +1060,7 @@ function frame() {
     raceLiveTick();
     sendPose(car.s, jumped, performance.now());
     jumped = false;
+  fps?.begin();
     emitDust(dt, info);
     emitSpray(dt, info);
     checkPads();
@@ -1067,7 +1070,9 @@ function frame() {
   stepCrates(dt);
   flowTick(dt);
   monumentsTick(dt);
+    fps?.mark("car"); // the ?fps=1 readout's sections: the car's step
   peersTick(dt, camera.position);
+    fps?.mark("sound"); // the engine and road sounds following the car
   emoteTick();
   dust?.userData.step(dt);
   spray?.userData.step(dt);
@@ -1084,11 +1089,14 @@ function frame() {
     raceHud(here);
     raceRefresh(here);
     redrawRaceButtons();
+  fps?.mark("chores"); // the race, the pose sent to the room, dust and spray emitted, pads and the place name
   }
+  fps?.mark("crates");
   animated.forEach((f) => f(t));
   if (!reduceMotion) {
     const pulse = 0.65 + Math.sin(t * 3) * 0.2;
     pads.forEach((p) => (p.ring.material.opacity = p === activePad ? 1 : pulse));
+  fps?.mark("world"); // the Fill Yard, the monuments, other visitors, emotes
   }
   if (!arcadeOpen()) post.render(); // the game in the arcade sheet gets the GPU; the world holds its last frame behind it
   watchFrames(raw, t);
@@ -1096,6 +1104,7 @@ function frame() {
 }
 
 await document.fonts.ready;
+  fps?.mark("fx"); // dust, spray, fireworks, grass, water, the blimp, the sky
 await load.step("Painting the grass");
 applyTier();
 applyTheme();
@@ -1110,8 +1119,10 @@ await load.step("Fetching the car and live figures");
 await Promise.all([
   sleep(700), // long enough to read as a moment, not a flicker
   Promise.race([Promise.allSettled([modelsReady(), car.ready]), sleep(8000)]),
+  fps?.draw();
 ]);
 load.done();
+  fps?.end();
 await paint();
 await paint(); // a drawn frame behind it
 // A deep link (?stop=, ?district=) lands straight on the place with no flight and no intro; wantsArrival() is not
@@ -1148,4 +1159,5 @@ window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, tele
   cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks, sound,
   raceLive: raceLiveState, raceLap: onLap, raceLiveInject: injectRaceLive, boost: (secs = 1.4) => { car.s.boost = secs; },
   arcade: (key = "arcade-flappy-coin") => openStop(STOPS.find((s) => s.key === key)), arcadeBoard: injectArcadeBoard,
-  emote: { open: openEmotes, close: closeEmotes, show: showBubble, send: (e) => { showBubble("me", e); sendEmote(e); }, active: activeEmotes }, peerGroup };
+  emote: { open: openEmotes, close: closeEmotes, show: showBubble, send: (e) => { showBubble("me", e); sendEmote(e); }, active: activeEmotes }, peerGroup,
+  fps, tiers: TIERS, quality: (name) => { tierName = name; applyTier(); applyTheme(); } }; // QA: the ?fps=1 figures; a tier applied by name as the Graphics setting applies it, nothing saved

@@ -551,3 +551,6 @@ body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transitio
 .race-live-line[hidden] { display: none; }
 .race-actions { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; margin: var(--space-sm) 0; }
 .race-actions-hint { font-size: 0.875rem; }
+
+/* ── ?fps=1 frame-time readout (dev only, fps.js) ───────────────────── */
+.fps { position: fixed; left: var(--space-2xs); top: 42%; z-index: 20; margin: 0; padding: var(--space-2xs); font: 0.75rem/1.45 var(--font-mono); white-space: pre; color: #f9fafb; background: rgb(13 13 13 / 0.78); border-radius: 4px; pointer-events: none; }
