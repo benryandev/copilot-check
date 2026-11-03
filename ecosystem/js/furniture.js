@@ -2,7 +2,7 @@
 // lamps and bollards. Where things go comes from furniture-math.js.
 import * as THREE from "../vendor/three.module.min.js";
 import { kerbGapsOf, terrainHeight } from "./terrain.js";
-import { KERB, lampSpot, bollardSpots } from "./furniture-math.js";
+import { KERB, lampSpot, bollardSpots, rimLampSpots } from "./furniture-math.js";
 import { pads, colliders, clearance, orientedBox, accent, M } from "./build.js";
 import { DISTRICTS } from "./content.js";
 
@@ -52,6 +52,8 @@ export function buildLamps(scene) {
     const spot = lampSpot(pad, d, { pads: padList.filter((_, k) => k !== i), clearance });
     if (spot) spots.push({ ...spot, colour: d.colour });
   });
+  // Four more on each plaza's near rim, either side of the HQ mouth (3 Nov 2026): the front half had nothing standing at night
+  for (const d of plazas()) for (const spot of rimLampSpots(d, kerbGapsOf(d))) spots.push({ ...spot, colour: d.colour });
   if (!spots.length) { scene.add(g); return g; }
   const poles = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.08, 0.08, 3.4, 10), M.trim, spots.length);
   const caps = new THREE.InstancedMesh(new THREE.BoxGeometry(0.6, 0.08, 0.6), M.trim, spots.length);

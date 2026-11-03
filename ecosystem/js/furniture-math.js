@@ -4,7 +4,8 @@
 export const KERB = { height: 0.12, band: 1.0, inset: 0.3, mouth: 1.5 }; // a 12 cm lip (under the car's 25 cm bump allowance) over a 1 m band 0.3 m inside the rim (0.6 m hopped the car at speed, the review found), open within `mouth` of a road's edge
 export const LAMP = { beside: 3.4, clear: 1.2, padGap: 3.2, inside: 1.5 };
 export const BOLLARD = { inset: 0.8, step: 1.6, edge: 0.4 };
-export const BENCH = { at: 0.62, padGap: 3, clear: 2.5, mouthGap: 4, planter: 1.6, perPlaza: 3 };
+export const BENCH = { inset: 20, padGap: 3, clear: 2.5, mouthGap: 4, planter: 1.6, perPlaza: 3 }; // benches 20 m inside the rim: 8 m in from the pads, between the buildings (3 Nov 2026; 0.62 r put them out in the empty front half)
+export const RIM_LAMP = { angles: [20, 45], inset: 3 }; // four lamps on the near rim, either side of the HQ mouth, so the front half has verticals at night
 
 const TAU = Math.PI * 2;
 const norm = (a) => { let r = ((a + Math.PI) % TAU + TAU) % TAU - Math.PI; return r; }; // into [−π, π)
@@ -82,18 +83,25 @@ export function bollardSpots(plaza, gaps) {
   return out;
 }
 
-/** Benches between the pads at 0.62 r, facing the centre, the best-spread three that keep clear of pads, colliders
- * and mouths; a planter 1.6 m either side of each along its own line, under the same rules. */
+/** Benches between the buildings at r−20, facing the centre: the angular midpoints between pads that are adjacent round
+ * the plaza, never the pair that spans the HQ mouth (the empty front half); the best-spread three that keep clear of
+ * pads, colliders and mouths; a planter 1.6 m either side of each along its own line, under the same rules. A plaza
+ * with fewer than two pads (the Fill Yard) keeps a spread round the whole circle. */
 export function benchSpots(plaza, pads, gaps, clearance = () => Infinity, { planters = true } = {}) {
-  const [cx, cz] = plaza.centre, R = plaza.radius, r = BENCH.at * R;
+  const [cx, cz] = plaza.centre, R = plaza.radius, r = R - BENCH.inset;
   const padAngles = pads.map((p) => angleOf(plaza, p.x, p.z)).sort((a, b) => a - b);
   const candidates = [];
-  if (padAngles.length >= 2) for (let i = 0; i < padAngles.length; i++) {
-    const a = padAngles[i], b = i + 1 < padAngles.length ? padAngles[i + 1] : padAngles[0] + TAU;
-    candidates.push(norm((a + b) / 2));
+  if (padAngles.length >= 2) {
+    const hq = plaza.hubDir ? Math.atan2(plaza.hubDir[1], plaza.hubDir[0]) : null;
+    for (let i = 0; i < padAngles.length; i++) {
+      const a = padAngles[i], b = i + 1 < padAngles.length ? padAngles[i + 1] : padAngles[0] + TAU;
+      if (hq != null && [hq, hq + TAU, hq - TAU].some((h) => h > a && h < b)) continue; // the gap that spans the HQ mouth
+      candidates.push(norm((a + b) / 2));
+    }
+  } else {
+    const n = BENCH.perPlaza + padAngles.length; // a one-pad plaza still gets a spread
+    for (let k = 0; k < n; k++) candidates.push(norm((padAngles[0] ?? 0) + (k * TAU) / n + Math.PI / n));
   }
-  const n = BENCH.perPlaza + padAngles.length; // a sparse plaza still gets a spread
-  for (let k = 0; k < n; k++) candidates.push(norm((padAngles[0] ?? 0) + (k * TAU) / n + Math.PI / n));
   const mouthMargin = BENCH.mouthGap / R;
   const clearOfMouth = (a) => gaps.every((g) => [norm(a), norm(a) + TAU].every((x) => x < g.a0 - mouthMargin || x > g.a1 + mouthMargin));
   const spotOf = (a) => atAngle(plaza, a, r);
@@ -105,10 +113,14 @@ export function benchSpots(plaza, pads, gaps, clearance = () => Infinity, { plan
     .map((c) => ({ ...c, score: Math.min(padDist(c.s), clearance(c.s.x, c.s.z), ...gaps.map((g) => R * Math.min(Math.abs(norm(c.a - g.a0)), Math.abs(norm(c.a - g.a1))))) }))
     .sort((p, q) => q.score - p.score);
   const benches = [];
-  for (const c of scored) {
-    if (benches.length >= BENCH.perPlaza) break;
-    if (benches.some((b) => Math.abs(norm(b.a - c.a)) < 1.2)) continue;
-    benches.push({ ...c.s, a: c.a, yaw: Math.atan2(cx - c.s.x, cz - c.s.z) });
+  // Best spread first: of the candidates that pass, keep the three furthest apart round the arc (greedy from the ends)
+  const pool = scored.slice().sort((p, q) => p.a - q.a);
+  const pick = (c) => benches.push({ ...c.s, a: c.a, yaw: Math.atan2(cx - c.s.x, cz - c.s.z) });
+  if (pool.length <= BENCH.perPlaza) pool.forEach(pick);
+  else {
+    pick(pool[0]); pick(pool[pool.length - 1]);
+    const mid = pool.slice(1, -1).sort((p, q) => Math.abs(norm(q.a - pool[0].a) - norm(pool[pool.length - 1].a - q.a)) - Math.abs(norm(p.a - pool[0].a) - norm(pool[pool.length - 1].a - p.a)))[0];
+    if (mid) pick(mid);
   }
   const pots = [];
   if (planters) for (const b of benches) {
@@ -119,4 +131,19 @@ export function benchSpots(plaza, pads, gaps, clearance = () => Infinity, { plan
     }
   }
   return { benches: benches.map(({ x, z, yaw }) => ({ x, z, yaw })), planters: pots };
+}
+
+/** Four lamps on the near rim: ±20° and ±45° from the HQ direction, `inset` metres inside the rim, each dropped when it
+ * would stand in a road mouth (plus the bench's mouth margin). Plazas without an HQ direction (the hub, the Fill Yard)
+ * get none. */
+export function rimLampSpots(plaza, gaps) {
+  if (!plaza.hubDir) return [];
+  const base = Math.atan2(plaza.hubDir[1], plaza.hubDir[0]), R = plaza.radius, r = R - RIM_LAMP.inset, margin = BENCH.mouthGap / R;
+  const out = [];
+  for (const deg of RIM_LAMP.angles) for (const sign of [-1, 1]) {
+    const a = base + (sign * deg * Math.PI) / 180;
+    if (inGap(gaps, a - margin) || inGap(gaps, a) || inGap(gaps, a + margin)) continue;
+    out.push(atAngle(plaza, a, r));
+  }
+  return out;
 }

@@ -2,12 +2,14 @@
 // (ecosystem/js/furniture-math.js), against the real districts and roads with synthetic pads.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { KERB, LAMP, BOLLARD, BENCH, kerbGaps, inGap, lampSpot, bollardSpots, benchSpots } from '../ecosystem/js/furniture-math.js';
+import { KERB, LAMP, BOLLARD, BENCH, RIM_LAMP, kerbGaps, inGap, lampSpot, bollardSpots, benchSpots, rimLampSpots } from '../ecosystem/js/furniture-math.js';
 import { roads } from '../ecosystem/js/terrain.js';
 import { DISTRICTS } from '../ecosystem/js/content.js';
 
 const perps = DISTRICTS.perps, yard = DISTRICTS.yard, hub = DISTRICTS.hub;
 const ang = (p, x, z) => Math.atan2(z - p.centre[1], x - p.centre[0]);
+const fromHQ = (p, x, z) => { let a = ((ang(p, x, z) - Math.atan2(p.hubDir[1], p.hubDir[0])) * 180) / Math.PI; return ((a % 360) + 360) % 360; }; // degrees, 0 points at HQ
+const onArc = (p, deg, r) => { const a = Math.atan2(p.hubDir[1], p.hubDir[0]) + (deg * Math.PI) / 180; return { x: p.centre[0] + Math.cos(a) * r, z: p.centre[1] + Math.sin(a) * r }; };
 test('kerbGaps: Perps has a spoke and two ring roads: three gaps, each wide enough for the road plus the mouth margin', () => {
   const gaps = kerbGaps(perps, roads);
   assert.equal(gaps.length, 3);
@@ -44,24 +46,38 @@ test('bollardSpots: four posts per gap, all 0.8 m inside the rim and just outsid
     assert.ok(!inGap(gaps, ang(perps, s.x, s.z)), 'just outside the gap, never in the mouth');
   }
 });
-test('benchSpots: three benches spread round between pads, planters either side, none near a mouth or a pad', () => {
-  const pads = [0, 1.2, 2.5, 4.0, 5.3].map((a) => ({ x: perps.centre[0] + Math.cos(a) * 40, z: perps.centre[1] + Math.sin(a) * 40 }));
+test('benchSpots: three benches between the buildings at r-20, on the building side only, planters either side, none near a mouth or a pad', () => {
+  const pads = [100, 140, 180, 220, 260].map((d) => onArc(perps, d, perps.radius - 12)); // a one-row plaza's far arc
   const gaps = kerbGaps(perps, roads);
   const { benches, planters } = benchSpots(perps, pads, gaps, () => 10);
   assert.equal(benches.length, BENCH.perPlaza); assert.equal(planters.length, BENCH.perPlaza * 2);
   for (const b of benches) {
-    assert.ok(Math.abs(Math.hypot(b.x - perps.centre[0], b.z - perps.centre[1]) - BENCH.at * perps.radius) < 1e-6);
+    assert.ok(Math.abs(Math.hypot(b.x - perps.centre[0], b.z - perps.centre[1]) - (perps.radius - BENCH.inset)) < 1e-6, 'at r-20');
+    assert.ok(Math.abs(fromHQ(perps, b.x, b.z) - 180) <= 90, 'on the building side, never the empty front half');
     for (const p of pads) assert.ok(Math.hypot(b.x - p.x, b.z - p.z) >= BENCH.padGap, 'clear of pads');
     for (const g of gaps) for (const a of [ang(perps, b.x, b.z), ang(perps, b.x, b.z) + 2 * Math.PI]) assert.ok(a < g.a0 - BENCH.mouthGap / perps.radius || a > g.a1 + BENCH.mouthGap / perps.radius, 'clear of a mouth');
     assert.ok(Math.abs(b.yaw - Math.atan2(perps.centre[0] - b.x, perps.centre[1] - b.z)) < 1e-9, 'faces the centre');
   }
-  const angles = benches.map((b) => ang(perps, b.x, b.z)).sort((p, q) => p - q);
-  assert.ok(angles[2] - angles[0] > 1.5, 'spread round, not bunched');
+  const mids = [120, 160, 200, 240];
+  for (const b of benches) assert.ok(mids.some((m) => Math.abs(fromHQ(perps, b.x, b.z) - m) < 0.01), `between two pads, not ${fromHQ(perps, b.x, b.z).toFixed(1)}`);
+  const angles = benches.map((b) => fromHQ(perps, b.x, b.z)).sort((p, q) => p - q);
+  assert.ok(angles[2] - angles[0] >= 80, 'spread along the arc, not bunched');
   assert.equal(benchSpots(perps, pads, gaps, () => 10, { planters: false }).planters.length, 0);
   const one = benchSpots(yard, [{ x: yard.centre[0] + 10, z: yard.centre[1] }], kerbGaps(yard, roads), () => 10);
   assert.equal(one.benches.length, BENCH.perPlaza, 'one pad still gives three benches');
   const oa = one.benches.map((b) => ang(yard, b.x, b.z)).sort((p, q) => p - q);
   assert.ok(oa[2] - oa[0] > 1.5, 'spread round the yard');
+});
+
+test('rimLampSpots: four lamps on the near rim between the mouths, none in a gap, none for the hub or the yard', () => {
+  const gaps = kerbGaps(perps, roads), spots = rimLampSpots(perps, gaps);
+  assert.equal(spots.length, 4);
+  const got = spots.map((s) => { let a = fromHQ(perps, s.x, s.z); return Math.round(a > 180 ? a - 360 : a); }).sort((p, q) => p - q);
+  assert.deepEqual(got, [-45, -20, 20, 45]);
+  for (const s of spots) assert.ok(Math.abs(Math.hypot(s.x - perps.centre[0], s.z - perps.centre[1]) - (perps.radius - RIM_LAMP.inset)) < 1e-6);
+  for (const s of spots) assert.ok(!inGap(gaps, ang(perps, s.x, s.z)), 'not in a road mouth');
+  assert.equal(rimLampSpots(hub, kerbGaps(hub, roads)).length, 0);
+  assert.equal(rimLampSpots(yard, kerbGaps(yard, roads)).length, 0);
 });
 
 // From the review (2 Nov): the Raceway link leaves Partners almost along the rim, so endpoint-only gaps drew the kerb
