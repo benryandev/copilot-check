@@ -55,6 +55,7 @@ const seen = new Set(); // trade ids, so the backfill and the stream don't count
 let symbols = [];
 let ws = null, backoff = 1000, subId = 0;
 const statsListeners = [];
+const tradeListeners = [], statusListeners = []; // the Feed Obelisk (monuments.js) reads the stream and its status from here
 const crateGeo = new THREE.BoxGeometry(1, 1, 1);
 const doorMat = new THREE.MeshStandardMaterial({ color: 0x0b0d10, roughness: 0.95 });
 
@@ -302,11 +303,15 @@ export function yardValues(now = Date.now()) {
   };
 }
 export const onYardStats = (f) => statsListeners.push(f);
+/** The stream's raw trade messages ({ s, p, q, m, T, t }), after the dedupe, test fills included. */
+export const onTrade = (fn) => tradeListeners.push(fn);
+/** The stream's status ("live", "reconnecting", "offline"), the current one at once. */
+export const onYardStatus = (fn) => { statusListeners.push(fn); fn(state.status); };
 // Test hook (main.js puts it on window.__eco): feed made-up fills through the same path as the stream
 let fakeId = 0;
 export function injectFills(list) {
   const now = Date.now();
-  for (const f of list) onTrade({ s: `${f.sym}-USD`, p: String(f.usd), q: "1", T: now, t: `test-${++fakeId}`, m: !f.buy });
+  for (const f of list) takeTrade({ s: `${f.sym}-USD`, p: String(f.usd), q: "1", T: now, t: `test-${++fakeId}`, m: !f.buy });
 }
 
 function drawScreen(ctx, w, h) {
@@ -357,6 +362,7 @@ function setStatus(s) {
   if (state.status === s) return;
   state.status = s;
   yard?.screen.redraw();
+  statusListeners.forEach((fn) => fn(s));
 }
 function remember(id) {
   if (id == null) return true;
@@ -365,11 +371,12 @@ function remember(id) {
   if (seen.size > 6000) for (const k of seen) { seen.delete(k); if (seen.size <= 4000) break; }
   return true;
 }
-function onTrade(ev) {
+function takeTrade(ev) {
   const usdv = Number(ev.p) * Number(ev.q);
   if (!(usdv > 0) || !remember(ev.t)) return;
   const f = { sym: base(ev.s), buy: !ev.m, usd: usdv, t: Number(ev.T) || Date.now() };
   record(f);
+  tradeListeners.forEach((fn) => fn(ev)); // the raw message: symbol, side, size and level for the obelisk's screens
   const q = state.queue.at(-1);
   if (q && q.sym === f.sym && q.buy === f.buy && f.t - q.t < MERGE_MS) { q.usd += f.usd; q.t = f.t; return; }
   if (state.queue.length >= QUEUE_MAX) spill(f);
@@ -388,7 +395,7 @@ function connect() {
       if (!line.trim()) continue;
       let d;
       try { d = JSON.parse(line); } catch { continue; }
-      if (d?.e === "trade") onTrade(d);
+      if (d?.e === "trade") takeTrade(d);
     }
   };
   ws.onclose = () => retry();
@@ -424,10 +431,11 @@ async function backfill() {
     const lists = await Promise.all(top.map((s) => fetch(`${API}/price/v2/trades?symbol=${s}&limit=300`).then((r) => r.json()).catch(() => [])));
     const since = Date.now() - WINDOW_MS;
     const all = lists
-      .flatMap((l, i) => (Array.isArray(l) ? l : []).map((t) => ({ id: t.id, sym: base(top[i]), buy: !t.isBuyerMaker, usd: Number(t.quoteQty) || Number(t.price) * Number(t.qty), t: Number(t.time) })))
+      .flatMap((l, i) => (Array.isArray(l) ? l : []).map((t) => ({ id: t.id, sym: base(top[i]), buy: !t.isBuyerMaker, usd: Number(t.quoteQty) || Number(t.price) * Number(t.qty), t: Number(t.time), raw: { s: top[i], p: t.price, q: t.qty, m: t.isBuyerMaker, T: Number(t.time), t: t.id } })))
       .filter((f) => f.t >= since && f.usd > 0 && remember(f.id))
       .sort((a, b) => a.t - b.t);
     for (const f of all) record(f);
+    for (const f of all.slice(-14)) tradeListeners.forEach((fn) => fn(f.raw)); // the obelisk's screens start with the last lines, not blank
     // The last few orders (partials merged), already through the yard
     const orders = [];
     for (const f of all) {

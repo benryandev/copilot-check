@@ -10,8 +10,9 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, isMonument } from "./content.js";
 import { pads, accent, M, obbOf, modelHooks, canvasTexture, redraws, themePalette } from "./build.js";
 import { slpVaultId, usd, int } from "./data.js";
-import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale, ringLayout, BEACON, rungScales, carsHere, carsLine, pulsePeriod } from "./monument-math.js";
+import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale, ringLayout, BEACON, rungScales, carsHere, carsLine, pulsePeriod, FEED, tradeLine, feedLines } from "./monument-math.js";
 import { onPeers, peersState } from "./peers.js";
+import { onTrade, onYardStatus, onYardStats, yardValues } from "./flow.js";
 
 const API = "https://api.strikefinance.org";
 const KERB = { lift: 0.8, gap: (40 * Math.PI) / 180, radius: 0.14 }; // the kerb arc: 0.8 m outside the footprint, open ±40° towards the pad
@@ -25,6 +26,7 @@ const state = {
   slp: null, staking: null, high: null, // the last SLP and staking picks; the highest SLP equity seen this session
   fills: [], since: null, seeded: false, lastAt: 0, lastOkAt: 0, ok: true, forceSeed: false, startedAt: 0, // the fills poll
   collateral: null, // the Collateral Stacks: the last pick
+  feed: [], feedDirty: false, streamStatus: "offline", // the Feed Obelisk: the last lines of the trade stream and its status
   activity: null, cars: { status: "off", n: 0 }, // the Beacon: the users series and the presence room's state
   series: null, seriesOk: true, seriesAt: 0, summary: null, // the Chart Plinth: the two daily series (hourly) and the all-time counter
 };
@@ -346,6 +348,40 @@ function tickBeacon(m, dt) {
   if (m.lanternMat) { m.phase += dt; m.lanternMat.emissiveIntensity = opts.reduceMotion ? 1 : 0.5 + 0.9 * (0.5 + 0.5 * Math.sin((2 * Math.PI * m.phase) / m.pulse)); }
 }
 
+// ── The Feed Obelisk ──
+function attachObelisk(m) {
+  m.nodes = { screens: names("screen", 4).map((n) => node(m.g, n)), face: node(m.g, "face_feed") };
+  buildKerb(m);
+  if (!m.screen) { // one canvas for the four screens: the held lines from the top, newest at the bottom, the stream's status last
+    m.screen = canvasTexture(512, 1180, (ctx, w, h, p) => {
+      ctx.fillStyle = p.panel; ctx.fillRect(0, 0, w, h);
+      ctx.textBaseline = "middle"; ctx.textAlign = "left"; ctx.font = "500 30px 'Geist Mono', monospace";
+      ctx.fillStyle = p.text;
+      state.feed.forEach((line, i) => ctx.fillText(line, 24, 60 + i * 76, w - 48));
+      if (state.streamStatus !== "live") { ctx.fillStyle = p.sub; ctx.fillText(state.streamStatus === "reconnecting" ? "Stream reconnecting" : "Stream offline", 24, h - 40, w - 48); }
+    });
+    redraws.push(m.screen.redraw);
+    m.screenMat = new THREE.MeshBasicMaterial({ map: m.screen.tex, toneMapped: false });
+    m.repaintIn = 0;
+  }
+  m.nodes.screens.forEach((s) => { if (!s) return; s.material = m.screenMat; s.castShadow = false; });
+  const blockout = m.nodes.screens.some((s) => s?.userData.blockout);
+  m.screen.tex.flipY = blockout; m.screen.tex.needsUpdate = true;
+  if (themePalette()) m.screen.redraw(themePalette());
+  makeFace(m); bindFace(m, m.nodes.face); // the yard's minute figures
+  applyObelisk(m);
+}
+function applyObelisk(m) {
+  if (!m?.nodes.screens) return;
+  const v = yardValues();
+  if (v.busiest === "No fills in 10 min" && v.fillsPerMin === "0") return; // nothing seen yet: the face stays blank
+  setFaceText(m, [["Fills, last minute", v.fillsPerMin], ["Busiest, 10 min", v.busiest.split(" (")[0]]]);
+}
+function tickObelisk(m, dt) {
+  m.repaintIn -= dt;
+  if (state.feedDirty && m.repaintIn <= 0 && themePalette()) { m.screen.redraw(themePalette()); state.feedDirty = false; m.repaintIn = FEED.repaintMs / 1000; }
+}
+
 // ── The fills poll ──
 async function pollFills(now = Date.now()) {
   const id = slpVaultId();
@@ -379,7 +415,7 @@ function takeFills(incoming, now, seed = false) {
 // ── Public ──
 export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
   opts = { coarse, reduceMotion };
-  const attach = { "monument-earn": attachEngine, "monument-token": attachStake, "monument-analytics": attachPlinth, "monument-collateral": attachStacks, "monument-community": attachBeacon };
+  const attach = { "monument-earn": attachEngine, "monument-token": attachStake, "monument-analytics": attachPlinth, "monument-collateral": attachStacks, "monument-community": attachBeacon, "monument-developers": attachObelisk };
   for (const stop of STOPS.filter(isMonument)) {
     const fn = attach[stop.key];
     if (!fn) continue;
@@ -389,6 +425,9 @@ export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
   }
   const room = (s) => { state.cars = { status: s.status, n: s.peers.length }; applyBeacon(monuments.get("monument-community")); listeners.forEach((f) => f()); };
   room(peersState()); onPeers(room); // the Beacon's lantern and its "Cars here now"
+  onTrade((ev) => { const line = tradeLine(ev); if (line) { state.feed = feedLines(state.feed, line); state.feedDirty = true; } }); // the Feed Obelisk's screens
+  onYardStatus((s) => { state.streamStatus = s; state.feedDirty = true; });
+  onYardStats(() => applyObelisk(monuments.get("monument-developers")));
   setInterval(() => { pollFills(); pollSeries(); }, 1000);
   pollFills(); pollSeries();
 }
@@ -412,6 +451,7 @@ export function monumentsTick(dt) {
   const a = monuments.get("monument-analytics"); if (a?.nodes.vol) tickPlinth(a, dt);
   const c = monuments.get("monument-collateral"); if (c?.nodes.stacks) tickStacks(c, dt);
   const b = monuments.get("monument-community"); if (b?.nodes.rungs) tickBeacon(b, dt);
+  const o = monuments.get("monument-developers"); if (o?.screen) tickObelisk(o, dt);
 }
 export function monumentValues() {
   // Before the seed lands the line is loading, not "Not available" (the smoke caught a sheet opened in that gap, 3 Nov);
@@ -430,7 +470,9 @@ export const monumentsState = () => {
   const a = monuments.get("monument-analytics");
   const c = monuments.get("monument-collateral");
   const b = monuments.get("monument-community");
-  return { rungs: b?.nodes.rungs?.filter((r) => r?.visible).length ?? 0, pulse: b?.pulse ?? null, beaconFace: b?.faceText ?? null, cars: state.cars,
+  const o = monuments.get("monument-developers");
+  return { feed: state.feed.length, feedLast: state.feed.at(-1) ?? null, stream: state.streamStatus, obeliskFace: o?.faceText ?? null,
+    rungs: b?.nodes.rungs?.filter((r) => r?.visible).length ?? 0, pulse: b?.pulse ?? null, beaconFace: b?.faceText ?? null, cars: state.cars,
     stacks: c?.stackList?.length ?? 0, stackRings: c?.rings?.count ?? 0, stackNames: c?.stackList?.map((x) => x.name) ?? [],
     bars: a?.nodes.vol?.filter((b) => b?.visible).length ?? 0, litBar: a?.litBar ?? null, plinthFace: a?.faceText ?? null, seriesAt: state.seriesAt,
     fills: state.fills.length, since: state.since, seeded: state.seeded, sparks: e?.sparks?.live.length ?? 0, rings: e?.rings?.count ?? 0, wheel: e?.wheelSpeed ?? 0,

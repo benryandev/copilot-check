@@ -400,6 +400,21 @@ const SHAPES = {
     g.add(signBoard(stop.name, 3.4, 0.7, 0, 0.5, 2.08));
     return 7.9;
   },
+  // The Feed Obelisk (the Developers monument, Part B3): a base with the yard's figures on its face, a square shaft with four
+  // screens (monuments.js paints the trade stream on one canvas shared by all four), a pyramid cap, the name on the shaft.
+  // 7.8 m tall, 4 m across; the same node names in the Blender model.
+  obelisk(g, A, stop) {
+    g.add(box(4.4, 0.2, 4.4, M.build, 0, 0, 0), box(4, 1.0, 4, M.trim, 0, 0, 0), box(2.0, 6.0, 2.0, M.build, 0, 1.0, 0));
+    const cap = mesh(new THREE.ConeGeometry(1.45, 0.8, 4), A, 0, 7.4, 0); cap.rotation.y = Math.PI / 4; g.add(cap);
+    [[0, 1.01, 0], [1.01, 0, Math.PI / 2], [0, -1.01, Math.PI], [-1.01, 0, -Math.PI / 2]].forEach(([x, z, ry], i) => {
+      const s = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 3.0), M.trim); s.name = `screen_${String(i + 1).padStart(2, "0")}`; s.userData.blockout = true;
+      s.position.set(x, 4.2, z); s.rotation.y = ry; g.add(s);
+    });
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 1.0), M.trim); face.name = "face_feed"; face.userData.blockout = true;
+    face.position.set(0, 0.5, 2.01); g.add(face);
+    g.add(signBoard(stop.name, 2.4, 0.5, 0, 1.9, 1.08));
+    return 7.8;
+  },
   grid(g, A) {
     for (let i = -1; i <= 1; i++)
       for (let j = -1; j <= 1; j++) {
