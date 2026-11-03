@@ -478,6 +478,7 @@ const MODELS = {
   kiosk: "kiosk.glb", twin: "twin.glb", cluster: "cluster.glb", pillar: "pillar.glb", dome: "dome.glb",
   tower: "tower.glb", antenna: "antenna.glb", grid: "grid.glb", coins: "coins.glb", vault: "vault.glb",
   arch: "arch.glb", cliff: "cliff.glb", shop: "shop.glb", plot: "plot.glb",
+  slpengine: "slp-engine.glb", stake: "stake.glb", // the monuments (Part B1)
 };
 // Models whose front was built facing another way: turn them so it faces the pad (+z)
 const MODEL_YAW = { "cliff.glb": -Math.PI / 2 };
