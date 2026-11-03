@@ -6,7 +6,7 @@ export const DELAY_MS = 150; // render other cars this far behind their latest p
 export const QUIET_MS = 3000; // no pose for this long: the car fades and sits still
 export const GONE_MS = 15000; // no pose for this long: the car is put away (the player stays listed until the room says they left)
 export const PARK_MS = 10000; // a car out of the drawn set this long is disposed; it's rebuilt when needed
-export const DRAW_CAP = { high: 24, medium: 24, low: 8 }; // nearest cars drawn, by quality tier
+export const DRAW_CAP = { high: 24, medium: 24, phone: 12, low: 8 }; // nearest cars drawn, by quality tier
 export const DRAW_RANGE = 250; // m from the camera, like the district culling
 const MOVING = 0.05; // m/s
 

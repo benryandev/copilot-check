@@ -35,6 +35,7 @@ import { loader, paint, wantsArrival, startArrival } from "./arrive.js";
 import { createPost, toGlow } from "./post.js";
 import { initArcade, openArcade, arcadeOpen, injectArcadeBoard } from "./arcade.js";
 import { createFps } from "./fps.js";
+import { TIERS, startTier, nextTier, SLOW_MS, WINDOW } from "./quality-math.js";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -61,25 +62,21 @@ const PALETTE = {
 let dark = root.classList.contains("dark");
 const pal = () => (dark ? PALETTE.dark : PALETTE.light);
 
-// ── Quality tiers ─────────────────────────────────────────────────────
-const TIERS = {
-  high: { ratio: 2, shadow: 2048, grass: 14000, ground: 200, dust: 420, bloom: { strength: 0.28, radius: 0.22 }, planters: true },
-  medium: { ratio: 1.5, shadow: 1024, grass: 7000, ground: 150, dust: 280, bloom: { strength: 0.25, radius: 0.2 }, planters: true },
-  low: { ratio: 1, shadow: 0, grass: 2500, ground: 110, dust: 140, bloom: false, planters: false },
-};
-const ORDER = ["high", "medium", "low"];
+// ── Quality tiers (quality-math.js) ───────────────────────────────────
+// The saved choice from the Graphics setting, else a touch screen starts on phone and anything else on high; the auto
+// rule below only ever steps down from there
 let qualityPref = (() => { try { return localStorage.getItem("eco-quality") || "auto"; } catch { return "auto"; } })();
-let tierName = qualityPref !== "auto" ? qualityPref : coarse ? "medium" : "high";
+let tierName = startTier(qualityPref, coarse);
 const tier = () => TIERS[tierName];
 
 // ── Renderer, scene, camera, lights ───────────────────────────────────
 const canvas = $("world");
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-const fps = createFps({ renderer, tier: () => tierName }); // ?fps=1: the frame-time readout (fps.js), nothing otherwise
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 320);
 const post = createPost(renderer, scene, camera);
+const fps = createFps({ renderer, tier: () => tierName }); // ?fps=1: the frame-time readout (fps.js), nothing otherwise
 const hemi = new THREE.HemisphereLight(0xffffff, 0x8892a0, 1.1);
 const sun = new THREE.DirectionalLight(0xffffff, 1.6);
 sun.castShadow = true;
@@ -240,9 +237,12 @@ function releaseKeys() {
 // Crates: a 2D slide for the knock-about, plus real falling. A crate's floor is the ground or the top of whatever
 // it overlaps enough, so they land on each other; knock the one underneath away and the rest drop; land on an edge
 // and it slides off, which is what makes a heap rather than a tower. In the air it tumbles; at rest it settles onto
-// a face.
-const CRATE_G = 22, CRATE_BOUNCE = 0.28, QUARTER = Math.PI / 2;
+// a face. A crate still for a moment goes to sleep: it skips its physics until the car hits it, another crate pushes
+// it or the one it sits on moves. Nearly every crate (the plaza benches and planters, the Perps crates, the yard's heap)
+// is asleep nearly all the time, and the step was a third of the frame's script on a phone (4 Nov 2026).
+const CRATE_G = 22, CRATE_BOUNCE = 0.28, QUARTER = Math.PI / 2, SLEEP_AFTER = 0.6;
 const faceSnap = (a, dt) => { const t = Math.round(a / QUARTER) * QUARTER; return t + (a - t) * Math.exp(-dt * 10); };
+const wake = (c) => { c.asleep = false; c.still = 0; };
 function crateFloor(c) {
   const p = c.m.position;
   let floor = groundHeight(p.x, p.z), on = null, off = 0;
@@ -269,6 +269,7 @@ function stepCrates(dt) {
     const minD = CAR_R + c.r;
     if (d < minD && d > 0 && s.y < p.y + c.h + 1.2 && p.y - c.h < s.y + 1.4) {
       c.hit = true;
+      wake(c);
       const nx = dx / d, nz = dz / d;
       p.x = s.x + nx * minD;
       p.z = s.z + nz * minD;
@@ -285,11 +286,14 @@ function stepCrates(dt) {
       }
       s.speed *= 0.92;
     }
+    if (c.asleep) continue; // at rest: only the car, a push or a moving floor (below) bring it back
+    const wasX = p.x, wasY = p.y, wasZ = p.z;
     for (const o of crates) {
       if (o === c || Math.abs(p.y - o.m.position.y) >= c.h + o.h - 0.08) continue; // one on top of the other: not a sideways touch
       const ox = p.x - o.m.position.x, oz = p.z - o.m.position.z;
       const od = Math.hypot(ox, oz), md = c.r + o.r;
       if (od < md && od > 0) {
+        wake(o);
         const push = (md - od) / 2, nx = ox / od, nz = oz / od;
         p.x += nx * push; p.z += nz * push;
         o.m.position.x -= nx * push; o.m.position.z -= nz * push;
@@ -337,6 +341,22 @@ function stepCrates(dt) {
       p.y = floor + c.h;
       c.m.rotation.x = faceSnap(c.m.rotation.x, dt);
       c.m.rotation.z = faceSnap(c.m.rotation.z, dt);
+    }
+    // Moved this frame: whatever was resting on it has lost its floor, so it wakes and falls or slides as before
+    if (Math.abs(p.x - wasX) + Math.abs(p.y - wasY) + Math.abs(p.z - wasZ) > 1e-4) {
+      for (const o of crates) {
+        if (o === c || !o.asleep) continue;
+        const span = (c.r + o.r) * 0.62, q = o.m.position;
+        if (Math.abs(q.x - p.x) < span && Math.abs(q.z - p.z) < span && Math.abs(q.y - o.h - (wasY + c.h)) < 0.3) wake(o);
+      }
+    }
+    // Still for a moment on the ground: sleep, squared up on its face
+    if (c.air || Math.abs(c.v.x) + Math.abs(c.v.y) > 0.02 || Math.abs(c.spin) > 0.02) c.still = 0;
+    else if ((c.still = (c.still || 0) + dt) > SLEEP_AFTER) {
+      c.asleep = true;
+      c.v.set(0, 0); c.spin = 0;
+      c.m.rotation.x = Math.round(c.m.rotation.x / QUARTER) * QUARTER;
+      c.m.rotation.z = Math.round(c.m.rotation.z / QUARTER) * QUARTER;
     }
   }
 }
@@ -999,23 +1019,23 @@ async function refresh() {
   }
 }
 
-// ── Auto quality: drop a tier if frames run slow while driving ────────
-let slowAcc = 0, slowN = 0, lastDrop = 0;
+// ── Auto quality: drop a tier when frames run slow while driving (the rule is in quality-math.js) ──
+let slowN = 0, frameN = 0, lastDrop = 0, warmed = false;
 function watchFrames(dt, t) {
   if (qualityPref !== "auto" || paused) return;
-  slowAcc += dt; slowN++;
-  if (slowN >= 120) {
-    const avg = slowAcc / slowN;
-    slowAcc = 0; slowN = 0;
-    const i = ORDER.indexOf(tierName);
-    if (avg > 1 / 38 && i < ORDER.length - 1 && t - lastDrop > 4) {
-      tierName = ORDER[i + 1];
-      lastDrop = t;
-      applyTier();
-      applyTheme();
-      console.info(`[eco] quality → ${tierName} (avg ${(avg * 1000).toFixed(1)} ms)`);
-    }
-  }
+  frameN++;
+  if (dt * 1000 > SLOW_MS) slowN++;
+  if (frameN < WINDOW) return;
+  const share = slowN / frameN;
+  slowN = 0; frameN = 0;
+  if (!warmed) { warmed = true; return; } // the first window after the sheet closes is shaders compiling and models landing
+  const next = nextTier(share, tierName, t, lastDrop);
+  if (!next) return;
+  tierName = next;
+  lastDrop = t;
+  applyTier();
+  applyTheme();
+  console.info(`[eco] quality → ${tierName} (${Math.round(share * 100)}% of frames over ${SLOW_MS} ms)`);
 }
 
 // ── Loop ──────────────────────────────────────────────────────────────
@@ -1040,6 +1060,7 @@ let debugCam = false; // test hook: hold the camera still for overview shots
 let cineCam = null; // test hook (clips): called after the chase camera each frame to place the camera itself
 let arrival = null; // the opening flight owns the camera until it lands
 function frame() {
+  fps?.begin();
   const raw = clock.getDelta();
   const dt = Math.min(raw, 1 / 30);
   const t = clock.elapsedTime;
@@ -1049,7 +1070,9 @@ function frame() {
     if (info.event) car.lastEvent = info.event; // QA scripts read it
     { const j = jumpAt(px, pz) || jumpAt(px - info.fx, pz - info.fz); if (stuntTakeoff(wasAir, car.s.air, j, info.fx, info.fz)) stuntStart(j); } // off a stunt ramp, heading up it: the side-on camera
     brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on, info.boost > 0);
+    fps?.mark("car"); // the ?fps=1 readout's sections: the car's step
     sound.tick(dt, { speed: car.s.speed, throttle: (keys.up ? 1 : 0) - (keys.down ? 1 : 0), surface: car.s.air ? "air" : info.wet ? "water" : info.dirt ? "dirt" : onCobbles(car.s.x, car.s.z) ? "cobble" : "grass", boost: info.boost > 0 });
+    fps?.mark("sound"); // the engine and road sounds following the car
     if (info.event?.landed > 4) sound.land(Math.min(1, info.event.landed / 14));
     if (info.event?.splash) sound.splash(Math.min(1, info.event.splash / 16));
     if (info.event?.boost) { sound.boost(); if (inRaceway(car.s.x, car.s.z)) raceNote("Boost!", 900); }
@@ -1060,20 +1083,20 @@ function frame() {
     raceLiveTick();
     sendPose(car.s, jumped, performance.now());
     jumped = false;
-  fps?.begin();
     emitDust(dt, info);
     emitSpray(dt, info);
     checkPads();
     updateWhere();
   }
   if (paused) sound.pauseEngine(); // a sheet is open: engine off, not idling behind the text
+  fps?.mark("chores"); // the race, the pose sent to the room, dust and spray emitted, pads and the place name
   stepCrates(dt);
+  fps?.mark("crates");
   flowTick(dt);
   monumentsTick(dt);
-    fps?.mark("car"); // the ?fps=1 readout's sections: the car's step
   peersTick(dt, camera.position);
-    fps?.mark("sound"); // the engine and road sounds following the car
   emoteTick();
+  fps?.mark("world"); // the Fill Yard, the monuments, other visitors, emotes
   dust?.userData.step(dt);
   spray?.userData.step(dt);
   fireworks?.userData.step(dt);
@@ -1081,6 +1104,7 @@ function frame() {
   waterMesh?.userData.tick(t);
   blimp.userData.tick(t);
   sky.userData.tick(t, dt, camera.position);
+  fps?.mark("fx"); // dust, spray, fireworks, grass, water, the blimp, the sky
   if (arrival?.active) arrival.tick(dt);
   else if (!debugCam) { placeCamera(dt); stuntTick(dt); cineCam?.(dt); }
   if ((frameNo++ & 15) === 0) {
@@ -1089,22 +1113,20 @@ function frame() {
     raceHud(here);
     raceRefresh(here);
     redrawRaceButtons();
-  fps?.mark("chores"); // the race, the pose sent to the room, dust and spray emitted, pads and the place name
   }
-  fps?.mark("crates");
   animated.forEach((f) => f(t));
   if (!reduceMotion) {
     const pulse = 0.65 + Math.sin(t * 3) * 0.2;
     pads.forEach((p) => (p.ring.material.opacity = p === activePad ? 1 : pulse));
-  fps?.mark("world"); // the Fill Yard, the monuments, other visitors, emotes
   }
+  fps?.draw();
   if (!arcadeOpen()) post.render(); // the game in the arcade sheet gets the GPU; the world holds its last frame behind it
   watchFrames(raw, t);
+  fps?.end();
   requestAnimationFrame(frame);
 }
 
 await document.fonts.ready;
-  fps?.mark("fx"); // dust, spray, fireworks, grass, water, the blimp, the sky
 await load.step("Painting the grass");
 applyTier();
 applyTheme();
@@ -1119,10 +1141,8 @@ await load.step("Fetching the car and live figures");
 await Promise.all([
   sleep(700), // long enough to read as a moment, not a flicker
   Promise.race([Promise.allSettled([modelsReady(), car.ready]), sleep(8000)]),
-  fps?.draw();
 ]);
 load.done();
-  fps?.end();
 await paint();
 await paint(); // a drawn frame behind it
 // A deep link (?stop=, ?district=) lands straight on the place with no flight and no intro; wantsArrival() is not
