@@ -271,7 +271,7 @@ body:has(dialog[open]) :is(.hud-foot, .touch) { visibility: hidden; }
 .arcade-frame:focus { outline: none; }
 /* A phone on its side: the sheet takes the height and the frame takes what the header leaves */
 @media (max-height: 520px) {
-  .sheet--arcade { display: flex; flex-direction: column; height: calc(100dvh - 1rem); max-height: none; width: min(40rem, calc(100vw - 1rem)); padding: var(--space-xs) var(--space-sm); }
+  .sheet--arcade[open] { display: flex; flex-direction: column; height: calc(100dvh - 1rem); max-height: none; width: min(40rem, calc(100vw - 1rem)); padding: var(--space-xs) var(--space-sm); }
   .sheet--arcade > * + * { margin-top: var(--space-2xs); }
   .sheet--arcade .arcade-credit, .sheet--arcade .arcade-board { display: none; }
   .arcade-frame { flex: 1; min-height: 0; height: auto; }

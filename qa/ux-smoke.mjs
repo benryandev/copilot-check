@@ -5,6 +5,7 @@
 //             never moves
 //   zoom      focusBoard() eases the camera to the pose that frames the top 10 board while the car stops where it is; the
 //             HUD and the touch controls hide, the Save and Back bar shows; Escape or Back brings the chase camera back
+//   landscape a phone on its side (844 by 390): no closed sheet paints (the arcade sheet did, 3 Nov 2026, Ben's phone)
 // Each part opens its own page. Exits 1 on any failure. Runs against http://localhost:8767 by default (the worktree's
 // server); the leaderboard is offline on that origin, which none of these checks need. The room is off (?mp=0) and
 // the opening flight is skipped (arrive=0).
@@ -19,7 +20,7 @@ try { ({ chromium } = await import('playwright')); } catch {
 const args = process.argv.slice(2);
 const base = (args.find((a) => !a.startsWith('--')) || 'http://localhost:8767').replace(/\/$/, '');
 const opt = (k) => args.find((a) => a.startsWith(`--${k}=`))?.split('=')[1]?.split(',');
-const parts = opt('part') || ['stick', 'footer', 'zoom'];
+const parts = opt('part') || ['stick', 'footer', 'zoom', 'landscape'];
 const reduced = args.includes('--reduced');
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const failures = [];
@@ -138,6 +139,14 @@ if (parts.includes('zoom')) {
     check(errs.length === 0, `${tag}: no page errors${errs.length ? ' ' + errs.join(' | ') : ''}`);
     await ctx.close();
   }
+}
+
+if (parts.includes('landscape')) {
+  const { ctx, page, errs } = await open({ width: 844, height: 390, touch: true });
+  const shown = await page.evaluate(() => [...document.querySelectorAll('dialog')].filter((d) => !d.open && getComputedStyle(d).display !== 'none').map((d) => d.id));
+  check(shown.length === 0, `landscape: no closed sheet paints (${shown.join(', ') || 'none'})`);
+  check(errs.length === 0, `landscape: no page errors${errs.length ? ' ' + errs.join(' | ') : ''}`);
+  await ctx.close();
 }
 
 await browser.close();
