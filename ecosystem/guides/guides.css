@@ -25,7 +25,7 @@ body.guide-page { background: var(--bg-page); color: var(--text-primary); }
 .guide-article p, .guide-article li { font-size: 1.0625rem; line-height: 1.6; max-width: var(--measure); }
 .guide-article ul, .guide-article ol { padding-left: 1.25rem; margin: 0; }
 .guide-article li + li { margin-top: var(--space-2xs); }
-.guide-sub { color: var(--text-secondary); font-size: 1.15rem; }
+.guide-sub { color: var(--text-secondary); font-size: 1.15rem; max-width: var(--measure-lede); } /* the kit's lede measure; it ran 78 characters at 1280 */
 .guide-meta { color: var(--text-secondary); font-size: 0.9rem; }
 .guide-article a:not(.br-button) { color: inherit; text-decoration: underline; text-underline-offset: 0.15em; }
 .guide-article a:not(.br-button):hover { text-decoration-thickness: 2px; }
