@@ -11,6 +11,7 @@ import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInf
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.js";
 import { initStick } from "./stick.js";
+import { focusPose, focusBlend } from "./focus-math.js";
 import { footStep } from "./hud-math.js";
 import { buildBlimp } from "./blimp.js";
 import { buildRidge } from "./ridge.js";
@@ -24,7 +25,7 @@ import {
 } from "./build.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R, brakeLights } from "./car.js";
 import { tint } from "./colours.js";
-import { buildRaceway, formatTime } from "./raceway.js";
+import { buildRaceway, formatTime, boardPose } from "./raceway.js";
 import { celebrateOnce } from "./race-post.js";
 import { createSound } from "./sound.js";
 import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive, raceReset } from "./race-live.js";
@@ -203,6 +204,7 @@ addEventListener("keydown", (e) => {
   // Emotes: E opens the row; while it is open the digits, arrows, Enter and Escape are its
   if (emoteKeydown(e)) { e.preventDefault(); return; }
   if (e.code === "KeyE" && !e.metaKey && !e.ctrlKey && !e.altKey && !["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) { e.preventDefault(); toggleEmotes(); return; }
+  if (focus.on && (e.code === "Escape" || KEYMAP[e.code])) { e.preventDefault(); focusEnd(); return; } // zoomed on the board: Escape or a driving key brings the camera back
   const k = KEYMAP[e.code];
   if (k) { keys[k] = true; e.preventDefault(); }
   if ((e.code === "Enter" || e.code === "Space") && activePad) { e.preventDefault(); openStop(activePad.stop); }
@@ -488,6 +490,39 @@ function stuntTick(dt) {
   stunt.look.set(s.x, s.y + 0.8, s.z).lerp(camLook, 1 - k);
   camera.lookAt(stunt.look);
 }
+
+// ── The board zoom (Ben, 3 Nov 2026) ─────────────────────────────────
+// The camera eases to a spot in front of the Raceway's top 10 board that fits all of it (focus-math.js), looking at its
+// centre, while the car stops where it is; the HUD and the driving controls hide, a bar with Save and Back stays. Back,
+// Escape or a driving key on a keyboard brings the chase camera back. Reduced motion snaps instead of easing.
+const focus = { k: 0, on: false, cam: new THREE.Vector3(), look: new THREE.Vector3() };
+function focusAim() { const p = focusPose(boardPose(), baseFov, camera.aspect); focus.cam.set(p.cam.x, p.cam.y, p.cam.z); focus.look.set(p.look.x, p.look.y, p.look.z); } // baseFov, not camera.fov, which widens during a boost
+function focusBoard() {
+  if (focus.on) return;
+  focusAim();
+  car.s.speed = 0; releaseKeys(); closeEmotes();
+  focus.on = true;
+  if (reduceMotion) focus.k = 1;
+  document.body.classList.add("is-focus");
+  $("focus-bar").hidden = false;
+  $("board-prompt")?.setAttribute("hidden", "");
+}
+function focusEnd() {
+  if (!focus.on) return;
+  focus.on = false;
+  if (reduceMotion) focus.k = 0;
+  document.body.classList.remove("is-focus");
+  $("focus-bar").hidden = true;
+}
+function focusTick(dt) {
+  if (!focus.on && focus.k <= 0) return;
+  focus.k = focusBlend(focus.k, dt, focus.on);
+  if (focus.k <= 0) return;
+  const k = stuntEase(focus.k);
+  camera.position.lerpVectors(camPos, focus.cam, k);
+  camera.lookAt(camLook.clone().lerp(focus.look, k));
+}
+$("focus-back").addEventListener("click", focusEnd);
 
 // ── Skip drawing districts out of sight (beyond the fog) ──────────────
 function cullDistricts() {
@@ -1030,6 +1065,7 @@ function resize() {
   baseFov = w < h ? 68 : 55;
   camera.fov = baseFov;
   camera.updateProjectionMatrix();
+  if (focus.on) focusAim(); // the board zoom's pose depends on the aspect
   dust?.userData.setScale(h * renderer.getPixelRatio());
   spray?.userData.setScale(h * renderer.getPixelRatio());
   fireworks?.userData.setScale(h * renderer.getPixelRatio());
@@ -1048,7 +1084,7 @@ function frame() {
   const t = clock.elapsedTime;
   if (!paused) {
     const px = car.s.x, pz = car.s.z, wasAir = car.s.air;
-    const info = stepCar(car, raceLocked() ? NO_KEYS : keys, dt);
+    const info = stepCar(car, raceLocked() || focus.on ? NO_KEYS : keys, dt);
     if (info.event) car.lastEvent = info.event; // QA scripts read it
     { const j = jumpAt(px, pz) || jumpAt(px - info.fx, pz - info.fz); if (stuntTakeoff(wasAir, car.s.air, j, info.fx, info.fz)) stuntStart(j); } // off a stunt ramp, heading up it: the side-on camera
     brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on, info.boost > 0);
@@ -1084,7 +1120,7 @@ function frame() {
   blimp.userData.tick(t);
   sky.userData.tick(t, dt, camera.position);
   if (arrival?.active) arrival.tick(dt);
-  else if (!debugCam) { placeCamera(dt); stuntTick(dt); cineCam?.(dt); }
+  else if (!debugCam) { placeCamera(dt); stuntTick(dt); focusTick(dt); cineCam?.(dt); }
   if ((frameNo++ & 15) === 0) {
     if (!debugCam) cullDistricts();
     const here = inRaceway(car.s.x, car.s.z);
@@ -1144,7 +1180,7 @@ $("loader").classList.add("is-done");
 setTimeout(() => $("loader").remove(), 450);
 
 // Test hook for automated checks (no effect on play)
-window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, stick, jumps, groundHeight, placeCamera, placeCar, colliders, pads, deepLink, paused: () => paused,
+window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, stick, focusBoard, focusEnd, focus, boardPose, camera, jumps, groundHeight, placeCamera, placeCar, colliders, pads, deepLink, paused: () => paused,
   blimp: { setAngle: (deg) => blimp.userData.setAngle(deg == null ? null : (deg * Math.PI) / 180), pose: () => blimp.userData.pose(), setLivery: (n) => blimp.userData.setLivery(n), liveries: () => blimp.userData.liveries },
   stunt: () => { const j = jumps.find((o) => o.stunt && o.fx < 0); const lip = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length }; Object.assign(car.s, { x: lip.x + j.fx * 6, z: lip.z, heading: Math.atan2(-j.fx, -j.fz), speed: 24, air: true, vy: 2, airTime: 0.3 }); car.s.y = groundHeight(lip.x, lip.z) + j.height + 1.2; placeCamera(0, true); stuntStart(j); stunt.k = 1; stuntTick(0); } /* the snap first: it resets the stunt */, stuntState: () => ({ k: stunt.k, on: stunt.on }), // QA: mid-flight over the river with the side-on camera up
   splash: (age = 0.35) => { sprayBurst(car.s.x, Math.max(car.s.y, WATER_LEVEL), car.s.z, 40); spray?.userData.step(age); } /* pre-aged, so a still catches the burst spread rather than under the car */, sprayCount: () => sprayCount, // river QA: an entry burst on demand, and how many puffs have flown

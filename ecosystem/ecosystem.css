@@ -585,6 +585,11 @@ body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transitio
 .race-go[hidden] { display: none; }
 .race-invite .prompt-card { cursor: default; pointer-events: auto; gap: var(--space-sm); }
 .race-invite-actions { display: flex; gap: var(--space-2xs); }
+
+/* The board zoom (main.js focusBoard): the HUD and the driving controls go, a bar with Save the board and Back stays */
+.focus-bar { left: 50%; bottom: max(var(--space-sm), env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: var(--space-2xs); pointer-events: auto; }
+.focus-bar[hidden] { display: none; }
+body.is-focus :is(.hud:not(.focus-bar), .touch) { visibility: hidden; }
 .race-live-line { margin: 0 0 var(--space-2xs); font-family: var(--font-mono); font-size: 0.875rem; letter-spacing: 0.04em; color: var(--text-secondary); }
 .race-live-line[hidden] { display: none; }
 .race-actions { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; margin: var(--space-sm) 0; }

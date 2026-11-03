@@ -3,6 +3,8 @@
 //             the pad's edge, a window blur releases it
 //   footer    the footer pill fades out after a moment on the throttle and comes back after a moment still; the touch bar
 //             never moves
+//   zoom      focusBoard() eases the camera to the pose that frames the top 10 board while the car stops where it is; the
+//             HUD and the touch controls hide, the Save and Back bar shows; Escape or Back brings the chase camera back
 // Each part opens its own page. Exits 1 on any failure. Runs against http://localhost:8767 by default (the worktree's
 // server); the leaderboard is offline on that origin, which none of these checks need. The room is off (?mp=0) and
 // the opening flight is skipped (arrive=0).
@@ -17,7 +19,7 @@ try { ({ chromium } = await import('playwright')); } catch {
 const args = process.argv.slice(2);
 const base = (args.find((a) => !a.startsWith('--')) || 'http://localhost:8767').replace(/\/$/, '');
 const opt = (k) => args.find((a) => a.startsWith(`--${k}=`))?.split('=')[1]?.split(',');
-const parts = opt('part') || ['stick', 'footer'];
+const parts = opt('part') || ['stick', 'footer', 'zoom'];
 const reduced = args.includes('--reduced');
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const failures = [];
@@ -104,6 +106,38 @@ if (parts.includes('footer')) {
   check(JSON.stringify(barBefore) === JSON.stringify(barDriving), `footer: the touch bar never moves (${JSON.stringify(barBefore)} vs ${JSON.stringify(barDriving)})`);
   await t.page.evaluate(() => { window.__eco.keys.up = false; });
   await t.ctx.close();
+}
+
+if (parts.includes('zoom')) {
+  const until = (page, fn, ms = 20_000) => page.waitForFunction(fn, null, { timeout: ms }).then(() => true, () => false);
+  for (const [w, h, touch] of [[1280, 800, false], [375, 812, true]]) {
+    const tag = `zoom ${w}`;
+    const { ctx, page, errs } = await open({ width: w, height: h, touch });
+    await page.evaluate(() => window.__eco.toStart());
+    await sleep(300);
+    check(typeof (await page.evaluate(() => typeof window.__eco.focusBoard)) === 'string' && (await page.evaluate(() => typeof window.__eco.focusBoard)) === 'function', `${tag}: focusBoard is on __eco`);
+    await page.evaluate(() => { window.__eco.keys.up = true; });
+    check(await until(page, () => window.__eco.car.s.speed > 2), `${tag}: the car is rolling`);
+    // Zoom while still rolling: the car must stop where it is
+    const at = await page.evaluate(() => { const e = window.__eco; e.keys.up = false; const s = e.car.s; const pos = { x: s.x, z: s.z, speed: s.speed }; e.focusBoard(); return pos; });
+    check(at.speed > 1, `${tag}: zoomed while rolling at ${at.speed.toFixed(1)} m/s`);
+    check(await page.evaluate(() => document.body.classList.contains('is-focus')), `${tag}: body.is-focus`);
+    check(await until(page, () => { const e = window.__eco, c = e.camera.position, p = e.focus.cam; return e.focus.k >= 1 && Math.hypot(c.x - p.x, c.y - p.y, c.z - p.z) < 0.5; }, 30_000), `${tag}: the camera arrives at the board pose`);
+    const st = await page.evaluate(() => {
+      const vis = (sel) => getComputedStyle(document.querySelector(sel)).visibility;
+      const s = window.__eco.car.s, b = window.__eco.boardPose(), c = window.__eco.camera.position;
+      return { speed: s.speed, x: s.x, z: s.z, bar: getComputedStyle(document.getElementById('focus-bar')).display, top: vis('.hud-top'), foot: vis('.hud-foot'), touch: vis('#touch'), inFront: (c.x - b.x) * b.fx + (c.z - b.z) * b.fz, height: c.y - b.y };
+    });
+    check(st.speed === 0 && Math.abs(st.x - at.x) < 1e-6 && Math.abs(st.z - at.z) < 1e-6, `${tag}: the car stopped where it was (speed ${st.speed}, moved ${Math.hypot(st.x - at.x, st.z - at.z).toFixed(3)} m)`);
+    check(st.bar !== 'none', `${tag}: the Save and Back bar shows`);
+    check(st.top === 'hidden' && st.foot === 'hidden' && st.touch === 'hidden', `${tag}: the HUD and the touch controls hide (${st.top}, ${st.foot}, ${st.touch})`);
+    check(st.inFront > 5 && Math.abs(st.height) < 0.01, `${tag}: the camera stands in front of the printed side at the board's height (${st.inFront.toFixed(1)} m, ${st.height.toFixed(2)} m)`);
+    if (touch) await page.click('#focus-back'); else await page.keyboard.press('Escape');
+    check(await until(page, () => !document.body.classList.contains('is-focus') && window.__eco.focus.k === 0, 30_000), `${tag}: ${touch ? 'Back' : 'Escape'} brings the chase camera back`);
+    check((await page.evaluate(() => getComputedStyle(document.getElementById('focus-bar')).display)) === 'none', `${tag}: the bar is gone`);
+    check(errs.length === 0, `${tag}: no page errors${errs.length ? ' ' + errs.join(' | ') : ''}`);
+    await ctx.close();
+  }
 }
 
 await browser.close();
