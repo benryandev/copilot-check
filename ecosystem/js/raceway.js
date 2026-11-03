@@ -5,8 +5,9 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, RACE_TRACK, raceLocal } from "./content.js";
 import { raceGates, trackAt, terrainHeight, TRACK_HALF, GATE_HALF } from "./terrain.js";
+import { MARKER, markerPos, drapedRing, drapedDisc } from "./focus-math.js";
 import {
-  M, accent, box, cyl, mesh, canvasTexture, colliders, redraws, groupFor, addCollider, addProp, orientedBox,
+  M, accent, box, cyl, mesh, canvasTexture, colliders, redraws, groupFor, addCollider, addProp, orientedBox, tintedBasic, makeLabel,
   drawLogo, realfiLogo, REALFI,
 } from "./build.js";
 
@@ -164,6 +165,7 @@ export function setBoard(state) {
   boardState = state;
   if (boardRedraw && lastPal) boardRedraw(lastPal);
 }
+let boardGroup = null, boardSize = null, boardTex = null; // kept for boardPose() and boardCanvas()
 function buildBoard(parent) {
   const W = 1400, H = 1000;
   const board = canvasTexture(W, H, (ctx, w, h, p) => {
@@ -213,6 +215,7 @@ function buildBoard(parent) {
   g.position.set(x, terrainHeight(x, z), z);
   g.rotation.y = Math.atan2(tx - x, tz - z);
   const pw = W / 100, ph = H / 100;
+  boardGroup = g; boardSize = { w: pw, h: ph }; boardTex = board.tex;
   const legs = [cyl(0.35, 5, M.trim, -pw / 2 + 1.5, 0, 0, 8), cyl(0.35, 5, M.trim, pw / 2 - 1.5, 0, 0, 8)];
   const back = box(pw + 0.4, ph + 0.4, 0.5, M.build, 0, 5 - 0.2, 0);
   const panel = mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: board.tex, toneMapped: false }), 0, 5 + ph / 2, 0.3);
@@ -222,6 +225,35 @@ function buildBoard(parent) {
   legs.forEach((l) => addCollider(l, 0));
   return g;
 }
+// The marker (Ben, 4 Nov 2026): a pad-style ring and a label ten metres in front of the board, in the Raceway's colour, so the
+// zoom is found by driving into it; main.js shows the card the moment the car is on it and pulses the ring like a pad
+let marker = null;
+function buildMarker(parent) {
+  const b = boardPose(), m = markerPos(b);
+  // The infield is not level, so the ring and the disc are draped over the terrain point by point (focus-math.js)
+  const geo = ({ positions, indices }) => { const gm = new THREE.BufferGeometry(); gm.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3)); gm.setIndex(indices); gm.computeVertexNormals(); return gm; };
+  const ring = new THREE.Mesh(geo(drapedRing(m.x, m.z, 2.3, MARKER.r, 48, terrainHeight, 0.18)), tintedBasic(D().colour, { transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+  const disc = new THREE.Mesh(geo(drapedDisc(m.x, m.z, 2.3, 48, terrainHeight, 0.16)), tintedBasic(D().colour, { transparent: true, opacity: 0.14, side: THREE.DoubleSide }));
+  // The label floats between the ring and the board at six tenths of a pad label's size: a full one at the ring sat over the car
+  const lx = m.x + b.fx * 2.5, lz = m.z + b.fz * 2.5;
+  const g = new THREE.Group();
+  g.position.set(lx, terrainHeight(lx, lz), lz);
+  g.scale.setScalar(0.6);
+  makeLabel("Top 10 board", D().colour, 3.2 / 0.6, g);
+  parent.add(ring, disc, g);
+  marker = { x: m.x, z: m.z, r: MARKER.r, ring };
+}
+/** The marker's world position, radius and ring mesh. */
+export const boardMarker = () => marker;
+
+/** The board's world pose for the zoom camera (focus-math.js): its centre, the unit facing of its printed side in xz, its size in m. */
+export function boardPose() {
+  boardGroup.updateWorldMatrix(true, false);
+  const c = boardGroup.localToWorld(new THREE.Vector3(0, 5 + boardSize.h / 2, 0.3));
+  return { x: c.x, y: c.y, z: c.z, fx: Math.sin(boardGroup.rotation.y), fz: Math.cos(boardGroup.rotation.y), w: boardSize.w, h: boardSize.h };
+}
+/** The canvas the board is drawn on, for the Save the board image (board-share.js). */
+export const boardCanvas = () => boardTex.image;
 
 // ── Things to knock about ──────────────────────────────────────────────
 function propsAt(parent, kind, s, v, lift = 0) {
@@ -256,6 +288,7 @@ export function buildRaceway(scene) {
   raceGates.forEach((gate) => (gate.i === 0 ? buildGantry(parent, gate) : buildGate(parent, gate, lineMat)));
   const tyres = buildTyreWalls(parent);
   buildBoard(parent);
+  buildMarker(parent);
   buildProps(parent);
   return { tyres };
 }

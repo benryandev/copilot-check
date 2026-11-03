@@ -1,6 +1,6 @@
 // The ?fps=1 readout's figures: node --test qa/fps-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { frameStats, formatFps, sectionMeans } from '../ecosystem/js/fps-math.js';
+import { frameStats, formatFps, sectionMeans, loopMs } from '../ecosystem/js/fps-math.js';
 
 test('a second of frames: the average and worst interval, the script, draw and GPU means, nothing without frames', () => {
   const s = frameStats([16, 17, 33, 16], [4, 4, 6, 4], [2, 2, 3, 2], [5, 6]);
@@ -21,4 +21,12 @@ test('the sections line: means per frame, largest first, at most five', () => {
   assert.deepEqual(sections.slice(0, 2), [['crates', 18.4], ['car', 2]]);
   assert.equal(formatFps(frameStats([20], [5], [3]), 'low', { calls: 1, triangles: 1 }, sections).split('\n')[3], 'crates 18.4 · car 2.0 · world 0.4 · fx 0.3 · hud 0.2');
   assert.deepEqual(sectionMeans({}, 0), []);
+});
+
+test('the fixed loop: a positive time, the same sum every run, shown in whole ms on the third line', () => {
+  const ms = loopMs();
+  assert.ok(ms > 0 && ms < 2000, `took ${ms} ms`);
+  let t = 0; assert.equal(loopMs(() => (t += 7)), 7, 'the clock is read twice, before and after');
+  assert.equal(formatFps(frameStats([20], [5], [3]), 'phone', { calls: 1, triangles: 1 }, [], 6.4).split('\n')[2], 'phone · 1 calls · 1 tris · loop 6 ms');
+  assert.equal(formatFps(frameStats([20], [5], [3]), 'phone', { calls: 1, triangles: 1 }).split('\n')[2], 'phone · 1 calls · 1 tris');
 });

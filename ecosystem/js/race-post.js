@@ -27,3 +27,20 @@ export function celebrateOnce(seen, { name, ms }, now, windowMs = 20_000) {
   if (seen && seen.key === key && now - seen.at < windowMs) return { fire: false, seen };
   return { fire: true, seen: { key, at: now } };
 }
+
+// The device token: 16 random bytes as hex, made once and kept in this browser, so two people behind one public
+// address (a colleague on the same office wifi, 4 Nov 2026) each get their own row on the board. Null when the
+// browser cannot keep it (storage blocked, or a write that vanishes): the worker then keys the row by the address
+// alone, as it did before.
+export const DEVICE_KEY = "eco-device";
+export function deviceToken(store, random = (n) => crypto.getRandomValues(new Uint8Array(n))) {
+  try {
+    const have = store.getItem(DEVICE_KEY);
+    if (typeof have === "string" && /^[0-9a-f]{32}$/.test(have)) return have;
+    const token = [...random(16)].map((b) => b.toString(16).padStart(2, "0")).join("");
+    store.setItem(DEVICE_KEY, token);
+    return store.getItem(DEVICE_KEY) === token ? token : null;
+  } catch {
+    return null;
+  }
+}

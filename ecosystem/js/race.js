@@ -4,7 +4,7 @@
 // just says so and there's no ghost.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { offerBest, retryAfterMs, recordBest, markPosted } from "./race-post.js";
+import { offerBest, retryAfterMs, recordBest, markPosted, deviceToken } from "./race-post.js";
 import { RACE_TRACK } from "./content.js";
 import { raceGates, trackAt, trackLen, groundHeight } from "./terrain.js";
 import { setBoard, formatTime } from "./raceway.js";
@@ -196,6 +196,7 @@ function openFinish() {
 }
 
 $("race-again").addEventListener("click", () => toStart());
+$("race-board").addEventListener("click", () => { $("race").close(); hooks.focus?.(); }); // See it on the board: the sheet closes, then the camera zooms (main.js focusBoard)
 
 // Error codes from the worker, in words
 const REASONS = {
@@ -209,6 +210,7 @@ const REASONS = {
   segment_too_fast: "Time rejected: one stretch between checkpoints was faster than the car can go.",
   too_large: "Time rejected: too much data.",
   origin: "The leaderboard only takes times posted from this site.",
+  address_full: "This network already has five names on the board.",
 };
 // The device's best, when it beats this lap and never made the board (a 429 between two quick laps, a missed
 // tap): one button posts it from here
@@ -238,10 +240,16 @@ async function postLap(entry, retried = false) {
   status.textContent = `Posting ${formatTime(entry.ms)}…`;
   let waiting = false;
   try {
+    // The device token goes with the lap, so a colleague on the same wifi gets their own row rather than
+    // "already on the board" (4 Nov 2026); a browser that can't keep one posts as before
+    const payload = { track: RACE_TRACK.id, name, ms: entry.ms, splits: entry.splits, trace: entry.trace };
+    let device = null;
+    try { device = deviceToken(localStorage); } catch {}
+    if (device) payload.device = device;
     const res = await fetch(`${API}/race/time`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ track: RACE_TRACK.id, name, ms: entry.ms, splits: entry.splits, trace: entry.trace }),
+      body: JSON.stringify(payload),
     });
     const body = await res.json().catch(() => ({}));
     if (res.ok && body.ok) {

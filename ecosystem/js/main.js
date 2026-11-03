@@ -10,6 +10,11 @@ import { normaliseFunding, pollDue } from "./windsock-math.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo, setRidgeSeries, onRidge, ridgeSeries } from "./terrain.js";
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.js";
+import { initStick } from "./stick.js";
+import { FOCUS, focusPose, focusBlend, nearBoard, atMarker } from "./focus-math.js";
+import { boardImage, shareBoard, shareCaption } from "./board-share.js";
+import { REALFI } from "./build.js";
+import { footStep } from "./hud-math.js";
 import { buildBlimp } from "./blimp.js";
 import { buildRidge } from "./ridge.js";
 import { buildWindsocks } from "./windsocks.js";
@@ -22,7 +27,7 @@ import {
 } from "./build.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R, brakeLights } from "./car.js";
 import { tint } from "./colours.js";
-import { buildRaceway, formatTime } from "./raceway.js";
+import { buildRaceway, formatTime, boardPose, boardCanvas, boardMarker } from "./raceway.js";
 import { celebrateOnce } from "./race-post.js";
 import { createSound } from "./sound.js";
 import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive, raceReset } from "./race-live.js";
@@ -207,6 +212,7 @@ addEventListener("keydown", (e) => {
   // Emotes: E opens the row; while it is open the digits, arrows, Enter and Escape are its
   if (emoteKeydown(e)) { e.preventDefault(); return; }
   if (e.code === "KeyE" && !e.metaKey && !e.ctrlKey && !e.altKey && !["INPUT", "TEXTAREA", "SELECT"].includes(e.target?.tagName)) { e.preventDefault(); toggleEmotes(); return; }
+  if (focus.on && (e.code === "Escape" || KEYMAP[e.code])) { e.preventDefault(); focusEnd(); return; } // zoomed on the board: Escape or a driving key brings the camera back
   const k = KEYMAP[e.code];
   if (k) { keys[k] = true; e.preventDefault(); }
   if ((e.code === "Enter" || e.code === "Space") && activePad) { e.preventDefault(); openStop(activePad.stop); }
@@ -235,8 +241,10 @@ document.querySelectorAll(".pad-btn").forEach((btn) => {
   btn.addEventListener("lostpointercapture", off);
   btn.addEventListener("contextmenu", (e) => e.preventDefault());
 });
+const stick = initStick($("stick"), keys); // the steering stick on the left of the touch bar (stick.js)
 function releaseKeys() {
   Object.keys(keys).forEach((k) => (keys[k] = false));
+  stick.release();
   document.querySelectorAll(".pad-btn").forEach((b) => b.classList.remove("is-down"));
 }
 
@@ -460,10 +468,12 @@ function cameraBlock(x, y, z, to) {
   return best;
 }
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+let foot = { driving: false, t: 0 }; // the footer's driving state (hud-math.js)
 // The epic jump's camera state lives up here because a snap (teleport, grid, placeCar) ends it; see stuntTick below
 const stunt = { k: 0, on: false, cam: new THREE.Vector3(), look: new THREE.Vector3() };
 function placeCamera(dt, snap = false) {
-  if (snap) { stunt.k = 0; stunt.on = false; } // a teleport mid-flight must not leave the camera easing back from the river
+  if (snap) { stunt.k = 0; stunt.on = false; }
+  if (snap && focus.on) { focusEnd(); focus.k = 0; } // a teleport (Map view, a guide, a race grid) ends the zoom at once // a teleport mid-flight must not leave the camera easing back from the river
   const s = car.s;
   const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
   const back = 11 + Math.max(0, s.speed) * 0.12;
@@ -513,6 +523,48 @@ function stuntTick(dt) {
   stunt.look.set(s.x, s.y + 0.8, s.z).lerp(camLook, 1 - k);
   camera.lookAt(stunt.look);
 }
+
+// ── The board zoom (Ben, 3 Nov 2026) ─────────────────────────────────
+// The camera eases to a spot in front of the Raceway's top 10 board that fits all of it (focus-math.js), looking at its
+// centre, while the car stops where it is; the HUD and the driving controls hide, a bar with Save and Back stays. Back,
+// Escape or a driving key on a keyboard brings the chase camera back. Reduced motion snaps instead of easing.
+const focus = { k: 0, on: false, cam: new THREE.Vector3(), look: new THREE.Vector3() };
+function focusAim() {
+  const bar = $("focus-bar");
+  bar.hidden = false; // shown first, so the band above it can be measured: the board is framed above the bar, not under it
+  const inset = Math.max(0, innerHeight - bar.getBoundingClientRect().top);
+  const p = focusPose(boardPose(), baseFov, camera.aspect, { inset, viewH: innerHeight }); // baseFov, not camera.fov, which widens during a boost
+  focus.cam.set(p.cam.x, p.cam.y, p.cam.z);
+  focus.look.set(p.look.x, p.look.y, p.look.z);
+}
+function focusBoard() {
+  if (focus.on) return;
+  focusAim();
+  car.s.speed = 0; releaseKeys(); closeEmotes();
+  focus.on = true;
+  if (reduceMotion) focus.k = 1;
+  document.body.classList.add("is-focus");
+  $("focus-bar").hidden = false;
+  $("board-prompt")?.setAttribute("hidden", "");
+}
+function focusEnd() {
+  if (!focus.on) return;
+  focus.on = false;
+  if (nearBoard(car.s, boardPose())) boardNo = true; // Back by the board: the card waits until the car leaves and comes back, as Not now does
+  if (reduceMotion) focus.k = 0;
+  document.body.classList.remove("is-focus");
+  $("focus-bar").hidden = true;
+}
+function focusTick(dt) {
+  if (!focus.on && focus.k <= 0) return;
+  focus.k = focusBlend(focus.k, dt, focus.on);
+  if (focus.k <= 0) return;
+  const k = stuntEase(focus.k);
+  camera.position.lerpVectors(camPos, focus.cam, k);
+  camera.lookAt(camLook.clone().lerp(focus.look, k));
+}
+$("focus-back").addEventListener("click", focusEnd);
+$("focus-save").addEventListener("click", () => shareBoard(boardImage(boardCanvas(), shareCaption(), { band: REALFI.green, ink: REALFI.paper }), { share: coarse })); // the share sheet on a touch screen, a download elsewhere (board-share.js)
 
 // ── Skip drawing districts out of sight (beyond the fog) ──────────────
 function cullDistricts() {
@@ -566,6 +618,20 @@ function checkPads() {
 }
 $("prompt-btn").addEventListener("click", () => activePad && openStop(activePad.stop));
 
+// The board prompt (Ben, 3 Nov 2026): parked in front of the top 10 board, a card offers the zoom. Not now holds it until the
+// car leaves the board and comes back; it never shows over a pad prompt, a race invite, a sheet or the zoom itself.
+let boardStill = 0, boardNo = false, boardAt = false;
+function boardPromptTick(dt) {
+  const near = nearBoard(car.s, boardPose());
+  if (!near) boardNo = false;
+  boardStill = Math.abs(car.s.speed) < FOCUS.still ? boardStill + dt : 0;
+  boardAt = atMarker(car.s, boardMarker()); // on the marker the card shows at once; elsewhere in front, after a second still
+  const show = (boardAt || (near && boardStill >= 1)) && near && !boardNo && !focus.on && !activePad && $("race-invite").hidden;
+  if ($("board-prompt").hidden === show) $("board-prompt").hidden = !show;
+}
+$("board-zoom").addEventListener("click", focusBoard);
+$("board-no").addEventListener("click", () => { boardNo = true; $("board-prompt").hidden = true; });
+
 const dialogs = ["intro", "stop", "map", "race", "peers", "arcade", "guide"].map($);
 const anyOpen = () => dialogs.some((d) => d.open);
 dialogs.forEach((d) => {
@@ -586,6 +652,7 @@ function show(d) {
   dialogs.forEach((o) => o !== d && o.open && o.close());
   releaseKeys();
   closeEmotes();
+  $("board-prompt").hidden = true;
   paused = true;
   d.showModal();
 }
@@ -771,7 +838,7 @@ function placeCar(x, z, heading) {
   checkPads();
   updateWhere();
 }
-initRace({ show, place: placeCar, car, scene, record: (rec) => celebrate(rec, { self: true }), sound: (cue) => sound[cue]?.(), live: onLap });
+initRace({ show, place: placeCar, car, scene, record: (rec) => celebrate(rec, { self: true }), sound: (cue) => sound[cue]?.(), live: onLap, focus: focusBoard });
 initArcade({ show, sound, isDark: () => dark });
 initEmotes({ send: sendEmote, myGroup: car.group, groupFor: peerGroup });
 initRaceLive({ place: placeCar, note: raceNote, cancelLap: () => raceCancel("Lap cancelled: on the grid"), closeSheets: () => dialogs.forEach((d) => d.open && d.close()), sound, onRaceway: () => inRaceway(car.s.x, car.s.z) });
@@ -1055,6 +1122,7 @@ function resize() {
   baseFov = w < h ? 68 : 55;
   camera.fov = baseFov;
   camera.updateProjectionMatrix();
+  if (focus.on) focusAim(); // the board zoom's pose depends on the aspect
   dust?.userData.setScale(h * renderer.getPixelRatio());
   spray?.userData.setScale(h * renderer.getPixelRatio());
   fireworks?.userData.setScale(h * renderer.getPixelRatio());
@@ -1074,7 +1142,7 @@ function frame() {
   const t = clock.elapsedTime;
   if (!paused) {
     const px = car.s.x, pz = car.s.z, wasAir = car.s.air;
-    const info = stepCar(car, raceLocked() ? NO_KEYS : keys, dt);
+    const info = stepCar(car, raceLocked() || focus.on ? NO_KEYS : keys, dt);
     if (info.event) car.lastEvent = info.event; // QA scripts read it
     { const j = jumpAt(px, pz) || jumpAt(px - info.fx, pz - info.fz); if (stuntTakeoff(wasAir, car.s.air, j, info.fx, info.fz)) stuntStart(j); } // off a stunt ramp, heading up it: the side-on camera
     brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on, info.boost > 0);
@@ -1094,8 +1162,11 @@ function frame() {
     emitDust(dt, info);
     emitSpray(dt, info);
     checkPads();
+    boardPromptTick(dt);
     updateWhere();
   }
+  foot = footStep(foot, paused ? 0 : car.s.speed, dt); // the footer fades while driving and comes back after a moment still
+  if (foot.driving !== document.body.classList.contains("is-driving")) document.body.classList.toggle("is-driving", foot.driving);
   if (paused) sound.pauseEngine(); // a sheet is open: engine off, not idling behind the text
   fps?.mark("chores"); // the race, the pose sent to the room, dust and spray emitted, pads and the place name
   stepCrates(dt);
@@ -1114,7 +1185,7 @@ function frame() {
   sky.userData.tick(t, dt, camera.position);
   fps?.mark("fx"); // dust, spray, fireworks, grass, water, the blimp, the sky
   if (arrival?.active) arrival.tick(dt);
-  else if (!debugCam) { placeCamera(dt); stuntTick(dt); cineCam?.(dt); }
+  else if (!debugCam) { placeCamera(dt); stuntTick(dt); focusTick(dt); cineCam?.(dt); }
   if ((frameNo++ & 15) === 0) {
     if (!debugCam) cullDistricts();
     const here = inRaceway(car.s.x, car.s.z);
@@ -1126,6 +1197,7 @@ function frame() {
   if (!reduceMotion) {
     const pulse = 0.65 + Math.sin(t * 3) * 0.2;
     pads.forEach((p) => (p.ring.material.opacity = p === activePad ? 1 : pulse));
+    boardMarker().ring.material.opacity = boardAt ? 1 : pulse; // the board's marker pulses like a pad
   }
   fps?.draw();
   if (!arcadeOpen()) post.render(); // the game in the arcade sheet gets the GPU; the world holds its last frame behind it
@@ -1192,7 +1264,7 @@ $("loader").classList.add("is-done");
 setTimeout(() => $("loader").remove(), 450);
 
 // Test hook for automated checks (no effect on play)
-window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, jumps, groundHeight, placeCamera, placeCar, colliders, pads, deepLink, paused: () => paused,
+window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, teleport: (key) => teleport(STOPS.find((s) => s.key === key)), keys, stick, focusBoard, focusEnd, focus, boardPose, boardMarker, camera, project: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight }; }, jumps, groundHeight, placeCamera, placeCar, colliders, pads, deepLink, paused: () => paused,
   blimp: { setAngle: (deg) => blimp.userData.setAngle(deg == null ? null : (deg * Math.PI) / 180), pose: () => blimp.userData.pose(), setLivery: (n) => blimp.userData.setLivery(n), liveries: () => blimp.userData.liveries },
   stunt: () => { const j = jumps.find((o) => o.stunt && o.fx < 0); const lip = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length }; Object.assign(car.s, { x: lip.x + j.fx * 6, z: lip.z, heading: Math.atan2(-j.fx, -j.fz), speed: 24, air: true, vy: 2, airTime: 0.3 }); car.s.y = groundHeight(lip.x, lip.z) + j.height + 1.2; placeCamera(0, true); stuntStart(j); stunt.k = 1; stuntTick(0); } /* the snap first: it resets the stunt */, stuntState: () => ({ k: stunt.k, on: stunt.on }), // QA: mid-flight over the river with the side-on camera up
   splash: (age = 0.35) => { sprayBurst(car.s.x, Math.max(car.s.y, WATER_LEVEL), car.s.z, 40); spray?.userData.step(age); } /* pre-aged, so a still catches the burst spread rather than under the car */, sprayCount: () => sprayCount, // river QA: an entry burst on demand, and how many puffs have flown

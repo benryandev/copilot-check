@@ -9,6 +9,9 @@ What changed from the file as sent (everything else is as written):
   (`script-src 'self'`, `font-src 'self'`) holds. The game falls back to Impact, Courier New and the system font.
 - The leaderboard talked to Claude's shared database, which only exists when the file is opened inside Claude. It now talks to
   the world's arcade board on the Copilot Watch worker (`/arcade/top`, `/arcade/score`): one row per name, top ten shown.
+- A score post carries the world's device token (`deviceToken` from `ecosystem/js/race-post.js`, the one the race page keeps as `eco-device`;
+  the frame shares its storage), so people on one wifi each get their own row, and the save note has a sentence for the worker's
+  `address_full` refusal (five rows per address). A browser that cannot keep a token posts as before (4 Nov 2026).
 - The name field is prefilled with the player's race leaderboard name when there is one, and names go to 20 characters like the race board (was 16).
 - When a run ends the game tells the page it sits in (`postMessage`: `arcade.run`, `arcade.board`, and `arcade.close` for
   Escape) so the cabinet in the world can show the top score and the sheet can close.

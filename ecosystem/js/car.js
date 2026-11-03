@@ -10,6 +10,7 @@ import { groundHeight, onDirt, onWater, racewayWeight, jumpAt, WORLD } from "./t
 import { glowIntensity } from "./post.js";
 import { boostFor, boostedTop } from "./boost-math.js";
 import { topShare, accelShare, slowShare, blocksClimb, CLIMB_PROBE, GRAVITY } from "./car-math.js";
+import { steerInput } from "./stick-math.js";
 
 export const CAR_R = 1.6;
 const MAX_F = 24, MAX_R = 9, ACCEL = 16, BRAKE = 34, ROLL = 5, TURN = 2.2;
@@ -149,7 +150,7 @@ export function stepCar(car, keys, dt) {
   s.boost = Math.max(0, s.boost - dt);
   s.speed = Math.max(-MAX_R, s.speed);
 
-  const steerIn = (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
+  const steerIn = steerInput(keys); // the arrow keys, or a number from the touch stick (stick-math.js)
   s.steer += (steerIn - s.steer) * Math.min(1, dt * 10);
   const grip = s.air ? 0.15 : Math.min(1, Math.abs(s.speed) / 8);
   s.heading += s.steer * TURN * grip * Math.sign(s.speed) * dt;
