@@ -14,7 +14,7 @@ export const HEIGHT = {
   dome: 7.9, arch: 7.5, vault: 7.1, observatory: 6.0, coins: 5.7, antenna: 5.5, kiosk: 5.3, plot: 3.2,
   clock: 11, flag: 11, cabinet: 2.2, depot: 5, pitbox: 6.3,
   slpengine: 8.0, stake: 7.8, // the monuments (Part B1): capped at 8 m by the design; read with node translations (7.95 and 7.85)
-  plinth: 8, stacks: 8, beacon: 8, // the monuments (Part B2): the cap until the models are measured
+  plinth: 7.1, stacks: 7.6, beacon: 7.9, // the monuments (Part B2): read with node translations (7.05, 7.55 and 7.85)
 };
 export const heightOf = (shape) => HEIGHT[shape] ?? 8; // a shape missing from the table counts as a middling 8 m
 // A monument (Part B1, 3 Nov 2026): a stop placed by hand at its plaza's centre; never counted by the radius rule, never laid out,
