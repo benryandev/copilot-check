@@ -1,7 +1,9 @@
 // Stills for the three.js Showcase post (and the X/Discord posts): two 16:9 hero stills from the arrival, the Fill
 // Yard at night with two other drivers, two named cars at night, the crate heap, the Raceway with the ghost. The
 // trailer is tools/showcase-trailer.mjs. Needs the site served locally.
-//   node tools/showcase-media.mjs [base] [--hero]   → tools/out/showcase/*.png
+//   node tools/showcase-media.mjs [base] [--hero] [--size=1600x1200]   → tools/out/showcase/*.png
+// --size renders the same stills at another frame size into tools/out/showcase/<w>x<h>/ (Awwwards wants a 1600×1200
+// thumbnail; the default 1920×1080 set stays where the posts and docs point).
 // Same virtual clock as clip-eco.mjs: performance.now and requestAnimationFrame only move when the script steps them,
 // so frames are evenly spaced however slowly the software renderer draws. CSS transitions run on real time, so the
 // title card's fade is driven by hand from the virtual clock.
@@ -14,11 +16,12 @@ try { ({ chromium } = await import('playwright')); } catch {
   const g = execSync('npm root -g').toString().trim();
   ({ chromium } = createRequire(`${g}/`)('playwright'));
 }
-const base = process.argv[2] || 'http://localhost:8766';
+const base = process.argv.slice(2).find((a) => !a.startsWith('--')) || 'http://localhost:8766';
 const here = (p) => new URL(p, import.meta.url).pathname;
-const OUT = here('./out/showcase/');
+const SIZE = (process.argv.find((a) => a.startsWith('--size=')) || '--size=1920x1080').slice(7).split('x').map(Number);
+const OUT = here(SIZE[0] === 1920 && SIZE[1] === 1080 ? './out/showcase/' : `./out/showcase/${SIZE[0]}x${SIZE[1]}/`);
 mkdirSync(OUT, { recursive: true });
-const STILL = [1920, 1080], FPS = 30, DT = 1000 / FPS;
+const STILL = SIZE, FPS = 30, DT = 1000 / FPS;
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 
 async function open([w, h], { theme = 'light', arrive = false } = {}) {
