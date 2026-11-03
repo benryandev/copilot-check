@@ -35,9 +35,13 @@ const ORDER = [
 export const DISTRICTS = {
   hub: { key: "hub", name: "Strike HQ", colour: 0x22c55e, centre: [0, 0], radius: 24, board: ["users", "totalVolume", "volume24h", "markets"], ring: -1 },
 };
+// A plaza's radius follows how many stops it lays out (3 Nov 2026 audit: four stops in a 54 m plaza read as a car park).
+// Monuments and hand-placed stops are not counted; roads, kerbs, cobbles and furniture all derive from this number.
+export const radiusFor = (n) => (n >= 9 ? 54 : n >= 6 ? 48 : 42);
 ORDER.forEach(([key, name, colour, board], i) => {
   const a = (i / ORDER.length) * Math.PI * 2;
-  DISTRICTS[key] = { key, name, colour, board, ring: i, angle: a, centre: [Math.sin(a) * RING, -Math.cos(a) * RING], radius: 54 };
+  const auto = STOPS.filter((s) => s.district === key && !s.pos && !s.row).length;
+  DISTRICTS[key] = { key, name, colour, board, ring: i, angle: a, centre: [Math.sin(a) * RING, -Math.cos(a) * RING], radius: radiusFor(auto) };
 });
 export const RING_KEYS = ORDER.map((o) => o[0]);
 

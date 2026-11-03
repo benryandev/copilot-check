@@ -34,9 +34,9 @@ import { RIDGE } from '../ecosystem/js/ridge-math.js';
 const ridge = roads[RIDGE_ROAD];
 const LIN = Array.from({ length: 24 }, (_, i) => 78000 + (i * 2000) / 23);
 const at = (s, side = 0) => { const u = s / ridge.len, p = ridge.curve.getPointAt(u), t = ridge.curve.getTangentAt(u); return { x: p.x - t.z * side, z: p.z + t.x * side }; };
-test('the ridge road exists, leaves Analytics southward and is about 240 m', () => {
+test('the ridge road exists, leaves Analytics southward and is about 259 m (3 Nov 2026: longer since both plazas shrank to 42 m)', () => {
   assert.equal(ridge.kind, 'ridge'); assert.equal(ridge.from, 'analytics'); assert.equal(ridge.to, 'developers');
-  assert.ok(ridge.len > 225 && ridge.len < 255, `len ${ridge.len}`);
+  assert.ok(ridge.len > 244 && ridge.len < 274, `len ${ridge.len}`);
   assert.ok(ridge.curve.getTangentAt(0).z > 0.9, 'heads south out of the plaza');
 });
 test('flat by default: the ridge adds nothing until a series is set', () => {

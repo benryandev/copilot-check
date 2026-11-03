@@ -1,5 +1,6 @@
 // The river in the height field (node can import terrain.js): node --test qa/river-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
+import { ROADS } from '../ecosystem/js/content.js';
 import { groundHeight, grassWeight, river, riverInfo, crossings, bridgeHeight, onWater, onBridge, WATER_LEVEL, DECK_Y, roads } from '../ecosystem/js/terrain.js';
 import { RIVER } from '../ecosystem/js/content.js';
 
@@ -33,6 +34,12 @@ test('the river is carved: bed at the centre, banks back at ground level, grass 
 
 test('five crossings: bridges on both ring roads and the Chains and Community spokes, a ford on the Token spoke', () => {
   assert.equal(crossings.length, 5);
+  const chainsSpoke = roads.findIndex((r) => r.kind === 'spoke' && r.to === 'chains');
+  const c = crossings.find((x) => x.road === chainsSpoke);
+  assert.ok(c, 'the Chains spoke still crosses the river');
+  const ctl = ROADS[chainsSpoke].points, tailStart = ctl[ctl.length - 3], end = ctl[ctl.length - 1]; // the straight tail: at(98), at(116), the end
+  const along = (p) => Math.hypot(p[0] - tailStart[0], p[1] - tailStart[1]);
+  assert.ok(along([c.x, c.z]) <= along(end) + 0.5 && Math.abs(along([c.x, c.z]) - along(end)) < along(end), 'the bridge sits on the straight tail');
   const by = (k) => crossings.filter((c) => roads[c.road].kind === k);
   assert.equal(by('ring').length, 2); assert.equal(by('spoke').length, 3);
   assert.deepEqual(by('spoke').map((c) => roads[c.road].to).sort(), ['chains', 'community', 'token']);

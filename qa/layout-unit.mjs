@@ -2,7 +2,7 @@
 // layoutStops (content.js) places every stop without a fixed pos round the far side of its plaza; the hand-placed ones
 // must keep off the roads and clear of their neighbours; nothing in the hub may open a sheet as the car lands.
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { STOPS, DISTRICTS, ROADS, SPAWN, layoutStops, LAYOUT, HEIGHT } from '../ecosystem/js/content.js';
+import { STOPS, DISTRICTS, ROADS, SPAWN, layoutStops, LAYOUT, HEIGHT, radiusFor } from '../ecosystem/js/content.js';
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const base = (d) => Math.atan2(d.hubDir[1], d.hubDir[0]);
 const degFromHQ = (d, p) => { let a = ((Math.atan2(p[1] - d.centre[1], p[0] - d.centre[0]) - base(d)) * 180) / Math.PI; return ((a % 360) + 360) % 360; };
@@ -102,4 +102,21 @@ test('from the HQ mouth no two pads share a bearing (within 3 degrees), so no la
       assert.ok(Math.abs(rows[i].h - rows[i - 1].h) >= 3, `${d.key}: ${rows[i - 1].key} and ${rows[i].key} ${gap.toFixed(1)} degrees apart and within 3 m in height`);
     }
   }
+});
+
+test('plaza radius follows the auto stop count, monuments never counted', () => {
+  assert.deepEqual([radiusFor(4), radiusFor(5), radiusFor(6), radiusFor(8), radiusFor(9), radiusFor(15)], [42, 42, 48, 48, 54, 54]);
+  const want = { perps: 54, earn: 48, collateral: 48, partners: 48, developers: 42, analytics: 42, community: 48, token: 42, chains: 42 };
+  for (const [k, r] of Object.entries(want)) assert.equal(DISTRICTS[k].radius, r, k);
+  assert.equal(DISTRICTS.hub.radius, 24); assert.equal(DISTRICTS.yard.radius, 24);
+});
+
+test('things placed by hand stay clear of the shrunk rims', () => {
+  const chains = DISTRICTS.chains, yard = DISTRICTS.yard;
+  assert.ok(dist(chains.centre, yard.centre) - chains.radius - yard.radius >= 10, 'Chains to the Fill Yard');
+  const ridge = ROADS.find((r) => r.kind === 'ridge');
+  assert.ok(Math.abs(dist(ridge.points[0], DISTRICTS.analytics.centre) - DISTRICTS.analytics.radius) < 0.01, 'the ridge leaves the Analytics rim');
+  assert.ok(Math.abs(dist(ridge.points[6], DISTRICTS.developers.centre) - DISTRICTS.developers.radius) < 0.01, 'and reaches the Developers rim');
+  const flag = STOPS.find((s) => s.key === 'funding-rates');
+  assert.ok(dist(flag.pos, DISTRICTS.perps.centre) <= DISTRICTS.perps.radius - 8, 'Funding rates inside Perpetuals');
 });
