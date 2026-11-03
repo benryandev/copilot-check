@@ -90,7 +90,7 @@
     nameIn.disabled = false;
     saveBox.style.display = lastRun.score > 0 ? '' : 'none';
   }
-  const SAVE_ERRORS = { rate: 'Too many posts. Try again in a moment.', bad_name: 'That name won’t do. Try another.', rude_name: 'That name won’t do. Try another.',
+  const SAVE_ERRORS = { rate: 'Too many posts. Try again in a moment.', address_full: 'This network already has five names on the board.', bad_name: 'That name won’t do. Try another.', rude_name: 'That name won’t do. Try another.',
     too_fast: 'That run doesn’t add up, so it wasn’t saved.', level_too_fast: 'That run doesn’t add up, so it wasn’t saved.', level_score: 'That run doesn’t add up, so it wasn’t saved.',
     bad_ms: 'That run doesn’t add up, so it wasn’t saved.', bad_score: 'That run doesn’t add up, so it wasn’t saved.', bad_level: 'That run doesn’t add up, so it wasn’t saved.', bad_won: 'That run doesn’t add up, so it wasn’t saved.' };
   async function saveScore() {
@@ -100,8 +100,14 @@
     if (savedThisRun) return;
     saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
     try {
-      const r = await fetch(API + '/arcade/score', { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ game: GAME, name, score: lastRun.score, level: lastRun.level, won: !!lastRun.won, ms: runMs }) });
+      const payload = { game: GAME, name, score: lastRun.score, level: lastRun.level, won: !!lastRun.won, ms: runMs };
+      // The world's device token goes with the score (the race page keeps it as eco-device and this frame shares its storage), so a
+      // colleague on the same wifi gets their own row rather than a shared one (4 Nov 2026). A browser that can't keep a token, or a
+      // page that can't load the helper, posts as before.
+      let device = null;
+      try { device = (await import('../../js/race-post.js')).deviceToken(localStorage); } catch (e) {}
+      if (device) payload.device = device;
+      const r = await fetch(API + '/arcade/score', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       const b = await r.json().catch(() => ({}));
       if (!r.ok) throw Object.assign(new Error(b.error || String(r.status)), { code: b.error });
       savedThisRun = true; saveBtn.textContent = 'Saved';
