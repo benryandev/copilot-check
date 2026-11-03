@@ -367,6 +367,23 @@ const SHAPES = {
     g.add(signBoard(stop.name, 5.6, 1.1, 0, 6.4, -1.2));
     return 7.2;
   },
+  // The Collateral Stacks (the Collateral monument, Part B2): eight slots in a row on one base, each a coin stack whose origin is
+  // its base (monuments.js scales it to the value held on a log scale, hides an empty slot), a name plate under each on the
+  // base's front face, the name board on a post behind. 7.5 m tall, 10 m wide; the same node names in the Blender model.
+  stacks(g, A, stop) {
+    g.add(box(10, 0.8, 3, M.trim, 0, 0, 0));
+    for (let i = 0; i < 8; i++) {
+      const x = -4.375 + i * 1.25, id = String(i + 1).padStart(2, "0");
+      const s = new THREE.Group(); s.name = `stack_${id}`; s.position.set(x, 0.8, 0);
+      for (let j = 0; j < 12; j++) s.add(cyl(0.55, 0.5, j % 2 ? A : M.build, 0, j * 0.5, 0, 20));
+      g.add(s);
+      const l = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 0.4), M.trim); l.name = `label_${id}`; l.userData.blockout = true;
+      l.position.set(x, 0.4, 1.51); g.add(l);
+    }
+    g.add(cyl(0.08, 6.2, M.trim, 0, 0.8, -1.2, 8));
+    g.add(signBoard(stop.name, 4.0, 0.9, 0, 7.0, -1.2));
+    return 7.5;
+  },
   grid(g, A) {
     for (let i = -1; i <= 1; i++)
       for (let j = -1; j <= 1; j++) {

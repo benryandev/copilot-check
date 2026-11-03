@@ -10,7 +10,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, isMonument } from "./content.js";
 import { pads, accent, M, obbOf, modelHooks, canvasTexture, redraws, themePalette } from "./build.js";
 import { slpVaultId, usd, int } from "./data.js";
-import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues } from "./monument-math.js";
+import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale } from "./monument-math.js";
 
 const API = "https://api.strikefinance.org";
 const KERB = { lift: 0.8, gap: (40 * Math.PI) / 180, radius: 0.14 }; // the kerb arc: 0.8 m outside the footprint, open ±40° towards the pad
@@ -23,6 +23,7 @@ const listeners = [];
 const state = {
   slp: null, staking: null, high: null, // the last SLP and staking picks; the highest SLP equity seen this session
   fills: [], since: null, seeded: false, lastAt: 0, lastOkAt: 0, ok: true, forceSeed: false, startedAt: 0, // the fills poll
+  collateral: null, // the Collateral Stacks: the last pick
   series: null, seriesOk: true, seriesAt: 0, summary: null, // the Chart Plinth: the two daily series (hourly) and the all-time counter
 };
 const monuments = new Map(); // district key → { g, aux, nodes, ... }
@@ -254,6 +255,62 @@ async function pollSeries(now = Date.now()) {
   listeners.forEach((f) => f());
 }
 
+// ── The Collateral Stacks ──
+const STACK_RING = { r: 0.7, tube: 0.05, first: 0.3, step: 0.12, minStep: 0.04 };
+function attachStacks(m) {
+  m.nodes = { stacks: names("stack", STACKS.slots).map((n) => node(m.g, n)), labels: names("label", STACKS.slots).map((n) => node(m.g, n)) };
+  for (const s of m.nodes.stacks) if (s && s.userData.fullY == null) { s.userData.fullY = s.scale.y; s.userData.fullH = new THREE.Box3().setFromObject(s).getSize(new THREE.Vector3()).y / (s.scale.y || 1); }
+  buildKerb(m);
+  if (!m.labels) { // a name plate per slot, blank until an asset takes the slot
+    m.labels = m.nodes.labels.map(() => {
+      const l = { text: null };
+      l.face = canvasTexture(512, 128, (ctx, w, h, p) => { ctx.fillStyle = p.panel; ctx.fillRect(0, 0, w, h); if (!l.text) return; ctx.fillStyle = p.text; ctx.font = "600 56px 'Atkinson Hyperlegible Next', Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(l.text, w / 2, h / 2 + 2, w - 40); });
+      redraws.push(l.face.redraw);
+      l.mat = new THREE.MeshBasicMaterial({ map: l.face.tex, toneMapped: false });
+      return l;
+    });
+    const rings = new THREE.InstancedMesh(new THREE.TorusGeometry(STACK_RING.r, STACK_RING.tube, 6, 20), accent(m.d.colour), STACKS.slots * STACKS.ringsCap);
+    rings.count = 0; rings.frustumCulled = false; m.aux.add(rings); m.rings = rings;
+  }
+  m.nodes.labels.forEach((n, i) => { if (!n) return; const l = m.labels[i]; l.face.tex.flipY = !!n.userData.blockout; l.face.tex.needsUpdate = true; n.material = l.mat; n.castShadow = false; if (themePalette()) l.face.redraw(themePalette()); });
+  applyStacks(m);
+}
+function applyStacks(m) {
+  if (!m?.nodes.stacks || state.collateral == null) return;
+  const list = state.collateral.slice(0, STACKS.slots);
+  m.nodes.stacks.forEach((s, i) => {
+    const a = list[i], l = m.labels[i];
+    if (s) { s.userData.target = a ? stackScale(a.usd) : 0.02; s.userData.hide = !a; if (a) s.visible = true; if (opts.reduceMotion) s.scale.y = s.userData.target * s.userData.fullY; }
+    const text = a?.name ?? null;
+    if (l && text !== l.text) { l.text = text; if (themePalette()) l.face.redraw(themePalette()); }
+  });
+  m.stackList = list;
+  layStackRings(m);
+}
+/** One ring per open credit line, climbing the stack from its foot, compressed when the stack is short. */
+function layStackRings(m) {
+  if (!m.rings) return;
+  m.g.updateMatrixWorld(true); m.aux.updateMatrixWorld(true);
+  const mat = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)), sc = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3();
+  let k = 0;
+  (m.stackList ?? []).forEach((a, i) => {
+    const s = m.nodes.stacks[i]; if (!s) return;
+    const n = Math.min(a.lines ?? 0, STACKS.ringsCap); if (!n) return;
+    m.aux.worldToLocal(s.getWorldPosition(p));
+    const h = s.userData.target * s.userData.fullH, step = Math.min(STACK_RING.step, Math.max(STACK_RING.minStep, (h - STACK_RING.first - 0.1) / n));
+    for (let j = 0; j < n && k < m.rings.instanceMatrix.count; j++, k++) { mat.compose(new THREE.Vector3(p.x, p.y + STACK_RING.first + j * step, p.z), q, sc); m.rings.setMatrixAt(k, mat); }
+  });
+  m.rings.count = k;
+  m.rings.instanceMatrix.needsUpdate = true;
+}
+function tickStacks(m, dt) {
+  for (const s of m.nodes.stacks) {
+    if (!s || s.userData.target == null) continue;
+    s.scale.y = ease(s.scale.y, s.userData.target * s.userData.fullY, dt, 1.5);
+    if (s.userData.hide && s.scale.y < 0.03 * s.userData.fullY) s.visible = false;
+  }
+}
+
 // ── The fills poll ──
 async function pollFills(now = Date.now()) {
   const id = slpVaultId();
@@ -287,7 +344,7 @@ function takeFills(incoming, now, seed = false) {
 // ── Public ──
 export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
   opts = { coarse, reduceMotion };
-  const attach = { "monument-earn": attachEngine, "monument-token": attachStake, "monument-analytics": attachPlinth };
+  const attach = { "monument-earn": attachEngine, "monument-token": attachStake, "monument-analytics": attachPlinth, "monument-collateral": attachStacks };
   for (const stop of STOPS.filter(isMonument)) {
     const fn = attach[stop.key];
     if (!fn) continue;
@@ -308,12 +365,14 @@ export function applyMonuments(monuments) {
   }
   if (monuments.staking) { state.staking = monuments.staking; const m = findMonument("monument-token"); if (m) applyStake(m); }
   if (monuments.summary) { state.summary = monuments.summary; applyPlinth(findMonument("monument-analytics")); }
+  if (monuments.collateral) { state.collateral = monuments.collateral; applyStacks(findMonument("monument-collateral")); } // a failed fetch keeps the last stacks
 }
 export function monumentsTick(dt) {
   const now = Date.now();
   const e = monuments.get("monument-earn"); if (e) tickEngine(e, dt, now);
   const t = monuments.get("monument-token"); if (t) tickStake(t, dt);
   const a = monuments.get("monument-analytics"); if (a?.nodes.vol) tickPlinth(a, dt);
+  const c = monuments.get("monument-collateral"); if (c?.nodes.stacks) tickStacks(c, dt);
 }
 export function monumentValues() {
   // Before the seed lands the line is loading, not "Not available" (the smoke caught a sheet opened in that gap, 3 Nov);
@@ -329,7 +388,9 @@ export const monumentsState = () => {
   const e = monuments.get("monument-earn");
   const t = monuments.get("monument-token");
   const a = monuments.get("monument-analytics");
-  return { bars: a?.nodes.vol?.filter((b) => b?.visible).length ?? 0, litBar: a?.litBar ?? null, plinthFace: a?.faceText ?? null, seriesAt: state.seriesAt,
+  const c = monuments.get("monument-collateral");
+  return { stacks: c?.stackList?.length ?? 0, stackRings: c?.rings?.count ?? 0, stackNames: c?.stackList?.map((x) => x.name) ?? [],
+    bars: a?.nodes.vol?.filter((b) => b?.visible).length ?? 0, litBar: a?.litBar ?? null, plinthFace: a?.faceText ?? null, seriesAt: state.seriesAt,
     fills: state.fills.length, since: state.since, seeded: state.seeded, sparks: e?.sparks?.live.length ?? 0, rings: e?.rings?.count ?? 0, wheel: e?.wheelSpeed ?? 0,
     column: t?.nodes.column?.scale.y ?? null, lampsLit: t?.nodes.lamps.filter((l) => l?.material?.userData.accent).length ?? 0, drips: t?.drips?.live.length ?? 0, face: t?.faceText ?? null };
 };
