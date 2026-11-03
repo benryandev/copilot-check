@@ -195,6 +195,7 @@ function openFinish() {
 }
 
 $("race-again").addEventListener("click", () => toStart());
+$("race-board").addEventListener("click", () => { $("race").close(); hooks.focus?.(); }); // See it on the board: the sheet closes, then the camera zooms (main.js focusBoard)
 
 // Error codes from the worker, in words
 const REASONS = {

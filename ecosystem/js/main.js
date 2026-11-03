@@ -11,7 +11,7 @@ import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInf
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.js";
 import { initStick } from "./stick.js";
-import { focusPose, focusBlend } from "./focus-math.js";
+import { FOCUS, focusPose, focusBlend, nearBoard } from "./focus-math.js";
 import { footStep } from "./hud-math.js";
 import { buildBlimp } from "./blimp.js";
 import { buildRidge } from "./ridge.js";
@@ -576,6 +576,19 @@ function checkPads() {
 }
 $("prompt-btn").addEventListener("click", () => activePad && openStop(activePad.stop));
 
+// The board prompt (Ben, 3 Nov 2026): parked in front of the top 10 board, a card offers the zoom. Not now holds it until the
+// car leaves the board and comes back; it never shows over a pad prompt, a race invite, a sheet or the zoom itself.
+let boardStill = 0, boardNo = false;
+function boardPromptTick(dt) {
+  const near = nearBoard(car.s, boardPose());
+  if (!near) boardNo = false;
+  boardStill = Math.abs(car.s.speed) < FOCUS.still ? boardStill + dt : 0;
+  const show = near && !boardNo && !focus.on && !activePad && $("race-invite").hidden && boardStill >= 1;
+  if ($("board-prompt").hidden === show) $("board-prompt").hidden = !show;
+}
+$("board-zoom").addEventListener("click", focusBoard);
+$("board-no").addEventListener("click", () => { boardNo = true; $("board-prompt").hidden = true; });
+
 const dialogs = ["intro", "stop", "map", "race", "peers", "arcade", "guide"].map($);
 const anyOpen = () => dialogs.some((d) => d.open);
 dialogs.forEach((d) => {
@@ -596,6 +609,7 @@ function show(d) {
   dialogs.forEach((o) => o !== d && o.open && o.close());
   releaseKeys();
   closeEmotes();
+  $("board-prompt").hidden = true;
   paused = true;
   d.showModal();
 }
@@ -781,7 +795,7 @@ function placeCar(x, z, heading) {
   checkPads();
   updateWhere();
 }
-initRace({ show, place: placeCar, car, scene, record: (rec) => celebrate(rec, { self: true }), sound: (cue) => sound[cue]?.(), live: onLap });
+initRace({ show, place: placeCar, car, scene, record: (rec) => celebrate(rec, { self: true }), sound: (cue) => sound[cue]?.(), live: onLap, focus: focusBoard });
 initArcade({ show, sound, isDark: () => dark });
 initEmotes({ send: sendEmote, myGroup: car.group, groupFor: peerGroup });
 initRaceLive({ place: placeCar, note: raceNote, cancelLap: () => raceCancel("Lap cancelled: on the grid"), closeSheets: () => dialogs.forEach((d) => d.open && d.close()), sound, onRaceway: () => inRaceway(car.s.x, car.s.z) });
@@ -1102,6 +1116,7 @@ function frame() {
     emitDust(dt, info);
     emitSpray(dt, info);
     checkPads();
+    boardPromptTick(dt);
     updateWhere();
   }
   foot = footStep(foot, paused ? 0 : car.s.speed, dt); // the footer fades while driving and comes back after a moment still

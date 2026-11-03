@@ -81,6 +81,13 @@
     </div>
   </div>
 
+  <div class="hud hud-prompt race-invite" id="board-prompt" hidden>
+    <div class="prompt-card race-invite-card">
+      <span class="prompt-text"><span class="prompt-eyebrow">RealFi Raceway</span><span class="prompt-name">See the top 10 board</span></span>
+      <span class="race-invite-actions"><button type="button" class="chip" id="board-zoom">Zoom in</button><button type="button" class="chip" id="board-no">Not now</button></span>
+    </div>
+  </div>
+
   <div class="hud focus-bar" id="focus-bar" hidden><button type="button" class="chip" id="focus-save">Save the board</button><button type="button" class="chip" id="focus-back">Back</button></div>
 
   <div class="hud emote-row" id="emote-row" role="toolbar" aria-label="Emotes: pick one to show over your car" hidden></div>
@@ -228,6 +235,7 @@
     </div>
     <p class="muted" id="race-status" role="status" aria-live="polite"></p>
     <div class="sheet-actions">
+      <button type="button" class="br-button br-button--secondary" id="race-board"><span class="br-button-label">See it on the board</span></button>
       <button type="button" class="br-button br-button--secondary" id="race-again"><span class="br-button-label">Race again</span></button>
       <button type="button" class="br-button br-button--secondary" data-close><span class="br-button-label">Back to the world</span></button>
     </div>
