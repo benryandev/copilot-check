@@ -1,6 +1,6 @@
 # Ecosystem world: every sheet for review (generated 2026-11-03)
 
-Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 70 stops. Empty Builders' Row plots and arcade cabinets are left out.
+Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 71 stops. Empty Builders' Row plots and arcade cabinets are left out.
 
 ## Strike HQ
 
@@ -436,6 +436,17 @@ Send a short message to any Strike trader as a Cardano NFT. Find them by Strike 
 - Third-party project, listed after a basic check. Not an endorsement: look into it before you connect a wallet or an API key.
 
 Link: [Visit Strike tam-tam](https://strike.matotam.io/) · [On X](https://x.com/matotam_ada)
+
+### Hizz
+
+A multi-chain crypto terminal: token discovery, market signals, smart-wallet tracking and swaps on Cardano, with a Perps tab that trades Strike perpetuals from the Hizz screen.
+
+- Connect a Cardano wallet and sign once to authorise Strike trading; the Perps tab is marked Powered by Strike and shows Strike's chart, mark price and funding. Checked 2 and 3 Nov 2026.
+- Its signals and token pages cover Cardano first; the Strike token page links Strike's site and @strikeperps.
+- Built by the Hizz team, who entered Strike's first hackathon in October 2026. Submitted 3 Nov 2026 and checked against the live app.
+- Third-party project, listed after a basic check. Not an endorsement: look into it before you connect a wallet or an API key.
+
+Link: [Visit Hizz](https://www.hizz.io/) · [On X](https://x.com/hizz_io)
 
 ### REST + WS API
 
