@@ -224,9 +224,9 @@ export const pulsePeriod = (cars) => BEACON.pulseSlow - (BEACON.pulseSlow - BEAC
 /** The daily series poll is due once an hour, or 30 s after a failure. */
 export const seriesDue = (now, lastAt, ok) => !lastAt || now - lastAt >= (ok ? SERIES.pollMs : SERIES.retryMs);
 
-// ── Part B3 (3 Nov 2026): the Feed Obelisk in Developers, the Three Pylons in Chains, the Compass in Partners ──
+// ── Part B3 (3 Nov 2026): the Feed Obelisk in Developers, the Three Pylons in Chains, the Orrery in Partners ──
 export const FEED = { lines: 14, repaintMs: 200 }; // the screens hold fourteen lines and repaint at most five times a second
-export const COMPASS = { dialSpeed: 0.08 }; // rad/s
+export const ORRERY = { speeds: [0.12, -0.12 / Math.SQRT2, 0.12 / Math.sqrt(5)] }; // rad/s, outer to inner, sign = direction; irrational ratios so the pose never comes back round (12 : −8 : 5 repeated every 628 s, reviewer)
 
 const trim = (s) => (String(s).includes(".") ? String(s).replace(/\.?0+$/, "") : String(s));
 /** One screen line from a stream message { s, p, q, m } or a backfill trade { symbol, price, qty, isBuyerMaker }; null when a field is missing or not a positive number. */
@@ -250,10 +250,4 @@ export function flowValues(summary) {
   if (d != null && w != null) out.netDeposits = signedUsd(d - w);
   return out;
 }
-/** The bearing from the centre to each pad in the monument's own frame (its heading about +y), wrapped to (−π, π]. */
-export function compassAngles(centre, heading, pads) {
-  const wrap = (a) => { let r = ((a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; return r === -Math.PI ? Math.PI : r; };
-  return (pads ?? [])
-    .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.z))
-    .map((p) => ({ key: p.key, name: p.name, angle: wrap(Math.atan2(p.x - centre[0], p.z - centre[1]) - heading) }));
-}
+// The Orrery (Partners) has no live data and no data-side functions; its three rings rotate in monuments.js from ORRERY.speeds.

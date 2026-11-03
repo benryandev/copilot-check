@@ -419,7 +419,7 @@ const SHAPES = {
   // three tapered pylons at the corners for Cardano, Ethereum and Solana (one at the back, two flanking the front), each with
   // a name plate on its inward face, the name board on a post between the front two. 7.8 m tall, about 10 m across.
   pylons(g, A, stop) {
-    const base = mesh(new THREE.CylinderGeometry(5.2, 5.2, 1.5, 3), M.trim, 0, 0.75, 0); // 1.5 m, so the three-line face stands clear of the ground base.rotation.y = Math.PI; g.add(base); // corners at 60°, 180° and 300°, so a flat side faces +z
+    const base = mesh(new THREE.CylinderGeometry(5.2, 5.2, 1.5, 3), M.trim, 0, 0.75, 0); base.rotation.y = Math.PI; g.add(base); // 1.5 m, so the three-line face stands clear of the ground; corners at 60°, 180° and 300°, so a flat side faces +z
     const step = mesh(new THREE.CylinderGeometry(5.6, 5.6, 0.2, 3), M.build, 0, 0.1, 0); step.rotation.y = Math.PI; g.add(step);
     [["cardano", 90], ["ethereum", 210], ["solana", 330]].forEach(([chain, deg]) => {
       const a = (deg * Math.PI) / 180, x = Math.cos(a) * 3.2, z = -Math.sin(a) * 3.2;
@@ -436,26 +436,28 @@ const SHAPES = {
     g.add(signBoard(stop.name, 3.4, 0.7, 0, 3.2, 1.2));
     return 7.8;
   },
-  // The Compass (the Partners monument, Part B3): a low round base, a dial ring that turns, eight stand-in arms at the centre
-  // (monuments.js turns one to each partner's pad and names it on a flat plate at its tip, hides the rest), a spindle, the
-  // name on the base's front edge. 3.4 m tall, 10 m across; the same node names in the Blender model.
-  compass(g, A, stop) {
-    g.add(cyl(5.0, 0.2, M.build, 0, 0, 0, 48), cyl(4.6, 0.6, M.trim, 0, 0, 0, 48));
-    const dial = new THREE.Group(); dial.name = "dial"; dial.position.y = 0.7;
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(4.0, 0.12, 8, 48), A); ring.rotation.x = Math.PI / 2; dial.add(ring);
-    for (let i = 0; i < 16; i++) { const a = (i * Math.PI) / 8; const t = box(i % 4 ? 0.12 : 0.2, 0.16, i % 4 ? 0.4 : 0.7, M.trim, Math.sin(a) * 3.7, -0.08, Math.cos(a) * 3.7); t.rotation.y = a; dial.add(t); }
-    g.add(dial);
-    for (let i = 0; i < 8; i++) {
-      const arm = new THREE.Group(); arm.name = `arm_${String(i + 1).padStart(2, "0")}`; arm.position.y = 0.75;
-      arm.add(box(0.5, 0.2, 3.6, M.build, 0, 0, 1.8));
-      const mark = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.4), M.trim); mark.name = `mark_${String(i + 1).padStart(2, "0")}`; mark.userData.blockout = true;
-      mark.position.set(0, 0.22, 3.0); mark.rotation.x = -Math.PI / 2; arm.add(mark); // lying flat, read from above
-      g.add(arm);
-    }
-    g.add(cyl(0.3, 2.2, M.trim, 0, 0.7, 0, 12), cyl(0.45, 0.3, A, 0, 2.9, 0, 12));
-    for (const x of [-1.5, 1.5]) g.add(cyl(0.06, 1.0, M.trim, x, 0.6, 4.0, 8));
-    g.add(signBoard(stop.name, 3.4, 0.7, 0, 1.6, 4.0));
-    return 3.4;
+  // The Orrery (the Partners monument, Part B3): a stepped octagonal pedestal, a spindle up to a sphere at 5.7 m, three
+  // inclined rings round it (each pivoting about the vertical: monuments.js sweeps them at their own rates) with a bead
+  // riding each, the name on a plinth at the front. 7.9 m, under the 8 m monument cap; the same node names in the model.
+  orrery(g, A, stop) {
+    // The same numbers as orrery.glb, so the kerb, pad and collider do not jump when the model lands (reviewer, 3 Nov)
+    g.add(cyl(3.0, 0.3, M.build, 0, 0, 0, 8), cyl(2.5, 0.3, M.trim, 0, 0.3, 0, 8), cyl(2.0, 0.3, M.build, 0, 0.6, 0, 8));
+    g.add(mesh(new THREE.CylinderGeometry(0.95, 1.45, 2.0, 8), M.build, 0, 1.9, 0), cyl(1.2, 0.3, M.trim, 0, 2.9, 0, 8));
+    const centre = 5.0;
+    g.add(cyl(0.16, centre - 3.2, M.trim, 0, 3.2, 0, 8));
+    const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.75, 16, 12), A); sphere.name = "sphere"; sphere.position.y = centre; g.add(sphere);
+    const rings = [{ r: 3.15, tube: 0.15, incline: 60, azimuth: 0, bead: 30, br: 0.3 }, { r: 2.45, tube: 0.12, incline: 45, azimuth: 60, bead: 200, br: 0.26 }, { r: 1.75, tube: 0.1, incline: 28, azimuth: 120, bead: 110, br: 0.22 }];
+    rings.forEach(({ r, tube, incline, azimuth, bead, br }, i) => {
+      const ring = new THREE.Group(); ring.name = `ring_${String(i + 1).padStart(2, "0")}`; ring.position.y = centre;
+      const tilt = new THREE.Group(); tilt.rotation.y = (azimuth * Math.PI) / 180; ring.add(tilt);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 6, 48), i === 0 ? A : M.trim); band.rotation.x = Math.PI / 2 - (incline * Math.PI) / 180; tilt.add(band);
+      const b = new THREE.Mesh(new THREE.SphereGeometry(br, 10, 8), i === 0 ? M.trim : A);
+      b.position.set(r * Math.cos((bead * Math.PI) / 180), 0, r * Math.sin((bead * Math.PI) / 180)).applyAxisAngle(new THREE.Vector3(1, 0, 0), -(incline * Math.PI) / 180); tilt.add(b);
+      g.add(ring);
+    });
+    g.add(box(3.2, 1.0, 0.9, M.trim, 0, 0.6, 2.1));
+    g.add(signBoard(stop.name, 2.9, 0.65, 0, 1.45, 2.58));
+    return 7.9;
   },
   grid(g, A) {
     for (let i = -1; i <= 1; i++)
@@ -581,6 +583,8 @@ const discGeo = new THREE.CircleGeometry(2.3, 40);
 // Shapes with a model in /ecosystem/models replace their blockout once loaded. Material names in
 // the model pick the theme-aware materials: Accent (district colour), Building, Trim, Glass.
 // Nodes named spin_* turn slowly about the vertical; turn_* turn about the way they face (a door).
+// Meshes named screen_* get the scrolling price ticker (so a screen's frame must not share the prefix: the Feed
+// Obelisk's frames scrolled prices along their bevels until they became frame_*, 3 Nov 2026); code_screen the terminal.
 const MODELS = {
   hq: "hq.glb", exchange: "exchange.glb", slpvault: "slp-vault.glb", coinstack: "coin-stack.glb",
   bridgegate: "bridge-gate.glb", terminal: "terminal.glb", observatory: "observatory.glb",
@@ -590,7 +594,7 @@ const MODELS = {
   arch: "arch.glb", cliff: "cliff.glb", shop: "shop.glb", plot: "plot.glb",
   slpengine: "slp-engine.glb", stake: "stake.glb", // the monuments (Part B1)
   plinth: "chart-plinth.glb", stacks: "collateral-stacks.glb", beacon: "beacon.glb", // the monuments (Part B2)
-  obelisk: "feed-obelisk.glb", pylons: "three-pylons.glb", compass: "compass.glb", // the monuments (Part B3)
+  obelisk: "feed-obelisk.glb", pylons: "three-pylons.glb", orrery: "orrery.glb", // the monuments (Part B3)
 };
 // Models whose front was built facing another way: turn them so it faces the pad (+z)
 const MODEL_YAW = { "cliff.glb": -Math.PI / 2 };

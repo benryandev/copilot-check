@@ -349,13 +349,12 @@ Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/b
 
 Protocols Strike works with, and the apps that plug Strike in.
 
-### The Compass
+### The Orrery
 
-A compass rose at the heart of Partners. One arm for each partner on the plaza, each pointing at that partner's own stop, so the district reads from the middle. The dial turns slowly and the arms do not.
+Three tilted rings turn round a central sphere, each at a different tilt and a different pace, like partners in orbit round Strike's core.
 
-- The arms name RealFi, SundaeSwap, Aave V3, Unifold, DEX Aggregators, Hizz and Lorenzo, each with a stop round the rim that tells its own story.
-- Nothing live here. The compass is a map of the plaza, laid out from the stops themselves, so a new partner gets an arm the day its stop is added.
-- Pick an arm and drive the way it points. The pad it names is on the rim ahead.
+- RealFi, SundaeSwap, Aave V3, Unifold, DEX Aggregators, Hizz and Lorenzo each have a stop on the plaza rim that tells their story.
+- The rings take different times to come round, so the shape you see from the road is never quite the same twice. With reduced motion on they hold still.
 
 Link: [Every partner stop](/ecosystem/stops/#district-partners)
 

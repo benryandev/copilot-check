@@ -3,7 +3,7 @@
 // Part B in the Strike repo). The picks keep only the named fields, so no APR or price field can reach the world.
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pickStaking, pickSlp, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, columnScale, lampsLit, periodLabel, usdExact, stakeValues, engineValues, MONUMENT_BANNED, STAKE, ENGINE, PLINTH, STACKS, dailyTotals, lastDays, pickSeries, barScales, plinthValues, pickSummary, pickCollateral, stackScale, collateralValues, pickActivity, rungScales, activityHigh, beaconValues, carsHere, pulsePeriod, seriesDue, ringLayout, carsLine, tradeLine, feedLines, flowValues, compassAngles, signedUsd } from '../ecosystem/js/monument-math.js';
+import { pickStaking, pickSlp, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, columnScale, lampsLit, periodLabel, usdExact, stakeValues, engineValues, MONUMENT_BANNED, STAKE, ENGINE, PLINTH, STACKS, dailyTotals, lastDays, pickSeries, barScales, plinthValues, pickSummary, pickCollateral, stackScale, collateralValues, pickActivity, rungScales, activityHigh, beaconValues, carsHere, pulsePeriod, seriesDue, ringLayout, carsLine, tradeLine, feedLines, flowValues, ORRERY, signedUsd } from '../ecosystem/js/monument-math.js';
 import { LABELS } from '../ecosystem/js/data.js';
 const fx = (n) => JSON.parse(readFileSync(new URL(`./fixtures/${n}-2026-11-03.json`, import.meta.url)));
 const staking = fx('liquid-staking-summary'), vaults = fx('vaults'), positions = fx('slp-positions'), fills = fx('slp-fills-100');
@@ -230,7 +230,7 @@ test('a 200 body with no usable days is a failed side, not an empty plinth; the 
   assert.equal(pickActivity({ daily_active_users: [[1, null], [2, 'x'], [3, 4]] }), null, 'every full day malformed: no activity');
 });
 
-// ── Part B3: the Feed Obelisk, the Three Pylons and the Compass ──
+// ── Part B3: the Feed Obelisk, the Three Pylons and the Orrery ──
 test('tradeLine: a stream message or a backfill trade becomes one honest screen line, or none', () => {
   assert.equal(tradeLine({ s: 'BTC-USD', p: '76718', q: '0.01986', m: true, T: 1 }), 'BTC  sell  0.01986 @ 76718');
   assert.equal(tradeLine({ s: 'ADA-USD', p: '0.186800', q: '1200.000', m: false }), 'ADA  buy  1200 @ 0.1868');
@@ -253,11 +253,14 @@ test('pickSummary and flowValues: the two totals and their difference, nothing f
   assert.deepEqual(flowValues({ depositsUsd: null, withdrawalsUsd: 'x' }), {}); assert.deepEqual(flowValues(null), {});
   for (const t of Object.values(flowValues(s))) for (const re of MONUMENT_BANNED) assert.doesNotMatch(t, re);
 });
-test('compassAngles: an arm per pad, in the monument\'s frame, straight behind included', () => {
-  const arms = compassAngles([0, 0], 0, [{ key: 'a', name: 'A', x: 0, z: 10 }, { key: 'b', name: 'B', x: 10, z: 0 }, { key: 'c', name: 'C', x: 0, z: -10 }, { key: 'd', name: 'D', x: 'x', z: 0 }]);
-  assert.deepEqual(arms.map((a) => a.key), ['a', 'b', 'c']);
-  assert.ok(Math.abs(arms[0].angle) < 1e-9); assert.ok(Math.abs(arms[1].angle - Math.PI / 2) < 1e-9); assert.ok(Math.abs(Math.abs(arms[2].angle) - Math.PI) < 1e-9);
-  const turned = compassAngles([5, 5], Math.PI / 2, [{ key: 'b', name: 'B', x: 15, z: 5 }]); assert.ok(Math.abs(turned[0].angle) < 1e-9, 'a monument turned to face +x sees a pad at +x straight ahead');
+test('the Orrery: three ring speeds, none still, at least one counter-rotating, no pair in a small whole-number ratio (the pose never comes back round)', () => {
+  assert.equal(ORRERY.speeds.length, 3);
+  for (const s of ORRERY.speeds) { assert.ok(Number.isFinite(s) && s !== 0); assert.ok(Math.abs(s) <= 0.2, 'slow enough to read as a monument, not a fan'); }
+  assert.ok(ORRERY.speeds.some((s) => s < 0) && ORRERY.speeds.some((s) => s > 0));
+  const mags = ORRERY.speeds.map(Math.abs);
+  for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++)
+    for (let p = 1; p <= 20; p++) for (let q = 1; q <= 20; q++)
+      assert.ok(Math.abs(p * mags[i] - q * mags[j]) > 1e-4 * Math.max(mags[i], mags[j]), `rings ${i + 1} and ${j + 1} meet again after ${p} and ${q} turns`);
 });
 // Review fixes (3 Nov, B3)
 test('a negative difference reads with a minus, never raw digits', () => {

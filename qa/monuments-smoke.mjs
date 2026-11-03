@@ -4,13 +4,12 @@
 // Plinth's 30-day lines equal the strings from the two daily series and its thirty bars stand with today's lit; the Collateral
 // Stacks' lines equal the strings from the collateral assets and the stacks and rings count; the Beacon's lines equal the users
 // series, "Cars here now" reads 1 with the room off, thirty rungs stand and the lantern pulses slowly. Part B3: the Feed Obelisk's
-// lines have the yard's shapes and two injected fills reach its screens; the Three Pylons' lines equal the summary; the Compass
-// has no live block, seven arms named for the partners, and a dial that turns.
+// lines have the yard's shapes and two injected fills reach its screens; the Three Pylons' lines equal the summary; the Orrery
+// has no live block, three rings found on the model, and the rings turn at their own rates.
 // Usage: node qa/monuments-smoke.mjs [baseUrl]   (exit 1 on any failure or page error; one line per check)
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pickStaking, pickSlp, stakeValues, engineValues, pickSeries, plinthValues, pickCollateral, collateralValues, pickActivity, beaconValues, STACKS, flowValues, tradeLine, pickSummary } from '../ecosystem/js/monument-math.js';
-import { STOPS } from '../ecosystem/js/content.js';
 
 let chromium;
 try { ({ chromium } = await import('playwright')); } catch {
@@ -137,22 +136,24 @@ check(off.length === 0, `the Pylons' lines match the summary${off.length ? `: ${
 state = await page.evaluate(() => window.__eco.monuments.state());
 check(state.pylonsFace?.length === 3, `three lines on the Pylons' face (${state.pylonsFace?.length})`);
 
-// (20) and (21): the Compass
+// (20) and (21): the Orrery
 await page.goto(`${base}/ecosystem/?stop=monument-partners&mp=0&arrive=0#dark`, { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => window.__eco && document.getElementById('stop').open, null, { timeout: 90000 });
-const partners = STOPS.filter((s) => s.district === 'partners' && !s.key.startsWith('monument-')).map((s) => s.name);
 const liveBlock = await page.evaluate(() => document.querySelectorAll('#stop-live div').length);
+await page.waitForFunction(() => window.__eco.monuments.state().orreryModel, null, { timeout: 20000 }).catch(() => {}); // the glb, not the blockout: both carry ring_01..03, and a swap mid-check would reset the angles (reviewer)
 state = await page.evaluate(() => window.__eco.monuments.state());
-check(liveBlock === 0 && state.arms === partners.length && JSON.stringify(state.armNames) === JSON.stringify(partners), `the Compass has no live block and ${state.arms} arms named for the partners (${state.armNames.join(', ')})`);
-const dial0 = state.dial;
-await page.waitForFunction((d) => window.__eco.monuments.state().dial > d + 0.01, dial0, { timeout: 15000 }).catch(() => {}); // software rendering is slow; give it a few frames
+check(liveBlock === 0 && state.orreryModel && state.orreryRings?.length === 3, `the Orrery has no live block, its model is in and its three rings are found (model ${state.orreryModel}, rings ${state.orreryRings?.length ?? 'none'})`);
+const rings0 = state.orreryRings;
+await page.waitForFunction((r) => window.__eco.monuments.state().orreryRings.every((v, i) => Math.abs(v - r[i]) > 0.01), rings0, { timeout: 15000 }).catch(() => {}); // software rendering is slow; give it a few frames
 state = await page.evaluate(() => window.__eco.monuments.state());
-check(state.dial > dial0, `the dial turns (${dial0.toFixed(3)} → ${state.dial.toFixed(3)} rad)`);
+const moved = state.orreryRings.map((v, i) => v - rings0[i]);
+check(moved.every((d) => d !== 0) && moved.some((d) => d < 0) && moved.some((d) => d > 0), `every ring turns, not all the same way (${moved.map((d) => d.toFixed(3)).join(', ')} rad)`);
 // (22) a sheet without live keys open while the fills poll lands must not throw (the reviewer's catch: it broke the SLP poll and the room)
-const sparksBefore = state.sparks;
+await page.waitForFunction(() => window.__eco.monuments.state().sparks === 0, null, { timeout: 15000 }).catch(() => {}); // sparks live 0.8 s; a real poll's sparks must not be counted (reviewer)
+const sparksBefore = (await page.evaluate(() => window.__eco.monuments.state())).sparks;
 const threw = await page.evaluate(() => { try { window.__eco.monuments.injectSlpFills([1, 2, 3].map((i) => ({ id: 2e9 + i, symbol: 'BTC-USD', side: 'buy', size: '0.01', price: '77000', timestamp: Date.now() }))); return null; } catch (e) { return e.message; } });
 state = await page.evaluate(() => window.__eco.monuments.state());
-check(threw === null && state.fillsOk && state.sparks === sparksBefore + 3, `fills landing under the Compass's sheet keep the poll and the sparks (${threw ?? 'no throw'}, ok ${state.fillsOk}, sparks ${sparksBefore} → ${state.sparks})`);
+check(threw === null && state.fillsOk && state.sparks === sparksBefore + 3, `fills landing under the Orrery's sheet keep the poll and the sparks (${threw ?? 'no throw'}, ok ${state.fillsOk}, sparks ${sparksBefore} → ${state.sparks})`);
 
 // (5) no page error
 check(errors === 0, `no page error (${errors})`);

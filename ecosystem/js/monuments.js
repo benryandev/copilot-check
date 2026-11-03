@@ -10,7 +10,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, STOPS, isMonument } from "./content.js";
 import { pads, accent, M, obbOf, modelHooks, canvasTexture, redraws, themePalette } from "./build.js";
 import { slpVaultId, usd, int } from "./data.js";
-import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale, ringLayout, BEACON, rungScales, carsHere, carsLine, pulsePeriod, FEED, tradeLine, feedLines, COMPASS, compassAngles, signedUsd } from "./monument-math.js";
+import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale, ringLayout, BEACON, rungScales, carsHere, carsLine, pulsePeriod, FEED, tradeLine, feedLines, ORRERY, signedUsd } from "./monument-math.js";
 import { onPeers, peersState } from "./peers.js";
 import { onTrade, onYardStatus, onYardStats, yardValues } from "./flow.js";
 
@@ -407,30 +407,14 @@ function applyPylons(m) {
   if (text.length) setFaceText(m, text);
 }
 
-// ── The Compass ──
-function attachCompass(m) {
-  m.nodes = { dial: node(m.g, "dial"), arms: names("arm", 8).map((n) => node(m.g, n)), marks: names("mark", 8).map((n) => node(m.g, n)) };
+// ── The Orrery ──
+function attachOrrery(m) {
+  m.nodes = { rings: names("ring", 3).map((n) => node(m.g, n)), sphere: node(m.g, "sphere") };
   buildKerb(m);
-  if (!m.labels) m.labels = m.nodes.marks.map(() => {
-    const l = { text: null };
-    l.face = canvasTexture(512, 148, (ctx, w, h, p) => { ctx.fillStyle = p.panel; ctx.fillRect(0, 0, w, h); if (!l.text) return; ctx.fillStyle = p.text; ctx.font = "600 56px 'Atkinson Hyperlegible Next', Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(l.text, w / 2, h / 2 + 2, w - 40); });
-    redraws.push(l.face.redraw);
-    l.mat = new THREE.MeshBasicMaterial({ map: l.face.tex, toneMapped: false });
-    return l;
-  });
-  // The partners' pads, laid out by content.js: one arm each, turned to its pad in the monument's own frame
-  const partners = pads.filter((p) => p.stop.district === m.d.key && !isMonument(p.stop)).map((p) => ({ key: p.stop.key, name: p.stop.name, x: p.group.position.x, z: p.group.position.z }));
-  m.arms = compassAngles(m.d.centre, m.g.rotation.y, partners);
-  m.nodes.arms.forEach((arm, i) => {
-    const a = m.arms[i], mark = m.nodes.marks[i], l = m.labels[i];
-    if (!arm) return;
-    arm.visible = !!a;
-    if (a) arm.rotation.y = a.angle;
-    if (mark && l) { l.text = a?.name ?? null; l.face.tex.flipY = !!mark.userData.blockout; l.face.tex.needsUpdate = true; mark.material = l.mat; mark.castShadow = false; if (themePalette()) l.face.redraw(themePalette()); }
-  });
 }
-function tickCompass(m, dt) {
-  if (m.nodes.dial && !opts.reduceMotion) m.nodes.dial.rotation.y += COMPASS.dialSpeed * dt;
+function tickOrrery(m, dt) {
+  if (opts.reduceMotion) return;
+  m.nodes.rings.forEach((r, i) => { if (r) r.rotation.y += ORRERY.speeds[i] * dt; });
 }
 
 // ── The fills poll ──
@@ -466,7 +450,7 @@ function takeFills(incoming, now, seed = false) {
 // ── Public ──
 export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
   opts = { coarse, reduceMotion };
-  const attach = { "monument-earn": attachEngine, "monument-token": attachStake, "monument-analytics": attachPlinth, "monument-collateral": attachStacks, "monument-community": attachBeacon, "monument-developers": attachObelisk, "monument-chains": attachPylons, "monument-partners": attachCompass };
+  const attach = { "monument-earn": attachEngine, "monument-token": attachStake, "monument-analytics": attachPlinth, "monument-collateral": attachStacks, "monument-community": attachBeacon, "monument-developers": attachObelisk, "monument-chains": attachPylons, "monument-partners": attachOrrery };
   for (const stop of STOPS.filter(isMonument)) {
     const fn = attach[stop.key];
     if (!fn) continue;
@@ -503,7 +487,7 @@ export function monumentsTick(dt) {
   const c = monuments.get("monument-collateral"); if (c?.nodes.stacks) tickStacks(c, dt);
   const b = monuments.get("monument-community"); if (b?.nodes.rungs) tickBeacon(b, dt);
   const o = monuments.get("monument-developers"); if (o?.screen) tickObelisk(o, dt);
-  const p = monuments.get("monument-partners"); if (p?.nodes.dial) tickCompass(p, dt);
+  const p = monuments.get("monument-partners"); if (p?.nodes.rings) tickOrrery(p, dt);
 }
 export function monumentValues() {
   // Before the seed lands the line is loading, not "Not available" (the smoke caught a sheet opened in that gap, 3 Nov);
@@ -525,7 +509,7 @@ export const monumentsState = () => {
   const o = monuments.get("monument-developers");
   const y = monuments.get("monument-chains");
   const pc = monuments.get("monument-partners");
-  return { arms: pc?.nodes.arms?.filter((a) => a?.visible).length ?? 0, armNames: pc?.arms?.map((a) => a.name) ?? [], dial: pc?.nodes.dial?.rotation.y ?? null,
+  return { orreryRings: pc?.nodes.rings?.filter(Boolean).map((r) => r.rotation.y) ?? [], orreryModel: !!pc?.g?.getObjectByName("pedestal"), // the Orrery: y-rotation of each ring, and whether the glb is in (the blockout has no "pedestal"); "rings" below is the Engine's count
     pylonsFace: y?.faceText ?? null,
     fillsOk: state.ok, feed: state.feed.length, feedLast: state.feed.at(-1) ?? null, stream: state.streamStatus, obeliskFace: o?.faceText ?? null,
     rungs: b?.nodes.rungs?.filter((r) => r?.visible).length ?? 0, pulse: b?.pulse ?? null, beaconFace: b?.faceText ?? null, cars: state.cars,
