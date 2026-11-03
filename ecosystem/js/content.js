@@ -156,7 +156,7 @@ const spoke = (key) => ROADS.findIndex((r) => r.kind === "spoke" && r.to === key
 export const JUMPS = [
   { road: spoke("perps"), t: 0.28, side: 1, length: 8, height: 1.9, width: 3.4 }, // 0.42 until 2 Nov 2026: a car off that lip landed on the funding windsocks (Ben); from 0.28 it is down 10 m before the board
   { road: spoke("collateral"), t: 0.5, side: -1, length: 8, height: 1.9, width: 3.4 },
-  { road: spoke("developers"), t: 0.28, side: 1, length: 10, height: 2.4, width: 3.4 },
+  // (The Developers spoke had a 10 m ramp at t 0.28 until 3 Nov 2026: it sat beside Builders' Row and its Jump sign overlapped the Row's. Ben: remove it.)
   { road: spoke("community"), t: 0.5, side: -1, length: 8, height: 1.9, width: 3.4 },
   { road: spoke("token"), t: 0.45, side: 1, length: 7, height: 1.5, width: 3.4 },
   // The raceway: on the start straight, the short straight after the first hairpin, and the sweep

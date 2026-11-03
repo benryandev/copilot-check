@@ -1,6 +1,7 @@
 // Terrain sampling (node can import it): node --test qa/terrain-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { builderSlots } from '../ecosystem/js/terrain.js';
+import { jumps } from '../ecosystem/js/terrain.js';
 import { groundHeight, roadInfo, racewayWeight, inRaceway, trackAt } from '../ecosystem/js/terrain.js';
 
 test('ground is continuous where a wide road\'s blend meets a narrow one\'s (Ben\'s invisible wall at 241, 95)', () => {
@@ -114,4 +115,11 @@ test('Builders\' Row starts just outside the Developers rim and steps 13 m back,
   const out = (s) => Math.hypot(s.x - d.centre[0], s.z - d.centre[1]) - d.radius;
   assert.ok(out(first) >= 4 && out(first) <= 12, `first shop ${out(first).toFixed(1)} m outside the rim`);
   assert.ok(Math.abs(Math.hypot(second.face[0] - first.face[0], second.face[1] - first.face[1]) - 13) < 2, 'the next faces the road 13 m further back (and stands on the other side)');
+});
+
+test('no jump on the road into Developers: Builders\' Row keeps its shops, signpost and verge clear (Ben, 3 Nov 2026)', () => {
+  const dev = roads.findIndex((r) => r.kind === 'spoke' && r.to === 'developers');
+  assert.ok(dev >= 0);
+  assert.equal(jumps.filter((j) => j.road === dev).length, 0, 'a ramp and its bales sat beside the Row and its Jump sign overlapped the Row sign');
+  assert.equal(jumps.filter((j) => j.road != null && roads[j.road].kind === 'spoke').length, 4, 'the other four spoke jumps stay');
 });
