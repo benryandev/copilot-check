@@ -419,8 +419,8 @@ const SHAPES = {
   // three tapered pylons at the corners for Cardano, Ethereum and Solana (one at the back, two flanking the front), each with
   // a name plate on its inward face, the name board on a post between the front two. 7.8 m tall, about 10 m across.
   pylons(g, A, stop) {
-    const base = mesh(new THREE.CylinderGeometry(5.2, 5.2, 0.8, 3), M.trim, 0, 0.4, 0); base.rotation.y = Math.PI / 2; g.add(base); // one flat side towards +z
-    const step = mesh(new THREE.CylinderGeometry(5.6, 5.6, 0.2, 3), M.build, 0, 0.1, 0); step.rotation.y = Math.PI / 2; g.add(step);
+    const base = mesh(new THREE.CylinderGeometry(5.2, 5.2, 0.8, 3), M.trim, 0, 0.4, 0); base.rotation.y = Math.PI; g.add(base); // corners at 60°, 180° and 300°, so a flat side faces +z
+    const step = mesh(new THREE.CylinderGeometry(5.6, 5.6, 0.2, 3), M.build, 0, 0.1, 0); step.rotation.y = Math.PI; g.add(step);
     [["cardano", 90], ["ethereum", 210], ["solana", 330]].forEach(([chain, deg]) => {
       const a = (deg * Math.PI) / 180, x = Math.cos(a) * 3.2, z = -Math.sin(a) * 3.2;
       const p = mesh(new THREE.CylinderGeometry(0.3, 0.6, 6.4, 4), M.build, x, 0.8 + 3.2, z); p.rotation.y = Math.PI / 4; g.add(p);
@@ -435,6 +435,27 @@ const SHAPES = {
     g.add(cyl(0.08, 2.0, M.trim, 0, 0.8, 1.2, 8));
     g.add(signBoard(stop.name, 3.4, 0.7, 0, 2.5, 1.2));
     return 7.8;
+  },
+  // The Compass (the Partners monument, Part B3): a low round base, a dial ring that turns, eight stand-in arms at the centre
+  // (monuments.js turns one to each partner's pad and names it on a flat plate at its tip, hides the rest), a spindle, the
+  // name on the base's front edge. 3.4 m tall, 10 m across; the same node names in the Blender model.
+  compass(g, A, stop) {
+    g.add(cyl(5.0, 0.2, M.build, 0, 0, 0, 48), cyl(4.6, 0.6, M.trim, 0, 0, 0, 48));
+    const dial = new THREE.Group(); dial.name = "dial"; dial.position.y = 0.7;
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(4.0, 0.12, 8, 48), A); ring.rotation.x = Math.PI / 2; dial.add(ring);
+    for (let i = 0; i < 16; i++) { const a = (i * Math.PI) / 8; const t = box(i % 4 ? 0.12 : 0.2, 0.16, i % 4 ? 0.4 : 0.7, M.trim, Math.sin(a) * 3.7, -0.08, Math.cos(a) * 3.7); t.rotation.y = a; dial.add(t); }
+    g.add(dial);
+    for (let i = 0; i < 8; i++) {
+      const arm = new THREE.Group(); arm.name = `arm_${String(i + 1).padStart(2, "0")}`; arm.position.y = 0.75;
+      arm.add(box(0.5, 0.2, 3.6, M.build, 0, 0, 1.8));
+      const mark = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.4), M.trim); mark.name = `mark_${String(i + 1).padStart(2, "0")}`; mark.userData.blockout = true;
+      mark.position.set(0, 0.22, 3.0); mark.rotation.x = -Math.PI / 2; arm.add(mark); // lying flat, read from above
+      g.add(arm);
+    }
+    g.add(cyl(0.3, 2.2, M.trim, 0, 0.7, 0, 12), cyl(0.45, 0.3, A, 0, 2.9, 0, 12));
+    for (const x of [-1.5, 1.5]) g.add(cyl(0.06, 1.0, M.trim, x, 0.6, 4.0, 8));
+    g.add(signBoard(stop.name, 3.4, 0.7, 0, 1.6, 4.0));
+    return 3.4;
   },
   grid(g, A) {
     for (let i = -1; i <= 1; i++)
