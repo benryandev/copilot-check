@@ -84,7 +84,7 @@
       <p class="district-line">Strike Finance itself, how a first visit goes, and the platform's headline figures.</p>
       <article class="stop district-hub" id="stop-strike">
         <h3>Strike Finance</h3>
-        <p>A perpetuals exchange with its own execution layer and settlement on several chains. Strike V1 launched on Cardano in May 2025; V2 moved to a central limit order book.</p>
+        <p>A perpetuals exchange with its own execution layer and settlement on several chains. Strike V1 launched on Cardano in May 2025, and V2 moved to a central limit order book.</p>
         <ul>
           <li>Matching, positions, liquidations and funding run on the Strike Node.</li>
           <li>Deposits sit in on-chain locker contracts, with validators signing deposits and withdrawals.</li>
@@ -97,9 +97,9 @@
       </article>
       <article class="stop district-hub" id="stop-getting-started">
         <h3>Getting started</h3>
-        <p>A first visit, from sign-in to a funded account. Sign in with a wallet on Cardano, Ethereum, Solana and more; deposit crypto on any supported chain or pay by card; your balance is held in USD.</p>
+        <p>A first visit, from sign-in to a funded account. Sign in with a wallet on Cardano, Ethereum, Solana and more, then deposit crypto on any supported chain or pay by card. Your balance is held in USD.</p>
         <ul>
-          <li>Two ways to fund it (checked in the app on 3 November 2026): send crypto from a Cardano, Ethereum, Solana, Base, Arbitrum or Bitcoin wallet, or pay by card up to $50,000 (Visa or Mastercard). Bank transfer is marked coming soon.</li>
+          <li>There are two ways to fund it. Send crypto from a Cardano, Ethereum, Solana, Base, Arbitrum or Bitcoin wallet, or pay by card up to $50,000 (Visa or Mastercard). Bank transfer is marked coming soon.</li>
           <li>Every deposit is quoted and verified by Strike's validators, and a volatile asset such as ADA or ETH is swapped to a stablecoin on the way in, so the account is backed one to one in USD.</li>
           <li>Withdrawals need your wallet's signature and a margin check before validators release funds on chain. There's a mobile app and a full API as well.</li>
           <li>The Open Strike button uses Ben Ryan's referral code.</li>
@@ -114,7 +114,7 @@
       <p class="district-line">Trading on Strike: the markets, the matching engine, orders, margin, liquidations and the bots. <a class="district-drive" href="/ecosystem/?district=perps">Drive to this district</a></p>
       <article class="stop district-perps" id="stop-perpetuals">
         <h3>Perpetuals</h3>
-        <p>Perpetual futures: go long or short with leverage, and no expiry date to roll. Strike lists crypto, US and Asian stocks, indices, gold, silver and oil.</p>
+        <p>Perpetual futures let you go long or short with leverage, with no expiry date to roll. Strike lists crypto, US and Asian stocks, indices, gold, silver and oil.</p>
         <ul>
           <li>Every market has its own leverage limit, which falls as a position gets bigger (margin tiers).</li>
           <li>Funding is paid between longs and shorts to keep the price close to the index.</li>
@@ -128,7 +128,7 @@
         <h3>Strike Node</h3>
         <p>Strike's own execution layer. Orders are matched off the base chain so trading can be fast, while deposits stay in on-chain locker contracts.</p>
         <ul>
-          <li>Execution happens on the Strike network; settlement and custody stay on the chain.</li>
+          <li>Execution happens on the Strike network. Settlement and custody stay on the chain.</li>
           <li>Every order gets a sequence number, so all nodes process orders in the same order.</li>
         </ul>
         
@@ -136,7 +136,7 @@
       </article>
       <article class="stop district-perps" id="stop-markets">
         <h3>Markets</h3>
-        <p>Strike lists USD-settled perpetuals in four groups: crypto (BTC, ETH, SOL, ADA, XRP and more), US and Asian stocks (NVDA, TSLA, GOOGL, COIN, SK Hynix), indices (S&amp;P 500, Nasdaq 100) and commodities (gold, silver, WTI oil). Examples as listed on 3 November 2026.</p>
+        <p>Strike lists USD-settled perpetuals in four groups. They are crypto (BTC, ETH, SOL, ADA, XRP and more), US and Asian stocks (NVDA, TSLA, GOOGL, COIN, SK Hynix), indices (S&amp;P 500, Nasdaq 100) and commodities (gold, silver, WTI oil).</p>
         <ul>
           <li>Every market has its own leverage limit, margin tiers, tick size and minimum order, all published by Strike's public markets endpoint, and the list grows as Strike adds markets.</li>
           <li>The live figure on this pad is the number of markets in trading status, read from Strike's public markets endpoint.</li>
@@ -148,7 +148,7 @@
         <h3>Order types and fees</h3>
         <p>Market, limit, stop market, stop limit, take profit and stop loss, trailing stop, scale, TWAP and grid, matched by price then time. Fees are tiered on your rolling 30-day volume.</p>
         <ul>
-          <li>Tier 0 (under $100K in 30 days) pays 0.050% as taker and earns a 0.005% maker rebate; tiers recalculate daily at 00:05 UTC, and more volume lowers the taker fee.</li>
+          <li>Tier 0 (under $100K in 30 days) pays 0.050% as taker and earns a 0.005% maker rebate. Tiers recalculate daily at 00:05 UTC, and more volume lowers the taker fee.</li>
           <li>Staked STRIKE unlocks discounts of 5% to 40% on positive fees, from 5,000 STRIKE up. Rebates are unchanged.</li>
           <li>TWAP, grid, trailing stop, scale and RFQ each have their own pad in this plaza.</li>
         </ul>
@@ -167,7 +167,7 @@
       </article>
       <article class="stop district-perps" id="stop-margin">
         <h3>Margin Modes</h3>
-        <p>Choose per market. Cross margin shares your whole balance across positions; isolated margin ring-fences one position so a loss there can't touch the rest.</p>
+        <p>Choose per market. Cross margin shares your whole balance across positions. Isolated margin ring-fences one position so a loss there can't touch the rest.</p>
         <ul>
           <li>Cross is the default and more capital efficient, but one bad trade can drain shared margin.</li>
           <li>You can run cross on one market and isolated on another at the same time.</li>
@@ -177,10 +177,10 @@
       </article>
       <article class="stop district-perps" id="stop-liquidations">
         <h3>Liquidations</h3>
-        <p>Staged, not all at once. An account that falls short of margin is first reduced in parts on the public order book; the insurance fund and auto-deleveraging are the last resort.</p>
+        <p>Staged, not all at once. An account that falls short of margin is first reduced in parts on the public order book. The insurance fund and auto-deleveraging are the last resort.</p>
         <ul>
           <li>The aim is to keep as much of the position open as the margin allows.</li>
-          <li>Liquidations carry a fee; the docs cover the full lifecycle.</li>
+          <li>Liquidations carry a fee, and the docs cover the full lifecycle.</li>
         </ul>
         <p class="stop-live">Live on the pad: Liquidated, all time</p>
         <p class="stop-guide">Read the guide: <a href="/ecosystem/guides/liquidation/">Liquidation, and how to avoid it: a plain-English guide</a></p>
@@ -198,10 +198,10 @@
       </article>
       <article class="stop district-perps" id="stop-pair-trading">
         <h3>Pair trading</h3>
-        <p>The Pair Trading Terminal is a mode of the trade page, with no docs page of its own: one or more long legs against one or more short legs, sized by a split, with the basket's weighted ratio charted. As seen in the app on 3 November 2026.</p>
+        <p>The Pair Trading Terminal is a mode of the trade page, with no docs page of its own. It sets one or more long legs against one or more short legs, sized by a split, with the basket's weighted ratio charted.</p>
         <ul>
-          <li>Open it from the Carry Scanner's Trade button or a trade URL that names the long and short markets; Create Position places every leg.</li>
-          <li>Each leg is an ordinary market order placed one after another. Strike's own Carry Scanner says it: if one leg fails you hold an unhedged position.</li>
+          <li>Open it from the Carry Scanner's Trade button or a trade URL that names the long and short markets. Create Position places every leg.</li>
+          <li>Each leg is an ordinary market order placed one after another. Strike's own Carry Scanner warns that if one leg fails you hold an unhedged position.</li>
           <li>The chart tabs show the basket's weighted ratio, performance and funding, and each leg's own market.</li>
         </ul>
         
@@ -212,7 +212,7 @@
         <p>Splits one large order into many small ones over a time you choose, to soften the price impact of a single big market order.</p>
         <ul>
           <li>If it falls behind, later slices grow to catch up, within a cap.</li>
-          <li>Best effort: no guarantee of a full fill or a set average price.</li>
+          <li>It is best effort, with no guarantee of a full fill or a set average price.</li>
         </ul>
         
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=twap">Drive there</a> <a class="stop-doc" href="https://docs.strikefinance.org/bots/twap" rel="noopener">Docs: TWAP</a></p>
@@ -221,7 +221,7 @@
         <h3>Trailing Stop</h3>
         <p>A stop that follows the price while a trade goes your way, then closes the position if price turns back by the percentage you set.</p>
         <ul>
-          <li>On a long it tracks the highest price; on a short, the lowest.</li>
+          <li>On a long it tracks the highest price. On a short it tracks the lowest.</li>
           <li>It only ever moves in your favour.</li>
         </ul>
         
@@ -241,30 +241,30 @@
         <h3>Scale Orders</h3>
         <p>Splits one order into a ladder of up to 100 limit orders across a price range you set, instead of one order at one price.</p>
         <ul>
-          <li>Choose where the ladder starts and ends; Size Skew puts more of the size toward either end.</li>
-          <li>Live since 31 October 2026 (announced in the app); not in Strike's docs yet, so the link goes to the order types page.</li>
+          <li>Choose where the ladder starts and ends. Size Skew puts more of the size toward either end.</li>
+          <li>Live since 31 October 2026, announced in the app. It is not in Strike's docs yet, so the link goes to the order types page.</li>
         </ul>
         
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=scale">Drive there</a> <a class="stop-doc" href="https://docs.strikefinance.org/perpetuals/order-types" rel="noopener">Docs: Order types</a></p>
       </article>
       <article class="stop district-perps" id="stop-funding-comparison">
         <h3>Funding Comparison</h3>
-        <p>Two pages in the app's Tools menu, with no docs page of their own. Funding Comparison lays Strike's hourly funding on every market beside Binance, Bybit, OKX, Hyperliquid, Lighter, Extended and Variational; the Carry Scanner ranks long/short pairs on Strike by funding carry against spread risk. As seen on 3 November 2026.</p>
+        <p>Two pages in the app's Tools menu, with no docs page of their own. Funding Comparison lays Strike's hourly funding on every market beside Binance, Bybit, OKX, Hyperliquid, Lighter, Extended and Variational. The Carry Scanner ranks long/short pairs on Strike by funding carry against spread risk.</p>
         <ul>
           <li>Funding Comparison shows each venue's rate and its gap to Strike's, with a Show Arb only filter for the markets where the gap is widest.</li>
           <li>The Carry Scanner builds candidates from 30 days of hourly bars, sized by beta, with correlation, spread volatility and break-even days for each pair.</li>
-          <li>The app's own caveat: funding carry is a live snapshot and moves with the market, and correlation measured from past data can break down.</li>
+          <li>The app's own caveat is that funding carry is a live snapshot and moves with the market, and that correlation measured from past data can break down.</li>
         </ul>
         
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=funding-comparison">Drive there</a> <a class="stop-doc" href="https://app.strikefinance.org/funding-comparison" rel="noopener">Funding Comparison in the app</a> <a class="stop-doc" href="https://app.strikefinance.org/carry-scanner" rel="noopener">Carry Scanner in the app</a></p>
       </article>
       <article class="stop district-perps" id="stop-funding-rates">
         <h3>Funding rates</h3>
-        <p>Funding keeps a perpetual's price near its index by moving money between longs and shorts, every hour on the hour UTC. It is paid trader to trader; Strike keeps none of it.</p>
+        <p>Funding keeps a perpetual's price near its index by moving money between longs and shorts, every hour on the hour UTC. It is paid trader to trader, and Strike keeps none of it.</p>
         <ul>
-          <li>Rates are quoted on an 8-hour basis and one eighth is paid each hour. Positive means longs pay shorts; negative, shorts pay longs.</li>
+          <li>Rates are quoted on an 8-hour basis and one eighth is paid each hour. A positive rate means longs pay shorts, and a negative rate means shorts pay longs.</li>
           <li>The windsocks on the road in show Strike's rate per 8 hours on each sock, with Bybit, Binance and Hyperliquid in the row behind.</li>
-          <li>By default a crypto market carries a 0.01% 8-hour interest rate, while stocks, indices and commodities use a 0.05% dampener band instead; a market can run on different limits. Every rate is capped at 4% per 8 hours either way.</li>
+          <li>By default a crypto market carries a 0.01% 8-hour interest rate, while stocks, indices and commodities use a 0.05% dampener band instead. A market can run on different limits. Every rate is capped at 4% per 8 hours either way.</li>
         </ul>
         
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=funding-rates">Drive there</a> <a class="stop-doc" href="https://docs.strikefinance.org/perpetuals/funding-rates" rel="noopener">Docs: Funding Rates</a></p>
@@ -309,7 +309,7 @@
         <p>Keep a supported asset as collateral and borrow USD that goes straight into the SLP vault. You hold your collateral's price exposure and SLP shares at the same time.</p>
         <ul>
           <li>Draws accrue no borrowing interest, but the USD cannot be withdrawn as cash. It only buys SLP shares.</li>
-          <li>Accepted collateral includes ADA, sUSDrf, Aave aUSDC and a SundaeSwap LP token; the app shows the current list.</li>
+          <li>Accepted collateral includes ADA, sUSDrf, Aave aUSDC and a SundaeSwap LP token. The app shows the current list.</li>
         </ul>
         <p class="stop-live">Live on the pad: Open credit lines</p>
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=borrow-earn">Drive there</a> <a class="stop-doc" href="https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn" rel="noopener">Docs: Borrow and Earn</a></p>
@@ -319,7 +319,7 @@
         <p>Any trader can open a vault, trade it with depositors' pooled money and earn a commission on profits. Depositors share gains and losses in proportion to their shares.</p>
         <ul>
           <li>Creating one costs 100 USDC, the default leader commission is 10% of profits, and the leader must keep at least 5% of shares.</li>
-          <li>Withdrawals are requested, then released after a lockup (default 1 day); the default minimum deposit is $100.</li>
+          <li>Withdrawals are requested, then released after a lockup (default 1 day). The default minimum deposit is $100.</li>
         </ul>
         <p class="stop-live">Live on the pad: User vaults</p>
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=user-vaults">Drive there</a> <a class="stop-doc" href="https://docs.strikefinance.org/perpetuals/vaults" rel="noopener">Docs: Vaults</a></p>
@@ -329,7 +329,7 @@
         <p>Protocol vaults are created by Strike administrators for official strategies. They have no creation fee, no leader commission, and are verified automatically.</p>
         <ul>
           <li>Strike admins can create more than one, and each runs in its own isolated trading account.</li>
-          <li>SLP is the live example: the vault API lists it as a verified protocol vault with 0 commission.</li>
+          <li>SLP is the live example. The vault API lists it as a verified protocol vault with 0 commission.</li>
         </ul>
         
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=protocol-vaults">Drive there</a> <a class="stop-doc" href="https://docs.strikefinance.org/perpetuals/vaults" rel="noopener">Docs: Vaults</a></p>
@@ -338,8 +338,8 @@
         <h3>Copy Trading</h3>
         <p>Mirror a lead trader on your own Strike account. Pick a Hyperliquid wallet or a Strike trader, choose how trades are sized, and Strike places matching orders when the lead fills.</p>
         <ul>
-          <li>Copies are same-side market orders for executed fills only; Hyperliquid copies usually land within seconds.</li>
-          <li>Two sizing modes: fixed ratio of the lead's account, or a fixed margin per entry. Copying starts when you subscribe.</li>
+          <li>Copies are same-side market orders for executed fills only. Hyperliquid copies usually land within seconds.</li>
+          <li>There are two sizing modes, a fixed ratio of the lead's account or a fixed margin per entry. Copying starts when you subscribe.</li>
         </ul>
         <p class="stop-live">Live on the pad: Allocated to copies, Copy open interest</p>
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=copy-trading">Drive there</a> <a class="stop-doc" href="https://docs.strikefinance.org/perpetuals/copy-trading" rel="noopener">Docs: Copy Trading</a></p>
@@ -441,11 +441,11 @@
       </article>
       <article class="stop district-collateral" id="stop-enzobtc">
         <h3>enzoBTC</h3>
-        <p>enzoBTC is a bitcoin-backed token from Lorenzo Protocol. Strike accepts it as Borrow &amp; Earn collateral, deposited from an Ethereum wallet; the borrowed USD goes only into the SLP vault.</p>
+        <p>enzoBTC is a bitcoin-backed token from Lorenzo Protocol. Strike accepts it as Borrow &amp; Earn collateral, deposited from an Ethereum wallet. The borrowed USD goes only into the SLP vault.</p>
         <ul>
           <li>Strike's credit settings list it as collateral with Ethereum custody and 8 decimal places.</li>
           <li>It sits on its own credit line, so it neither backs nor is backed by lines opened with other collateral.</li>
-          <li>On 2 November 2026 Strike announced $200,000 of BTC supplied to Strike as enzoBTC, with full details to follow; the live figure on this pad counts the open enzoBTC lines.</li>
+          <li>On 2 November 2026 Strike announced $200,000 of BTC supplied to Strike as enzoBTC, with full details to follow. The live figure on this pad counts the open enzoBTC lines.</li>
         </ul>
         <p class="stop-live">Live on the pad: Open credit lines</p>
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=enzobtc">Drive there</a> <a class="stop-doc" href="https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn" rel="noopener">Docs: Borrow and Earn</a></p>
@@ -508,9 +508,9 @@
         <h3>DEX Aggregators</h3>
         <p>A DEX aggregator routes one swap across many liquidity pools to find a good price. Strike uses one when a volatile deposit, such as ADA, has to be turned into a stablecoin.</p>
         <ul>
-          <li>The swap is placed in a batching window; if it is not filled in time it is cancelled and resubmitted.</li>
+          <li>The swap is placed in a batching window. If it is not filled in time it is cancelled and resubmitted.</li>
           <li>The result is recorded as a deposit receipt, then the stablecoin is locked in Strike's on-chain locker contract.</li>
-          <li>DexHunter is a Cardano swap aggregator: it compares prices across many exchanges, splits a swap between them, and has a STRIKE swap page at app.dexhunter.io. The docs don't say which aggregator Strike's own deposits go through.</li>
+          <li>DexHunter is a Cardano swap aggregator. It compares prices across many exchanges, splits a swap between them, and has a STRIKE swap page at app.dexhunter.io. The docs don't say which aggregator Strike's own deposits go through.</li>
         </ul>
         
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=dex-aggregators">Drive there</a> <a class="stop-doc" href="https://docs.strikefinance.org/perpetuals/deposits-and-withdrawals/exchanger" rel="noopener">Docs: Exchanger</a> <a class="stop-doc" href="https://dexhunter.io" rel="noopener">DexHunter</a></p>
@@ -521,7 +521,7 @@
         <ul>
           <li>Connect a Cardano wallet, sign once to authorise Strike trading, then go long or short with Strike's chart, mark price and funding on the Hizz screen.</li>
           <li>Its token pages list STRIKE with Strike's website and @strikeperps as the links.</li>
-          <li>It's an independent tool; Strike doesn't run it.</li>
+          <li>It's an independent tool, and Strike doesn't run it.</li>
         </ul>
         
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=hizz">Drive there</a> <a class="stop-doc" href="https://www.hizz.io/perps/BTC-USD" rel="noopener">Strike perps on Hizz</a> <a class="stop-doc" href="https://hizz.io" rel="noopener">Visit Hizz</a></p>
@@ -531,8 +531,8 @@
         <p>Lorenzo Protocol issues enzoBTC, a bitcoin-backed token Strike takes as Borrow and Earn collateral. Strike's own ecosystem graphic (2 November 2026) lists Lorenzo as a partner for BTC liquidity and yield infrastructure.</p>
         <ul>
           <li>On 2 November 2026 Strike announced $200,000 of BTC supplied to Strike as enzoBTC, with full details to follow.</li>
-          <li>enzoBTC is deposited from an Ethereum wallet and sits on its own credit line; the borrowed USD buys SLP vault shares only. Its own pad is in Collateral.</li>
-          <li>It's an independent protocol; Strike doesn't run it.</li>
+          <li>enzoBTC is deposited from an Ethereum wallet and sits on its own credit line. The borrowed USD buys SLP vault shares only. Its own pad is in Collateral.</li>
+          <li>It's an independent protocol, and Strike doesn't run it.</li>
         </ul>
         
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=lorenzo">Drive there</a> <a class="stop-doc" href="https://docs.strikefinance.org/perpetuals/vaults/borrow-and-earn" rel="noopener">Docs: Borrow and Earn</a> <a class="stop-doc" href="https://lorenzo-protocol.xyz" rel="noopener">Visit Lorenzo</a></p>
@@ -543,7 +543,7 @@
       <p class="district-line">The API, builder codes and market data, and the projects built on Strike. <a class="district-drive" href="/ecosystem/?district=developers">Drive to this district</a></p>
       <article class="stop district-developers" id="stop-copilot-check">
         <h3>Copilot Check</h3>
-        <p>Paste a Hyperliquid wallet and see whether it's worth copying on Strike: how much of its profit is on markets Strike lists, the catches in its record, and how a copy would have done at your size.</p>
+        <p>Paste a Hyperliquid wallet and see whether it's worth copying on Strike. It shows how much of its profit is on markets Strike lists, the catches in its record, and how a copy would have done at your size.</p>
         <ul>
           <li>Paper Copy runs a trial with your own settings before you risk money.</li>
           <li>Built by Ben Ryan, who also made this map. Independent, not affiliated with Strike.</li>
@@ -553,7 +553,7 @@
       </article>
       <article class="stop district-developers" id="stop-copilot-watch">
         <h3>Copilot Watch</h3>
-        <p>Telegram and Discord alerts for Strike copy traders: when a copy is close to liquidation, when the copied wallet has left a position your copy still holds, or when a trade wasn't copied.</p>
+        <p>Telegram and Discord alerts for Strike copy traders. They fire when a copy is close to liquidation, when the copied wallet has left a position your copy still holds, or when a trade wasn't copied.</p>
         <ul>
           <li>Runs as a Telegram bot and a Discord bot, with no install and no API key.</li>
           <li>Built by Ben Ryan, who also made this map. Independent, not affiliated with Strike.</li>
@@ -575,22 +575,22 @@
         <h3>Strike tam-tam</h3>
         <p>Send a short message to any Strike trader as a Cardano NFT. Find them by Strike nickname, ADA Handle or wallet address, write up to 256 characters and your wallet mints it straight into theirs.</p>
         <ul>
-          <li>Looks traders up through Strike's public API; the message itself is minted on Cardano, wallet to wallet, with no server holding it.</li>
+          <li>It looks traders up through Strike's public API. The message itself is minted on Cardano, wallet to wallet, with no server holding it.</li>
           <li>Messages can be encrypted on-chain. The Strike version costs about the network fee and minimum ADA, around 1.6 ADA a message.</li>
           <li>By Mato, the maker of matotam.io. Submitted 31 Oct 2026 and checked against the live app.</li>
-          <li>Third-party project, listed after a basic check. Not an endorsement: look into it before you connect a wallet or an API key.</li>
+          <li>Third-party project, listed after a basic check. It is not an endorsement, so look into it before you connect a wallet or an API key.</li>
         </ul>
         
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=project-tamtam">Drive there</a> <a class="stop-doc" href="https://strike.matotam.io/" rel="noopener">Visit Strike tam-tam</a> <a class="stop-doc" href="https://x.com/matotam_ada" rel="noopener">On X</a></p>
       </article>
       <article class="stop district-developers" id="stop-project-hizz">
         <h3>Hizz</h3>
-        <p>A multi-chain crypto terminal: token discovery, market signals, smart-wallet tracking and swaps on Cardano, with a Perps tab that trades Strike perpetuals from the Hizz screen.</p>
+        <p>A multi-chain crypto terminal for token discovery, market signals, smart-wallet tracking and swaps on Cardano, with a Perps tab that trades Strike perpetuals from the Hizz screen.</p>
         <ul>
-          <li>Connect a Cardano wallet and sign once to authorise Strike trading; the Perps tab is marked Powered by Strike and shows Strike's chart, mark price and funding. Checked 2 and 3 Nov 2026.</li>
-          <li>Its signals and token pages cover Cardano first; the Strike token page links Strike's site and @strikeperps.</li>
+          <li>Connect a Cardano wallet and sign once to authorise Strike trading. The Perps tab is marked Powered by Strike and shows Strike's chart, mark price and funding.</li>
+          <li>Its signals and token pages cover Cardano first, and the Strike token page links Strike's site and @strikeperps.</li>
           <li>Built by the Hizz team, who entered Strike's first hackathon in October 2026. Submitted 3 Nov 2026 and checked against the live app.</li>
-          <li>Third-party project, listed after a basic check. Not an endorsement: look into it before you connect a wallet or an API key.</li>
+          <li>Third-party project, listed after a basic check. It is not an endorsement, so look into it before you connect a wallet or an API key.</li>
         </ul>
         
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=project-hizz">Drive there</a> <a class="stop-doc" href="https://www.hizz.io/" rel="noopener">Visit Hizz</a> <a class="stop-doc" href="https://x.com/hizz_io" rel="noopener">On X</a></p>
@@ -620,7 +620,7 @@
         <h3>Builder Codes</h3>
         <p>Builder codes let a dApp send its users' trades to Strike and earn a fee on their fills. Fees are credited to the builder's balance and can be withdrawn at any time.</p>
         <ul>
-          <li>Register in the Strike dashboard; the fee is set per order with an X-Builder-Fee-Bps header, capped at 100 bps (1%).</li>
+          <li>Register in the Strike dashboard. The fee is set per order with an X-Builder-Fee-Bps header, capped at 100 bps (1%).</li>
           <li>Works for users on Ethereum, Solana and Cardano, and a reference repo on GitHub shows the full flow.</li>
         </ul>
         
@@ -630,7 +630,7 @@
         <h3>Vault Leader API</h3>
         <p>Vault leaders who already trade by API can trade their vault with the same endpoints and keys by adding a vault_id field. Strike checks that you lead that vault first.</p>
         <ul>
-          <li>No separate credentials are needed; find your vault_id with GET /v2/vaults filtered by your leader account id.</li>
+          <li>No separate credentials are needed. Find your vault_id with GET /v2/vaults filtered by your leader account id.</li>
           <li>Vault trades run on the vault's own isolated account, apart from your personal positions.</li>
         </ul>
         
@@ -652,7 +652,7 @@
         <ul>
           <li>Public repos include perpetuals smart contracts, staking contracts, a builder reference app and API agent skills.</li>
           <li>The org also holds an Android app mirror and a linear vesting contract for the STRIKE token built by Anastasia Labs.</li>
-          <li>The perpetuals contracts are written in Aiken, Cardano's smart-contract language, with liquidity, orders, positions and pool validators; their unit tests run with aiken check.</li>
+          <li>The perpetuals contracts are written in Aiken, Cardano's smart-contract language, with liquidity, orders, positions and pool validators. Their unit tests run with aiken check.</li>
         </ul>
         
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=github">Drive there</a> <a class="stop-doc" href="https://github.com/strike-finance" rel="noopener">strike-finance org</a></p>
@@ -694,7 +694,7 @@
       </article>
       <article class="stop district-analytics" id="stop-bendingai">
         <h3>BendingAI</h3>
-        <p>BendingAI is Strike's own Cardano DeFi analytics site: AI insights and token tracking, including a verified record for the STRIKE token.</p>
+        <p>BendingAI is Strike's own Cardano DeFi analytics site. It offers AI insights and token tracking, including a verified record for the STRIKE token.</p>
         <ul>
           <li>Its token data includes Cardano holder counts and DEX liquidity for STRIKE.</li>
           <li>Owned by Strike, run alongside the exchange.</li>
@@ -704,10 +704,10 @@
       </article>
       <article class="stop district-analytics" id="stop-directories">
         <h3>Directories</h3>
-        <p>Three Cardano directories list Strike, each run by someone other than Strike: cardano.org's Apps catalogue under DEX, CardanoCube under DeFi, and Adastack under Perpetuals and Staking.</p>
+        <p>Three Cardano directories list Strike, each run by someone other than Strike. They are cardano.org's Apps catalogue under DEX, CardanoCube under DeFi, and Adastack under Perpetuals and Staking.</p>
         <ul>
-          <li>cardano.org describes a perpetual futures protocol with on-chain margin, beside Minswap, WingRiders and SundaeSwap; CardanoCube's profile carries a description, token details and team information.</li>
-          <li>Adastack, open source under the MIT licence, lists both Strike Finance (perpetuals) and Strike Finance Staking (revenue-share staking) on its dApps page; CardanoCube files Strike under derivatives and investment management.</li>
+          <li>cardano.org describes a perpetual futures protocol with on-chain margin, beside Minswap, WingRiders and SundaeSwap. CardanoCube's profile carries a description, token details and team information.</li>
+          <li>Adastack, open source under the MIT licence, lists both Strike Finance (perpetuals) and Strike Finance Staking (revenue-share staking) on its dApps page. CardanoCube files Strike under derivatives and investment management.</li>
           <li>cardano.org's catalogue and Adastack are open source, so anyone can send a correction through GitHub.</li>
         </ul>
         
@@ -733,14 +733,14 @@
         <p>Create a referral code once you pass $10,000 in trading volume. You earn a share of the fees your referrals pay, and they get a fee discount.</p>
         <ul>
           <li>There are five tiers, Bronze to Diamond, set by the combined lifetime volume of everyone you referred.</li>
-          <li>Referrals go two levels deep: you also earn from your referrals' own referrals, with the extra reward paid by Strike.</li>
+          <li>Referrals go two levels deep, so you also earn from your referrals' own referrals, with the extra reward paid by Strike.</li>
         </ul>
         <p class="stop-live">Live on the pad: Referral codes, Referred volume</p>
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=referrals">Drive there</a> <a class="stop-doc" href="https://docs.strikefinance.org/perpetuals/referrals" rel="noopener">Docs: Referrals</a></p>
       </article>
       <article class="stop district-community" id="stop-clans">
         <h3>Clan Competitions</h3>
-        <p>Timed team events: join or create a clan, trade during the event, and clans compete for a shared prize pool ranked by combined trading volume.</p>
+        <p>Clan competitions are timed team events. Join or create a clan, trade during the event, and clans compete for a shared prize pool ranked by combined trading volume.</p>
         <ul>
           <li>Be on a clan roster before the roster lock or your volume counts as zero for that event. One clan per account.</li>
           <li>Trades against your own clan's members count at half rate, so only outside volume counts in full.</li>
@@ -762,7 +762,7 @@
         <h3>X (@strikeperps)</h3>
         <p>Strike's official X account is @strikeperps, linked from the Strike website and its Linktree.</p>
         <ul>
-          <li>Handle and link: x.com/strikeperps.</li>
+          <li>The handle is @strikeperps and the link is x.com/strikeperps.</li>
           <li>Both strikefinance.org and Strike's Linktree page point to it.</li>
         </ul>
         
@@ -772,7 +772,7 @@
         <h3>Discord</h3>
         <p>Strike has an official Discord server, linked from the Strike website and its Linktree.</p>
         <ul>
-          <li>Invite link: discord.gg/PuWbEmrEee.</li>
+          <li>The invite link is discord.gg/PuWbEmrEee.</li>
           <li>The same invite appears on strikefinance.org and the Strike Linktree.</li>
         </ul>
         
@@ -782,7 +782,7 @@
         <h3>Docs</h3>
         <p>Strike's documentation covers the trading engine, vaults, copy trading, bots, tokenomics and a full API reference.</p>
         <ul>
-          <li>Add .md to any page URL for a Markdown version; an llms.txt index and full text file are also provided.</li>
+          <li>Add .md to any page URL for a Markdown version. An llms.txt index and full text file are also provided.</li>
           <li>Sections include perpetuals, bots (TWAP, trailing stop, grid), API, vaults and tokenomics.</li>
         </ul>
         
@@ -790,10 +790,10 @@
       </article>
       <article class="stop district-community" id="stop-medium">
         <h3>Medium</h3>
-        <p>Strike's Medium publication, @strikecardano, carries its longer announcements. Its feed on 3 November 2026 led with the posts below.</p>
+        <p>Strike's Medium publication, @strikecardano, carries its longer announcements. Its latest posts are below, with their dates.</p>
         <ul>
-          <li>Latest: &quot;Strike Hackathon Starts this Wednesday — $3,000 in Prizes&quot; (18 October 2026) and, before it, &quot;Strike Secures $1,000,000 Liquidity Deployment to Unlock the Next Phase of Growth&quot; (15 July 2026).</li>
-          <li>Older posts include the 2026 roadmap, the litepaper and the tokenomics article; the docs site covers current V2 mechanics such as liquid staking and vaults.</li>
+          <li>The latest, from 18 October 2026, announces the Strike Hackathon with $3,000 in prizes. Before it, on 15 July 2026, Strike announced a $1,000,000 liquidity deployment to unlock the next phase of growth.</li>
+          <li>Older posts include the 2026 roadmap, the litepaper and the tokenomics article. The docs site covers current V2 mechanics such as liquid staking and vaults.</li>
         </ul>
         
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=medium">Drive there</a> <a class="stop-doc" href="https://medium.com/@strikecardano" rel="noopener">Strike on Medium</a></p>
@@ -817,7 +817,7 @@
         <h3>STRIKE</h3>
         <p>STRIKE is Strike Finance's platform token. Its listed uses are staking for a share of platform revenue, governance votes and discounts on trading fees. Total supply is fixed at 25 million.</p>
         <ul>
-          <li>Allocation: 60% public sale, 15% team and advisors, 13% DAO treasury and 12% liquidity.</li>
+          <li>The allocation is 60% public sale, 15% team and advisors, 13% DAO treasury and 12% liquidity.</li>
           <li>Team tokens have a 6 month lock, then unlock monthly over 24 months.</li>
         </ul>
         
@@ -873,7 +873,7 @@
         <h3>Cardano</h3>
         <p>Strike V1 launched in May 2025 as the first perpetuals platform on Cardano. V2 runs its own execution layer and uses Cardano and other chains for custody and settlement.</p>
         <ul>
-          <li>Matching, liquidations and funding run on the Strike Node; Cardano holds deposited funds in on-chain locker contracts.</li>
+          <li>Matching, liquidations and funding run on the Strike Node, while Cardano holds deposited funds in on-chain locker contracts.</li>
           <li>STRIKE staking rewards and Points payouts are on Cardano, and Ethereum or Solana accounts set a Cardano address for Points.</li>
         </ul>
         <p class="stop-live">Live on the pad: Active traders, yesterday</p>
@@ -928,7 +928,7 @@
         <p>A time-trial track in the RealFi colours, out past Partners &amp; Integrations. Cross the start line, take every checkpoint in order and try to beat the best lap.</p>
         <ul>
           <li>The clock starts when you cross the start line going forward and stops when you cross it again. Miss a checkpoint and the lap doesn't count.</li>
-          <li>There are three jumps, each with a flat lane beside it, and RealFi crates to knock about. Land a clean jump on the track and the car gets a short speed boost; clip a crate or a bale in the air and it doesn't.</li>
+          <li>There are three jumps, each with a flat lane beside it, and RealFi crates to knock about. Land a clean jump on the track and the car gets a short speed boost. Clip a crate or a bale in the air and it doesn't.</li>
           <li>Your best lap is kept in this browser. Post it to put your name on the top 10 board by the start.</li>
           <li>The fastest lap on the board drives beside you as a ghost, with the leader's name over it. Laps posted before ghosts existed are rebuilt from their checkpoint times, so that ghost follows the centreline at the right pace.</li>
         </ul>
@@ -941,11 +941,11 @@
       <p class="district-line">Every fill on Strike's order books, arriving as crates on a conveyor. <a class="district-drive" href="/ecosystem/?district=yard">Drive to this district</a></p>
       <article class="stop district-yard" id="stop-fillyard">
         <h3>Fill Yard</h3>
-        <p>Every trade filled on Strike's order books, as it happens. Each crate is one order: the market's icon, buy or sell, and its size in dollars. Bigger orders, bigger crates.</p>
+        <p>Every trade filled on Strike's order books, as it happens. Each crate is one order, showing the market's icon, buy or sell, and its size in dollars. Bigger orders, bigger crates.</p>
         <ul>
           <li>The crates come from Strike's public trade stream, the same feed the trading app listens to, so one appears within about a second of the fill.</li>
           <li>The belt runs at a fixed pace. When fills arrive faster than it can carry them they wait at the door, and past six waiting they spill over the side.</li>
-          <li>Quiet spells are shown as quiet; nothing is invented. When you arrive the yard holds the most recent fills, and the pile keeps the last forty. Drive into it.</li>
+          <li>Quiet spells are shown as quiet, and nothing is invented. When you arrive the yard holds the most recent fills, and the pile keeps the last forty. Drive into it.</li>
         </ul>
         <p class="stop-live">Live on the pad: Fills, last minute, Traded, last 10 min, Busiest market, 10 min</p>
         <p class="stop-actions"><a class="br-button br-button--secondary" href="/ecosystem/?stop=fillyard">Drive there</a> <a class="stop-doc" href="https://docs.strikefinance.org/api/market/websocket" rel="noopener">Docs: Market websocket</a></p>
