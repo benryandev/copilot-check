@@ -348,3 +348,35 @@ camera lands on the board pose while the car stops where it is, the HUD hides, E
 (no closed sheet paints at 844 by 390), `triggers` (See it on the board, the Zoom in card, Not now) and `save` (the
 PNG download). The world's clock runs slower than the wall clock under software rendering, so every check waits on
 the state it expects rather than on a timer.
+
+## Awwwards pass (4 Nov): the world's own kit loop
+
+The loop above, run on the world for the first time (the Check page and the stops page had it; the world had only
+the automated audit). Branch `awwwards`.
+
+1. The eight-width shoot of every state in both themes on main (the "before" set), audit clean.
+2. Two informed reviews of it, one per theme, given the kit README, the house rules and the states: dark 6.8, light
+   6.5 (hierarchy 7, layout 6–6.5, typography 7, colour and kit rules 7.5, accessibility 6–6.5, states 6–6.5).
+   Fifteen findings each, most shared: the race invite squeezing its message to a word a line at 375; sheets
+   opening scrolled past their title (the browser's default focus went to the first control, past the fold) and
+   the name forms raising a phone's keyboard; exit labels in two wordings and two positions; an odd stat tile beside
+   an empty cell; the arrive card's grey eyebrow and hint at about 2:1 over grass; "You you" on your own row; the
+   pad prompt with no cue on touch; the black scrim muddying the light scene; the intro's wall of text on phones.
+3. The fixes, then a blind re-score by a fresh reviewer given only the after-frames at 375, 768 and 1280 and the
+   kit README: 6.5 (hierarchy 7, layout 6, typography 7, colour and kit rules 7, accessibility 7, states 6). Its
+   defects fixed: an orange focus box round the title a shared link lands on (the heading focus from step 2, now
+   without a ring); long sheets with no visible way out on a phone (each sheet's own action row is now sticky at
+   the sheet's bottom edge; measured flush at 375 and 1280, and in its natural place when the sheet does not
+   scroll); Join indistinguishable from Not now; "10." overhanging the top 10 and the next district crowding it;
+   the HUD title wrapping in one theme because "Light" is wider than "Dark". Left as taste or for Ben: the stop
+   sheet's filled Docs pill, the two post actions on the lap sheet, the title card repeated as the intro's heading,
+   Map view as a list, the arcade game's start screen taller than its frame, mono-caps chips against Atkinson pills.
+4. The gate: `pnpm test`, the monuments, UX, guide and deep-link smokes, the twelve-width shoot, Lighthouse through
+   the SEO toolkit on the local world page (accessibility 100, was 92 in production; best practices 96; SEO 100;
+   performance reported, not gated).
+
+Lessons: the shoot's audit never sees a sheet that opens scrolled, a focus ring on a heading or a prompt peeking
+out under a sheet, so a human read of the frames stays in the loop; a sticky element's constraint rectangle in
+Chrome excludes the scroll container's padding, so a bar meant to sit flush with a padded sheet's edge needs a
+negative `bottom` of the padding's size; `:focus-visible` matches a heading focused by script at load, so a
+shared link shows the ring unless the heading opts out.
