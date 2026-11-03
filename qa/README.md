@@ -380,8 +380,10 @@ the automated audit). Branch `awwwards`.
    row read as cut mid-line (a soft fade now sits over the row's top margin); Map view carried two "Keep driving"
    pills once the row was pinned (the header one went); the intro's keycaps stretched to their grid column; the
    stop labels floating over the world showed above a sheet's edge like a heading (hidden while a sheet is open);
-   a deep-linked sheet's figures rendered in the fallback face before the mono font arrived (the three kit fonts
-   are preloaded); a shared link's sheet said "Keep driving" to someone who had not driven ("Start driving" there).
+   a shared link's sheet said "Keep driving" to someone who had not driven ("Start driving" there). Its claim that
+   a deep-linked sheet's figures render in Inter did not hold: the computed face is Geist Mono and all three kit
+   fonts are loaded about a second into the page, long before the sheet opens (the world page now preloads them,
+   which keeps it that way on a slow connection).
    Left: the arcade game's start screen taller than its frame, the two boards on that sheet, mono-caps chips beside
    Atkinson pills, the lap sheet's five pills, the guide title's hyphen, Map view as a list.
 6. The gate, run again after those fixes: `pnpm test`, the monuments, UX, guide and deep-link smokes, the twelve-width shoot, Lighthouse through
