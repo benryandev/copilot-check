@@ -13,6 +13,7 @@ import { slpVaultId, usd, int } from "./data.js";
 import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale, ringLayout, BEACON, rungScales, carsHere, carsLine, pulsePeriod, FEED, tradeLine, feedLines, ORRERY, signedUsd } from "./monument-math.js";
 import { onPeers, peersState } from "./peers.js";
 import { onTrade, onYardStatus, onYardStats, yardValues } from "./flow.js";
+import { markLive, markKeep } from "./freeze.js";
 
 const API = "https://api.strikefinance.org";
 const KERB = { lift: 0.8, gap: (40 * Math.PI) / 180, radius: 0.14 }; // the kerb arc: 0.8 m outside the footprint, open ±40° towards the pad
@@ -40,7 +41,7 @@ function findMonument(key) {
   const d = DISTRICTS[pad.stop.district];
   let m = monuments.get(key);
   if (!m) {
-    const aux = new THREE.Group(); // kerb, sparks and rings live beside the building, not in it: a model swap empties the group
+    const aux = markKeep(new THREE.Group()); // kerb, sparks and rings live beside the building, not in it: a model swap empties the group; kept whole through the merge (merge.js), so a kerb rebuilt later still has its home
     aux.position.copy(pad.group.position); aux.rotation.copy(pad.group.rotation);
     pad.group.parent.add(aux);
     m = { key, pad, g: pad.group, aux, d, nodes: {}, kerb: null };
@@ -52,6 +53,11 @@ function findMonument(key) {
 const node = (g, name) => g.getObjectByName(name) || null;
 const names = (prefix, n) => Array.from({ length: n }, (_, i) => `${prefix}_${String(i + 1).padStart(2, "0")}`);
 const setMaterial = (n, mat) => n.traverse((o) => { if (o.isMesh) o.material = mat; });
+// The nodes a monument moves stay live through the matrix freeze (freeze.js); every other node it holds on to (repainted, read for a
+// position, looked up by name) is kept out of the geometry merge and the pruning (merge.js). Both run after the model lands, so the
+// blockout's nodes and the model's are marked alike.
+const live = (...nodes) => { for (const n of nodes.flat()) if (n) markLive(n); };
+const keep = (...nodes) => { for (const n of nodes.flat()) if (n) markKeep(n); };
 
 /** A two-line label/value face (canvas), blank until its first text, repainted on a theme change or a new value. */
 function makeFace(m, lines = 2, aspect = 5.6 / 1.1) { // the canvas takes the plane's aspect so the type is not squeezed (reviewer, 3 Nov)
@@ -101,6 +107,7 @@ function attachEngine(m) {
   const tank = node(m.g, "tank"); // the shared glass is opaque; the tank has to show its level
   if (tank) { tank.material = glass; tank.castShadow = false; }
   m.nodes = { wheel: node(m.g, "flywheel"), pistons: [node(m.g, "piston_a"), node(m.g, "piston_b")], fill: node(m.g, "tank_fill"), needles: ["gauge_a", "gauge_b", "gauge_c"].map((n) => node(m.g, n)) };
+  live(m.nodes.wheel, m.nodes.pistons, m.nodes.fill, m.nodes.needles); keep(tank);
   if (m.nodes.fill && m.nodes.fill.userData.fullY == null) m.nodes.fill.userData.fullY = m.nodes.fill.scale.y;
   for (const p of m.nodes.pistons) if (p) p.userData.baseY = p.position.y;
   buildKerb(m);
@@ -174,6 +181,7 @@ function tickEngine(m, dt, now) {
 // ── The Stake ──
 function attachStake(m) {
   m.nodes = { column: node(m.g, "column"), spout: node(m.g, "spout"), face: node(m.g, "face_rewards"), lamps: Array.from({ length: STAKE.lamps }, (_, i) => node(m.g, `lamp_${String(i + 1).padStart(2, "0")}`)) };
+  live(m.nodes.column); keep(m.nodes.spout, m.nodes.face, m.nodes.lamps);
   buildKerb(m);
   makeFace(m); bindFace(m, m.nodes.face); // the plinth's face: two lines, blank until the first staking figure
   if (!m.drips) {
@@ -216,6 +224,7 @@ function tickStake(m, dt) {
 // ── The Chart Plinth ──
 function attachPlinth(m) {
   m.nodes = { vol: names("vol", PLINTH.days).map((n) => node(m.g, n)), rev: names("rev", PLINTH.days).map((n) => node(m.g, n)), face: node(m.g, "face_counter") };
+  live(m.nodes.vol, m.nodes.rev); keep(m.nodes.face);
   for (const b of [...m.nodes.vol, ...m.nodes.rev]) if (b && b.userData.fullY == null) b.userData.fullY = b.scale.y;
   buildKerb(m);
   makeFace(m); bindFace(m, m.nodes.face); // the all-time counter, blank until the first summary
@@ -264,6 +273,7 @@ async function pollSeries(now = Date.now()) {
 const STACK_RING = { r: 0.7, tube: 0.05 };
 function attachStacks(m) {
   m.nodes = { stacks: names("stack", STACKS.slots).map((n) => node(m.g, n)), labels: names("label", STACKS.slots).map((n) => node(m.g, n)) };
+  live(m.nodes.stacks); keep(m.nodes.labels);
   for (const s of m.nodes.stacks) if (s && s.userData.fullY == null) { s.userData.fullY = s.scale.y; s.userData.fullH = new THREE.Box3().setFromObject(s).getSize(new THREE.Vector3()).y / (s.scale.y || 1); }
   buildKerb(m);
   if (!m.labels) { // a name plate per slot, blank until an asset takes the slot
@@ -318,6 +328,7 @@ function tickStacks(m, dt) {
 // ── The Beacon ──
 function attachBeacon(m) {
   m.nodes = { rungs: names("rung", BEACON.days).map((n) => node(m.g, n)), lantern: node(m.g, "lantern"), face: node(m.g, "face_activity") };
+  live(m.nodes.rungs); keep(m.nodes.lantern, m.nodes.face);
   buildKerb(m);
   if (m.nodes.lantern) { // its own material, so the pulse touches no other mesh
     const lm = accent(m.d.colour).clone(); if (lm.emissive) lm.emissive.set(m.d.colour); lm.emissiveIntensity = 1;
@@ -352,6 +363,7 @@ function tickBeacon(m, dt) {
 // ── The Feed Obelisk ──
 function attachObelisk(m) {
   m.nodes = { screens: names("screen", 4).map((n) => node(m.g, n)), face: node(m.g, "face_feed") };
+  keep(m.nodes.screens, m.nodes.face);
   buildKerb(m);
   if (!m.screen) { // one canvas for the four screens: the held lines from the top, newest at the bottom, the stream's status last
     m.screen = canvasTexture(512, 1180, (ctx, w, h, p) => {
@@ -386,6 +398,7 @@ function tickObelisk(m, dt) {
 // ── The Three Pylons ──
 function attachPylons(m) {
   m.nodes = { face: node(m.g, "face_flows"), labels: ["cardano", "ethereum", "solana"].map((c) => node(m.g, `label_${c}`)) };
+  keep(m.nodes.face, m.nodes.labels);
   buildKerb(m);
   if (!m.labels) m.labels = ["Cardano", "Ethereum", "Solana"].map((text) => {
     const l = { text };
@@ -410,6 +423,7 @@ function applyPylons(m) {
 // ── The Orrery ──
 function attachOrrery(m) {
   m.nodes = { rings: names("ring", 3).map((n) => node(m.g, n)), sphere: node(m.g, "sphere") };
+  live(m.nodes.rings); keep(m.nodes.sphere, node(m.g, "pedestal")); // the pedestal says the glb is in (monumentsState)
   buildKerb(m);
 }
 function tickOrrery(m, dt) {
@@ -500,6 +514,7 @@ export function monumentValues() {
 export const onMonumentStats = (f) => listeners.push(f);
 /** QA: feed fills as a poll would. */
 export function injectSlpFills(list) { state.seeded = true; takeFills(pickFills({ fills: list }), Date.now()); }
+const inScene = (o) => { for (let p = o; p; p = p.parent) if (p.isScene) return true; return false; };
 export const monumentsState = () => {
   const e = monuments.get("monument-earn");
   const t = monuments.get("monument-token");
@@ -509,7 +524,8 @@ export const monumentsState = () => {
   const o = monuments.get("monument-developers");
   const y = monuments.get("monument-chains");
   const pc = monuments.get("monument-partners");
-  return { orreryRings: pc?.nodes.rings?.filter(Boolean).map((r) => r.rotation.y) ?? [], orreryModel: !!pc?.g?.getObjectByName("pedestal"), // the Orrery: y-rotation of each ring, and whether the glb is in (the blockout has no "pedestal"); "rings" below is the Engine's count
+  return { attached: [...monuments.values()].every((m) => inScene(m.aux) && Object.values(m.nodes).flat().every((n) => !n || inScene(n))), // every node a monument holds is still in the scene after the geometry merge (merge.js)
+    orreryRings: pc?.nodes.rings?.filter(Boolean).map((r) => r.rotation.y) ?? [], orreryModel: !!pc?.g?.getObjectByName("pedestal"), // the Orrery: y-rotation of each ring, and whether the glb is in (the blockout has no "pedestal"); "rings" below is the Engine's count
     pylonsFace: y?.faceText ?? null,
     fillsOk: state.ok, feed: state.feed.length, feedLast: state.feed.at(-1) ?? null, stream: state.streamStatus, obeliskFace: o?.faceText ?? null,
     rungs: b?.nodes.rungs?.filter((r) => r?.visible).length ?? 0, pulse: b?.pulse ?? null, beaconFace: b?.faceText ?? null, cars: state.cars,

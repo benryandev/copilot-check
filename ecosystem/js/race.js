@@ -9,6 +9,7 @@ import { RACE_TRACK } from "./content.js";
 import { raceGates, trackAt, trackLen, groundHeight } from "./terrain.js";
 import { setBoard, formatTime } from "./raceway.js";
 import { nameTag } from "./tags.js";
+import { markLive } from "./freeze.js";
 import { flyY } from "./peers-math.js";
 
 const API = "https://copilot-watch.benryan.workers.dev";
@@ -419,7 +420,7 @@ function buildGhost() {
   if (building) return building;
   building = (async () => {
     await hooks.car?.ready;
-    const group = new THREE.Group();
+    const group = markLive(new THREE.Group(), true); // laps beside you: the whole ghost stays automatic (freeze.js)
     // Writes depth, so the car's inner parts don't show through each other as a stack of cars
     const mat = new THREE.MeshStandardMaterial({ color: GHOST_COLOUR, emissive: GHOST_COLOUR, emissiveIntensity: 0.35, transparent: true, opacity: 0.55, roughness: 0.5 });
     const body = hooks.car.tilt.clone(true);

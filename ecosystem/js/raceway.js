@@ -21,8 +21,9 @@ function banner(w, h, cw, draw, z0 = 0.02) {
   redraw();
   realfiLogo.then(() => redraw());
   const g = new THREE.Group();
+  const face = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }); // one material for both faces (merge.js)
   for (const [z, ry] of [[z0, 0], [-z0, Math.PI]]) {
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, h), face);
     plane.position.z = z;
     plane.rotation.y = ry;
     g.add(plane);

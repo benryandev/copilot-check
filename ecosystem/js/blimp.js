@@ -5,6 +5,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { M, box, mesh, canvasTexture, redraws } from "./build.js";
 import { BLIMP, blimpPose, shadowSpot } from "./blimp-math.js";
 import { groundHeight } from "./terrain.js";
+import { markLive } from "./freeze.js";
 
 const SKIN_W = 2048, SKIN_H = 512;
 export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
@@ -75,7 +76,7 @@ export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
   const blob = new THREE.Mesh(blobGeo, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
   blob.renderOrder = 1;
   blob.frustumCulled = false;
-  scene.add(blob);
+  scene.add(markLive(blob)); // slides under the ship: its matrix stays automatic (freeze.js)
   let laid = null, sinceLay = 0; // the spot the blob was last laid for, and the frames since
   function layBlob(sp) {
     laid = sp; sinceLay = 0; blob.position.set(0, 0, 0);
@@ -104,6 +105,7 @@ export function buildBlimp(scene, palette, { reduceMotion = false } = {}) {
   g.frustumCulled = false;
   scene.add(g);
   g.userData = { tick, redraw, setAngle: (a) => { fixed = a; laid = null; tick(0); }, pose: () => blimpPose(Date.now(), fixed), setLivery: (name) => { if (LIVERIES[name]) { livery = LIVERIES[name]; redraw(current); } }, liveries: Object.keys(LIVERIES) };
+  markLive(g); // on its loop: its matrix stays automatic (freeze.js); the hull and fins inside it are frozen with the world
   return g;
 }
 export { BLIMP };

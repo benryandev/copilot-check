@@ -11,6 +11,7 @@ import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS } from "./content.js";
 import { groundHeight } from "./terrain.js";
 import { M, box, cyl, mesh, canvasTexture, crates, colliders, orientedBox, redraws, pads, districtGroups, marketLogo, LOGO_DISC } from "./build.js";
+import { markLive } from "./freeze.js";
 
 const API = "https://api.strikefinance.org";
 const WS = "wss://api.strikefinance.org/ws/price";
@@ -164,7 +165,7 @@ function makeCrate(f) {
   });
   tex.redraw(pal);
   const mat = new THREE.MeshStandardMaterial({ map: tex.tex, roughness: 0.7 });
-  const m = mesh(crateGeo, mat);
+  const m = markLive(mesh(crateGeo, mat)); // rides the belt, then lies in the yard to be knocked about: its matrix stays automatic (freeze.js)
   m.scale.setScalar(s);
   const rec = {
     m, s, r: s * 0.72, h: s / 2, v: new THREE.Vector2(), spin: 0, tilt: 0, lift: 0, hit: false,

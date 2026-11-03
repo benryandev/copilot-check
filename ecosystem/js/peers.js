@@ -7,6 +7,7 @@ import { DISTRICTS } from "./content.js";
 import { groundHeight, inRaceway, onWater } from "./terrain.js";
 import { paint as carPaint } from "./build.js";
 import { nameTag } from "./tags.js";
+import { markLive } from "./freeze.js";
 import { clockOffset } from "./race-live-math.js";
 import { nextSendDelay, poseAt, pickDrawn, backoff, flyY, opacityFor, pingSample, renderDelay, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE, sprayDue } from "./peers-math.js";
 
@@ -210,7 +211,7 @@ function buildCar(p) {
   const job = (async () => {
     await hooks.car?.ready;
     if (peers.get(p.id) !== p || p.building !== job) return; // left, or put away, while the model loaded
-    const group = new THREE.Group();
+    const group = markLive(new THREE.Group(), true); // drives about: the whole car stays automatic (freeze.js)
     const body = hooks.car.tilt.clone(true);
     body.rotation.set(0, 0, 0);
     body.scale.set(1, 1, 1);

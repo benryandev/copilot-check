@@ -276,11 +276,41 @@ whole frame. It is for a phone, where there are no developer tools; nothing is c
 node qa/perf-eco.mjs http://localhost:8080 --tiers=high,medium,low   # stands on the hub plaza, then drives round it
 node qa/perf-eco.mjs http://localhost:8080 --ab                      # the medium tier with one thing changed at a time
 node qa/perf-eco.mjs http://localhost:8080 --cpu=4 --tiers=medium    # the main thread four times slower, a phone's processor
+node qa/perf-eco.mjs http://localhost:8080 --tiers=phone --jitless  # V8 without its JIT: Safari under Lockdown Mode (Ben's phone)
 ```
 
 Chrome runs headed so the real GPU draws (headless Chromium draws in software). The figures are this machine's, so
 compare settings with each other rather than with a phone; on an Apple-silicon Mac the GPU is the same family as an
 iPhone's, several times faster, so the shares hold.
+
+### The scene walk (4 Nov): frozen matrices and merged geometry
+
+Ben's phone runs Safari without its JIT, and there the draw call's cost is mostly three.js walking the scene rather than the
+GPU: every object visited twice a frame (the matrix walk, then the culling walk) and a call per visible mesh, tens of
+microseconds each. Under every row the probe prints a scene-walk line, read standing on the hub plaza: the objects visited
+each frame, how many still compose a matrix every frame, the drawables, and the median cost of one `scene.updateMatrixWorld()`
+and one `renderer.render()`. Two modules keep it small. `ecosystem/js/freeze.js` freezes the matrix of everything that never
+moves once the world is up and again once the Blender models are in; whatever moves marks itself live first (`markLive`),
+and code that moves a frozen object afterwards calls `moved(o)`. `ecosystem/js/merge.js` then merges each district's static
+geometry into one mesh per material, does the same for what stands outside the districts, and folds the static pieces inside
+each thing that moves (a bench, a stack of coins, the blimp) into one mesh; what the code later finds by name or repaints is
+marked keep (`markKeep`) and left alone. On the M5 with the JIT off, phone tier at 390×844 ×3: objects 2,770 → 1,546,
+composing a matrix each frame 2,770 → 354, `updateMatrixWorld` 2.4 → 0.5 ms, one render 8.2 → 4.8 ms, the driving draw
+7.0 → 3.7 ms.
+
+```sh
+node qa/scene-walk-smoke.mjs http://localhost:8766   # the freeze and the merge, end to end, on the low tier
+```
+
+The smoke checks that a quarter of the objects at most still compose a matrix after the models, that nothing frozen is
+moved behind three.js's back once everything that moves or redraws has run (a frozen object's matrix must still equal its
+position, rotation and scale), that the car, the blimp, the sky dome, the flywheel, the Orrery's rings, a spin_ node and the
+minute hand still move, that no two static meshes under one root still share a batch, and that the pads and the Orrery's
+named pedestal are still there, and that every node the monuments hold is still attached. Rule for new code: anything that
+moves after the world is built is marked live (or calls `moved`); anything found by name, repainted (`.material =`), shown or
+hidden (`.visible`), read for a world position, or given children later is marked keep, and so is a group that must survive
+being emptied. A kept or live node under a static mesh is re-attached to the mesh's parent when the mesh merges, so it
+survives, but its place in the tree changes: better not to export one that way.
 
 ## Stops page (3 Nov): 8.3
 
