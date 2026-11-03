@@ -3,11 +3,12 @@
 // Part B in the Strike repo). The picks keep only the named fields, so no APR or price field can reach the world.
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pickStaking, pickSlp, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, columnScale, lampsLit, periodLabel, usdExact, stakeValues, engineValues, MONUMENT_BANNED, STAKE, ENGINE, PLINTH, STACKS, dailyTotals, lastDays, pickSeries, barScales, plinthValues, pickSummary, pickCollateral, stackScale, collateralValues, pickActivity, rungScales, activityHigh, beaconValues, carsHere, pulsePeriod, seriesDue, ringLayout, carsLine } from '../ecosystem/js/monument-math.js';
+import { pickStaking, pickSlp, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, columnScale, lampsLit, periodLabel, usdExact, stakeValues, engineValues, MONUMENT_BANNED, STAKE, ENGINE, PLINTH, STACKS, dailyTotals, lastDays, pickSeries, barScales, plinthValues, pickSummary, pickCollateral, stackScale, collateralValues, pickActivity, rungScales, activityHigh, beaconValues, carsHere, pulsePeriod, seriesDue, ringLayout, carsLine, tradeLine, feedLines, flowValues, compassAngles } from '../ecosystem/js/monument-math.js';
 import { LABELS } from '../ecosystem/js/data.js';
 const fx = (n) => JSON.parse(readFileSync(new URL(`./fixtures/${n}-2026-11-03.json`, import.meta.url)));
 const staking = fx('liquid-staking-summary'), vaults = fx('vaults'), positions = fx('slp-positions'), fills = fx('slp-fills-100');
 const volumes = fx('dashboard-volumes'), revenue = fx('dashboard-revenue'), summary = fx('dashboard-summary'), users = fx('dashboard-users'), collateral = fx('collateral-assets'); // B2, recorded 18:02 AEST
+const trades = fx('trades-btc'); // B3, five BTC-USD trades recorded 19:29 AEST
 
 test('pickStaking keeps the named fields and nothing else', () => {
   const s = pickStaking(staking);
@@ -151,8 +152,8 @@ test('barScales pads a short series at the old end and never reads a day as noth
   assert.ok(barScales([]).every((x) => x === null)); assert.ok(barScales([{ ts: 1, usd: 0 }]).at(-1) === PLINTH.minBar);
 });
 test('pickSummary keeps the two counter figures and nothing else', () => {
-  assert.deepEqual(pickSummary(summary), { volumeUsd: 864125249.59404689, users: 6562 });
-  assert.equal(pickSummary(null), null); assert.deepEqual(pickSummary({}), { volumeUsd: null, users: null });
+  assert.deepEqual(pickSummary(summary), { volumeUsd: 864125249.59404689, users: 6562, depositsUsd: 7515234.43578349, withdrawalsUsd: 5955681.83741127 });
+  assert.equal(pickSummary(null), null); assert.deepEqual(pickSummary({}), { volumeUsd: null, users: null, depositsUsd: null, withdrawalsUsd: null });
 });
 test('pickCollateral values the units, names the assets, sorts by value, and drops every rate and price field', () => {
   const c = pickCollateral(collateral);
@@ -227,4 +228,34 @@ test('a 200 body with no usable days is a failed side, not an empty plinth; the 
   assert.equal(pickSeries({ total_volume_daily: [] }, { total_revenue_daily: [] }), null, 'both empty: nothing');
   assert.equal(pickSeries(volumes, revenue).volume.length, 30);
   assert.equal(pickActivity({ daily_active_users: [[1, null], [2, 'x'], [3, 4]] }), null, 'every full day malformed: no activity');
+});
+
+// ── Part B3: the Feed Obelisk, the Three Pylons and the Compass ──
+test('tradeLine: a stream message or a backfill trade becomes one honest screen line, or none', () => {
+  assert.equal(tradeLine({ s: 'BTC-USD', p: '76718', q: '0.01986', m: true, T: 1 }), 'BTC  sell  0.01986 @ 76718');
+  assert.equal(tradeLine({ s: 'ADA-USD', p: '0.186800', q: '1200.000', m: false }), 'ADA  buy  1200 @ 0.1868');
+  const t = trades[0]; assert.equal(tradeLine({ symbol: 'BTC-USD', ...t }), `BTC  ${t.isBuyerMaker ? 'sell' : 'buy'}  0.01986 @ 76718`);
+  assert.equal(tradeLine({ s: 'BTC-USD', p: 'x', q: '1' }), null); assert.equal(tradeLine({ s: 'BTC-USD', p: '1', q: null }), null);
+  assert.equal(tradeLine({ p: '1', q: '1' }), null); assert.equal(tradeLine({ s: 'BTC-USD', p: '1', q: '0' }), null); assert.equal(tradeLine(null), null);
+  assert.equal(tradeLine({ s: 'XAU', p: '4000', q: '0.5', m: false }), 'XAU  buy  0.5 @ 4000', 'a symbol without -USD stands as itself');
+});
+test('feedLines keeps the newest lines and never grows past the cap', () => {
+  const a = feedLines([], 'one'); assert.deepEqual(a, ['one']);
+  const full = Array.from({ length: 14 }, (_, i) => `l${i}`); const b = feedLines(full, 'new');
+  assert.equal(b.length, 14); assert.equal(b[0], 'l1'); assert.equal(b.at(-1), 'new'); assert.equal(full.length, 14, 'the held list is untouched');
+  assert.equal(feedLines(full, null), full);
+});
+test('pickSummary and flowValues: the two totals and their difference, nothing for a missing figure', () => {
+  const s = pickSummary(summary);
+  assert.equal(Math.round(s.depositsUsd), 7515234); assert.equal(Math.round(s.withdrawalsUsd), 5955682);
+  assert.deepEqual(flowValues(s), { depositsAllTime: '$7.5M', withdrawalsAllTime: '$6.0M', netDeposits: '$1.6M' });
+  assert.deepEqual(flowValues({ depositsUsd: 10, withdrawalsUsd: null }), { depositsAllTime: '$10' });
+  assert.deepEqual(flowValues({ depositsUsd: null, withdrawalsUsd: 'x' }), {}); assert.deepEqual(flowValues(null), {});
+  for (const t of Object.values(flowValues(s))) for (const re of MONUMENT_BANNED) assert.doesNotMatch(t, re);
+});
+test('compassAngles: an arm per pad, in the monument\'s frame, straight behind included', () => {
+  const arms = compassAngles([0, 0], 0, [{ key: 'a', name: 'A', x: 0, z: 10 }, { key: 'b', name: 'B', x: 10, z: 0 }, { key: 'c', name: 'C', x: 0, z: -10 }, { key: 'd', name: 'D', x: 'x', z: 0 }]);
+  assert.deepEqual(arms.map((a) => a.key), ['a', 'b', 'c']);
+  assert.ok(Math.abs(arms[0].angle) < 1e-9); assert.ok(Math.abs(arms[1].angle - Math.PI / 2) < 1e-9); assert.ok(Math.abs(Math.abs(arms[2].angle) - Math.PI) < 1e-9);
+  const turned = compassAngles([5, 5], Math.PI / 2, [{ key: 'b', name: 'B', x: 15, z: 5 }]); assert.ok(Math.abs(turned[0].angle) < 1e-9, 'a monument turned to face +x sees a pad at +x straight ahead');
 });

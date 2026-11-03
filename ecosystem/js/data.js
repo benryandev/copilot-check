@@ -1,7 +1,7 @@
 // Live figures from Strike's public API (no key; CORS open; allowed by the site CSP's connect-src).
 // Never an APR or yield: those stay off the page by design.
 
-import { pickStaking, pickSlp, stakeValues, engineValues, pickCollateral, pickActivity, pickSummary, collateralValues, beaconValues } from "./monument-math.js";
+import { pickStaking, pickSlp, stakeValues, engineValues, pickCollateral, pickActivity, pickSummary, collateralValues, beaconValues, flowValues } from "./monument-math.js";
 
 const API = "https://api.strikefinance.org";
 
@@ -68,6 +68,10 @@ export const LABELS = {
   collateralLines: "Open credit lines by asset",
   activeTradersHigh30d: "Active traders, 30-day high",
   carsHere: "Cars here now",
+  // Part B3: the Three Pylons
+  depositsAllTime: "Deposits, all time",
+  withdrawalsAllTime: "Withdrawals, all time",
+  netDeposits: "Deposits less withdrawals",
   markets: "Markets trading",
   maxLeverage: "Max leverage",
   volume24h: "24 h volume",
@@ -162,6 +166,6 @@ export async function fetchLive() {
     .map((t) => ({ sym: t.symbol.replace("-USD", ""), price: Number(t.lastPrice), change: Number(t.priceChangePercent), vol: Number(t.quoteVolume) }))
     .filter((q) => q.price > 0)
     .sort((a, b) => b.vol - a.vol);
-  try { Object.assign(values, stakeValues(monuments.staking), engineValues(monuments.slp, null), collateralValues(monuments.collateral), beaconValues(monuments.activity)); } catch (err) { console.warn("[eco] monuments", err.message); } // a monument string must never take the boards down
+  try { Object.assign(values, stakeValues(monuments.staking), engineValues(monuments.slp, null), collateralValues(monuments.collateral), beaconValues(monuments.activity), flowValues(monuments.summary)); } catch (err) { console.warn("[eco] monuments", err.message); } // a monument string must never take the boards down
   return { tickers: list.map((m) => m.base_asset).sort(), values, quotes, monuments };
 }

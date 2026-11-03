@@ -163,7 +163,7 @@ export function plinthValues(series) {
   if (series?.revenue?.length) out.revenue30d = usd(sumUsd(series.revenue));
   return out;
 }
-export const pickSummary = (body) => (body == null ? null : { volumeUsd: num(body.total_volume_usd), users: num(body.total_users) });
+export const pickSummary = (body) => (body == null ? null : { volumeUsd: num(body.total_volume_usd), users: num(body.total_users), depositsUsd: num(body.total_deposits_usd), withdrawalsUsd: num(body.total_withdrawals_usd) }); // the Pylons read the two totals (B3)
 
 /** One entry per collateral asset the API lists, valued in dollars where it has a price (the price itself never leaves here), largest first, the priceless last. */
 export function pickCollateral(body) {
@@ -223,3 +223,35 @@ export const carsLine = (status, peersCount) => carsHere(status, peersCount) ?? 
 export const pulsePeriod = (cars) => BEACON.pulseSlow - (BEACON.pulseSlow - BEACON.pulseFast) * Math.min(1, Math.max(0, cars - 1) / (BEACON.fullCars - 1));
 /** The daily series poll is due once an hour, or 30 s after a failure. */
 export const seriesDue = (now, lastAt, ok) => !lastAt || now - lastAt >= (ok ? SERIES.pollMs : SERIES.retryMs);
+
+// ── Part B3 (3 Nov 2026): the Feed Obelisk in Developers, the Three Pylons in Chains, the Compass in Partners ──
+export const FEED = { lines: 14, repaintMs: 200 }; // the screens hold fourteen lines and repaint at most five times a second
+export const COMPASS = { dialSpeed: 0.08 }; // rad/s
+
+const trim = (s) => (String(s).includes(".") ? String(s).replace(/\.?0+$/, "") : String(s));
+/** One screen line from a stream message { s, p, q, m } or a backfill trade { symbol, price, qty, isBuyerMaker }; null when a field is missing or not a positive number. */
+export function tradeLine(ev) {
+  if (!ev) return null;
+  const sym = ev.s ?? ev.symbol, level = ev.p ?? ev.price, qty = ev.q ?? ev.qty, maker = ev.m ?? ev.isBuyerMaker;
+  if (typeof sym !== "string" || !sym) return null;
+  const l = num(level), q = num(qty);
+  if (l == null || q == null || l <= 0 || q <= 0) return null;
+  return `${sym.replace(/-USD$/, "")}  ${maker ? "sell" : "buy"}  ${trim(Number(q).toFixed(8))} @ ${trim(level)}`;
+}
+export const feedLines = (held, line, max = FEED.lines) => (line == null ? held : [...held, line].slice(-max));
+/** Deposits and withdrawals all time and the difference; a missing figure leaves its line out, the difference needs both. */
+export function flowValues(summary) {
+  if (summary == null) return {};
+  const d = num(summary.depositsUsd), w = num(summary.withdrawalsUsd), out = {};
+  if (d != null) out.depositsAllTime = usd(d);
+  if (w != null) out.withdrawalsAllTime = usd(w);
+  if (d != null && w != null) out.netDeposits = usd(d - w);
+  return out;
+}
+/** The bearing from the centre to each pad in the monument's own frame (its heading about +y), wrapped to (−π, π]. */
+export function compassAngles(centre, heading, pads) {
+  const wrap = (a) => { let r = ((a + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI; return r === -Math.PI ? Math.PI : r; };
+  return (pads ?? [])
+    .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.z))
+    .map((p) => ({ key: p.key, name: p.name, angle: wrap(Math.atan2(p.x - centre[0], p.z - centre[1]) - heading) }));
+}
