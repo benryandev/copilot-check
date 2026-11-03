@@ -14,11 +14,11 @@ const PLAN = {
   perps: ['perpetuals', 'node', 'markets', 'order-types', 'rfq', 'margin', 'liquidations', 'subaccounts', 'pair-trading', 'twap', 'trailing', 'grid', 'scale', 'funding-comparison', 'funding-rates'],
   earn: ['monument-earn', 'slp', 'insurance-fund', 'borrow-earn', 'user-vaults', 'protocol-vaults', 'copy-trading', 'points', 'lp-program'],
   collateral: ['monument-collateral', 'usdm', 'usdc', 'ada', 'usdcx-usdm-lp', 'ausdc', 'susdrf', 'enzobtc'],
-  partners: ['realfi', 'sundaeswap', 'aave-v3', 'unifold', 'dex-aggregators', 'hizz', 'lorenzo'], // lorenzo: Strike's own ecosystem graphic, 2 Nov 2026 (Ben: add now, 3 Nov)
+  partners: ['monument-partners', 'realfi', 'sundaeswap', 'aave-v3', 'unifold', 'dex-aggregators', 'hizz', 'lorenzo'], // lorenzo: Strike's own ecosystem graphic, 2 Nov 2026 (Ben: add now, 3 Nov)
   analytics: ['monument-analytics', 'defillama', 'coingecko', 'bendingai', 'directories'],
   community: ['monument-community', 'arcade-flappy-coin', 'referrals', 'clans', 'leaderboard', 'x', 'discord', 'docs', 'medium'],
   token: ['monument-token', 'strike-token', 'staking', 'revenue-share', 'dao-treasury'],
-  chains: ['cardano', 'ethereum', 'solana', 'validators', 'lockers'],
+  chains: ['monument-chains', 'cardano', 'ethereum', 'solana', 'validators', 'lockers'],
   raceway: ['raceway'], yard: ['fillyard'],
 };
 const REMOVED = ['cardanocube', 'adastack', 'cardano-org-apps', 'dexhunter', 'linktree', 'migration', 'aiken'];
@@ -29,7 +29,7 @@ const keysIn = (d) => STOPS.filter((s) => s.district === d && s.row !== 'builder
 
 for (const [d, keys] of Object.entries(PLAN)) test(`${d} holds exactly the planned stops, in order`, () => assert.deepEqual(keysIn(d), keys));
 test('developers keeps its five docs stops (Builders\' Row, Ben\'s shops included, is row: "builders")', () => {
-  assert.deepEqual(keysIn('developers'), ['api', 'builder-codes', 'vault-leader-api', 'l3', 'github']);
+  assert.deepEqual(keysIn('developers'), ['monument-developers', 'api', 'builder-codes', 'vault-leader-api', 'l3', 'github']);
 });
 test('removed keys are gone and keys are unique', () => {
   const keys = STOPS.map((s) => s.key);
@@ -70,11 +70,11 @@ test('no model is used twice in Perpetuals (3 Nov 2026: scale, pair trading and 
   assert.equal(STOPS.find((s) => s.key === 'funding-comparison').shape, 'observatory');
 });
 
-test('monuments: five, placed by hand (Earn, Collateral, Analytics, Community, Token), their sheets name every figure and carry no banned word', () => {
+test('monuments: eight, one a plaza, placed by hand, their sheets name every figure and carry no banned word', () => {
   const ms = STOPS.filter(isMonument);
-  assert.deepEqual(ms.map((s) => s.key), ['monument-earn', 'monument-collateral', 'monument-analytics', 'monument-community', 'monument-token']);
+  assert.deepEqual(ms.map((s) => s.key), ['monument-earn', 'monument-collateral', 'monument-partners', 'monument-developers', 'monument-analytics', 'monument-community', 'monument-token', 'monument-chains']);
   for (const s of ms) {
-    assert.ok(s.pos && s.face, s.key); assert.ok(s.live.length >= 3, s.key); assert.match(s.docs, /^https:\/\/(app|docs)\.strikefinance\.org\//); // the figures' source pages: the app for Earn and Token, the docs for the rest (app.strikefinance.org/stats is a 404)
+    assert.ok(s.pos && s.face, s.key); assert.ok(s.live === null || s.live.length >= 3, s.key); assert.match(s.docs, /^(https:\/\/(app|docs)\.strikefinance\.org\/|\/ecosystem\/)/); // the Compass has no figures and links to the stops page; // the figures' source pages: the app for Earn and Token, the docs for the rest (app.strikefinance.org/stats is a 404)
     for (const t of [s.summary, ...s.points]) for (const re of MONUMENT_BANNED) assert.doesNotMatch(t, re, `${s.key}: "${t}"`);
   }
 });

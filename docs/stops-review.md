@@ -1,6 +1,6 @@
 # Ecosystem world: every sheet for review (generated 2026-11-03)
 
-Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 76 stops. Empty Builders' Row plots and arcade cabinets are left out.
+Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 79 stops. Empty Builders' Row plots and arcade cabinets are left out.
 
 ## Strike HQ
 
@@ -349,6 +349,16 @@ Link: [Docs: Borrow and Earn](https://docs.strikefinance.org/perpetuals/vaults/b
 
 Protocols Strike works with, and the apps that plug Strike in.
 
+### The Compass
+
+A compass rose at the heart of Partners: one arm for each partner on the plaza, each pointing at that partner's own stop, so the district reads from the middle. The dial turns slowly; the arms do not.
+
+- The partners on 3 November 2026: RealFi, SundaeSwap, Aave V3, Unifold, DEX Aggregators, Hizz and Lorenzo, each with a stop round the rim that tells its own story.
+- Nothing live here. The compass is a map of the plaza, laid out from the stops themselves, so a new partner gets an arm the day its stop is added.
+- Pick an arm and drive the way it points: the pad it names is on the rim ahead.
+
+Link: [Every partner stop](/ecosystem/stops/#district-partners) · [Open Strike](https://app.strikefinance.org/trade)
+
 ### RealFi
 
 RealFi issues USDrf, a Cardano stablecoin backed by real-world credit. Its staked version, sUSDrf, is one of the assets Strike accepts as collateral for Borrow and Earn.
@@ -467,6 +477,16 @@ A multi-chain crypto terminal: token discovery, market signals, smart-wallet tra
 - Third-party project, listed after a basic check. Not an endorsement: look into it before you connect a wallet or an API key.
 
 Link: [Visit Hizz](https://www.hizz.io/) · [On X](https://x.com/hizz_io)
+
+### The Feed Obelisk
+
+The obelisk carries Strike's live trade stream, the same public feed the Fill Yard runs on: every fill on every market as it happens, scrolled as text on four screens, newest at the bottom.
+
+- Each line is one fill: the market, the side, the size and the level it filled at, straight from the public websocket (channel trade), no key needed. Partial fills of one order arrive as separate lines here, where the yard merges them into one crate.
+- The counter below the screens is the last minute's fill count, the dollars traded in the last ten minutes and the busiest market of those ten minutes: the Fill Yard's own figures, from the same stream.
+- When the stream drops, the screens keep their last lines and say so on the bottom line until it is back; the figures stop counting until then.
+
+Link: [Docs: Websocket API](https://docs.strikefinance.org/api/market/websocket) · [API: Getting Started](https://docs.strikefinance.org/api/getting-started) · live: Fills, last minute, Traded, last 10 min, Busiest market, 10 min
 
 ### REST + WS API
 
@@ -696,6 +716,16 @@ Link: [Docs: Tokenomics](https://docs.strikefinance.org/tokenomics/editor)
 ## Chains & Security
 
 The chains Strike settles on, the custody contracts, validators and the backstop.
+
+### The Three Pylons
+
+Three pylons for the three chains you can deposit from: Cardano, Ethereum and Solana. The base carries what has come into Strike and gone out since it opened, and the difference between the two.
+
+- Deposits and withdrawals are platform totals in dollars from Strike's public dashboard summary, read every 30 seconds. No per-chain split is public, so the three pylons stand equal and the figures sit on the base.
+- The difference is deposits less withdrawals: what has stayed on the exchange over its life. It is not a balance sheet and says nothing about any one account.
+- The chains' own stops and the bridge stand round the plaza; the pylons only mark the three ways in.
+
+Link: [Docs: Platform Dashboard API](https://docs.strikefinance.org/api/platform-stats/platform-dashboard) · [Getting started on Strike](https://docs.strikefinance.org/getting-started/welcome) · live: Deposits, all time, Withdrawals, all time, Deposits less withdrawals
 
 ### Cardano
 

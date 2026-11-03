@@ -664,6 +664,26 @@ export const STOPS = [
     docsLabel: "Borrow and Earn",
   },
   {
+    key: "monument-partners",
+    district: "partners",
+    name: "The Compass",
+    shape: "compass",
+    pos: [164.54, 95.0], // Partners' centre
+    face: [122.98, 71.0], // the HQ mouth: centre + hubDir × 48
+    summary:
+      "A compass rose at the heart of Partners: one arm for each partner on the plaza, each pointing at that partner's own stop, so the district reads from the middle. The dial turns slowly; the arms do not.",
+    points: [
+      "The partners on 3 November 2026: RealFi, SundaeSwap, Aave V3, Unifold, DEX Aggregators, Hizz and Lorenzo, each with a stop round the rim that tells its own story.",
+      "Nothing live here. The compass is a map of the plaza, laid out from the stops themselves, so a new partner gets an arm the day its stop is added.",
+      "Pick an arm and drive the way it points: the pad it names is on the rim ahead.",
+    ],
+    live: null,
+    docs: "/ecosystem/stops/#district-partners",
+    docsLabel: "Every partner stop",
+    site: "https://app.strikefinance.org/trade",
+    siteLabel: "Open Strike",
+  },
+  {
     key: "realfi",
     district: "partners",
     name: "RealFi",
@@ -772,6 +792,26 @@ export const STOPS = [
     docsLabel: "Borrow and Earn",
     site: "https://lorenzo-protocol.xyz",
     siteLabel: "Visit Lorenzo",
+  },
+  {
+    key: "monument-developers",
+    district: "developers",
+    name: "The Feed Obelisk",
+    shape: "obelisk",
+    pos: [64.98, 178.54], // Developers' centre; Builders' Row sits on the spoke outside the rim
+    face: [50.62, 139.07], // the HQ mouth: centre + hubDir × 42
+    summary:
+      "The obelisk carries Strike's live trade stream, the same public feed the Fill Yard runs on: every fill on every market as it happens, scrolled as text on four screens, newest at the bottom.",
+    points: [
+      "Each line is one fill: the market, the side, the size and the level it filled at, straight from the public websocket (channel trade), no key needed. Partial fills of one order arrive as separate lines here, where the yard merges them into one crate.",
+      "The counter below the screens is the last minute's fill count, the dollars traded in the last ten minutes and the busiest market of those ten minutes: the Fill Yard's own figures, from the same stream.",
+      "When the stream drops, the screens keep their last lines and say so on the bottom line until it is back; the figures stop counting until then.",
+    ],
+    live: ["fillsPerMin", "usd10m", "busiest"],
+    docs: "https://docs.strikefinance.org/api/market/websocket",
+    docsLabel: "Websocket API",
+    site: "https://docs.strikefinance.org/api/getting-started",
+    siteLabel: "API: Getting Started",
   },
   {
     key: "api",
@@ -1136,6 +1176,26 @@ export const STOPS = [
     live: null,
     docs: "https://docs.strikefinance.org/tokenomics/editor",
     docsLabel: "Tokenomics",
+  },
+  {
+    key: "monument-chains",
+    district: "chains",
+    name: "The Three Pylons",
+    shape: "pylons",
+    pos: [-122.13, -145.55], // Chains' centre
+    face: [-95.13, -113.37], // the HQ mouth: centre + hubDir × 42
+    summary:
+      "Three pylons for the three chains you can deposit from: Cardano, Ethereum and Solana. The base carries what has come into Strike and gone out since it opened, and the difference between the two.",
+    points: [
+      "Deposits and withdrawals are platform totals in dollars from Strike's public dashboard summary, read every 30 seconds. No per-chain split is public, so the three pylons stand equal and the figures sit on the base.",
+      "The difference is deposits less withdrawals: what has stayed on the exchange over its life. It is not a balance sheet and says nothing about any one account.",
+      "The chains' own stops and the bridge stand round the plaza; the pylons only mark the three ways in.",
+    ],
+    live: ["depositsAllTime", "withdrawalsAllTime", "netDeposits"],
+    docs: "https://docs.strikefinance.org/api/platform-stats/platform-dashboard",
+    docsLabel: "Platform Dashboard API",
+    site: "https://docs.strikefinance.org/getting-started/welcome",
+    siteLabel: "Getting started on Strike",
   },
   {
     key: "cardano",
