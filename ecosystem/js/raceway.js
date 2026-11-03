@@ -163,6 +163,7 @@ export function setBoard(state) {
   boardState = state;
   if (boardRedraw && lastPal) boardRedraw(lastPal);
 }
+let boardGroup = null, boardSize = null, boardTex = null; // kept for boardPose() and boardCanvas()
 function buildBoard(parent) {
   const W = 1400, H = 1000;
   const board = canvasTexture(W, H, (ctx, w, h, p) => {
@@ -212,6 +213,7 @@ function buildBoard(parent) {
   g.position.set(x, terrainHeight(x, z), z);
   g.rotation.y = Math.atan2(tx - x, tz - z);
   const pw = W / 100, ph = H / 100;
+  boardGroup = g; boardSize = { w: pw, h: ph }; boardTex = board.tex;
   const legs = [cyl(0.35, 5, M.trim, -pw / 2 + 1.5, 0, 0, 8), cyl(0.35, 5, M.trim, pw / 2 - 1.5, 0, 0, 8)];
   const back = box(pw + 0.4, ph + 0.4, 0.5, M.build, 0, 5 - 0.2, 0);
   const panel = mesh(new THREE.PlaneGeometry(pw, ph), new THREE.MeshBasicMaterial({ map: board.tex, toneMapped: false }), 0, 5 + ph / 2, 0.3);
@@ -221,6 +223,15 @@ function buildBoard(parent) {
   legs.forEach((l) => addCollider(l, 0));
   return g;
 }
+
+/** The board's world pose for the zoom camera (focus-math.js): its centre, the unit facing of its printed side in xz, its size in m. */
+export function boardPose() {
+  boardGroup.updateWorldMatrix(true, false);
+  const c = boardGroup.localToWorld(new THREE.Vector3(0, 5 + boardSize.h / 2, 0.3));
+  return { x: c.x, y: c.y, z: c.z, fx: Math.sin(boardGroup.rotation.y), fz: Math.cos(boardGroup.rotation.y), w: boardSize.w, h: boardSize.h };
+}
+/** The canvas the board is drawn on, for the Save the board image (board-share.js). */
+export const boardCanvas = () => boardTex.image;
 
 // ── Things to knock about ──────────────────────────────────────────────
 function propsAt(parent, kind, s, v, lift = 0) {
