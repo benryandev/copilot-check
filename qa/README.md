@@ -371,7 +371,11 @@ the automated audit). Branch `awwwards`.
    the HUD title wrapping in one theme because "Light" is wider than "Dark". Left as taste or for Ben: the stop
    sheet's filled Docs pill, the two post actions on the lap sheet, the title card repeated as the intro's heading,
    Map view as a list, the arcade game's start screen taller than its frame, mono-caps chips against Atkinson pills.
-4. The gate: `pnpm test`, the monuments, UX, guide and deep-link smokes, the twelve-width shoot, Lighthouse through
+4. A second blind read, spawned too early: it scored 6 on frames shot before step 3's fixes, and its three leading
+   defects (the last line cut above the buttons, the action bar floating above the sheet's edge, a blank Join in
+   the light theme) were those fixes, measured flush and legible afterwards. It added one real point, the guide
+   lede at 78 characters against the kit's 46ch, fixed. A third read runs on the gate shoot's frames.
+5. The gate: `pnpm test`, the monuments, UX, guide and deep-link smokes, the twelve-width shoot, Lighthouse through
    the SEO toolkit on the local world page (accessibility 100, was 92 in production; best practices 96; SEO 100;
    performance reported, not gated).
 
