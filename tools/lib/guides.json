@@ -153,6 +153,159 @@
       ],
       "html": "<h2 id=\"what-is-a-perp\">What is a perp?</h2>\n<p>A <strong>future</strong> is an agreement to trade something at a set price on a set date. A <strong>perpetual future</strong>, or <strong>perp</strong>, drops the date. The contract keeps running for as long as you hold it, and its price follows the asset it is named after.</p>\n<p>On Strike, a BTC-USD perp follows the price of Bitcoin. If you think the price will rise, you go <strong>long</strong>: you profit as it climbs. If you think it will fall, you go <strong>short</strong>: you profit as it drops.</p>\n<p>Either way you never hold any Bitcoin. Your position is a number on the exchange, backed by the dollars in your account.</p>\n<h3 id=\"what-keeps-the-price-honest\">What keeps the price honest?</h3>\n<p>Nothing forces a perp to match the asset on its own, so exchanges use <strong>funding</strong>. The exchange compares the perp's price with an <strong>index price</strong>, a reference built from the asset's price on other venues. When the perp trades above the index, longs pay shorts a small fee; when it trades below, shorts pay longs. On Strike, funding is settled every hour, on the hour.</p>\n<p>The payments are tiny per hour. In Strike's own example, the rate is 0.00125% an hour. On a $100 position that is about a tenth of a cent, paid or received, every hour.</p>\n<table>\n<thead><tr><th>Term</th><th>Meaning</th></tr></thead>\n<tbody>\n<tr><td>Long</td><td>You profit when the price rises</td></tr>\n<tr><td>Short</td><td>You profit when the price falls</td></tr>\n<tr><td>Index price</td><td>The asset's price elsewhere, used as the reference</td></tr>\n<tr><td>Mark price</td><td>The price Strike uses to value your position</td></tr>\n<tr><td>Funding</td><td>Hourly payment between longs and shorts</td></tr>\n</tbody>\n</table>\n<h2 id=\"who-it-s-for\">Who it's for</h2>\n<ul>\n<li><strong>You want to trade a move, not hold the asset.</strong> No wallet for the coin, no broker for the share, no vault for the gold.</li>\n<li><strong>You want to be able to go short.</strong> A spot purchase only profits when prices rise. A perp lets you take the other side.</li>\n<li><strong>You want one account for different things.</strong> On Strike the same balance trades crypto, stocks, indices and commodities.</li>\n</ul>\n<h2 id=\"how-to-find-a-market-on-strike\">How to find a market on Strike</h2>\n<ol>\n<li>Open <strong>app.strikefinance.org</strong> and sign in with your wallet.</li>\n<li>Click the market name at the top left of the Trade page, <strong>BTC-USD</strong> by default. A list opens.</li>\n<li>Use the tabs to narrow it: <strong>Crypto</strong>, <strong>TradFi</strong> for stocks, indices and commodities, and a search box for a name.</li>\n<li>Each row shows the last price, the 24-hour change, the volume and the funding rate on its 8-hour basis. Pick one and the chart and order panel switch to it.</li>\n</ol>\n<figure><img src=\"/ecosystem/guides/img/what-is-a-perp/markets.png\" alt=\"Strike's market list, opened from the market name on the Trade page, with the Crypto and TradFi tabs\" width=\"860\" height=\"630\" loading=\"lazy\"><figcaption>Strike's market list, opened from the market name on the Trade page, with the Crypto and TradFi tabs</figcaption></figure>\n<h2 id=\"a-worked-example\">A worked example</h2>\n<p><em>This is an example, not a suggestion.</em> Say you open a $100 long on the BTC-USD perp with no leverage, and Bitcoin rises 5%. Your position is now worth about $105. Close it and you keep the $5, less a small trading fee on the way in and out.</p>\n<p>If Bitcoin had fallen 5% instead, closing would leave you about $95.</p>\n<p>A short works in reverse. Open a $100 short, and a 5% fall earns about $5 while a 5% rise loses about $5. Funding adds or takes a fraction of a cent an hour while the position is open.</p>\n<h2 id=\"things-worth-knowing\">Things worth knowing</h2>\n<ul>\n<li><strong>Funding runs both ways.</strong> Depending on the market, you may pay or receive it. The list shows each market's 8-hour rate, and Strike settles one eighth of it every hour.</li>\n<li><strong>Fees are small but real.</strong> Strike's base fee for taking liquidity is 0.050% of the trade's value, and placing a resting order earns a 0.005% rebate.</li>\n<li><strong>Leverage changes everything.</strong> The examples above use none. With leverage a smaller move produces the same gain or loss, and a large enough move closes the trade. That is the next two guides.</li>\n</ul>\n<h2 id=\"next\">Next</h2>\n<ul>\n<li><strong>Next:</strong> Long, short and leverage (Start here, part 3, coming)</li>\n<li>Then: Liquidation and how to avoid it, Your first trade on Strike.</li>\n<li>Official docs: <a href=\"https://docs.strikefinance.org/perpetuals/funding-rates\" rel=\"noopener\">Funding Rates</a> and <a href=\"https://docs.strikefinance.org/perpetuals/prices\" rel=\"noopener\">Prices</a></li>\n<li>Try it: <a href=\"https://app.strikefinance.org/trade/BTC?referralCode=BenRyan\" rel=\"noopener\">open Strike</a> (my referral link, 5% off fees)</li>\n</ul>",
       "inOneMinute": "<ul>\n<li><strong>What it is:</strong> a perp is a contract that tracks the price of something, such as Bitcoin or gold, and never expires. You trade the price move, not the asset.</li>\n<li><strong>Who it's for:</strong> people who want to profit from a price going up or down without buying the coin, the share or the metal itself.</li>\n<li><strong>The one thing to know:</strong> you never own the asset. Small hourly payments called funding keep the contract near the real price, and with leverage a bad move can close your trade.</li>\n</ul>"
+    },
+    "long-short-leverage": {
+      "slug": "long-short-leverage",
+      "title": "Long, short and leverage: what 2x, 10x and 20x really mean",
+      "subtitle": "Going long or short on Strike, what leverage really multiplies, how the same 5% move plays out at 2x, 10x and 20x, and the cross and isolated margin modes.",
+      "series": "start-here",
+      "order": 2,
+      "stop": "perpetuals",
+      "next": "liquidation",
+      "cover": "img/cover.png",
+      "published": "2026-11-03",
+      "checked": "2026-11-03",
+      "modified": "2026-11-03",
+      "hash": "fec81c1350863e9d",
+      "words": 650,
+      "claims": [
+        "btc-max-leverage",
+        "btc-tier1-notional",
+        "taker-fee-base",
+        "margin-mode-default"
+      ],
+      "faq": [
+        {
+          "q": "Can I lose more than my margin?",
+          "a": "With isolated margin, the amount locked to that position is what is at risk. With cross margin the position can draw on your whole account balance."
+        },
+        {
+          "q": "Is 1x leverage the same as buying the coin?",
+          "a": "Close, but not the same. You hold a contract that follows the price, you pay or receive hourly funding, and you never hold the coin itself."
+        },
+        {
+          "q": "Which margin mode does Strike use if I do nothing?",
+          "a": "cross margin, set per market. You can switch any market to isolated from the order panel."
+        },
+        {
+          "q": "Does changing leverage move my liquidation price?",
+          "a": "Yes. Higher leverage means less margin behind the same position, so the liquidation price sits closer to your entry."
+        }
+      ],
+      "toc": [
+        {
+          "id": "in-one-minute",
+          "title": "In one minute"
+        },
+        {
+          "id": "what-long-short-and-leverage-mean",
+          "title": "What long, short and leverage mean"
+        },
+        {
+          "id": "who-it-s-for",
+          "title": "Who it's for"
+        },
+        {
+          "id": "how-to-set-leverage-and-margin-mode-on-strike",
+          "title": "How to set leverage and margin mode on Strike"
+        },
+        {
+          "id": "a-worked-example",
+          "title": "A worked example"
+        },
+        {
+          "id": "things-worth-knowing",
+          "title": "Things worth knowing"
+        },
+        {
+          "id": "questions-people-ask",
+          "title": "Questions people ask"
+        },
+        {
+          "id": "next",
+          "title": "Next"
+        }
+      ],
+      "html": "<h2 id=\"what-long-short-and-leverage-mean\">What long, short and leverage mean</h2>\n<p><strong>Going long</strong> is buying a perp because you expect the price to rise. <strong>Going short</strong> is selling one you do not own, because you expect the price to fall. Both are a single click on Strike: the order panel has a Long/Buy side and a Short/Sell side.</p>\n<p><strong>Leverage</strong> is the ratio between the size of your position and the money you put behind it, called <strong>margin</strong>. With $100 of margin at 10x leverage you hold a $1,000 position. The exchange lends the rest, and your $100 absorbs the gains and losses on the whole $1,000. That is why the same price move feels ten times bigger.</p>\n<p>The leverage box on Strike shows the setting for the market you are on. Each market has a cap, and it falls as positions grow. On Bitcoin the first tier allows up to 100x for positions up to $10,000; larger positions are capped lower.</p>\n<h3 id=\"cross-and-isolated-margin\">Cross and isolated margin</h3>\n<p>Strike has two <strong>margin modes</strong>, set per market. <strong>Cross margin</strong>, the default, lets every cross position draw on your whole account balance as its buffer. <strong>Isolated margin</strong> locks a fixed amount to one position, so only that amount is at risk. Cross keeps your liquidation price further away; isolated caps what one bad trade can cost.</p>\n<h2 id=\"who-it-s-for\">Who it's for</h2>\n<ul>\n<li><strong>You want to make a small deposit go further.</strong> Leverage does that, and the next section shows what it costs when the price goes the other way.</li>\n<li><strong>You think a price will fall.</strong> A short earns when it does, something a plain purchase cannot do.</li>\n<li><strong>You run more than one position.</strong> Cross or isolated decides whether they share a buffer or stand alone.</li>\n</ul>\n<h2 id=\"how-to-set-leverage-and-margin-mode-on-strike\">How to set leverage and margin mode on Strike</h2>\n<ol>\n<li>Open a market on the Trade page. The order panel sits on the right.</li>\n<li>The top row shows the margin mode, <strong>Cross</strong> or <strong>Isolated</strong>, and the leverage, for example <strong>10x</strong>. Click either to change it.</li>\n<li>Set the leverage with the slider or by typing a number. Lowering leverage always works; raising it may be refused if your position is already in a higher tier.</li>\n<li>Pick <strong>Long/Buy</strong> or <strong>Short/Sell</strong>, enter a size, and the panel shows the margin it will take and the estimated liquidation price before you confirm.</li>\n</ol>\n<figure><img src=\"/ecosystem/guides/img/long-short-leverage/leverage.png\" alt=\"Strike's Adjust Leverage dialog: a slider from 1x to the market's maximum, 100x on Bitcoin, with a warning that higher leverage increases liquidation risk\" width=\"1112\" height=\"928\" loading=\"lazy\"><figcaption>Strike's Adjust Leverage dialog: a slider from 1x to the market's maximum, 100x on Bitcoin, with a warning that higher leverage increases liquidation risk</figcaption></figure>\n<h2 id=\"a-worked-example\">A worked example</h2>\n<p><em>This is an example, not a suggestion.</em> Say you put $100 behind a long on Bitcoin and the price moves 5%.</p>\n<table>\n<thead><tr><th>Leverage</th><th>Position size</th><th>Price +5%</th><th>Price −5%</th></tr></thead>\n<tbody>\n<tr><td>1x</td><td>$100</td><td>+$5</td><td>−$5</td></tr>\n<tr><td>2x</td><td>$200</td><td>+$10</td><td>−$10</td></tr>\n<tr><td>10x</td><td>$1,000</td><td>+$50</td><td>−$50</td></tr>\n<tr><td>20x</td><td>$2,000</td><td>+$100</td><td>−$100</td></tr>\n</tbody>\n</table>\n<p>At 20x the 5% drop costs the whole $100. In practice the exchange closes the position a little before that point, which is what the next guide is about. A short behaves the same way with the signs reversed.</p>\n<h2 id=\"things-worth-knowing\">Things worth knowing</h2>\n<ul>\n<li><strong>Leverage does not change the odds.</strong> It changes how much each move is worth, both ways.</li>\n<li><strong>Fees scale with position size, not margin.</strong> Strike's base taker fee is 0.050% of the position's value, so a $1,000 position pays ten times the fee of a $100 one.</li>\n<li><strong>Funding scales the same way.</strong> The hourly funding payment is worked out on the full position.</li>\n<li><strong>Cross margin puts the whole account on the line.</strong> One losing position can draw down the balance that other positions rely on. Isolated margin stops that, at the cost of a closer liquidation price.</li>\n</ul>\n<h2 id=\"next\">Next</h2>\n<ul>\n<li><strong>Next:</strong> Liquidation, and how to avoid it (Start here, part 4, coming)</li>\n<li>Before this: <a href=\"/ecosystem/guides/what-is-a-perp/\">What is a perp?</a></li>\n<li>Official docs: <a href=\"https://docs.strikefinance.org/perpetuals/margin-modes\" rel=\"noopener\">Margin Modes</a> and <a href=\"https://docs.strikefinance.org/perpetuals/margin-tiers\" rel=\"noopener\">Margin Tiers</a></li>\n<li>Try it: <a href=\"https://app.strikefinance.org/trade/BTC?referralCode=BenRyan\" rel=\"noopener\">open Strike</a> (my referral link, 5% off fees)</li>\n</ul>",
+      "inOneMinute": "<ul>\n<li><strong>What it is:</strong> long means you profit when a price rises, short when it falls. Leverage lets a small deposit control a larger position, so every move counts for more.</li>\n<li><strong>Who it's for:</strong> anyone about to place a first perp trade who wants to know what the leverage number in the order panel does before touching it.</li>\n<li><strong>The one thing to know:</strong> leverage multiplies losses as much as gains. At 20x, a 5% move against you wipes out the money behind the trade.</li>\n</ul>"
+    },
+    "liquidation": {
+      "slug": "liquidation",
+      "title": "Liquidation, and how to avoid it: a plain-English guide",
+      "subtitle": "What the liquidation price is, why leverage pulls it closer, how Strike closes a position in stages, and the habits that keep a first trade well clear of it.",
+      "series": "start-here",
+      "order": 3,
+      "stop": "liquidations",
+      "next": "your-first-trade",
+      "cover": "img/cover.png",
+      "published": "2026-11-03",
+      "checked": "2026-11-03",
+      "modified": "2026-11-03",
+      "hash": "1765268f826fcf9e",
+      "words": 697,
+      "claims": [
+        "btc-tier1-mmr",
+        "btc-tier1-notional",
+        "liquidation-attempts"
+      ],
+      "faq": [
+        {
+          "q": "Will Strike warn me before liquidating?",
+          "a": "The liquidation price is shown next to the position at all times, and the margin ratio rises as you get close. The closing itself is automatic."
+        },
+        {
+          "q": "Can I get the margin back after a liquidation?",
+          "a": "No. The margin behind the position covers the loss, and any surplus from a better fill goes to the backstop under the liquidation fee rules."
+        },
+        {
+          "q": "Does a lower leverage setting cost anything?",
+          "a": "No. It means a smaller position for the same margin, so smaller gains and losses per move, and a liquidation price further away."
+        },
+        {
+          "q": "What is the difference between a stop-loss and the liquidation price?",
+          "a": "A stop-loss is a price you choose, where Strike closes the trade for you. The liquidation price is where the exchange must close it to cover the loss, so the first belongs well before the second."
+        }
+      ],
+      "toc": [
+        {
+          "id": "in-one-minute",
+          "title": "In one minute"
+        },
+        {
+          "id": "what-liquidation-is",
+          "title": "What liquidation is"
+        },
+        {
+          "id": "who-it-s-for",
+          "title": "Who it's for"
+        },
+        {
+          "id": "how-to-check-and-move-your-liquidation-price",
+          "title": "How to check and move your liquidation price"
+        },
+        {
+          "id": "a-worked-example",
+          "title": "A worked example"
+        },
+        {
+          "id": "things-worth-knowing",
+          "title": "Things worth knowing"
+        },
+        {
+          "id": "questions-people-ask",
+          "title": "Questions people ask"
+        },
+        {
+          "id": "how-i-use-it",
+          "title": "How I use it"
+        },
+        {
+          "id": "next",
+          "title": "Next"
+        }
+      ],
+      "html": "<h2 id=\"what-liquidation-is\">What liquidation is</h2>\n<p>Every leveraged position has <strong>margin</strong> behind it. A move against you eats into that margin. Strike requires a minimum to stay in the trade, the <strong>maintenance margin</strong>: a small percentage of the position's value, 0.4% on a Bitcoin position of up to $10,000. When your remaining margin falls to that line, the position is <strong>liquidated</strong>: closed by the exchange, not by you.</p>\n<p>The <strong>liquidation price</strong> is the price at which that happens. Strike shows it as an estimate in the order panel before you trade, and next to each open position afterwards. The <strong>margin ratio</strong> is the same idea as a percentage: maintenance margin divided by what you have left, where 100% means liquidation.</p>\n<h3 id=\"why-leverage-moves-it-closer\">Why leverage moves it closer</h3>\n<p>At 2x, the price has to fall about halfway before your margin is gone. At 10x, about a tenth. At 20x, a 5% move is enough. Leverage does not change how far prices move, only how far they can move before you are out.</p>\n<h3 id=\"how-strike-liquidates\">How Strike liquidates</h3>\n<p>Strike does not dump the whole position at once. A solvent position is reduced in stages, up to five attempts on the public order book, each sized to the current risk. If a reduction restores the account, the rest stays open.</p>\n<p>Only a bankrupt position, or one still unsafe after the final attempt, goes to the backstop. A protocol vault takes it on, and as a last resort Strike trims positions on the profitable side, which it calls <strong>auto-deleveraging</strong>.</p>\n<h2 id=\"who-it-s-for\">Who it's for</h2>\n<ul>\n<li><strong>You are about to use leverage for the first time.</strong> The habits below are for you.</li>\n<li><strong>You already hold a position.</strong> The liquidation price next to it says how much room it has.</li>\n<li><strong>You copy a trader.</strong> Your copies use your leverage, so the liquidation prices are yours, not theirs.</li>\n</ul>\n<h2 id=\"how-to-check-and-move-your-liquidation-price\">How to check and move your liquidation price</h2>\n<ol>\n<li>On the Trade page, set your size and leverage. The panel's <strong>Est. Liquidation Price</strong> updates as you change them.</li>\n<li>Lower the leverage and watch the estimate move away from the current price. That is the simplest lever you have.</li>\n<li>Tick <strong>TP/SL</strong> to attach a stop-loss: a price at which Strike closes the position for you, before the liquidation price.</li>\n<li>After you trade, the <strong>Positions</strong> table shows each liquidation price. Under isolated margin you can add margin to push it further away.</li>\n</ol>\n<figure><img src=\"/ecosystem/guides/img/liquidation/tpsl.png\" alt=\"The order panel with TP/SL ticked: the stop-loss and take-profit fields under the size, and the estimated liquidation price below\" width=\"570\" height=\"1202\" loading=\"lazy\"><figcaption>The order panel with TP/SL ticked: the stop-loss and take-profit fields under the size, and the estimated liquidation price below</figcaption></figure>\n<h2 id=\"a-worked-example\">A worked example</h2>\n<p><em>This is an example, not a suggestion.</em> Take the $100 long on Bitcoin from the last guide, at 10x, so a $1,000 position. If Bitcoin falls about 9.6%, the $100 of margin is almost gone and the maintenance margin line is crossed. Strike starts closing the position around there.</p>\n<p>Now take the same $100 at 2x, a $200 position. The price has to fall close to 50% before the same thing happens. Each 1% move is worth $2 instead of $10, and the trade survives an ordinary bad week.</p>\n<h2 id=\"things-worth-knowing\">Things worth knowing</h2>\n<ul>\n<li><strong>Liquidation is not free.</strong> On top of the lost margin, Strike can charge an adaptive liquidation fee when the forced close fills better than the bankruptcy price.</li>\n<li><strong>Cross and isolated behave differently.</strong> Under cross margin your whole balance is the buffer, so the price is further away but the whole account is exposed. Under isolated only the locked margin is at risk.</li>\n<li><strong>A stop order is not a guarantee.</strong> It becomes a market order when triggered, so in a fast market the fill can be worse than the stop price. It still acts long before the exchange has to.</li>\n<li><strong>Copied positions can be liquidated too.</strong> If a lead you copy is liquidated, your copy closes by the same fraction. Your own copy can also be liquidated on its own, at your leverage.</li>\n</ul>\n<h2 id=\"how-i-use-it\">How I use it</h2>\n<blockquote>\n<p>I only hold copied positions. Before any copy starts, I lock the leverage on every market the lead trades and cap how much of the account a copy can use. I check the liquidation prices after every new position, not only when the market turns.</p>\n</blockquote>\n<h2 id=\"next\">Next</h2>\n<ul>\n<li><strong>Next:</strong> Your first trade on Strike (Start here, part 5, coming)</li>\n<li>Before this: <a href=\"/ecosystem/guides/long-short-leverage/\">Long, short and leverage</a></li>\n<li>Official docs: <a href=\"https://docs.strikefinance.org/perpetuals/liquidations\" rel=\"noopener\">Liquidations</a> and <a href=\"https://docs.strikefinance.org/perpetuals/margin-tiers\" rel=\"noopener\">Margin Tiers</a></li>\n<li>Try it: <a href=\"https://app.strikefinance.org/trade/BTC?referralCode=BenRyan\" rel=\"noopener\">open Strike</a> (my referral link, 5% off fees)</li>\n</ul>",
+      "inOneMinute": "<ul>\n<li><strong>What it is:</strong> liquidation is the exchange closing your position because the money behind it can no longer cover the loss. You lose that margin.</li>\n<li><strong>Who it's for:</strong> anyone using leverage, which on a perp is anyone who has not set it to 1x.</li>\n<li><strong>The one thing to know:</strong> the liquidation price is shown before you confirm a trade. Lower leverage pushes it further away, and a stop order can close the trade before it is reached.</li>\n</ul>"
     }
   }
 }

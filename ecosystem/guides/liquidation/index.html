@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Liquidation, and how to avoid it: a plain-English guide · Strike guides</title>
+  <meta name="description" content="What the liquidation price is, why leverage pulls it closer, how Strike closes a position in stages, and the habits that keep a first trade well clear of it.">
+  <link rel="canonical" href="https://strike.benryan.com.au/ecosystem/guides/liquidation/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Strike Ecosystem">
+  <meta property="og:title" content="Liquidation, and how to avoid it: a plain-English guide · Strike guides">
+  <meta property="og:description" content="What the liquidation price is, why leverage pulls it closer, how Strike closes a position in stages, and the habits that keep a first trade well clear of it.">
+  <meta property="og:url" content="https://strike.benryan.com.au/ecosystem/guides/liquidation/">
+  <meta property="og:image" content="https://strike.benryan.com.au/ecosystem/guides/img/liquidation/cover.png">
+  <meta property="og:image:width" content="1500">
+  <meta property="og:image:height" content="600">
+  <meta property="og:image:alt" content="Liquidation, and how to avoid it: a plain-English guide">
+  <meta property="article:published_time" content="2026-11-03">
+  <meta property="article:modified_time" content="2026-11-03">
+  <meta property="article:author" content="https://benryan.com.au">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Liquidation, and how to avoid it: a plain-English guide · Strike guides">
+  <meta name="twitter:description" content="What the liquidation price is, why leverage pulls it closer, how Strike closes a position in stages, and the habits that keep a first trade well clear of it.">
+  <meta name="twitter:image" content="https://strike.benryan.com.au/ecosystem/guides/img/liquidation/cover.png">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Article","@id":"https://strike.benryan.com.au/ecosystem/guides/liquidation/#article","headline":"Liquidation, and how to avoid it: a plain-English guide","description":"What the liquidation price is, why leverage pulls it closer, how Strike closes a position in stages, and the habits that keep a first trade well clear of it.","image":"https://strike.benryan.com.au/ecosystem/guides/img/liquidation/cover.png","datePublished":"2026-11-03","dateModified":"2026-11-03","author":{"@type":"Person","name":"Ben Ryan","url":"https://benryan.com.au"},"publisher":{"@type":"Organization","name":"Copilot Check","url":"https://strike.benryan.com.au/"},"mainEntityOfPage":"https://strike.benryan.com.au/ecosystem/guides/liquidation/","isPartOf":{"@type":"WebSite","name":"Copilot Check","url":"https://strike.benryan.com.au/"},"inLanguage":"en","isAccessibleForFree":true,"wordCount":697,"about":{"@type":"Thing","name":"Strike Finance"}},{"@type":"FAQPage","@id":"https://strike.benryan.com.au/ecosystem/guides/liquidation/#faq","mainEntity":[{"@type":"Question","name":"Will Strike warn me before liquidating?","acceptedAnswer":{"@type":"Answer","text":"The liquidation price is shown next to the position at all times, and the margin ratio rises as you get close. The closing itself is automatic."}},{"@type":"Question","name":"Can I get the margin back after a liquidation?","acceptedAnswer":{"@type":"Answer","text":"No. The margin behind the position covers the loss, and any surplus from a better fill goes to the backstop under the liquidation fee rules."}},{"@type":"Question","name":"Does a lower leverage setting cost anything?","acceptedAnswer":{"@type":"Answer","text":"No. It means a smaller position for the same margin, so smaller gains and losses per move, and a liquidation price further away."}},{"@type":"Question","name":"What is the difference between a stop-loss and the liquidation price?","acceptedAnswer":{"@type":"Answer","text":"A stop-loss is a price you choose, where Strike closes the trade for you. The liquidation price is where the exchange must close it to cover the loss, so the first belongs well before the second."}}]},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Strike ecosystem","item":"https://strike.benryan.com.au/ecosystem/"},{"@type":"ListItem","position":2,"name":"Guides","item":"https://strike.benryan.com.au/ecosystem/guides/"},{"@type":"ListItem","position":3,"name":"Liquidation, and how to avoid it: a plain-English guide","item":"https://strike.benryan.com.au/ecosystem/guides/liquidation/"}]}]}</script>
+  <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/img/favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <link rel="preload" href="/fonts/AtkinsonHyperlegibleNext-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/br-fonts.css">
+  <link rel="stylesheet" href="/css/br-tokens.css">
+  <link rel="stylesheet" href="/css/br-base.css">
+  <link rel="stylesheet" href="/css/br-components.css">
+  <link rel="stylesheet" href="/css/page.css">
+  <link rel="stylesheet" href="/ecosystem/ecosystem.css">
+  <link rel="stylesheet" href="/ecosystem/guides/guides.css">
+  <link rel="stylesheet" href="/ecosystem/guides/stills.css">
+  <script src="/src/theme.js"></script>
+</head>
+<body class="guide-page" data-stop="liquidations">
+  <a class="skip" href="#main">Skip to the guide</a>
+  <div class="guide-back" aria-hidden="true"></div>
+  <header class="hud hud-top">
+    <div class="hud-title">
+      <p class="br-label">Strike ecosystem · guide</p>
+      <p class="hud-district">Perpetuals &amp; Trading</p>
+    </div>
+    <div class="hud-actions">
+      <a class="chip" href="/ecosystem/guides/">All guides</a>
+      <a class="chip" href="/ecosystem/">Drive</a>
+      <button class="theme-toggle" type="button" aria-label="Switch to dark mode" id="theme-toggle">
+          <svg class="theme-toggle-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <g class="theme-toggle-rays">
+              <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </g>
+            <path class="theme-toggle-path" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
+          </svg>
+        </button>
+    </div>
+  </header>
+  <main id="main" class="sheet guide-sheet">
+    <article class="guide-article">
+      <p class="br-label">Start here · 4 of 5</p>
+      <h1 id="guide-title">Liquidation, and how to avoid it: a plain-English guide</h1>
+      <p class="guide-sub">What the liquidation price is, why leverage pulls it closer, how Strike closes a position in stages, and the habits that keep a first trade well clear of it.</p>
+      <p class="guide-meta">Published 3 Nov 2026 · Facts checked 3 Nov 2026 · By <a href="https://benryan.com.au">Ben Ryan</a></p>
+      <p class="muted guide-disclosure">Not affiliated with Strike. Not financial advice.</p>
+      <section class="guide-minute">
+        <h2 id="in-one-minute">In one minute</h2>
+        <ul>
+<li><strong>What it is:</strong> liquidation is the exchange closing your position because the money behind it can no longer cover the loss. You lose that margin.</li>
+<li><strong>Who it's for:</strong> anyone using leverage, which on a perp is anyone who has not set it to 1x.</li>
+<li><strong>The one thing to know:</strong> the liquidation price is shown before you confirm a trade. Lower leverage pushes it further away, and a stop order can close the trade before it is reached.</li>
+</ul>
+      </section>
+      <div class="guide-body">
+<h2 id="what-liquidation-is">What liquidation is</h2>
+<p>Every leveraged position has <strong>margin</strong> behind it. A move against you eats into that margin. Strike requires a minimum to stay in the trade, the <strong>maintenance margin</strong>: a small percentage of the position's value, 0.4% on a Bitcoin position of up to $10,000. When your remaining margin falls to that line, the position is <strong>liquidated</strong>: closed by the exchange, not by you.</p>
+<p>The <strong>liquidation price</strong> is the price at which that happens. Strike shows it as an estimate in the order panel before you trade, and next to each open position afterwards. The <strong>margin ratio</strong> is the same idea as a percentage: maintenance margin divided by what you have left, where 100% means liquidation.</p>
+<h3 id="why-leverage-moves-it-closer">Why leverage moves it closer</h3>
+<p>At 2x, the price has to fall about halfway before your margin is gone. At 10x, about a tenth. At 20x, a 5% move is enough. Leverage does not change how far prices move, only how far they can move before you are out.</p>
+<h3 id="how-strike-liquidates">How Strike liquidates</h3>
+<p>Strike does not dump the whole position at once. A solvent position is reduced in stages, up to five attempts on the public order book, each sized to the current risk. If a reduction restores the account, the rest stays open.</p>
+<p>Only a bankrupt position, or one still unsafe after the final attempt, goes to the backstop. A protocol vault takes it on, and as a last resort Strike trims positions on the profitable side, which it calls <strong>auto-deleveraging</strong>.</p>
+<h2 id="who-it-s-for">Who it's for</h2>
+<ul>
+<li><strong>You are about to use leverage for the first time.</strong> The habits below are for you.</li>
+<li><strong>You already hold a position.</strong> The liquidation price next to it says how much room it has.</li>
+<li><strong>You copy a trader.</strong> Your copies use your leverage, so the liquidation prices are yours, not theirs.</li>
+</ul>
+<h2 id="how-to-check-and-move-your-liquidation-price">How to check and move your liquidation price</h2>
+<ol>
+<li>On the Trade page, set your size and leverage. The panel's <strong>Est. Liquidation Price</strong> updates as you change them.</li>
+<li>Lower the leverage and watch the estimate move away from the current price. That is the simplest lever you have.</li>
+<li>Tick <strong>TP/SL</strong> to attach a stop-loss: a price at which Strike closes the position for you, before the liquidation price.</li>
+<li>After you trade, the <strong>Positions</strong> table shows each liquidation price. Under isolated margin you can add margin to push it further away.</li>
+</ol>
+<figure><img src="/ecosystem/guides/img/liquidation/tpsl.png" alt="The order panel with TP/SL ticked: the stop-loss and take-profit fields under the size, and the estimated liquidation price below" width="570" height="1202" loading="lazy"><figcaption>The order panel with TP/SL ticked: the stop-loss and take-profit fields under the size, and the estimated liquidation price below</figcaption></figure>
+<h2 id="a-worked-example">A worked example</h2>
+<p><em>This is an example, not a suggestion.</em> Take the $100 long on Bitcoin from the last guide, at 10x, so a $1,000 position. If Bitcoin falls about 9.6%, the $100 of margin is almost gone and the maintenance margin line is crossed. Strike starts closing the position around there.</p>
+<p>Now take the same $100 at 2x, a $200 position. The price has to fall close to 50% before the same thing happens. Each 1% move is worth $2 instead of $10, and the trade survives an ordinary bad week.</p>
+<h2 id="things-worth-knowing">Things worth knowing</h2>
+<ul>
+<li><strong>Liquidation is not free.</strong> On top of the lost margin, Strike can charge an adaptive liquidation fee when the forced close fills better than the bankruptcy price.</li>
+<li><strong>Cross and isolated behave differently.</strong> Under cross margin your whole balance is the buffer, so the price is further away but the whole account is exposed. Under isolated only the locked margin is at risk.</li>
+<li><strong>A stop order is not a guarantee.</strong> It becomes a market order when triggered, so in a fast market the fill can be worse than the stop price. It still acts long before the exchange has to.</li>
+<li><strong>Copied positions can be liquidated too.</strong> If a lead you copy is liquidated, your copy closes by the same fraction. Your own copy can also be liquidated on its own, at your leverage.</li>
+</ul>
+
+      </div>
+      <section class="guide-faq">
+        <h2 id="questions-people-ask">Questions people ask</h2>
+        <h3>Will Strike warn me before liquidating?</h3>
+        <p>The liquidation price is shown next to the position at all times, and the margin ratio rises as you get close. The closing itself is automatic.</p>
+        <h3>Can I get the margin back after a liquidation?</h3>
+        <p>No. The margin behind the position covers the loss, and any surplus from a better fill goes to the backstop under the liquidation fee rules.</p>
+        <h3>Does a lower leverage setting cost anything?</h3>
+        <p>No. It means a smaller position for the same margin, so smaller gains and losses per move, and a liquidation price further away.</p>
+        <h3>What is the difference between a stop-loss and the liquidation price?</h3>
+        <p>A stop-loss is a price you choose, where Strike closes the trade for you. The liquidation price is where the exchange must close it to cover the loss, so the first belongs well before the second.</p>
+      </section>
+      <div class="guide-body">
+<h2 id="how-i-use-it">How I use it</h2>
+<blockquote>
+<p>I only hold copied positions. Before any copy starts, I lock the leverage on every market the lead trades and cap how much of the account a copy can use. I check the liquidation prices after every new position, not only when the market turns.</p>
+</blockquote>
+<h2 id="next">Next</h2>
+<ul>
+<li><strong>Next:</strong> Your first trade on Strike (Start here, part 5, coming)</li>
+<li>Before this: <a href="/ecosystem/guides/long-short-leverage/">Long, short and leverage</a></li>
+<li>Official docs: <a href="https://docs.strikefinance.org/perpetuals/liquidations" rel="noopener">Liquidations</a> and <a href="https://docs.strikefinance.org/perpetuals/margin-tiers" rel="noopener">Margin Tiers</a></li>
+<li>Try it: <a href="https://app.strikefinance.org/trade/BTC?referralCode=BenRyan" rel="noopener">open Strike</a> (my referral link, 5% off fees)</li>
+</ul>
+      </div>
+      <p class="muted guide-disclosure">Not financial advice.</p>
+      <div class="sheet-actions">
+        <a class="br-button guide-drive" href="/ecosystem/?stop=liquidations"><span class="br-button-label">Drive there</span></a>
+        <a class="br-button br-button--secondary" href="/ecosystem/guides/"><span class="br-button-label">All guides</span></a>
+      </div>
+    </article>
+  </main>
+  <footer class="hud hud-foot">
+    <span class="foot-live">Live data: Strike public API ·</span>
+    <span class="foot-credit">Made with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></span>
+    <span><span class="foot-long">Independent, not affiliated with Strike</span><span class="foot-short">Not affiliated with Strike</span></span>
+    <span class="foot-by">· Built by <a href="https://benryan.com.au" target="_blank" rel="noopener">Ben Ryan</a> · <a href="https://github.com/benryandev/copilot-check" target="_blank" rel="noopener">Source</a></span>
+  </footer>
+  <script src="/src/theme-toggle.js"></script>
+</body>
+</html>

@@ -22,6 +22,7 @@ test('guide page: head, dates on the page, JSON-LD Article + FAQPage, buttons, n
   const [a, f] = ld(html);
   assert.equal(a.datePublished, '2026-11-10'); assert.equal(a.dateModified, g.modified); assert.equal(a.author.name, 'Ben Ryan');
   assert.equal(f.mainEntity.length, 3); assert.ok(f.mainEntity[0].acceptedAnswer.text.length > 10);
+  assert.equal(a.isAccessibleForFree, true, 'no paywall: the toolkit otherwise asks for the Subscription rich-result properties');
   assert.ok(html.includes('href="/ecosystem/?stop=strike"') && html.includes('Read next: ') && html.includes('href="/ecosystem/guides/"'));
   assert.ok(html.includes('<body class="guide-page" data-stop="strike">') && html.includes('class="hud hud-foot"') && html.includes('Strike HQ'));
   assert.ok(html.includes('<main id="main" class="sheet guide-sheet">') && html.includes('<article class="guide-article">') && html.includes('<h1 id="guide-title">'));

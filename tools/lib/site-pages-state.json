@@ -4,11 +4,11 @@
     "lastmod": "2026-11-03"
   },
   "/ecosystem/": {
-    "hash": "878f3d8d966f0cec",
+    "hash": "f097c86a9d618131",
     "lastmod": "2026-11-03"
   },
   "/ecosystem/stops/": {
-    "hash": "a8d9ac4fb7e5d0c1",
+    "hash": "0b4243d1716babc9",
     "lastmod": "2026-11-03"
   },
   "/ecosystem/submit/": {
@@ -16,15 +16,23 @@
     "lastmod": "2026-11-02"
   },
   "/ecosystem/guides/": {
-    "hash": "0efcc8845a2e0c4c",
+    "hash": "52a2a8f448b3848c",
     "lastmod": "2026-11-03"
   },
   "/ecosystem/guides/what-is-strike/": {
-    "hash": "b2dc2777c8812c39",
+    "hash": "254130255170cfab",
     "lastmod": "2026-11-03"
   },
   "/ecosystem/guides/what-is-a-perp/": {
-    "hash": "5b483c946e659aeb",
+    "hash": "880752993158985d",
+    "lastmod": "2026-11-03"
+  },
+  "/ecosystem/guides/long-short-leverage/": {
+    "hash": "a36842cd327679ca",
+    "lastmod": "2026-11-03"
+  },
+  "/ecosystem/guides/liquidation/": {
+    "hash": "8080a57d652365bb",
     "lastmod": "2026-11-03"
   }
 }

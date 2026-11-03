@@ -15,6 +15,22 @@ export const GUIDES = [
     "series": "start-here",
     "order": 1,
     "path": "/ecosystem/guides/what-is-a-perp/"
+  },
+  {
+    "slug": "long-short-leverage",
+    "title": "Long, short and leverage: what 2x, 10x and 20x really mean",
+    "stop": "perpetuals",
+    "series": "start-here",
+    "order": 2,
+    "path": "/ecosystem/guides/long-short-leverage/"
+  },
+  {
+    "slug": "liquidation",
+    "title": "Liquidation, and how to avoid it: a plain-English guide",
+    "stop": "liquidations",
+    "series": "start-here",
+    "order": 3,
+    "path": "/ecosystem/guides/liquidation/"
   }
 ];
 export const guidesForStop = (stopKey) => GUIDES.filter((g) => g.stop === stopKey);

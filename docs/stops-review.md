@@ -45,6 +45,8 @@ Link: [Docs: Margin tiers](https://docs.strikefinance.org/perpetuals/margin-tier
 
 Guide: What is a perp? Perpetual futures explained in plain English (/ecosystem/guides/what-is-a-perp/)
 
+Guide: Long, short and leverage: what 2x, 10x and 20x really mean (/ecosystem/guides/long-short-leverage/)
+
 ### Strike Node
 
 Strike's own execution layer. Orders are matched off the base chain so trading can be fast, while deposits stay in on-chain locker contracts.
@@ -99,6 +101,8 @@ Staged, not all at once. An account that falls short of margin is first reduced 
 - Liquidations carry a fee; the docs cover the full lifecycle.
 
 Link: [Docs: Liquidations](https://docs.strikefinance.org/perpetuals/liquidations) · live: Liquidated, all time
+
+Guide: Liquidation, and how to avoid it: a plain-English guide (/ecosystem/guides/liquidation/)
 
 ### Sub-accounts
 

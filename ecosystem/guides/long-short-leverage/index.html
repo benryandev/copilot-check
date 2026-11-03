@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Long, short and leverage: what 2x, 10x and 20x really mean · Strike guides</title>
+  <meta name="description" content="Going long or short on Strike, what leverage really multiplies, how the same 5% move plays out at 2x, 10x and 20x, and the cross and isolated margin modes.">
+  <link rel="canonical" href="https://strike.benryan.com.au/ecosystem/guides/long-short-leverage/">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Strike Ecosystem">
+  <meta property="og:title" content="Long, short and leverage: what 2x, 10x and 20x really mean · Strike guides">
+  <meta property="og:description" content="Going long or short on Strike, what leverage really multiplies, how the same 5% move plays out at 2x, 10x and 20x, and the cross and isolated margin modes.">
+  <meta property="og:url" content="https://strike.benryan.com.au/ecosystem/guides/long-short-leverage/">
+  <meta property="og:image" content="https://strike.benryan.com.au/ecosystem/guides/img/long-short-leverage/cover.png">
+  <meta property="og:image:width" content="1500">
+  <meta property="og:image:height" content="600">
+  <meta property="og:image:alt" content="Long, short and leverage: what 2x, 10x and 20x really mean">
+  <meta property="article:published_time" content="2026-11-03">
+  <meta property="article:modified_time" content="2026-11-03">
+  <meta property="article:author" content="https://benryan.com.au">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Long, short and leverage: what 2x, 10x and 20x really mean · Strike guides">
+  <meta name="twitter:description" content="Going long or short on Strike, what leverage really multiplies, how the same 5% move plays out at 2x, 10x and 20x, and the cross and isolated margin modes.">
+  <meta name="twitter:image" content="https://strike.benryan.com.au/ecosystem/guides/img/long-short-leverage/cover.png">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Article","@id":"https://strike.benryan.com.au/ecosystem/guides/long-short-leverage/#article","headline":"Long, short and leverage: what 2x, 10x and 20x really mean","description":"Going long or short on Strike, what leverage really multiplies, how the same 5% move plays out at 2x, 10x and 20x, and the cross and isolated margin modes.","image":"https://strike.benryan.com.au/ecosystem/guides/img/long-short-leverage/cover.png","datePublished":"2026-11-03","dateModified":"2026-11-03","author":{"@type":"Person","name":"Ben Ryan","url":"https://benryan.com.au"},"publisher":{"@type":"Organization","name":"Copilot Check","url":"https://strike.benryan.com.au/"},"mainEntityOfPage":"https://strike.benryan.com.au/ecosystem/guides/long-short-leverage/","isPartOf":{"@type":"WebSite","name":"Copilot Check","url":"https://strike.benryan.com.au/"},"inLanguage":"en","isAccessibleForFree":true,"wordCount":650,"about":{"@type":"Thing","name":"Strike Finance"}},{"@type":"FAQPage","@id":"https://strike.benryan.com.au/ecosystem/guides/long-short-leverage/#faq","mainEntity":[{"@type":"Question","name":"Can I lose more than my margin?","acceptedAnswer":{"@type":"Answer","text":"With isolated margin, the amount locked to that position is what is at risk. With cross margin the position can draw on your whole account balance."}},{"@type":"Question","name":"Is 1x leverage the same as buying the coin?","acceptedAnswer":{"@type":"Answer","text":"Close, but not the same. You hold a contract that follows the price, you pay or receive hourly funding, and you never hold the coin itself."}},{"@type":"Question","name":"Which margin mode does Strike use if I do nothing?","acceptedAnswer":{"@type":"Answer","text":"cross margin, set per market. You can switch any market to isolated from the order panel."}},{"@type":"Question","name":"Does changing leverage move my liquidation price?","acceptedAnswer":{"@type":"Answer","text":"Yes. Higher leverage means less margin behind the same position, so the liquidation price sits closer to your entry."}}]},{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Strike ecosystem","item":"https://strike.benryan.com.au/ecosystem/"},{"@type":"ListItem","position":2,"name":"Guides","item":"https://strike.benryan.com.au/ecosystem/guides/"},{"@type":"ListItem","position":3,"name":"Long, short and leverage: what 2x, 10x and 20x really mean","item":"https://strike.benryan.com.au/ecosystem/guides/long-short-leverage/"}]}]}</script>
+  <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/img/favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <link rel="preload" href="/fonts/AtkinsonHyperlegibleNext-Variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/br-fonts.css">
+  <link rel="stylesheet" href="/css/br-tokens.css">
+  <link rel="stylesheet" href="/css/br-base.css">
+  <link rel="stylesheet" href="/css/br-components.css">
+  <link rel="stylesheet" href="/css/page.css">
+  <link rel="stylesheet" href="/ecosystem/ecosystem.css">
+  <link rel="stylesheet" href="/ecosystem/guides/guides.css">
+  <link rel="stylesheet" href="/ecosystem/guides/stills.css">
+  <script src="/src/theme.js"></script>
+</head>
+<body class="guide-page" data-stop="perpetuals">
+  <a class="skip" href="#main">Skip to the guide</a>
+  <div class="guide-back" aria-hidden="true"></div>
+  <header class="hud hud-top">
+    <div class="hud-title">
+      <p class="br-label">Strike ecosystem · guide</p>
+      <p class="hud-district">Perpetuals &amp; Trading</p>
+    </div>
+    <div class="hud-actions">
+      <a class="chip" href="/ecosystem/guides/">All guides</a>
+      <a class="chip" href="/ecosystem/">Drive</a>
+      <button class="theme-toggle" type="button" aria-label="Switch to dark mode" id="theme-toggle">
+          <svg class="theme-toggle-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <g class="theme-toggle-rays">
+              <line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </g>
+            <path class="theme-toggle-path" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" />
+          </svg>
+        </button>
+    </div>
+  </header>
+  <main id="main" class="sheet guide-sheet">
+    <article class="guide-article">
+      <p class="br-label">Start here · 3 of 5</p>
+      <h1 id="guide-title">Long, short and leverage: what 2x, 10x and 20x really mean</h1>
+      <p class="guide-sub">Going long or short on Strike, what leverage really multiplies, how the same 5% move plays out at 2x, 10x and 20x, and the cross and isolated margin modes.</p>
+      <p class="guide-meta">Published 3 Nov 2026 · Facts checked 3 Nov 2026 · By <a href="https://benryan.com.au">Ben Ryan</a></p>
+      <p class="muted guide-disclosure">Not affiliated with Strike. Not financial advice.</p>
+      <section class="guide-minute">
+        <h2 id="in-one-minute">In one minute</h2>
+        <ul>
+<li><strong>What it is:</strong> long means you profit when a price rises, short when it falls. Leverage lets a small deposit control a larger position, so every move counts for more.</li>
+<li><strong>Who it's for:</strong> anyone about to place a first perp trade who wants to know what the leverage number in the order panel does before touching it.</li>
+<li><strong>The one thing to know:</strong> leverage multiplies losses as much as gains. At 20x, a 5% move against you wipes out the money behind the trade.</li>
+</ul>
+      </section>
+      <div class="guide-body">
+<h2 id="what-long-short-and-leverage-mean">What long, short and leverage mean</h2>
+<p><strong>Going long</strong> is buying a perp because you expect the price to rise. <strong>Going short</strong> is selling one you do not own, because you expect the price to fall. Both are a single click on Strike: the order panel has a Long/Buy side and a Short/Sell side.</p>
+<p><strong>Leverage</strong> is the ratio between the size of your position and the money you put behind it, called <strong>margin</strong>. With $100 of margin at 10x leverage you hold a $1,000 position. The exchange lends the rest, and your $100 absorbs the gains and losses on the whole $1,000. That is why the same price move feels ten times bigger.</p>
+<p>The leverage box on Strike shows the setting for the market you are on. Each market has a cap, and it falls as positions grow. On Bitcoin the first tier allows up to 100x for positions up to $10,000; larger positions are capped lower.</p>
+<h3 id="cross-and-isolated-margin">Cross and isolated margin</h3>
+<p>Strike has two <strong>margin modes</strong>, set per market. <strong>Cross margin</strong>, the default, lets every cross position draw on your whole account balance as its buffer. <strong>Isolated margin</strong> locks a fixed amount to one position, so only that amount is at risk. Cross keeps your liquidation price further away; isolated caps what one bad trade can cost.</p>
+<h2 id="who-it-s-for">Who it's for</h2>
+<ul>
+<li><strong>You want to make a small deposit go further.</strong> Leverage does that, and the next section shows what it costs when the price goes the other way.</li>
+<li><strong>You think a price will fall.</strong> A short earns when it does, something a plain purchase cannot do.</li>
+<li><strong>You run more than one position.</strong> Cross or isolated decides whether they share a buffer or stand alone.</li>
+</ul>
+<h2 id="how-to-set-leverage-and-margin-mode-on-strike">How to set leverage and margin mode on Strike</h2>
+<ol>
+<li>Open a market on the Trade page. The order panel sits on the right.</li>
+<li>The top row shows the margin mode, <strong>Cross</strong> or <strong>Isolated</strong>, and the leverage, for example <strong>10x</strong>. Click either to change it.</li>
+<li>Set the leverage with the slider or by typing a number. Lowering leverage always works; raising it may be refused if your position is already in a higher tier.</li>
+<li>Pick <strong>Long/Buy</strong> or <strong>Short/Sell</strong>, enter a size, and the panel shows the margin it will take and the estimated liquidation price before you confirm.</li>
+</ol>
+<figure><img src="/ecosystem/guides/img/long-short-leverage/leverage.png" alt="Strike's Adjust Leverage dialog: a slider from 1x to the market's maximum, 100x on Bitcoin, with a warning that higher leverage increases liquidation risk" width="1112" height="928" loading="lazy"><figcaption>Strike's Adjust Leverage dialog: a slider from 1x to the market's maximum, 100x on Bitcoin, with a warning that higher leverage increases liquidation risk</figcaption></figure>
+<h2 id="a-worked-example">A worked example</h2>
+<p><em>This is an example, not a suggestion.</em> Say you put $100 behind a long on Bitcoin and the price moves 5%.</p>
+<div class="table"><table>
+<thead><tr><th>Leverage</th><th>Position size</th><th>Price +5%</th><th>Price −5%</th></tr></thead>
+<tbody>
+<tr><td>1x</td><td>$100</td><td>+$5</td><td>−$5</td></tr>
+<tr><td>2x</td><td>$200</td><td>+$10</td><td>−$10</td></tr>
+<tr><td>10x</td><td>$1,000</td><td>+$50</td><td>−$50</td></tr>
+<tr><td>20x</td><td>$2,000</td><td>+$100</td><td>−$100</td></tr>
+</tbody>
+</table></div>
+<p>At 20x the 5% drop costs the whole $100. In practice the exchange closes the position a little before that point, which is what the next guide is about. A short behaves the same way with the signs reversed.</p>
+<h2 id="things-worth-knowing">Things worth knowing</h2>
+<ul>
+<li><strong>Leverage does not change the odds.</strong> It changes how much each move is worth, both ways.</li>
+<li><strong>Fees scale with position size, not margin.</strong> Strike's base taker fee is 0.050% of the position's value, so a $1,000 position pays ten times the fee of a $100 one.</li>
+<li><strong>Funding scales the same way.</strong> The hourly funding payment is worked out on the full position.</li>
+<li><strong>Cross margin puts the whole account on the line.</strong> One losing position can draw down the balance that other positions rely on. Isolated margin stops that, at the cost of a closer liquidation price.</li>
+</ul>
+
+      </div>
+      <section class="guide-faq">
+        <h2 id="questions-people-ask">Questions people ask</h2>
+        <h3>Can I lose more than my margin?</h3>
+        <p>With isolated margin, the amount locked to that position is what is at risk. With cross margin the position can draw on your whole account balance.</p>
+        <h3>Is 1x leverage the same as buying the coin?</h3>
+        <p>Close, but not the same. You hold a contract that follows the price, you pay or receive hourly funding, and you never hold the coin itself.</p>
+        <h3>Which margin mode does Strike use if I do nothing?</h3>
+        <p>cross margin, set per market. You can switch any market to isolated from the order panel.</p>
+        <h3>Does changing leverage move my liquidation price?</h3>
+        <p>Yes. Higher leverage means less margin behind the same position, so the liquidation price sits closer to your entry.</p>
+      </section>
+      <div class="guide-body">
+<h2 id="next">Next</h2>
+<ul>
+<li><strong>Next:</strong> Liquidation, and how to avoid it (Start here, part 4, coming)</li>
+<li>Before this: <a href="/ecosystem/guides/what-is-a-perp/">What is a perp?</a></li>
+<li>Official docs: <a href="https://docs.strikefinance.org/perpetuals/margin-modes" rel="noopener">Margin Modes</a> and <a href="https://docs.strikefinance.org/perpetuals/margin-tiers" rel="noopener">Margin Tiers</a></li>
+<li>Try it: <a href="https://app.strikefinance.org/trade/BTC?referralCode=BenRyan" rel="noopener">open Strike</a> (my referral link, 5% off fees)</li>
+</ul>
+      </div>
+      <p class="muted guide-disclosure">Not financial advice.</p>
+      <div class="sheet-actions">
+        <a class="br-button guide-drive" href="/ecosystem/?stop=perpetuals"><span class="br-button-label">Drive there</span></a>
+        <a class="br-button br-button--secondary" href="/ecosystem/guides/liquidation/"><span class="br-button-label">Read next: Liquidation, and how to avoid it</span></a>
+        <a class="br-button br-button--secondary" href="/ecosystem/guides/"><span class="br-button-label">All guides</span></a>
+      </div>
+    </article>
+  </main>
+  <footer class="hud hud-foot">
+    <span class="foot-live">Live data: Strike public API ·</span>
+    <span class="foot-credit">Made with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></span>
+    <span><span class="foot-long">Independent, not affiliated with Strike</span><span class="foot-short">Not affiliated with Strike</span></span>
+    <span class="foot-by">· Built by <a href="https://benryan.com.au" target="_blank" rel="noopener">Ben Ryan</a> · <a href="https://github.com/benryandev/copilot-check" target="_blank" rel="noopener">Source</a></span>
+  </footer>
+  <script src="/src/theme-toggle.js"></script>
+</body>
+</html>

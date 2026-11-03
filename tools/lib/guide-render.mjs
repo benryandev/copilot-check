@@ -90,7 +90,7 @@ export function renderGuidePage(g, { guides, stops, districts }) {
   const toc = g.words >= 700 ? `      <nav class="guide-toc" aria-label="On this page"><p class="br-label">On this page</p><ol>\n${g.toc.map((t) => `        <li><a href="#${esc(t.id)}">${esc(t.title)}</a></li>`).join('\n')}\n      </ol></nav>\n` : '';
   const ld = [
     { '@type': 'Article', '@id': `${canonical}#article`, headline: g.title, description: g.subtitle, image: cover, datePublished: g.published, dateModified: g.modified,
-      author, publisher, mainEntityOfPage: canonical, isPartOf: website, inLanguage: 'en', wordCount: g.words, about: { '@type': 'Thing', name: 'Strike Finance' } },
+      author, publisher, mainEntityOfPage: canonical, isPartOf: website, inLanguage: 'en', isAccessibleForFree: true, wordCount: g.words, about: { '@type': 'Thing', name: 'Strike Finance' } },
     { '@type': 'FAQPage', '@id': `${canonical}#faq`, mainEntity: g.faq.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) },
     { '@type': 'BreadcrumbList', itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Strike ecosystem', item: `${SITE}/ecosystem/` },
