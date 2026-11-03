@@ -185,31 +185,44 @@ export const SPAWN = { x: 0, z: 14, heading: 0 };
 export const MULTIPLAYER = true;
 
 // ── Stop layout ────────────────────────────────────────────────────────
-// Stops without a fixed `pos` go round the far side of their district in two rows, which keeps
-// the HQ entrance and both ring-road entrances clear.
-export function layoutStops() {
+// Stops without a fixed `pos` (and not on Builders' Row) go round the far side of their district, which keeps the HQ
+// entrance and both ring-road entrances clear. Angles are from the HQ direction: 0° points at HQ, the ring-road mouths
+// are at ±70°. Rules from the 3 Nov 2026 district audit (docs/superpowers/specs/2026-11-03-ecosystem-districts-design.md):
+//   - up to eight stops: one row at r−12 on 100°–260° (30° clear of the mouths), evenly spread; an odd count would put
+//     a pad at 180°, straight behind the centre from the entrance, so odd counts use n+1 slots and leave the one nearest
+//     180° empty (the larger of a tie), which also opens a view corridor behind the plaza's monument;
+//   - nine or more (Perpetuals): the outer row at r−12 on 95°–265° takes the tallest stops, as many as fit 13.5 m apart
+//     (ten at 54 m); the rest sit at r−28 on alternate midpoints between outer slots, so no inner pad lines up with an
+//     outer one and no label stacks from the entrance.
+export const LAYOUT = { oneRowMax: 8, arc: [100, 260], outerArc: [95, 265], outerInset: 12, innerInset: 28, minGap: 14, minGapWide: 13.5, keepOff180: 5 };
+export function layoutStops(stops = STOPS, districts = DISTRICTS) {
   const out = new Map();
-  for (const d of Object.values(DISTRICTS)) {
+  const deg = Math.PI / 180;
+  const slots = (m, [from, to]) => Array.from({ length: m }, (_, i) => (m === 1 ? (from + to) / 2 : from + ((to - from) * i) / (m - 1)));
+  for (const d of Object.values(districts)) {
     if (!d.hubDir) continue;
-    const stops = STOPS.filter((s) => s.district === d.key && !s.pos && !s.row);
-    if (!stops.length) continue;
+    const auto = stops.filter((s) => s.district === d.key && !s.pos && !s.row);
+    const n = auto.length;
+    if (!n) continue;
     const base = Math.atan2(d.hubDir[1], d.hubDir[0]); // pointing at HQ
-    const outer = Math.ceil(stops.length * 0.6);
-    // Past ten pads the arcs widen (Perpetuals after 3 Nov 2026 lays fourteen): 160° and 124° give 15.6 m and 13 m spacing at
-    // r = 54, still 25° clear of the ring-road mouths at ±70°; a plaza with ten or fewer keeps its arcs and positions.
-    const wide = stops.length > 10;
-    const rows = [
-      { n: outer, r: d.radius - 12, from: wide ? 95 : 105, to: wide ? 265 : 255 },
-      { n: stops.length - outer, r: d.radius - 30, from: wide ? 118 : 128, to: wide ? 242 : 232 },
-    ];
-    let k = 0;
-    for (const row of rows) {
-      for (let j = 0; j < row.n; j++) {
-        const f = row.n === 1 ? 0.5 : j / (row.n - 1);
-        const a = base + ((row.from + (row.to - row.from) * f) * Math.PI) / 180;
-        out.set(stops[k++].key, [d.centre[0] + Math.cos(a) * row.r, d.centre[1] + Math.sin(a) * row.r]);
-      }
+    const put = (stop, a, r) => out.set(stop.key, [d.centre[0] + Math.cos(base + a * deg) * r, d.centre[1] + Math.sin(base + a * deg) * r]);
+    if (n <= LAYOUT.oneRowMax) {
+      const angles = slots(n % 2 ? n + 1 : n, LAYOUT.arc);
+      if (n % 2) angles.splice(Math.ceil((angles.length - 1) / 2), 1); // the slot nearest 180°, the larger on a tie
+      auto.forEach((s, i) => put(s, angles[i], d.radius - LAYOUT.outerInset));
+      continue;
     }
+    const rOut = d.radius - LAYOUT.outerInset;
+    const span = (LAYOUT.outerArc[1] - LAYOUT.outerArc[0]) * deg * rOut; // arc length of the outer row
+    const k = Math.min(n, Math.floor(span / LAYOUT.minGapWide) + 1);
+    const tallest = new Set(auto.slice().sort((a, b) => heightOf(b.shape) - heightOf(a.shape)).slice(0, k).map((s) => s.key));
+    const outer = auto.filter((s) => tallest.has(s.key)), inner = auto.filter((s) => !tallest.has(s.key)); // STOPS order within each row
+    const oa = slots(k, LAYOUT.outerArc);
+    outer.forEach((s, i) => put(s, oa[i], rOut));
+    const mids = oa.slice(1).map((a, i) => (a + oa[i]) / 2);
+    const alt = mids.filter((_, i) => i % 2 === 1); // every other midpoint, 2 steps apart
+    const innerSlots = alt.length >= inner.length ? alt : mids; // more inner stops than alternate slots: every midpoint
+    inner.forEach((s, i) => put(s, innerSlots[i], d.radius - LAYOUT.innerInset));
   }
   return out;
 }
