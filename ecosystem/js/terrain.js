@@ -3,13 +3,14 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { createCobbles, metreUVs } from "./cobbles.js";
-import { DISTRICTS, ROADS, JUMPS, STOPS, TRACK_ROAD, RACE_TRACK, RIVER } from "./content.js";
+import { DISTRICTS, ROADS, JUMPS, STOPS, TRACK, RIVER as HUB_RIVER } from "./content.js";
 import { tint } from "./colours.js";
 import { ridgeProfile } from "./ridge-math.js";
 import { KERB, kerbGaps, inGap } from "./furniture-math.js";
 
 export const ROAD_HALF = 3.6;
-export const WORLD = { cx: 0, cz: 0, radius: 395 }; // 280 before the raceway went in beyond Partners
+// Everything per world below is filled by configureTerrain(cfg), in place: other modules hold these objects from import.
+export const WORLD = { cx: 0, cz: 0, radius: 0 }; // the hub: 395 (280 before the raceway went in beyond Partners)
 
 const smooth = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -32,7 +33,7 @@ function sampled(r) {
   }
   return { ...r, curve, pts, cum, len, half };
 }
-export const roads = ROADS.map(sampled);
+export const roads = [];
 
 // Segments bucketed on a grid, so lookups only check nearby segments
 const CELL = 12;
@@ -54,7 +55,7 @@ function bucket(list) {
   });
   return grid;
 }
-const grid = bucket(roads);
+let grid = new Map();
 
 // Nearest point on any road within maxD: distance, road index, t (0–1), unit tangent.
 // Beyond maxD, d is Infinity.
@@ -85,9 +86,12 @@ export function roadInfo(x, z, maxD = 26) {
 
 // ── The river ──────────────────────────────────────────────────────────
 // Sampled like a road. riverInfo gives the distance to its centreline, how far along (s) and the unit tangent.
-export const river = sampled(RIVER);
-const riverGrid = bucket([river]);
-export const WATER_LEVEL = RIVER.level;
+// A world without water gets a river of no width: riverInfo finds nothing and every river term is zero
+const NO_WATER = { half: 0, depth: 0, level: 0, fords: [], points: [] };
+let RIVER = NO_WATER;
+export let river = null;
+let riverGrid = new Map();
+export let WATER_LEVEL = 0;
 export function riverInfo(x, z, maxD = 20) {
   let best = { d: Infinity, s: 0, tx: 0, tz: 1 };
   const ci = Math.floor(x / CELL), cj = Math.floor(z / CELL), n = Math.ceil(maxD / CELL);
@@ -113,10 +117,11 @@ const rimOpen = (d) => smooth(RIVER.half + 1, RIVER.half + 8, d);
 // so fx = sin(yaw), fz = cos(yaw)), the crossing angle, and whether it gets a bridge or a ford.
 export const DECK_Y = 0.18; // deck top
 export const DECK_RAMP = 0.8; // metres of ramp past each deck end (0.18 over 0.8: slope 0.23, well under the car's climb limit)
-export const crossings = (() => {
+export const crossings = [];
+function findCrossings() {
   const out = [];
   roads.forEach((r, ri) => {
-    if (ri === TRACK_ROAD) return;
+    if (ri === trackRoad) return;
     for (let i = 0; i < river.pts.length - 1; i++) for (let j = 0; j < r.pts.length - 1; j++) {
       const [ax, az] = river.pts[i], [bx, bz] = river.pts[i + 1], [cx, cz] = r.pts[j], [dx, dz] = r.pts[j + 1];
       const den = (bx - ax) * (dz - cz) - (bz - az) * (dx - cx);
@@ -131,7 +136,7 @@ export const crossings = (() => {
     }
   });
   return out;
-})();
+}
 // Height of a bridge deck at a point: DECK_Y on the deck, a ramp past each end, -Infinity off every bridge. The deck
 // follows its road (distance along the road from the crossing, distance from the centreline), so a road that bends
 // just past the river keeps the deck under it; the Chains spoke does exactly that.
@@ -151,7 +156,8 @@ export const onWater = (x, z) => riverInfo(x, z, 6).d < RIVER.half - 0.3 && !onB
 
 // ── Jumps, placed in each road's local frame ───────────────────────────
 // A jump may give `s` (metres along the road) instead of `t`.
-export const jumps = JUMPS.map((jump) => {
+export const jumps = [];
+function placeJump(jump) {
   if (jump.road == null) { // free-standing: placed by its low end and direction
     const l = Math.hypot(jump.dir[0], jump.dir[1]), fx = jump.dir[0] / l, fz = jump.dir[1] / l;
     return { ...jump, ox: jump.x, oz: jump.z, fx, fz, rx: -fz, rz: fx };
@@ -166,7 +172,7 @@ export const jumps = JUMPS.map((jump) => {
   const rx = -tz / l, rz = tx / l;
   const off = j.side * (r.half - j.width / 2 - 0.2);
   return { ...j, ox: start.x + rx * off, oz: start.z + rz * off, fx: tx / l, fz: tz / l, rx, rz };
-});
+}
 
 /** The jump whose footprint holds the point, or null. */
 export function jumpAt(x, z) {
@@ -185,17 +191,18 @@ function jumpHeight(x, z) {
   return j.height * Math.pow(u / j.length, 1.35);
 }
 // Free-standing ramps stand on flattened ground (like plazas), so both lips of a pair sit at the same height
-const freeJumpPads = jumps.filter((j) => j.road == null).map((j) => ({ x: j.ox + j.fx * j.length / 2, z: j.oz + j.fz * j.length / 2, r: j.length / 2 + 3 }));
+const freeJumpPads = [];
+const freeJumpPad = (j) => ({ x: j.ox + j.fx * j.length / 2, z: j.oz + j.fz * j.length / 2, r: j.length / 2 + 3 });
 
 // ── Builders' Row: shop plots along the last stretch of the road into Developers ──
 // The first slot 8 m back from the road's end (so about 6 m outside the rim, whatever the plaza's radius; 3 Nov 2026,
 // when Developers shrank to 42 m a fraction of the road left a 20 m gap), then alternate sides every 13 m, facing the
 // road; each slot is flattened.
-const ROW_STOPS = STOPS.filter((s) => s.row === "builders");
-export const builderSlots = (() => {
+export const builderSlots = [];
+function placeBuilderSlots(stops) {
   const r = roads.find((x) => x.kind === "spoke" && x.to === "developers");
   if (!r) return [];
-  return ROW_STOPS.map((stop, i) => {
+  return stops.filter((s) => s.row === "builders").map((stop, i) => {
     const t = 1 - (8 + i * 13) / r.len;
     const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
     const side = i % 2 ? 1 : -1;
@@ -203,31 +210,27 @@ export const builderSlots = (() => {
     const off = ROAD_HALF + 9;
     return { key: stop.key, x: p.x + nx * off, z: p.z + nz * off, face: [p.x, p.z] };
   });
-})();
+}
 
 // ── RealFi Raceway: gates and the infield ──────────────────────────────
-const track = roads[TRACK_ROAD];
-// A point `s` metres along the track: position, unit forward and right (right of travel)
+// The configured, resolved Track (track-math.js), or null in a world with no timed track; trackRoad is its road's index
+let track = null, trackRoad = -1;
+export const trackDef = () => track;
+// A point `s` metres along the track: position, unit forward and right (right of travel). No track: the origin, facing -z.
 export function trackAt(s) {
-  const t = (((s / track.len) % 1) + 1) % 1;
-  const p = track.curve.getPointAt(t), tan = track.curve.getTangentAt(t);
-  const l = Math.hypot(tan.x, tan.z);
-  const fx = tan.x / l, fz = tan.z / l;
-  return { x: p.x, z: p.z, fx, fz, rx: -fz, rz: fx };
+  if (!track) return { x: 0, z: 0, fx: 0, fz: -1, rx: 1, rz: 0 };
+  return track.at(s);
 }
 // The centreline polyline sampled at even spacing (s = 0 is the start line)
-export const trackPts = track.pts, trackCum = track.cum, trackLen = track.len, TRACK_HALF = track.half;
+export let trackPts = [], trackCum = [], trackLen = 0, TRACK_HALF = 0;
 // Gate 0 is the start/finish line, then each checkpoint in order. A gate is a segment across the
 // track, a little wider than it, so cutting across grass beside it doesn't count.
-export const GATE_HALF = track.half + 1.5;
-export const raceGates = [0, ...RACE_TRACK.checkpoints].map((s, i) => ({ i, s, ...trackAt(s), w: GATE_HALF }));
-{
-  const drift = Math.abs(track.len - RACE_TRACK.length);
-  if (drift > 0.5) console.warn(`[eco] raceway: lap is ${track.len.toFixed(1)} m but RACE_TRACK.length says ${RACE_TRACK.length}`);
-}
+export let GATE_HALF = 0;
+export const raceGates = [];
 // Inside the raceway: on or near the track, or anywhere in its infield
-const trackPoly = track.pts;
+let trackPoly = [];
 export function inRaceway(x, z) {
+  if (!track || trackRoad < 0) return false;
   let inside = false;
   for (let i = 0, j = trackPoly.length - 1; i < trackPoly.length; j = i++) {
     const [xi, zi] = trackPoly[i], [xj, zj] = trackPoly[j];
@@ -235,15 +238,16 @@ export function inRaceway(x, z) {
   }
   if (inside) return true;
   const info = roadInfo(x, z, 30);
-  return info.road === TRACK_ROAD && info.d < 30;
+  return info.road === trackRoad && info.d < 30;
 }
 // How much a point counts as raceway for the car's grass rule: 1 on or inside it, 0 in open country, and a
 // 10 m fade past the 30 m margin so the top speed changes on a slope rather than at an invisible line.
 export const RACEWAY_FADE = 10;
 export function racewayWeight(x, z) {
+  if (!track || trackRoad < 0) return 0;
   if (inRaceway(x, z)) return 1;
   const info = roadInfo(x, z, 30 + RACEWAY_FADE);
-  if (info.road !== TRACK_ROAD) return 0;
+  if (info.road !== trackRoad) return 0;
   return Math.max(0, Math.min(1, (30 + RACEWAY_FADE - info.d) / RACEWAY_FADE));
 }
 // Distance to the nearest point of the track (for skipping it when far away)
@@ -253,15 +257,16 @@ export function trackDistance(x, z) {
   return best;
 }
 // A gentle crest along the far side of the track: metres of lift at `s` along it
-const CREST = { from: 330, to: 425, height: 2.2 }; // over the S-bend
+// The track's first lift (the hub: { from: 330, to: 425, height: 2.2 }, over the S-bend), or none
+let CREST = { height: 0 };
 const crest = (s) => (s <= CREST.from || s >= CREST.to ? 0 : CREST.height * 0.5 * (1 - Math.cos(((s - CREST.from) / (CREST.to - CREST.from)) * Math.PI * 2)));
 function trackLift(info) {
-  if (info.road !== TRACK_ROAD || !CREST.height) return 0;
+  if (info.road !== trackRoad || trackRoad < 0 || !CREST.height) return 0;
   return crest(info.t * track.len) * (1 - smooth(track.half + 3, 22, info.d));
 }
 
 // ── Height field ───────────────────────────────────────────────────────
-const plazas = Object.values(DISTRICTS).filter((d) => d.plaza !== false);
+const plazas = [];
 function flatMask(x, z, d, half = ROAD_HALF) {
   let m = smooth(half + 2, half + 16, d);
   for (const p of plazas) {
@@ -288,7 +293,7 @@ function edgeRise(x, z) {
 // ── Chart Ridge ────────────────────────────────────────────────────────
 // The ridge road's lift comes from the last 24 hourly closes (ridge-math.js); it is part of the one height function,
 // like the Raceway's crest, so cars, ghosts and remote cars ride it for free. Flat until a series is set.
-export const RIDGE_ROAD = roads.findIndex((r) => r.kind === "ridge");
+export let RIDGE_ROAD = -1;
 export const RIDGE_FADE = 22; // metres from the road's edge over which the lift fades to the ground
 let ridgeState = { closes: [], profile: null };
 export function setRidgeSeries(closes) {
@@ -550,3 +555,49 @@ export function buildPlazas(palette) {
   group.userData.recolour(palette);
   return group;
 }
+
+// ── Configuration ──────────────────────────────────────────────────────
+// cfg = { world: { cx, cz, radius }, roads, jumps, waters: [river-shaped bodies], track: resolved Track | null, districts, stops }.
+// Rebuilds every per-world value in place: objects and arrays keep their identity (importers hold them), scalars read
+// by name are reassigned, and the caches are rebuilt or cleared so the old world never answers.
+let config = null;
+export const terrainConfig = () => config;
+export function configureTerrain(cfg) {
+  config = cfg;
+  Object.assign(WORLD, cfg.world);
+  roads.splice(0, roads.length, ...cfg.roads.map(sampled));
+  grid = bucket(roads);
+  trackRoad = roads.findIndex((r) => r.kind === "track");
+  RIDGE_ROAD = roads.findIndex((r) => r.kind === "ridge");
+
+  RIVER = cfg.waters?.[0] ?? NO_WATER; // one river for now
+  river = RIVER.points.length ? sampled(RIVER) : { ...RIVER, pts: [], cum: [], len: 0 };
+  riverGrid = bucket(RIVER.points.length ? [river] : []);
+  WATER_LEVEL = RIVER.level;
+  crossings.splice(0, crossings.length, ...findCrossings());
+
+  jumps.splice(0, jumps.length, ...(cfg.jumps || []).map(placeJump));
+  freeJumpPads.splice(0, freeJumpPads.length, ...jumps.filter((j) => j.road == null).map(freeJumpPad));
+  builderSlots.splice(0, builderSlots.length, ...placeBuilderSlots(cfg.stops || []));
+  plazas.splice(0, plazas.length, ...Object.values(cfg.districts || {}).filter((d) => d.plaza !== false));
+
+  track = cfg.track ?? null;
+  trackPts = track ? track.pts : [];
+  trackCum = track ? track.cum : [];
+  trackLen = track ? track.len : 0;
+  TRACK_HALF = track ? track.half : 0;
+  GATE_HALF = track ? track.half + 1.5 : 0;
+  trackPoly = trackPts;
+  raceGates.splice(0, raceGates.length, ...(track ? [0, ...track.checkpoints].map((s, i) => ({ i, s, ...trackAt(s), w: GATE_HALF })) : []));
+  if (track && trackRoad >= 0) {
+    const drift = Math.abs(roads[trackRoad].len - track.len);
+    if (drift > 0.5) console.warn(`[eco] raceway: the road is ${roads[trackRoad].len.toFixed(1)} m but the track's lap is ${track.len.toFixed(1)} m`);
+  }
+  CREST = track?.lifts?.[0] ?? { height: 0 };
+
+  kerbGapCache.clear();
+  setRidgeSeries(ridgeState.closes); // the profile is scaled to the ridge road's length
+}
+// The hub, from content.js
+const hubConfig = () => ({ world: { cx: 0, cz: 0, radius: 395 }, roads: ROADS, jumps: JUMPS, waters: [HUB_RIVER], track: TRACK, districts: DISTRICTS, stops: STOPS });
+configureTerrain(hubConfig());
