@@ -251,17 +251,22 @@ for (const w of WIDTHS) for (const theme of THEMES) {
           const off = tr.half + 3 - 3.2; // the wall's line less the lateral run of 12 m at 15 degrees, so the nose meets it at the spot
           const e = window.__eco;
           e.placeCar(p.x + p.rx * side * off, p.z + p.rz * side * off, Math.atan2(-dx, -dz));
-          e.car.s.speed = 24; e.keys.up = true;
+          // Record that contact happened, on whichever frame: a graze on a straight wall lasts only a few frames, so polling
+          // for contact still holding would depend on the renderer's speed. A setter on the flag sees every frame's write.
+          const s = e.car.s; let wall = false;
+          window.__wallTouches = 0;
+          Object.defineProperty(s, 'wall', { configurable: true, enumerable: true, get: () => wall, set: (v) => { wall = v; if (v) window.__wallTouches++; } });
+          s.speed = 24; e.keys.up = true;
         });
         // The software renderer runs few frames a second, so wait on the car (the wall touched, then a few frames more), not the clock
-        await page.waitForFunction(() => window.__eco.car.s.wall, null, { timeout: 15000 }).catch(() => {});
+        const touched = await page.waitForFunction(() => window.__wallTouches > 0, null, { timeout: 15000 }).then(() => true, () => false);
         await page.waitForTimeout(350);
         await page.evaluate(() => { window.__eco.keys.up = false; });
-        const wallState = await page.evaluate(() => { const s = window.__eco.car.s; return { speed: +s.speed.toFixed(1), wall: s.wall, x: +s.x.toFixed(1), z: +s.z.toFixed(1), heading: +s.heading.toFixed(3) }; });
+        const wallState = await page.evaluate(() => { const s = window.__eco.car.s; return { speed: +s.speed.toFixed(1), wall: s.wall, touches: window.__wallTouches, x: +s.x.toFixed(1), z: +s.z.toFixed(1), heading: +s.heading.toFixed(3) }; });
         console.log('walls', JSON.stringify(wallState));
-        if (!wallState.wall) errors.push(`walls: the car never touched the tyre wall (at ${wallState.x}, ${wallState.z}, ${wallState.speed} m/s); the graze was not shown`);
+        if (!touched) errors.push(`walls: the car never touched the tyre wall (at ${wallState.x}, ${wallState.z}, ${wallState.speed} m/s); the graze was not shown`);
         await shot('walls', 200);
-        await page.evaluate(() => window.__eco.toStart());
+        await page.evaluate(() => { const s = window.__eco.car.s, v = s.wall; delete s.wall; s.wall = v; delete window.__wallTouches; window.__eco.toStart(); }); // back to a plain field
       }
       // The ghost, held 1.4 s into a stand-in leader's lap so it sits just ahead of the car (the real board may be offline here)
       await page.evaluate(() => window.__eco.ghostPreview(1.4, { name: 'Ben', ms: 25449, splits: [8570, 11900, 16630, 19950, 21840] }));
