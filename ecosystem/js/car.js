@@ -185,7 +185,7 @@ export function stepCar(car, keys, dt, physics = DEFAULT_PHYSICS) {
     // costs little unless the car is pushed square into it. A graze turns the car away from the wall a little.
     s.x = hit.x; s.z = hit.z;
     const k = Math.abs(fx * hit.nx + fz * hit.nz);
-    const away = Math.sign(hit.nx * fz - hit.nz * fx || 1); // the turn that rotates the forward vector toward the normal
+    const away = (Math.sign(s.speed) || 1) * Math.sign(hit.nx * fz - hit.nz * fx || 1); // turns the direction of travel toward the normal (the nose going forward, the tail reversing)
     if (!s.wall) {
       s.speed *= hitSpeedShare(k, P.graze);
       s.heading += grazeNudge(k, P.graze) * away;

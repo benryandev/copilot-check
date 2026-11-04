@@ -107,3 +107,24 @@ test('the step reports the surface, and wading on any surface is 12 m/s', async 
   assert.ok(wetFrames > 30, `in the water for ${wetFrames} frames`);
   assert.ok(wetMax <= 12 + 0.05 && wetMax > 11, `wading top ${wetMax.toFixed(2)} should be 12`);
 });
+
+test('a reversing graze turns the direction of travel away from the wall too', async () => {
+  // Reversing at 9 m/s with the tail 10° toward the right-hand wall, starting 5 m right of the centreline
+  const car = mk(60); wallAt(40, 1, 60);
+  const p = car.start, n = [-p.rx, -p.rz]; // the wall's normal, from the wall toward the car
+  car.s.x += p.rx * 5; car.s.z += p.rz * 5; car.s.heading += 10 * Math.PI / 180; car.s.speed = -9;
+  const travel = () => { const f = forward(car), d = Math.sign(car.s.speed) || 1; return f[0] * d * n[0] + f[1] * d * n[1]; };
+  const lat = () => (car.s.x - p.x) * p.rx + (car.s.z - p.z) * p.rz;
+  let before = null, after = null, contact = 0, minAbs = Infinity;
+  for (let i = 0; i < 240; i++) {
+    const t0 = travel();
+    stepCar(car, { down: true }, DT);
+    minAbs = Math.min(minAbs, Math.abs(car.s.speed));
+    if (car.s.wall) { contact++; if (before === null) { before = t0; after = travel(); } }
+  }
+  assert.ok(before !== null, 'the car reached the wall');
+  assert.ok(after > before + 0.05, `travel·n ${before.toFixed(3)} -> ${after.toFixed(3)} should rise: travel turned away from the wall`);
+  assert.ok(contact < 15, `in contact for ${contact} frames: it should glance off, not pin`);
+  assert.ok(!car.s.wall && lat() < T.TRACK_HALF + 3 - 0.5 - 1.6 - 0.1, `separated from the wall (lateral ${lat().toFixed(2)})`);
+  assert.ok(minAbs >= 9 * 0.75 && Math.abs(car.s.speed) > 8.5, `kept most of its speed (min ${minAbs.toFixed(2)}, last ${Math.abs(car.s.speed).toFixed(2)})`);
+});
