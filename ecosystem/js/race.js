@@ -285,7 +285,7 @@ async function postLap(entry, retried = false) {
         + (code === "segment_too_fast" && Number.isInteger(body?.segment) ? ` (stretch ${body.segment + 1})` : "");
     }
   } catch {
-    status.textContent = "Leaderboard offline. Your curBest() lap is still saved on this device.";
+    status.textContent = "Leaderboard offline. Your best lap is still saved on this device.";
   } finally {
     if (!waiting) postButtons().forEach((b) => (b.disabled = false));
   }
