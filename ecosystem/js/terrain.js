@@ -7,6 +7,7 @@ import { DISTRICTS, ROADS, JUMPS, STOPS, TRACK, RIVER as HUB_RIVER, WATERS } fro
 import { tint } from "./colours.js";
 import { ridgeProfile } from "./ridge-math.js";
 import { KERB, kerbGaps, inGap } from "./furniture-math.js";
+import { surfaceAt } from "./track-math.js";
 
 export const ROAD_HALF = 3.6;
 // Everything per world below is filled by configureTerrain(cfg), in place: other modules hold these objects from import.
@@ -374,6 +375,27 @@ export function grassWeight(x, z) {
   return flatMask(x, z, info.d, info.half) * smooth(w.half + 0.5, w.half + 3, w.d);
 }
 export const onDirt = (x, z) => { const info = roadInfo(x, z); return info.d < info.half + 0.3 || jumpHeight(x, z) > 0; };
+// Is the point on the track's own road, on a tarmac stretch of its surface list? (False on a track with none, as the hub's.)
+export function onTarmac(x, z) {
+  if (!track || trackRoad < 0) return false;
+  const info = roadInfo(x, z);
+  if (info.road !== trackRoad || info.d >= info.half + 0.3) return false;
+  return surfaceAt(track, trackS(info.t * roads[trackRoad].len)) === "tarmac";
+}
+// The tarmac stretches in the track road's own arc length (what the road mesh is built in), sorted by `from`;
+// a stretch that crosses the road's start is split in two.
+export function surfaceStretches() {
+  if (!track) return [];
+  const out = [];
+  for (const r of track.surface ?? []) {
+    if (r.kind !== "tarmac") continue;
+    // The span is kept in track metres so a stretch that wraps in the track's s, or only in the road's s, splits correctly
+    const span = r.from <= r.to ? r.to - r.from : track.len - r.from + r.to, from = roadS(r.from), end = from + span;
+    if (end <= track.len) out.push({ from, to: end, kind: r.kind });
+    else out.push({ from: 0, to: end - track.len, kind: r.kind }, { from, to: track.len, kind: r.kind });
+  }
+  return out.sort((a, b) => a.from - b.from);
+}
 
 // ── Meshes ─────────────────────────────────────────────────────────────
 // The grass's 0..1 colour variation at a point (the ground mesh and the riverbed patch share it)

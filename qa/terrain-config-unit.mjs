@@ -40,3 +40,32 @@ test('a per-gate half override reaches raceGates', () => {
     assert.deepEqual(T.raceGates.map((g) => g.s), [0, ...cfg.track.checkpoints]);
   } finally { T.configureTerrain(hub); }
 });
+
+const tinyTarmac = () => {
+  const points = [[-100, -30], [100, -30], [100, 30], [-100, 30]];
+  return {
+    world: { cx: 0, cz: 0, radius: 200 }, roads: [{ kind: 'track', from: 'x', to: 'x', closed: true, half: 6, points }],
+    jumps: [], waters: [], districts: {}, stops: [],
+    track: resolveTrack({ id: 'tiny-tarmac', half: 6, points, gates: [{ s: 150 }, { s: 300 }], surface: [{ from: 0, to: 100, kind: 'tarmac' }] }),
+  };
+};
+test('onTarmac reads the track surface list; the hub has none', () => {
+  T.configureTerrain(tinyTarmac());
+  try {
+    const on = T.trackAt(50), off = T.trackAt(150);
+    assert.equal(T.onTarmac(on.x, on.z), true); assert.equal(T.onDirt(on.x, on.z), true, 'tarmac is road');
+    assert.equal(T.onTarmac(off.x, off.z), false);
+    assert.equal(T.onTarmac(on.x + on.rx * 9, on.z + on.rz * 9), false, 'beside the ribbon is grass');
+    assert.deepEqual(T.surfaceStretches(), [{ from: 0, to: 100, kind: 'tarmac' }]);
+  } finally { T.configureTerrain(hub); }
+  assert.deepEqual(T.surfaceStretches(), []);
+  for (let s = 0; s < T.trackLen; s += 10) { const p = T.trackAt(s); assert.equal(T.onTarmac(p.x, p.z), false); }
+});
+test('a wrapped stretch comes out as two road stretches', () => {
+  const cfg = tinyTarmac(); cfg.track = resolveTrack({ ...cfg.track, surface: [{ from: cfg.track.len - 20, to: 20, kind: 'tarmac' }] });
+  T.configureTerrain(cfg);
+  try {
+    const st = T.surfaceStretches();
+    assert.equal(st.length, 2); assert.equal(st[0].from, 0); assert.equal(st[0].to, 20); assert.ok(Math.abs(st[1].to - cfg.track.len) < 1e-6);
+  } finally { T.configureTerrain(hub); }
+});

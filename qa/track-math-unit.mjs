@@ -1,6 +1,6 @@
 // qa/track-math-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { resolveTrack, frameToWorld } from '../ecosystem/js/track-math.js';
+import { resolveTrack, frameToWorld, inStretch, surfaceAt } from '../ecosystem/js/track-math.js';
 const square = { id: 't', half: 6, points: [[0, 0], [100, 0], [100, 60], [0, 60]], gates: [{ at: [100, 30] }, { at: [50, 60] }, { at: [0, 30] }] };
 
 test('a closed track is sampled about 2 m apart, with s = 0 at points[0] and the lap closed', () => {
@@ -39,4 +39,18 @@ test('frameToWorld matches the raceway frame', () => {
   const rOut = [Math.sin(a), -Math.cos(a)], rAlong = [Math.cos(a), Math.sin(a)];
   const expect = (x, y) => [rOut[0] * (303 + y) + rAlong[0] * x, rOut[1] * (303 + y) + rAlong[1] * x];
   for (const [x, y] of [[0, 0], [-62, -36], [141, -12]]) { const p = to(x, y), q = expect(x, y); assert.ok(Math.hypot(p[0] - q[0], p[1] - q[1]) < 1e-9); }
+});
+
+test('inStretch: a plain range, and a range that wraps the lap', () => {
+  assert.equal(inStretch(50, 0, 100, 300), true);
+  assert.equal(inStretch(100, 0, 100, 300), true, 'inclusive at both ends');
+  assert.equal(inStretch(150, 0, 100, 300), false);
+  assert.equal(inStretch(290, 280, 20, 300), true, 'wrapped: before the line');
+  assert.equal(inStretch(10, 280, 20, 300), true, 'wrapped: after the line');
+  assert.equal(inStretch(100, 280, 20, 300), false);
+});
+test('surfaceAt: tarmac inside a stretch, dirt everywhere else and on a track with no surface list', () => {
+  const t = resolveTrack({ id: 't', half: 6, points: [[-100, -30], [100, -30], [100, 30], [-100, 30]], surface: [{ from: 0, to: 100, kind: 'tarmac' }] });
+  assert.equal(surfaceAt(t, 50), 'tarmac'); assert.equal(surfaceAt(t, 150), 'dirt');
+  assert.equal(surfaceAt(resolveTrack({ id: 'u', half: 6, points: [[-100, -30], [100, -30], [100, 30], [-100, 30]] }), 50), 'dirt');
 });

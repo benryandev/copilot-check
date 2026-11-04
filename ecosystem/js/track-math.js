@@ -12,6 +12,16 @@ export function frameToWorld(frame) {
 
 const wrap = (v, m) => ((v % m) + m) % m;
 
+// Is `s` (wrapped to a lap of `len`) inside [from, to]? Inclusive at both ends; from > to means the range crosses the line.
+export const inStretch = (s, from, to, len) => {
+  const w = wrap(s, len);
+  return from <= to ? w >= from && w <= to : w >= from || w <= to;
+};
+// "tarmac" inside any tarmac stretch of the track's surface list, "dirt" everywhere else (and with no list)
+export function surfaceAt(track, s) {
+  return (track.surface ?? []).some((r) => r.kind === "tarmac" && inStretch(s, r.from, r.to, track.len)) ? "tarmac" : "dirt";
+}
+
 export function resolveTrack(def) {
   const half = def.half ?? 6;
   const toWorld = def.frame ? frameToWorld(def.frame) : (x, y) => [x, y];
@@ -59,7 +69,7 @@ export function resolveTrack(def) {
   const sOf = (p) => cum[nearest(pts, p)];
 
   // The start line goes in first, so the stable sort keeps it ahead of any gate that also sits at s = 0
-  const gateDefs = [{ s: 0, w: half + 1.5 }, ...def.gates.map((g) => {
+  const gateDefs = [{ s: 0, w: half + 1.5 }, ...(def.gates ?? []).map((g) => {
     const s = g.s !== undefined ? wrap(g.s, len) : wrap(sOf(toWorld(g.at[0], g.at[1])) + (g.shift || 0), len);
     return { s, w: g.half ?? half + 1.5 };
   })].sort((a, b) => a.s - b.s);
