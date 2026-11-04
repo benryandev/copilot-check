@@ -569,10 +569,14 @@ body.is-driving .hud-foot { opacity: 0; transform: translate(-50%, 0.5rem); tran
 body.is-driving .hud-foot a { pointer-events: none; }
 body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transition: none; } /* gone at once; they fade back in */
 @media (prefers-reduced-motion: reduce) { .arrive, .hud, .touch, .stick-knob { transition: none; } }
-.loader-mark { width: 7.5rem; height: 7.5rem; animation: loader-turn 2.4s linear infinite; }
+/* The mark turns like the coin on HQ: two faces back to back, each hiding its reverse, so whichever face comes
+   round shows the mark the right way (one flat image turned in 3D showed it mirrored for half of every turn) */
+.loader-coin { position: relative; width: 7.5rem; height: 7.5rem; transform-style: preserve-3d; animation: loader-turn 2.4s linear infinite; }
+.loader-mark { position: absolute; inset: 0; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.loader-mark--back { transform: rotateY(180deg); }
 .loader-text { margin: 0; font-family: var(--font-mono); font-size: var(--label-size); letter-spacing: var(--label-track); text-transform: uppercase; color: var(--text-secondary); }
 @keyframes loader-turn { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
-@media (prefers-reduced-motion: reduce) { .loader-mark { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .loader-coin { animation: none; } }
 
 /* ── RealFi Raceway: lap clock and finish sheet ─────────────────────── */
 .race-hud {
