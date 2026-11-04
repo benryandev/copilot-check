@@ -30,3 +30,8 @@ test('the Raceway\'s cut ratio is 87%', () => {
   const c = cutLine(TRACK, { wallsAsGates: false });
   assert.ok(Math.abs(c.ratio - 0.87) < 0.01, `${c.ratio}`);
 });
+test('the simulator\'s gates are terrain\'s raceGates, each at its own half-width', async () => {
+  const { raceGates } = await import('../ecosystem/js/terrain.js');
+  const sim = await makeSim({ props: 'cleared' });
+  assert.deepEqual(sim.gates.map((g) => [g.i, g.s, g.w]), raceGates.map((g) => [g.i, g.s, g.w]));
+});

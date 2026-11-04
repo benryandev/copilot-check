@@ -84,7 +84,7 @@ function buildGate(parent, gate, lineMat) {
   const g = new THREE.Group();
   g.position.set(gate.x, terrainHeight(gate.x, gate.z), gate.z);
   g.rotation.y = yawOf(gate);
-  const half = GATE_HALF + 0.3;
+  const half = (gate.w ?? GATE_HALF) + 0.3; // each gate at its own half-width
   const A = accent(D().colour);
   for (const x of [-half, half]) {
     const pole = cyl(0.14, 6.6, M.trim, x, 0, 0, 8);

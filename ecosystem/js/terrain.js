@@ -249,7 +249,8 @@ export function trackAt(s) {
 // The centreline polyline sampled at even spacing (s = 0 is the start line)
 export let trackPts = [], trackCum = [], trackLen = 0, TRACK_HALF = 0;
 // Gate 0 is the start/finish line, then each checkpoint in order. A gate is a segment across the
-// track, a little wider than it, so cutting across grass beside it doesn't count.
+// track, a little wider than it, so cutting across grass beside it doesn't count. GATE_HALF is the default
+// half-width; a gate's own `w` (from a per-gate `half` in the track definition) is what counts.
 export let GATE_HALF = 0;
 export const raceGates = [];
 // Inside the raceway: on or near the track, or anywhere in its infield
@@ -627,7 +628,8 @@ export function configureTerrain(cfg) {
   TRACK_HALF = track ? track.half : 0;
   GATE_HALF = track ? track.half + 1.5 : 0;
   trackPoly = trackPts;
-  raceGates.splice(0, raceGates.length, ...(track ? [0, ...track.checkpoints].map((s, i) => ({ i, s, ...trackAt(s), w: GATE_HALF })) : []));
+  // Each gate keeps its own half-width (a per-gate `half` in the definition); s is rounded as track.checkpoints has it
+  raceGates.splice(0, raceGates.length, ...(track ? track.gates.map((g) => { const s = Math.round(g.s); return { i: g.i, s, ...trackAt(s), w: g.w }; }) : []));
   if (track && trackRoad >= 0) {
     const drift = Math.abs(roads[trackRoad].len - track.len);
     if (drift > 0.5) console.warn(`[eco] raceway: the road is ${roads[trackRoad].len.toFixed(1)} m but the track's lap is ${track.len.toFixed(1)} m`);

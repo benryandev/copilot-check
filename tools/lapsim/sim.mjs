@@ -35,8 +35,8 @@ export async function makeSim({ track = trackDef(), props = "cleared", physics =
   if (!track) throw new Error("makeSim: no track (the terrain is configured without one)");
   const { stepCar, colliders, CAR_R } = await loadStepCar();
   const LEN = track.len, half = track.half;
-  const gateHalf = half + 1.5; // as terrain.js configures GATE_HALF
-  const gates = [0, ...track.checkpoints].map((s, i) => ({ i, s, ...track.at(s), w: gateHalf }));
+  // As terrain.js builds raceGates: each gate at its rounded s, with its own half-width
+  const gates = track.gates.map((g) => { const s = Math.round(g.s); return { i: g.i, s, ...track.at(s), w: g.w }; });
   const N = track.checkpoints.length;
   const tab = [];
   for (let s = 0; s < LEN; s += STEP) tab.push({ s, ...track.at(s) });

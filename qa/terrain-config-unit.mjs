@@ -31,3 +31,12 @@ test('no module aliases a per-world terrain binding at module scope', () => {
     for (const n of names) assert.ok(!new RegExp(`^(const|let) [^=\\n]*=\\s*${n}\\b`, 'm').test(src), `${f} aliases ${n} at module scope`);
   }
 });
+test('a per-gate half override reaches raceGates', () => {
+  const cfg = tiny();
+  cfg.track = resolveTrack({ id: 'gate-half', half: 6, points: cfg.roads[0].points, gates: [{ s: 120, half: 6.5 }, { s: 200 }] });
+  T.configureTerrain(cfg);
+  try {
+    assert.equal(T.raceGates[1].w, 6.5); assert.equal(T.raceGates[2].w, 7.5);
+    assert.deepEqual(T.raceGates.map((g) => g.s), [0, ...cfg.track.checkpoints]);
+  } finally { T.configureTerrain(hub); }
+});
