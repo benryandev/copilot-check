@@ -184,6 +184,8 @@ export const RIVER = {
   half: 3.5, depth: 0.45, level: -0.06, flow: 0.7,
   fords: ["token"], // roads (by their `to`) that cross without a bridge
 };
+// Every body of water in the hub, as terrain.js configures them (bodies[0] is the river)
+export const WATERS = [RIVER];
 
 export const SPAWN = { x: 0, z: 14, heading: 0 };
 // Other visitors as cars (peers.js). Off here, or with ?mp=0, the world is single-player as before.

@@ -3,48 +3,47 @@
 // terrain.js; this file only draws it.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { river, riverInfo, terrainHeight, groundShade, WATER_LEVEL, crossings, roads, DECK_Y, DECK_RAMP } from "./terrain.js";
-import { RIVER } from "./content.js";
+import { waters, waterInfo, terrainHeight, groundShade, WATER_LEVEL, crossings, roads, DECK_Y, DECK_RAMP } from "./terrain.js";
 import { M, box, cyl, canvasTexture, redraws, colliders, orientedBox } from "./build.js";
 
-const BED_W = RIVER.half + 14; // half-width of the bed patch: wide enough to cover the ground mesh's pushed-down band and the triangles beside it
+const BED_PAD = 14; // the bed patch reaches this far past a body's half-width: wide enough to cover the ground mesh's pushed-down band and the triangles beside it
 const BED_ACROSS = 15; // samples across the patch
-const WATER_W = RIVER.half + 0.8; // the surface tucks under the banks
+const WATER_PAD = 0.8; // the surface tucks under the banks
 
-// Sweep a strip of `across` samples along the river; `at(x, z, u)` gives the height, u is -1..1 across
+// Sweep a strip of `across` samples along every body of water, merged into one geometry; `at(x, z, u)` gives the height,
+// u is -1..1 across, and `halfW(body)` the strip's half-width. No bodies, an empty geometry.
 function sweep(halfW, across, at) {
-  const n = river.pts.length;
-  const verts = new Float32Array(n * across * 3), uvs = new Float32Array(n * across * 2), idx = [];
-  const frames = [];
-  for (let i = 0; i < n; i++) {
-    const [x, z] = river.pts[i];
-    const [ax, az] = river.pts[Math.max(0, i - 1)], [bx, bz] = river.pts[Math.min(n - 1, i + 1)];
-    const tx = bx - ax, tz = bz - az, l = Math.hypot(tx, tz);
-    const nx = -tz / l, nz = tx / l;
-    frames.push({ x, z, nx, nz });
-    for (let k = 0; k < across; k++) {
-      const u = (k / (across - 1)) * 2 - 1;
-      const px = x + nx * halfW * u, pz = z + nz * halfW * u;
-      const o = (i * across + k) * 3;
-      verts[o] = px; verts[o + 1] = at(px, pz, u); verts[o + 2] = pz;
-      uvs[(i * across + k) * 2] = k / (across - 1); uvs[(i * across + k) * 2 + 1] = river.cum[i] / 4;
-      if (i < n - 1 && k < across - 1) {
-        const a = i * across + k, b = a + 1, c = a + across, d = c + 1;
-        idx.push(a, c, b, b, c, d);
+  const verts = [], uvs = [], idx = [];
+  for (const W of waters) {
+    const n = W.pts.length, base = verts.length / 3, hw = halfW(W);
+    for (let i = 0; i < n; i++) {
+      const [x, z] = W.pts[i];
+      const [ax, az] = W.pts[Math.max(0, i - 1)], [bx, bz] = W.pts[Math.min(n - 1, i + 1)];
+      const tx = bx - ax, tz = bz - az, l = Math.hypot(tx, tz);
+      const nx = -tz / l, nz = tx / l;
+      for (let k = 0; k < across; k++) {
+        const u = (k / (across - 1)) * 2 - 1;
+        const px = x + nx * hw * u, pz = z + nz * hw * u;
+        verts.push(px, at(px, pz, u), pz);
+        uvs.push(k / (across - 1), W.cum[i] / 4);
+        if (i < n - 1 && k < across - 1) {
+          const a = base + i * across + k, b = a + 1, c = a + across, d = c + 1;
+          idx.push(a, c, b, b, c, d);
+        }
       }
     }
   }
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.BufferAttribute(verts, 3));
-  geo.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+  geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(verts), 3));
+  geo.setAttribute("uv", new THREE.BufferAttribute(new Float32Array(uvs), 2));
   geo.setIndex(idx);
   geo.computeVertexNormals();
-  return { geo, frames };
+  return { geo };
 }
 
 /** The riverbed: analytic heights at a fine spacing, mud in the channel, the ground's own grass colour outside it. */
 export function buildRiverBed(palette) {
-  const { geo } = sweep(BED_W, BED_ACROSS, (x, z) => terrainHeight(x, z));
+  const { geo } = sweep((W) => W.half + BED_PAD, BED_ACROSS, (x, z) => terrainHeight(x, z));
   const pos = geo.attributes.position;
   geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(pos.count * 3), 3));
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
@@ -56,8 +55,8 @@ export function buildRiverBed(palette) {
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i);
       c.copy(a).lerp(b, groundShade(x, z));
-      const d = riverInfo(x, z, RIVER.half + 4).d;
-      const wet = 1 - THREE.MathUtils.smoothstep(d, RIVER.half - 0.4, RIVER.half + 1.2);
+      const w = waterInfo(x, z, waterReachFor(4)), d = w.d;
+      const wet = 1 - THREE.MathUtils.smoothstep(d, w.half - 0.4, w.half + 1.2);
       c.lerp(mud, wet);
       col.setXYZ(i, c.r, c.g, c.b);
     }
@@ -66,6 +65,8 @@ export function buildRiverBed(palette) {
   mesh.userData.recolour(palette);
   return mesh;
 }
+
+const waterReachFor = (pad) => waters.reduce((m, w) => Math.max(m, w.half + pad), 0);
 
 // A tileable value-noise texture painted once
 function noiseTexture(size = 256, cells = 12) {
@@ -94,14 +95,14 @@ function noiseTexture(size = 256, cells = 12) {
  * banks, under the bloom threshold in both themes. Low: a flat tinted plane. Still under reduced motion.
  */
 export function buildWater(palette, { tier = "high", reduceMotion = false } = {}) {
-  const { geo } = sweep(WATER_W, 2, () => WATER_LEVEL);
+  const { geo } = sweep((W) => W.half + WATER_PAD, 2, () => WATER_LEVEL);
   const simple = tier === "low";
   let mat, uniforms = null;
   if (simple) {
     mat = new THREE.MeshLambertMaterial({ color: palette.water, transparent: true, opacity: 0.8, depthWrite: true, side: THREE.DoubleSide });
   } else {
     uniforms = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
-      uTime: { value: 0 }, uFlow: { value: RIVER.flow }, uNoise: { value: null },
+      uTime: { value: 0 }, uFlow: { value: waters[0]?.flow ?? 0.7 }, uNoise: { value: null },
       uWater: { value: new THREE.Color() }, uDeep: { value: new THREE.Color() }, uFoam: { value: new THREE.Color() },
     }]);
     uniforms.uNoise.value = noiseTexture();

@@ -3,7 +3,7 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { createCobbles, metreUVs } from "./cobbles.js";
-import { DISTRICTS, ROADS, JUMPS, STOPS, TRACK, RIVER as HUB_RIVER } from "./content.js";
+import { DISTRICTS, ROADS, JUMPS, STOPS, TRACK, RIVER as HUB_RIVER, WATERS } from "./content.js";
 import { tint } from "./colours.js";
 import { ridgeProfile } from "./ridge-math.js";
 import { KERB, kerbGaps, inGap } from "./furniture-math.js";
@@ -84,56 +84,78 @@ export function roadInfo(x, z, maxD = 26) {
   return best;
 }
 
-// ── The river ──────────────────────────────────────────────────────────
-// Sampled like a road. riverInfo gives the distance to its centreline, how far along (s) and the unit tangent.
-// A world without water gets a river of no width: riverInfo finds nothing and every river term is zero
-const NO_WATER = { half: 0, depth: 0, level: 0, fords: [], points: [] };
-let RIVER = NO_WATER;
-export let river = null;
-let riverGrid = new Map();
+// ── Water ──────────────────────────────────────────────────────────────
+// A list of bodies, each sampled like a road: { ...body, pts, cum, len, half, depth, level, bridges }. waterInfo gives the
+// nearest body (by its edge, like roads), the distance to its centreline, how far along (s, and t as a share), the unit
+// tangent and that body's half and depth, so every channel term reads the body it belongs to. A world without water has
+// an empty list: waterInfo finds nothing and every water term is zero.
+export const waters = [];
+const NO_RIVER = { half: 0, depth: 0, level: 0, fords: [], points: [], pts: [], cum: [], len: 0 };
+export let river = NO_RIVER; // waters[0], kept for water.js's callers and the tools
+let waterGrid = new Map();
+let waterReach = 20; // how far from a centreline any body still shapes the ground (its half + 10, at least 20)
+let waterMaxHalf = 0;
 export let WATER_LEVEL = 0;
-export function riverInfo(x, z, maxD = 20) {
-  let best = { d: Infinity, s: 0, tx: 0, tz: 1 };
+export function waterInfo(x, z, maxD = 20) {
+  let best = { body: -1, d: Infinity, s: 0, t: 0, tx: 0, tz: 1, half: 0, depth: 0 }, bestEdge = Infinity;
   const ci = Math.floor(x / CELL), cj = Math.floor(z / CELL), n = Math.ceil(maxD / CELL);
   for (let a = ci - n; a <= ci + n; a++) for (let b = cj - n; b <= cj + n; b++) {
-    const list = riverGrid.get(cellKey(a, b));
+    const list = waterGrid.get(cellKey(a, b));
     if (!list) continue;
     for (const g of list) {
       const vx = g.bx - g.ax, vz = g.bz - g.az, l2 = vx * vx + vz * vz;
       const u = Math.max(0, Math.min(1, ((x - g.ax) * vx + (z - g.az) * vz) / l2));
       const d = Math.hypot(x - (g.ax + vx * u), z - (g.az + vz * u));
-      if (d < best.d && d <= maxD) { const l = Math.sqrt(l2); best = { d, s: g.cum + l * u, tx: vx / l, tz: vz / l }; }
+      const w = waters[g.ri], edge = d - w.half;
+      if (edge < bestEdge && d <= maxD) {
+        const l = Math.sqrt(l2), s = g.cum + l * u;
+        bestEdge = edge;
+        best = { body: g.ri, d, s, t: s / w.len, tx: vx / l, tz: vz / l, half: w.half, depth: w.depth };
+      }
     }
   }
   return best;
 }
+export const riverInfo = waterInfo;
 // The channel: a parabola `depth` deep at the centre, back to ground level at `half`
-const riverChannel = (d) => (d >= RIVER.half ? 0 : RIVER.depth * (1 - (d / RIVER.half) ** 2));
-// Hills flatten towards the river like they do towards a road, and the rim opens where it leaves
-const riverFlat = (d) => smooth(RIVER.half + 2, RIVER.half + 10, d);
-const rimOpen = (d) => smooth(RIVER.half + 1, RIVER.half + 8, d);
+const riverChannel = (d, half, depth) => (d >= half ? 0 : depth * (1 - (d / half) ** 2));
+// Hills flatten towards the water like they do towards a road, and the rim opens where it leaves
+const riverFlat = (d, half) => smooth(half + 2, half + 10, d);
+const rimOpen = (d, half) => smooth(half + 1, half + 8, d);
 
-// Where roads cross the river: one entry per crossing, with the road's heading there (local +z along the road,
+// A track's inlet: a straight body across the track at `s`, from 60 m on the inside (the side of the track's right
+// vector that points at the centroid of its points) to 14 m on the outside. It never bridges: the track runs through it.
+function inletBody(trk, w, like) {
+  const p = trk.at(w.s), pts = trk.worldPoints;
+  const cx = pts.reduce((a, q) => a + q[0], 0) / pts.length, cz = pts.reduce((a, q) => a + q[1], 0) / pts.length;
+  const sg = (cx - p.x) * p.rx + (cz - p.z) * p.rz >= 0 ? 1 : -1;
+  return { points: [[p.x + p.rx * sg * 60, p.z + p.rz * sg * 60], [p.x - p.rx * sg * 14, p.z - p.rz * sg * 14]], half: w.halfW, depth: like.depth, level: like.level, flow: like.flow, bridges: false };
+}
+
+// Where roads cross a bridged body of water: one entry per crossing, with the road's heading there (local +z along the road,
 // so fx = sin(yaw), fz = cos(yaw)), the crossing angle, and whether it gets a bridge or a ford.
 export const DECK_Y = 0.18; // deck top
 export const DECK_RAMP = 0.8; // metres of ramp past each deck end (0.18 over 0.8: slope 0.23, well under the car's climb limit)
 export const crossings = [];
 function findCrossings() {
   const out = [];
-  roads.forEach((r, ri) => {
-    if (ri === trackRoad) return;
-    for (let i = 0; i < river.pts.length - 1; i++) for (let j = 0; j < r.pts.length - 1; j++) {
-      const [ax, az] = river.pts[i], [bx, bz] = river.pts[i + 1], [cx, cz] = r.pts[j], [dx, dz] = r.pts[j + 1];
-      const den = (bx - ax) * (dz - cz) - (bz - az) * (dx - cx);
-      if (Math.abs(den) < 1e-9) continue;
-      const u = ((cx - ax) * (dz - cz) - (cz - az) * (dx - cx)) / den, v = ((cx - ax) * (bz - az) - (cz - az) * (bx - ax)) / den;
-      if (u < 0 || u > 1 || v < 0 || v > 1) continue;
-      const tx = dx - cx, tz = dz - cz, l = Math.hypot(tx, tz), rx = bx - ax, rz = bz - az, rl = Math.hypot(rx, rz);
-      const angle = (Math.acos(Math.min(1, Math.abs((tx * rx + tz * rz) / (l * rl)))) * 180) / Math.PI;
-      const bridge = !RIVER.fords.includes(r.to);
-      const halfLen = (RIVER.half + 2) / Math.sin((angle * Math.PI) / 180) + 0.5; // the deck covers the channel and both banks
-      out.push({ road: ri, x: ax + (bx - ax) * u, z: az + (bz - az) * u, yaw: Math.atan2(tx / l, tz / l), angle, bridge, half: r.half, halfLen, halfW: r.half + 0.5, s0: r.cum[j] + v * l });
-    }
+  waters.forEach((W, wi) => {
+    if (W.bridges === false) return;
+    roads.forEach((r, ri) => {
+      if (ri === trackRoad) return;
+      for (let i = 0; i < W.pts.length - 1; i++) for (let j = 0; j < r.pts.length - 1; j++) {
+        const [ax, az] = W.pts[i], [bx, bz] = W.pts[i + 1], [cx, cz] = r.pts[j], [dx, dz] = r.pts[j + 1];
+        const den = (bx - ax) * (dz - cz) - (bz - az) * (dx - cx);
+        if (Math.abs(den) < 1e-9) continue;
+        const u = ((cx - ax) * (dz - cz) - (cz - az) * (dx - cx)) / den, v = ((cx - ax) * (bz - az) - (cz - az) * (bx - ax)) / den;
+        if (u < 0 || u > 1 || v < 0 || v > 1) continue;
+        const tx = dx - cx, tz = dz - cz, l = Math.hypot(tx, tz), rx = bx - ax, rz = bz - az, rl = Math.hypot(rx, rz);
+        const angle = (Math.acos(Math.min(1, Math.abs((tx * rx + tz * rz) / (l * rl)))) * 180) / Math.PI;
+        const bridge = !W.fords.includes(r.to);
+        const halfLen = (W.half + 2) / Math.sin((angle * Math.PI) / 180) + 0.5; // the deck covers the channel and both banks
+        out.push({ body: wi, road: ri, x: ax + (bx - ax) * u, z: az + (bz - az) * u, yaw: Math.atan2(tx / l, tz / l), angle, bridge, half: r.half, halfLen, halfW: r.half + 0.5, s0: r.cum[j] + v * l });
+      }
+    });
   });
   return out;
 }
@@ -152,7 +174,10 @@ export function bridgeHeight(x, z, info = roadInfo(x, z)) {
   return h;
 }
 export const onBridge = (x, z) => bridgeHeight(x, z) > -Infinity;
-export const onWater = (x, z) => riverInfo(x, z, 6).d < RIVER.half - 0.3 && !onBridge(x, z);
+export const onWater = (x, z) => {
+  const w = waterInfo(x, z, waterMaxHalf);
+  return w.d < w.half - 0.3 && !onBridge(x, z);
+};
 
 // ── Jumps, placed in each road's local frame ───────────────────────────
 // A jump may give `s` (metres along the road) instead of `t`.
@@ -327,8 +352,8 @@ export function kerbLift(x, z, info = roadInfo(x, z)) {
 }
 
 export function terrainHeight(x, z, info = roadInfo(x, z), lift = true) {
-  const rd = riverInfo(x, z).d;
-  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) * riverFlat(rd) + trackLift(info) + edgeRise(x, z) * rimOpen(rd) - riverChannel(rd) + (lift ? ridgeLift(info) + kerbLift(x, z, info) : 0);
+  const w = waterInfo(x, z, waterReach), rd = w.d;
+  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) * riverFlat(rd, w.half) + trackLift(info) + edgeRise(x, z) * rimOpen(rd, w.half) - riverChannel(rd, w.half, w.depth) + (lift ? ridgeLift(info) + kerbLift(x, z, info) : 0);
 }
 // The one truth for where the ground is: terrain and jumps, or a bridge deck where one spans the river
 export function groundHeight(x, z) {
@@ -338,7 +363,8 @@ export function groundHeight(x, z) {
 // Grass grows where the ground isn't road, plaza or river
 export function grassWeight(x, z) {
   const info = roadInfo(x, z);
-  return flatMask(x, z, info.d, info.half) * smooth(RIVER.half + 0.5, RIVER.half + 3, riverInfo(x, z, 8).d);
+  const w = waterInfo(x, z, 8);
+  return flatMask(x, z, info.d, info.half) * smooth(w.half + 0.5, w.half + 3, w.d);
 }
 export const onDirt = (x, z) => { const info = roadInfo(x, z); return info.d < info.half + 0.3 || jumpHeight(x, z) > 0; };
 
@@ -352,7 +378,7 @@ export const groundShade = (x, z) => 0.5 + 0.5 * Math.sin(x * 0.21 + Math.cos(z 
 export function groundVertexHeight(x, z) {
   const info = roadInfo(x, z);
   if (info.road === RIDGE_ROAD && info.d < info.half + RIDGE_FADE && info.t > 0 && info.t < 1) return terrainHeight(x, z, info, false) - 0.3; // along the road only: past its ends roadInfo clamps t and the patch stops
-  const nearRiver = riverInfo(x, z, RIVER.half + 3).d < RIVER.half + 3;
+  const w = waterInfo(x, z, waterReach), nearRiver = w.d < w.half + 3;
   return terrainHeight(x, z, info) - kerbLift(x, z, info) - (nearRiver ? 0.15 : 0); // no kerb in the coarse mesh: its cells are metres wide and would alias the lip
 }
 export function buildGround(segments, palette) {
@@ -570,10 +596,14 @@ export function configureTerrain(cfg) {
   trackRoad = roads.findIndex((r) => r.kind === "track");
   RIDGE_ROAD = roads.findIndex((r) => r.kind === "ridge");
 
-  RIVER = cfg.waters?.[0] ?? NO_WATER; // one river for now
-  river = RIVER.points.length ? sampled(RIVER) : { ...RIVER, pts: [], cum: [], len: 0 };
-  riverGrid = bucket(RIVER.points.length ? [river] : []);
-  WATER_LEVEL = RIVER.level;
+  const bodies = (cfg.waters || []).filter((b) => b.points?.length >= 2);
+  const inlets = (cfg.track?.water || []).map((w) => inletBody(cfg.track, w, HUB_RIVER)); // an inlet is cut and levelled like the hub river
+  waters.splice(0, waters.length, ...[...bodies, ...inlets].map((b) => ({ fords: [], bridges: true, ...sampled(b) })));
+  river = waters[0] ?? NO_RIVER;
+  waterGrid = bucket(waters);
+  waterMaxHalf = waters.reduce((m, w) => Math.max(m, w.half), 0);
+  waterReach = Math.max(20, waterMaxHalf + 10);
+  WATER_LEVEL = waters[0]?.level ?? 0;
   crossings.splice(0, crossings.length, ...findCrossings());
 
   jumps.splice(0, jumps.length, ...(cfg.jumps || []).map(placeJump));
@@ -599,5 +629,5 @@ export function configureTerrain(cfg) {
   setRidgeSeries(ridgeState.closes); // the profile is scaled to the ridge road's length
 }
 // The hub, from content.js
-const hubConfig = () => ({ world: { cx: 0, cz: 0, radius: 395 }, roads: ROADS, jumps: JUMPS, waters: [HUB_RIVER], track: TRACK, districts: DISTRICTS, stops: STOPS });
+const hubConfig = () => ({ world: { cx: 0, cz: 0, radius: 395 }, roads: ROADS, jumps: JUMPS, waters: WATERS, track: TRACK, districts: DISTRICTS, stops: STOPS });
 configureTerrain(hubConfig());
