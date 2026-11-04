@@ -2,7 +2,7 @@
 // (the 1200 by 80 m rectangle from tarmac-unit.mjs with an inlet across its straight at s 600 and the ramp in front of it).
 // The hub is restored after every reconfiguring test.
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { RAMP, RAMP_POW, LAND_MARGIN, takeoffVy, flightRange, inletHalfFor } from '../ecosystem/js/jump-math.js';
+import { RAMP, RAMP_POW, LAND_MARGIN, LIP_SETBACK, takeoffVy, flightRange, inletHalfFor, inletGap } from '../ecosystem/js/jump-math.js';
 import { loadStepCar } from '../tools/lapsim/car-node.mjs';
 import { resolvePhysics, GRAVITY } from '../ecosystem/js/car-math.js';
 import { resolveTrack } from '../ecosystem/js/track-math.js';
@@ -17,7 +17,7 @@ const near = (got, want, tol, what) => assert.ok(Math.abs(got - want) <= tol, `$
 
 test('the ramp is the Raceway ramp and its face is terrain.js profile', () => {
   assert.deepEqual(RAMP, { length: 8, height: 1.9, width: 5.4 });
-  assert.equal(RAMP_POW, 1.35); assert.equal(LAND_MARGIN, 0.4);
+  assert.equal(RAMP_POW, 1.35); assert.equal(LAND_MARGIN, 0.8);
 });
 
 test('flight from the Raceway ramp: 16.4 to 16.9 m at 24 m/s (the Raceway analysis measured 16.4), 19.9 to 20.5 at 27', () => {
@@ -29,17 +29,21 @@ test('flight from the Raceway ramp: 16.4 to 16.9 m at 24 m/s (the Raceway analys
   assert.ok(Math.abs(flightRange(24) - 24 * t) < 1e-9);
 });
 
-test('the inlet for a 30 m/s surface needs about 90% of top: halfW 10', () => {
-  assert.equal(inletHalfFor(30), 10); assert.equal(inletHalfFor(30, 0.85), 9);
-  assert.ok(flightRange(0.9 * 30) - LAND_MARGIN >= 20 - 0.5, 'clears 20 m at 90%'); assert.ok(flightRange(0.85 * 30) < 20, 'short at 85%');
+test('the inlet for a 30 m/s surface needs about 90% of top: halfW 9.5, a 19.5 m gap', () => {
+  assert.equal(LIP_SETBACK, 0.5); assert.equal(inletGap(9.5), 19.5);
+  assert.equal(inletHalfFor(30), 9.5);
+  assert.equal(inletHalfFor(30, 0.85), 8.5); // the ruling asked for 9; with the setback counted the formula gives 8.54 (see the task 5 report)
+  const dry = inletGap(inletHalfFor(30)) - 0.3; // onWater's dry edge
+  assert.ok(flightRange(0.9 * 30) >= dry + 0.5, `clears the dry edge with half a metre at 90% (${flightRange(0.9 * 30)} vs ${dry})`);
+  assert.ok(flightRange(0.85 * 30) < dry - 0.3, `short of the dry edge by 0.3 at 85% (${flightRange(0.85 * 30)} vs ${dry})`);
 });
 
-// The inlet world: the inlet at s W across the straight, half width 10, and the ramp placed as plan 5 will place it
-// (`s: W - halfW - 8.5`): the lip is 0.5 m before the near bank, so the far bank is 2 × halfW + 0.5 = 20.5 m past the lip
-// and onWater ends 0.3 m inside it, at 20.2. The tarmac runs from well back, up the ramp, across the inlet and on past the
+// The inlet world: the inlet at s W across the straight, half width inletHalfFor(30) = 9.5, and the ramp placed as plan 5
+// will place it (`s: W - halfW - ramp.length - LIP_SETBACK` = W - 18): the far bank is inletGap(9.5) = 19.5 m past the lip
+// and onWater ends 0.3 m inside it, at 19.2. The tarmac runs from well back, up the ramp, across the inlet and on past the
 // landing (`to`). That matters: in the air the step still eases the speed down to the top of the surface under the car
 // (car.js), so the pure model's constant speed in flight holds only where that top is at least the approach speed.
-const W = 600, HALF_W = 10, RAMP_S = W - HALF_W - 8.5, LIP = RAMP_S + RAMP.length, FAR = 2 * HALF_W + 0.5;
+const W = 600, HALF_W = inletHalfFor(30), RAMP_S = W - HALF_W - RAMP.length - LIP_SETBACK, LIP = RAMP_S + RAMP.length, FAR = inletGap(HALF_W);
 const inletWorld = (to = W + HALF_W + 60) => {
   const points = [[-600, -40], [600, -40], [600, 40], [-600, 40]];
   return {
@@ -78,16 +82,17 @@ function jump(v) {
   return { landed, splash, takeoff, after };
 }
 
-test('a committed entry (92% of 30) clears the inlet dry with a boost, where the pure model says', () => {
+test('a committed entry (exactly 90% of 30) clears the inlet dry with a boost, where the pure model says', () => {
   T.configureTerrain(inletWorld());
   try {
     assert.ok(T.onWater(T.trackAt(W).x, T.trackAt(W).z), 'the inlet is water at its centreline');
     assert.ok(!T.onWater(T.trackAt(LIP).x, T.trackAt(LIP).z), 'the lip is dry');
-    const r = jump(27.6);
+    assert.equal(HALF_W, 9.5); assert.equal(RAMP_S, W - 18);
+    const r = jump(27);
     assert.ok(r.takeoff, 'took off'); assert.ok(r.landed, 'landed');
-    near(r.landed.at, flightRange(27.6), 0.5, 'landing past the lip, real vs pure');
+    near(r.landed.at, flightRange(27), 0.5, 'landing past the lip, real vs pure');
     assert.ok(r.landed.at > FAR, `past the far bank (${r.landed.at})`);
-    assert.equal(r.landed.speed, 27.6, 'the horizontal speed held through the flight');
+    assert.equal(r.landed.speed, 27, 'the horizontal speed held through the flight');
     assert.equal(r.landed.wet, false); assert.ok(r.landed.boost > 0, 'a boost on landing');
     assert.equal(r.splash, null, 'no splash');
   } finally { T.configureTerrain(hub); }
@@ -101,9 +106,9 @@ test('a short entry (85% of 30) splashes down in the water, no boost, and the wa
     assert.ok(r.landed.at < FAR - 0.3, `short of the far bank's dry edge (${r.landed.at})`);
     assert.equal(r.landed.wet, true, 'lands in the water'); assert.equal(r.landed.boost, 0, 'no boost');
     assert.ok(r.splash, 'a splash');
-    // It lands about 1.5 m short of the dry edge, so it is out again within a few frames; the drag shows in those frames
-    const wet = r.after.filter((f) => f.wet);
-    assert.ok(wet.length >= 2, `wet frames after the landing (${wet.length})`);
+    // It lands short of the dry edge but close to it, so it is out again within a frame or two; the drag shows there
+    const wet = [{ speed: r.landed.speed }, ...r.after.filter((f) => f.wet)]; // from the landing speed on
+    assert.ok(wet.length >= 2, `a wet frame after the landing (${wet.length - 1})`);
     for (let i = 1; i < wet.length; i++) assert.ok(wet[i].speed < wet[i - 1].speed - 0.5, `the water drags (${wet[i - 1].speed} to ${wet[i].speed})`);
   } finally { T.configureTerrain(hub); }
 });
@@ -122,7 +127,7 @@ test('a clear miss (20 m/s) lands mid-channel and wades at 12', () => {
 test('with dirt past the lip the flight eases to dirt top and the same committed entry falls short', () => {
   T.configureTerrain(inletWorld(LIP)); // tarmac ends at the lip: the air over the inlet reads dirt (top 24)
   try {
-    const r = jump(27.6);
+    const r = jump(27);
     assert.ok(r.landed.speed < 24 + 1e-9, `eased in the air (${r.landed.speed})`);
     assert.ok(r.landed.at < FAR - 0.3 && r.landed.wet, `short and wet (${r.landed.at})`);
   } finally { T.configureTerrain(hub); }
