@@ -101,7 +101,7 @@ const svg = await page.evaluate(async () => {
   // Spawn and north
   out.push(`<circle cx="${X(SPAWN.x)}" cy="${Y(SPAWN.z)}" r="6" fill="none" stroke="#111" stroke-width="2"/><text x="${X(SPAWN.x) + 9}" y="${Y(SPAWN.z) + 4}" font-size="12" fill="#111">spawn</text>`);
   out.push(`<g transform="translate(${W - PAD - 20}, ${PAD + 40})"><polygon points="0,-26 8,8 0,2 -8,8" fill="#111"/><text y="26" font-size="15" text-anchor="middle" font-weight="700" fill="#111">N</text></g>`);
-  out.push(`<text x="${PAD}" y="${W - 22}" font-size="14" fill="#555">Strike ecosystem world, plan view, drawn ${new Date().toISOString().slice(0, 10)} from content.js and terrain.js. Track ${RACE_TRACK.id}, ${RACE_TRACK.length} m a lap. Grid 50 m, north up.</text>`);
+  out.push(`<text x="${PAD}" y="${W - 22}" font-size="14" fill="#555">Strike ecosystem world, plan view, drawn ${new Date().toISOString().slice(0, 10)} from content.js and terrain.js. Track ${RACE_TRACK.id}, ${RACE_TRACK.length.toFixed(1)} m a lap. Grid 50 m, north up.</text>`);
   out.push('</svg>');
   return out.join('\n');
 });

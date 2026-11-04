@@ -137,8 +137,8 @@ if (fillYard) Object.assign(fillYard, { pos: [-30, -84], face: [-30, -100] });
 
 // Time trials: metres along the track's centreline from the start line to each checkpoint gate,
 // and the lap length. The leaderboard worker (copilot-watch) checks posted splits against these
-// numbers at 30 m/s, so they come from the track module (tracks/realfi.js): terrain.js re-measures
-// them on load and warns if they drift. Change the track and give it a new id.
+// numbers at 30 m/s, so they come from the track module (tracks/realfi.js) and are measured from it here.
+// qa/track-realfi-unit.mjs pins them to the published values. Change the track and give it a new id.
 // Measured 30 Oct 2026 (642.2 m a lap; 21.4 s is the fastest lap the worker accepts).
 export const RACE_TRACK = { id: TRACK.id, checkpoints: TRACK.checkpoints, length: TRACK.len };
 
