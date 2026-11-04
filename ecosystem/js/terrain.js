@@ -285,11 +285,15 @@ export function trackDistance(x, z) {
 // The track's first lift (the hub: { from: 330, to: 425, height: 2.2 }, over the S-bend), or none
 let CREST = { height: 0 };
 const crest = (s) => (s <= CREST.from || s >= CREST.to ? 0 : CREST.height * 0.5 * (1 - Math.cos(((s - CREST.from) / (CREST.to - CREST.from)) * Math.PI * 2)));
+// The track road's parameter runs from its points[0]; the track's own arc length runs from its `start`.
+// These two convert between them (metres, wrapped to a lap); trackRoadS0 is the offset, 0 on the hub.
+const wrapLap = (s) => (s >= 0 && s < track.len ? s : ((s % track.len) + track.len) % track.len); // in range: untouched, so the hub's s stay exact
+const trackS = (roadS) => wrapLap(trackRoadS0 + roadS);
+const roadS = (sT) => wrapLap(sT - trackRoadS0);
 function trackLift(info) {
   if (info.road !== trackRoad || trackRoad < 0 || !CREST.height) return 0;
   // The road's t runs from points[0]; the crest is placed in the track's own arc length, which starts at its `start`
-  const sT = (((trackRoadS0 + info.t * roads[trackRoad].len) % track.len) + track.len) % track.len;
-  return crest(sT) * (1 - smooth(track.half + 3, 22, info.d));
+  return crest(trackS(info.t * roads[trackRoad].len)) * (1 - smooth(track.half + 3, 22, info.d));
 }
 
 // ── Height field ───────────────────────────────────────────────────────
@@ -608,12 +612,15 @@ export function configureTerrain(cfg) {
   WATER_LEVEL = waters[0]?.level ?? 0;
   crossings.splice(0, crossings.length, ...findCrossings());
 
-  jumps.splice(0, jumps.length, ...(cfg.jumps || []).map(placeJump));
+  track = cfg.track ?? null;
+  trackRoadS0 = track && trackRoad >= 0 ? track.sOf(roads[trackRoad].pts[0]) : 0;
+  // The track's ramps are given in track s; placeJump measures road s from points[0]
+  const ramps = track && trackRoad >= 0 ? (track.ramps || []).map(({ s, side, length, height, width }) => ({ road: trackRoad, s: roadS(s), side, length, height, width })) : [];
+  jumps.splice(0, jumps.length, ...[...(cfg.jumps || []), ...ramps].map(placeJump));
   freeJumpPads.splice(0, freeJumpPads.length, ...jumps.filter((j) => j.road == null).map(freeJumpPad));
   builderSlots.splice(0, builderSlots.length, ...placeBuilderSlots(cfg.stops || []));
   plazas.splice(0, plazas.length, ...Object.values(cfg.districts || {}).filter((d) => d.plaza !== false));
 
-  track = cfg.track ?? null;
   trackPts = track ? track.pts : [];
   trackCum = track ? track.cum : [];
   trackLen = track ? track.len : 0;
@@ -626,7 +633,6 @@ export function configureTerrain(cfg) {
     if (drift > 0.5) console.warn(`[eco] raceway: the road is ${roads[trackRoad].len.toFixed(1)} m but the track's lap is ${track.len.toFixed(1)} m`);
   }
   CREST = track?.lifts?.[0] ?? { height: 0 };
-  trackRoadS0 = track && trackRoad >= 0 ? track.sOf(roads[trackRoad].pts[0]) : 0;
 
   kerbGapCache.clear();
   setRidgeSeries(ridgeState.closes); // the profile is scaled to the ridge road's length

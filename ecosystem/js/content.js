@@ -162,8 +162,7 @@ export const JUMPS = [
   // (The Developers spoke had a 10 m ramp at t 0.28 until 3 Nov 2026: it sat beside Builders' Row and its Jump sign overlapped the Row's. Ben: remove it.)
   { road: spoke("community"), t: 0.5, side: -1, length: 8, height: 1.9, width: 3.4 },
   { road: spoke("token"), t: 0.45, side: 1, length: 7, height: 1.5, width: 3.4 },
-  // The raceway: on the start straight, the short straight after the first hairpin, and the sweep
-  ...TRACK.ramps.map(({ s, side, length, height, width }) => ({ road: TRACK_ROAD, s, side, length, height, width })),
+  // (The raceway's ramps are not listed here: terrain.js configures them from TRACK.ramps, which are in track s.)
   // The epic jump (2 Nov 2026, Ben): two ramps facing each other across the river's straight stretch south of the Token
   // ford. Free-standing (no road): `x, z` is the ramp's low end, `dir` the way up it. Flat out clears the gap and lands
   // on the far ramp's slope (a boost); anything under about 22 m/s meets the far face and the river. `stunt` turns the
