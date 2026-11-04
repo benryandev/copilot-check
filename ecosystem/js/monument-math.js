@@ -163,7 +163,14 @@ export function plinthValues(series) {
   if (series?.revenue?.length) out.revenue30d = usd(sumUsd(series.revenue));
   return out;
 }
-export const pickSummary = (body) => (body == null ? null : { volumeUsd: num(body.total_volume_usd), users: num(body.total_users), depositsUsd: num(body.total_deposits_usd), withdrawalsUsd: num(body.total_withdrawals_usd) }); // the Pylons read the two totals (B3)
+/** Strike V1 (May 2025, Cardano, GMX-style) is dormant: zero trades and zero volume in its last 30 days on 4 Nov 2026, so
+ *  its totals are frozen. Strike's own all-time figures add them to V2's (app.strikefinance.org/protocol-statistics, All
+ *  Time, 4 Nov 2026: 7,133 traders, $1.93B, $30.8M liquidated), reading them from an app route with no cross-origin header,
+ *  which the world cannot. So they live here; a Monday check compares them with that page. */
+export const V1_ALL_TIME = { users: 554, volumeUsd: 1061682439.61, liquidatedUsd: 23752738.47 };
+/** A V2 all-time figure plus V1's frozen one; a missing figure stays missing rather than becoming V1's alone. */
+export const withV1 = (v2, v1) => (v2 == null || Number.isNaN(v2) ? null : v2 + v1);
+export const pickSummary = (body) => (body == null ? null : { volumeUsd: withV1(num(body.total_volume_usd), V1_ALL_TIME.volumeUsd), users: withV1(num(body.total_users), V1_ALL_TIME.users), depositsUsd: num(body.total_deposits_usd), withdrawalsUsd: num(body.total_withdrawals_usd) }); // the Plinth's counter is V1 and V2 together; the Pylons read the two totals, V2 only (B3)
 
 /** One entry per collateral asset the API lists, valued in dollars where it has a price (the price itself never leaves here), largest first, the priceless last. */
 export function pickCollateral(body) {

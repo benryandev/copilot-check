@@ -3,7 +3,7 @@
 // Part B in the Strike repo). The picks keep only the named fields, so no APR or price field can reach the world.
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pickStaking, pickSlp, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, columnScale, lampsLit, periodLabel, usdExact, stakeValues, engineValues, MONUMENT_BANNED, STAKE, ENGINE, PLINTH, STACKS, dailyTotals, lastDays, pickSeries, barScales, plinthValues, pickSummary, pickCollateral, stackScale, collateralValues, pickActivity, rungScales, activityHigh, beaconValues, carsHere, pulsePeriod, seriesDue, ringLayout, carsLine, tradeLine, feedLines, flowValues, ORRERY, signedUsd } from '../ecosystem/js/monument-math.js';
+import { pickStaking, pickSlp, pickFills, mergeFills, fillsIn, hourFigure, hourString, wheelSpeed, tankLevel, gaugeFraction, topVaults, columnScale, lampsLit, periodLabel, usdExact, stakeValues, engineValues, MONUMENT_BANNED, STAKE, ENGINE, PLINTH, STACKS, dailyTotals, lastDays, pickSeries, barScales, plinthValues, pickSummary, pickCollateral, stackScale, collateralValues, pickActivity, rungScales, activityHigh, beaconValues, carsHere, pulsePeriod, seriesDue, ringLayout, carsLine, tradeLine, feedLines, flowValues, ORRERY, signedUsd, V1_ALL_TIME, withV1 } from '../ecosystem/js/monument-math.js';
 import { LABELS } from '../ecosystem/js/data.js';
 const fx = (n) => JSON.parse(readFileSync(new URL(`./fixtures/${n}-2026-11-03.json`, import.meta.url)));
 const staking = fx('liquid-staking-summary'), vaults = fx('vaults'), positions = fx('slp-positions'), fills = fx('slp-fills-100');
@@ -151,9 +151,11 @@ test('barScales pads a short series at the old end and never reads a day as noth
   assert.equal(short.length, 30); assert.equal(short.filter((x) => x === null).length, 28); assert.deepEqual(short.slice(28), [PLINTH.minBar, 1]);
   assert.ok(barScales([]).every((x) => x === null)); assert.ok(barScales([{ ts: 1, usd: 0 }]).at(-1) === PLINTH.minBar);
 });
-test('pickSummary keeps the two counter figures and nothing else', () => {
-  assert.deepEqual(pickSummary(summary), { volumeUsd: 864125249.59404689, users: 6562, depositsUsd: 7515234.43578349, withdrawalsUsd: 5955681.83741127 });
-  assert.equal(pickSummary(null), null); assert.deepEqual(pickSummary({}), { volumeUsd: null, users: null, depositsUsd: null, withdrawalsUsd: null });
+test('pickSummary keeps the two counter figures, V1 added, and the two totals, V2 only', () => {
+  assert.deepEqual(pickSummary(summary), { volumeUsd: 864125249.59404689 + V1_ALL_TIME.volumeUsd, users: 6562 + V1_ALL_TIME.users, depositsUsd: 7515234.43578349, withdrawalsUsd: 5955681.83741127 });
+  assert.equal(pickSummary(null), null); assert.deepEqual(pickSummary({}), { volumeUsd: null, users: null, depositsUsd: null, withdrawalsUsd: null }, 'a missing figure never becomes V1 alone');
+  assert.deepEqual(V1_ALL_TIME, { users: 554, volumeUsd: 1061682439.61, liquidatedUsd: 23752738.47 }, "Strike's All Time page on 4 Nov 2026 less V2: 7,133 − 6,579, $1,930,626,375 − $868,943,936, $30,825,637 − $7,072,899");
+  assert.equal(withV1(null, 5), null); assert.equal(withV1(NaN, 5), null); assert.equal(withV1(10, 5), 15);
 });
 test('pickCollateral values the units, names the assets, sorts by value, and drops every rate and price field', () => {
   const c = pickCollateral(collateral);

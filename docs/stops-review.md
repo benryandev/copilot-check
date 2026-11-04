@@ -1,4 +1,4 @@
-# Ecosystem world: every sheet for review (generated 2026-11-03)
+# Ecosystem world: every sheet for review (generated 2026-11-04)
 
 Generated from `ecosystem/js/stops.js` by `tools/site-pages.mjs`; do not edit by hand. 79 stops. Empty Builders' Row plots and arcade cabinets are left out.
 
@@ -13,7 +13,7 @@ A perpetuals exchange with its own execution layer and settlement on several cha
 - Matching, positions, liquidations and funding run on the Strike Node.
 - Deposits sit in on-chain locker contracts, with validators signing deposits and withdrawals.
 - There's a mobile app, a full API for bots and tools, and fiat on and off ramps.
-- The Open Strike button uses Ben Ryan's referral code.
+- The Open Strike button uses Ben Ryan's referral code. The all-time figures add V1 to V2, as Strike's own statistics page does.
 
 Link: [Docs: Welcome](https://docs.strikefinance.org/getting-started/welcome) · [Open Strike](https://app.strikefinance.org/trade/BTC?referralCode=BenRyan) · live: Users, all time, Volume, all time, 24 h volume
 
@@ -101,6 +101,7 @@ Staged, not all at once. An account that falls short of margin is first reduced 
 
 - The aim is to keep as much of the position open as the margin allows.
 - Liquidations carry a fee, and the docs cover the full lifecycle.
+- The all-time figure adds Strike V1's liquidations to V2's, as Strike's own statistics page does.
 
 Link: [Docs: Liquidations](https://docs.strikefinance.org/perpetuals/liquidations) · live: Liquidated, all time
 
@@ -543,7 +544,7 @@ The plaza's plinth is Strike's last 30 days in bars. Trading volume runs along t
 
 - Each bar is one day's total across every market, read from Strike's public daily statistics once an hour. The tallest bar in a row is that row's busiest day, and today's bar grows through the day.
 - Volume is the dollar value traded. Revenue is what the protocol earned from it in fees. The two rows share their days, so a busy day stands tall in both.
-- The counter shows volume and users since Strike opened. Figures come from Strike's public API, the daily series hourly and the counter every 30 seconds.
+- The counter shows volume and users since Strike opened. It adds Strike V1, the first version, to V2, as Strike's own statistics page does. Figures come from Strike's public API, the daily series hourly and the counter every 30 seconds.
 
 Link: [Docs: Daily Statistics API](https://docs.strikefinance.org/api/platform-stats/daily-statistics) · [Platform Dashboard API](https://docs.strikefinance.org/api/platform-stats/platform-dashboard) · live: Volume, last 30 days, Revenue, last 30 days, Volume, all time, Users, all time
 

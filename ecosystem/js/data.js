@@ -1,7 +1,7 @@
 // Live figures from Strike's public API (no key; CORS open; allowed by the site CSP's connect-src).
 // Never an APR or yield: those stay off the page by design.
 
-import { pickStaking, pickSlp, stakeValues, engineValues, pickCollateral, pickActivity, pickSummary, collateralValues, beaconValues, flowValues } from "./monument-math.js";
+import { pickStaking, pickSlp, stakeValues, engineValues, pickCollateral, pickActivity, pickSummary, collateralValues, beaconValues, flowValues, V1_ALL_TIME, withV1 } from "./monument-math.js";
 
 const API = "https://api.strikefinance.org";
 
@@ -129,9 +129,11 @@ export async function fetchLive() {
     values.openInterest = usd(oiRows.reduce((s, r) => s + Number(r.openInterest) * (mark[r.symbol] || 0), 0));
   }
   if (summary) {
-    values.users = int(summary.total_users);
-    values.totalVolume = usd(Number(summary.total_volume_usd));
-    values.liquidated = usd(Number(summary.total_liquidated_usd));
+    // The all-time figures add V1's frozen totals to V2's, as Strike's own statistics page does (monument-math.js V1_ALL_TIME)
+    const users = withV1(Number(summary.total_users), V1_ALL_TIME.users), volume = withV1(Number(summary.total_volume_usd), V1_ALL_TIME.volumeUsd), liquidated = withV1(Number(summary.total_liquidated_usd), V1_ALL_TIME.liquidatedUsd);
+    if (users != null) values.users = int(users);
+    if (volume != null) values.totalVolume = usd(volume);
+    if (liquidated != null) values.liquidated = usd(liquidated);
   }
   if (vaults) {
     const slp = vaults.vaults.find((v) => v.type === "protocol");

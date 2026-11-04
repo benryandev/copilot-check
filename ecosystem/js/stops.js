@@ -39,7 +39,7 @@ export const STOPS = [
       "Matching, positions, liquidations and funding run on the Strike Node.",
       "Deposits sit in on-chain locker contracts, with validators signing deposits and withdrawals.",
       "There's a mobile app, a full API for bots and tools, and fiat on and off ramps.",
-      "The Open Strike button uses Ben Ryan's referral code.",
+      "The Open Strike button uses Ben Ryan's referral code. The all-time figures add V1 to V2, as Strike's own statistics page does.",
     ],
     live: ["users", "totalVolume", "volume24h"],
     docs: `${DOCS}/getting-started/welcome`,
@@ -173,6 +173,7 @@ export const STOPS = [
     points: [
       "The aim is to keep as much of the position open as the margin allows.",
       "Liquidations carry a fee, and the docs cover the full lifecycle.",
+      "The all-time figure adds Strike V1's liquidations to V2's, as Strike's own statistics page does.",
     ],
     live: ["liquidated"],
     docs: `${DOCS}/perpetuals/liquidations`,
@@ -893,7 +894,7 @@ export const STOPS = [
     points: [
       "Each bar is one day's total across every market, read from Strike's public daily statistics once an hour. The tallest bar in a row is that row's busiest day, and today's bar grows through the day.",
       "Volume is the dollar value traded. Revenue is what the protocol earned from it in fees. The two rows share their days, so a busy day stands tall in both.",
-      "The counter shows volume and users since Strike opened. Figures come from Strike's public API, the daily series hourly and the counter every 30 seconds.",
+      "The counter shows volume and users since Strike opened. It adds Strike V1, the first version, to V2, as Strike's own statistics page does. Figures come from Strike's public API, the daily series hourly and the counter every 30 seconds.",
     ],
     live: ["volume30d", "revenue30d", "totalVolume", "users"],
     docs: "https://docs.strikefinance.org/api/platform-stats/daily-statistics",
