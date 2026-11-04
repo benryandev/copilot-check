@@ -4,7 +4,7 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { DISTRICTS, TRACK } from "./content.js";
-import { raceGates, trackAt, terrainHeight, TRACK_HALF, GATE_HALF } from "./terrain.js";
+import { raceGates, trackAt, trackDef, terrainHeight, TRACK_HALF, GATE_HALF } from "./terrain.js";
 import { wallSpots, wallBoxes } from "./walls-math.js";
 import { MARKER, markerPos, drapedRing, drapedDisc } from "./focus-math.js";
 import {
@@ -112,7 +112,7 @@ function buildGate(parent, gate, lineMat) {
 
 // Tyre walls round the outside of the tight corners: stacks of three tyres, solid in 4 m pieces
 function buildTyreWalls(parent) {
-  const spots = wallSpots(TRACK);
+  const spots = wallSpots(trackDef()); // the configured track, not the hub's
   const geo = new THREE.CylinderGeometry(0.45, 0.45, 0.36, 14);
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.85 });
   const tyres = new THREE.InstancedMesh(geo, mat, spots.length * 3);
