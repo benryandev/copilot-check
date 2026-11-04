@@ -14,7 +14,13 @@ test('boostFor: a clean landing on the dirt after real air earns a boost that gr
 });
 
 test('boostedTop: 1.2× the top speed, never over the cap (under the leaderboard worker\'s 30 m/s)', () => {
-  assert.equal(BOOST_MULT, 1.2); assert.equal(BOOST_CAP, 28);
+  assert.equal(BOOST_MULT, 1.2); assert.equal(BOOST_CAP.dirt, 28);
   assert.equal(boostedTop(24), 28);
   assert.equal(Math.round(boostedTop(19.2) * 100) / 100, 23.04);
+});
+
+test('the boost cap is per surface: dirt stays 28, tarmac 36', () => {
+  assert.equal(BOOST_CAP.dirt, 28); assert.equal(BOOST_CAP.tarmac, 36);
+  assert.equal(boostedTop(24), 28, 'dirt by default, as today'); assert.equal(boostedTop(24, 'dirt'), 28);
+  assert.equal(boostedTop(30, 'tarmac'), 36); assert.equal(boostedTop(19.2, 'dirt'), 23.04, 'raceway grass');
 });

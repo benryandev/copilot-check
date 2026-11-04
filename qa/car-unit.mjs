@@ -1,6 +1,6 @@
 // The car's surface rule (no three.js): node --test qa/car-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { topShare, accelShare, slowShare, blocksClimb, MAX_CLIMB, CLIMB_PROBE, OFF_ROAD, WATER_SHARE, WATER_ACCEL, WATER_DRAG } from '../ecosystem/js/car-math.js';
+import { topShare, accelShare, easeRate, EASE_NET, SURFACES, GRAZE, resolvePhysics, DEFAULT_PHYSICS, turnRate, hitSpeedShare, slideShare, grazeNudge, blocksClimb, MAX_CLIMB, CLIMB_PROBE, OFF_ROAD, WATER_SHARE, WATER_ACCEL, WATER_DRAG } from '../ecosystem/js/car-math.js';
 
 test('topShare: grass only costs top speed at the raceway; dirt is always full speed', () => {
   assert.equal(OFF_ROAD, 0.8);
@@ -22,8 +22,8 @@ test('in water the car wades: half top speed whatever the ground, slower pull', 
 
 test('over the top speed the car eases down gently on land and is dragged down hard in water', () => {
   assert.equal(WATER_DRAG, 2);
-  assert.equal(slowShare(false), 0.5, 'leaving the road or a boost ending: half the brake');
-  assert.equal(slowShare(true), 2, 'water: twice the brake, so a flat-out entry is felt within a few metres');
+  assert.equal(easeRate(16, false), 17, 'leaving the road or a boost ending: today\'s half brake');
+  assert.equal(easeRate(16, true), 68, 'water: twice the brake, so a flat-out entry is felt within a few metres');
 });
 
 test('blocksClimb: judged over a half-metre probe, a wall is a wall at any speed and a bump never is', () => {
@@ -35,4 +35,35 @@ test('blocksClimb: judged over a half-metre probe, a wall is a wall at any speed
   assert.equal(blocksClimb(-0.5, 0.5), false, 'downhill');
   assert.equal(blocksClimb(0.5, 0), false, 'no step, no rule');
   assert.equal(blocksClimb(1.0, 0.8), true, 'a fast frame probes its own longer step');
+});
+
+test('surfaces: dirt keeps every number the Raceway runs on; tarmac is the spec starting point', () => {
+  assert.deepEqual(SURFACES.dirt, { top: 24, pull: 16, turn: 2.2 });
+  assert.equal(SURFACES.tarmac.top, 30); assert.equal(SURFACES.tarmac.pull, 20);
+  assert.deepEqual(GRAZE, { min: 0.8, headOn: 0.35, nudge: 0.2 });
+});
+test('resolvePhysics: a partial override keeps every other default; {} is the defaults', () => {
+  const P = resolvePhysics({ tarmac: { top: 28 } });
+  assert.equal(P.tarmac.top, 28); assert.equal(P.tarmac.pull, 20); assert.equal(P.dirt.top, 24); assert.equal(P.graze.min, 0.8); assert.equal(P.resolved, true);
+  assert.deepEqual(resolvePhysics({}), DEFAULT_PHYSICS); assert.notEqual(resolvePhysics({}), DEFAULT_PHYSICS, 'a fresh object');
+  assert.equal(SURFACES.tarmac.top, 30, 'the defaults were not mutated');
+});
+test('turnRate: dirt 2.2 at any speed; tarmac falls from 2.2 at 20 m/s to 1.0 at 30 and holds', () => {
+  for (const v of [0, 8, 24, 36]) assert.equal(turnRate('dirt', v), 2.2);
+  assert.equal(turnRate('tarmac', 10), 2.2); assert.equal(turnRate('tarmac', 20), 2.2);
+  assert.ok(Math.abs(turnRate('tarmac', 25) - 1.6) < 1e-9); assert.ok(Math.abs(turnRate('tarmac', 30) - 1.0) < 1e-9); assert.ok(Math.abs(turnRate('tarmac', 36) - 1.0) < 1e-9);
+  assert.equal(turnRate('tarmac', 30, resolvePhysics({ tarmac: { turnHigh: 1.4 } })), 1.4);
+});
+test('easeRate: the net bleed above top is 1 m/s² on any surface with the throttle held; water drags at 68', () => {
+  assert.equal(EASE_NET, 1);
+  assert.equal(easeRate(16, false), 17, 'dirt: today\'s BRAKE × 0.5 exactly');
+  assert.equal(easeRate(20, false), 21, 'tarmac: pull + 1, so the throttle never creeps past top');
+  assert.equal(easeRate(16, true), 68); assert.equal(easeRate(20, true), 68);
+});
+test('the graze shares: 0.8 at a graze, 0.35 head-on, no more than 25% lost at 15°', () => {
+  assert.equal(hitSpeedShare(0), 0.8); assert.equal(hitSpeedShare(1), 0.35);
+  const k15 = Math.sin(15 * Math.PI / 180);
+  assert.ok(hitSpeedShare(k15) >= 0.75, `15°: ${hitSpeedShare(k15)}`);
+  assert.equal(slideShare(1), 0.35); assert.ok(slideShare(Math.sin(10 * Math.PI / 180)) > 0.98);
+  assert.equal(grazeNudge(0), 0.2); assert.equal(grazeNudge(1), 0);
 });
