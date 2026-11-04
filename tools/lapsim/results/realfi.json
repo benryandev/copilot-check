@@ -1,0 +1,8 @@
+{
+  "track": "realfi",
+  "floorMs": 22914,
+  "limits": {
+    "maxSpeed": 30.3,
+    "segMaxSpeed": 37.4
+  }
+}
