@@ -47,7 +47,7 @@ export function turnRate(surface, speed, P = DEFAULT_PHYSICS) {
 export const easeRate = (pull, wet) => (wet ? BRAKE_WATER : pull + EASE_NET);
 /** Speed kept on the hit frame for wall-normal share k (sin of the angle): 0.8 at a graze, 0.35 head-on; 0.77 at 15°. */
 export const hitSpeedShare = (k, G = GRAZE) => G.min - (G.min - G.headOn) * k * k;
-/** Speed kept per frame while rubbing along a wall afterwards: 0.35 head-on, 0.99 at 10°. */
+/** Speed kept per 60 Hz frame while rubbing along a wall afterwards (car.js raises it to dt × 60): 0.35 head-on, 0.99 at 10°. */
 export const slideShare = (k, G = GRAZE) => 1 - (1 - G.headOn) * k * k;
 /** Radians the car is turned away from the wall at a graze: 0.2 at a graze, 0 head-on. */
 export const grazeNudge = (k, G = GRAZE) => G.nudge * (1 - k);

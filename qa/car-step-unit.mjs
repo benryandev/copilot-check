@@ -172,3 +172,18 @@ test('a dt-0 step that places the car inside a collider does not turn it', async
   stepCar(c2, {}, 0);
   assert.equal(c2.s.heading, h0, 'no turn on a dt-0 placement at speed');
 });
+// M1: the rub along a wall costs the same per second at any frame rate (the shares were tuned at 60 Hz)
+test('a steer-into-wall rub ends at the same speed at 60 Hz and 120 Hz', async () => {
+  const rub = (hz) => {
+    // 10 degrees into the wall at 20 m/s, the throttle held and the stick a fifth of the way into the wall: it rubs, slowing
+    const car = mk(20); wallAt(60, 1, 160);
+    car.s.heading -= 10 * Math.PI / 180; car.s.speed = 20;
+    const dt = 1 / hz;
+    let contact = 0;
+    for (let i = 0; i < Math.round(1.5 / dt); i++) { stepCar(car, { up: true, steer: -0.2 }, dt); if (car.s.wall) contact++; }
+    return { speed: Math.abs(car.s.speed), contactS: contact * dt };
+  };
+  const a = rub(60), b = rub(120);
+  assert.ok(a.contactS > 0.3 && b.contactS > 0.3, `rubbing for ${a.contactS.toFixed(2)} s and ${b.contactS.toFixed(2)} s`);
+  assert.ok(Math.abs(a.speed - b.speed) <= 0.05 * Math.max(a.speed, b.speed), `60 Hz ends at ${a.speed.toFixed(2)}, 120 Hz at ${b.speed.toFixed(2)}`);
+});

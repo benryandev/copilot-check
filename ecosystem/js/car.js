@@ -190,10 +190,10 @@ export function stepCar(car, keys, dt, physics = DEFAULT_PHYSICS) {
     const k = Math.abs(fx * hit.nx + fz * hit.nz);
     const away = (Math.sign(s.speed) || 1) * Math.sign(hit.nx * fz - hit.nz * fx || 1) * traction; // turns the direction of travel toward the normal (the nose going forward, the tail reversing)
     if (!s.wall) {
-      s.speed *= hitSpeedShare(k, P.graze);
+      s.speed *= hitSpeedShare(k, P.graze); // one event, whatever the frame rate
       if (dt > 0) s.heading += grazeNudge(k, P.graze) * away;
     } else {
-      s.speed *= slideShare(k, P.graze);
+      s.speed *= slideShare(k, P.graze) ** (dt * 60); // per frame at 60 Hz, the rate the shares were tuned at: the same loss per second at any frame rate
       s.heading += grazeNudge(k, P.graze) * away * Math.min(1, dt * 10);
     }
   }
