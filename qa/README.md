@@ -265,6 +265,37 @@ Four rounds, then a blind re-score of 7.3 before its fixes:
 - The full matrix (all states, twelve widths, both themes) only before a deploy, or when the change is to something every frame shares: the HUD or its CSS, the palette, the quality tiers, the loader, the audit itself.
 - Never re-shoot states nothing touched between those two moments.
 
+## QA scoped by the change (Ben, 4 Nov 2026): the standing rule
+
+The full pass used to be one thing: the shoot, the six-pillar score, a fix pass, a re-score and a blind re-score, run over
+every state before every deploy. Most of that re-read screens the change never touched. From 4 Nov the pass is in two
+parts, and only the first always runs.
+
+**Always, on every deploy (cheap, scripted, minutes):** the automated audit over the full matrix. Overflow, elements
+past the edges, clipped text, AA contrast, banned wording, console errors, reduced motion. It is the regression net for
+shared CSS moving under something, so it is never scoped down.
+
+**The design loop (score, fix, re-score, blind re-score) only where the change can be seen:**
+
+| What changed | Design loop | Blind re-score |
+|---|---|---|
+| Shared CSS, the palette, a shared component, the HUD, the loader, the quality tiers | every state, as before | yes |
+| A new sheet, page, board or guide template | that thing only, at the eight widths, both themes | yes, on that thing |
+| Copy inside an existing sheet (the copy rule and `stops-unit.mjs` cover it) | no | no |
+| World geometry, props, physics, data, a new track on an existing page template | no | no |
+
+**What a change to world code or geometry always keeps, whatever the table says:** the phone performance pass
+(`?fps=1` over the LAN on the iPhone, the Low tier) and the unit tests. New triangles are new load on the same phone
+budget, so this is the one check that is not redundant for a track or a monument.
+
+**A new track on an existing venue template** therefore costs: the automated audit on its page, the phone pass, its
+own track checks (gates crossed in order in the smoke, the lap optimiser's floor recorded before launch, the worker's
+per-track speed limits), and no design loop unless it brings a new sheet.
+
+**How the scope is decided:** by the diff, not by judgement each time. Each shoot state lists the files it depends on
+(`qa/state-deps.json`, to be added with the venue pipeline); a state is re-scored when one of its files changed. Until
+that manifest exists, the table above is the rule and the reasoning goes in the deploy note.
+
 ## Frame times (4 Nov): the ?fps=1 readout and the perf probe
 
 `/ecosystem/?fps=1` shows a small readout over the world (`ecosystem/js/fps.js`): the average and worst gap between
