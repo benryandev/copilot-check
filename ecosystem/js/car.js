@@ -5,15 +5,15 @@ import * as THREE from "../vendor/three.module.min.js";
 import { M, paint, box, mesh, colliders } from "./build.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
 import { markLive } from "./freeze.js";
-import { groundHeight, onDirt, onWater, racewayWeight, jumpAt, WORLD } from "./terrain.js";
+import { groundHeight, onDirt, onWater, onTarmac, racewayWeight, jumpAt, WORLD } from "./terrain.js";
 
 import { glowIntensity } from "./post.js";
 import { boostFor, boostedTop } from "./boost-math.js";
-import { topShare, accelShare, slowShare, blocksClimb, CLIMB_PROBE, GRAVITY } from "./car-math.js";
+import { topShare, accelShare, easeRate, blocksClimb, CLIMB_PROBE, GRAVITY, resolvePhysics, DEFAULT_PHYSICS, turnRate, hitSpeedShare, slideShare, grazeNudge } from "./car-math.js";
 import { steerInput } from "./stick-math.js";
 
 export const CAR_R = 1.6;
-const MAX_F = 24, MAX_R = 9, ACCEL = 16, BRAKE = 34, ROLL = 5, TURN = 2.2;
+const MAX_R = 9, BRAKE = 34, ROLL = 5; // top speed, pull and steering come from the surface (car-math.js SURFACES)
 
 export function createCar(colour) {
   const car = markLive(new THREE.Group(), true); // the car and everything inside it moves: never frozen (freeze.js)
@@ -33,7 +33,7 @@ export function createCar(colour) {
     tilt.add(hub);
     wheels.push({ hub, w, front: z < 0 });
   }
-  const s = { x: 0, y: 0, z: 0, heading: 0, speed: 0, steer: 0, vy: 0, air: false, squash: 0, pitch: 0, roll: 0, airTime: 0, boost: 0, airHit: false };
+  const s = { x: 0, y: 0, z: 0, heading: 0, speed: 0, steer: 0, vy: 0, air: false, squash: 0, pitch: 0, roll: 0, airTime: 0, boost: 0, airHit: false, wall: false };
   const out = { group: car, tilt, body, wheels, s };
   out.ready = upgradeCar(out, colour);
   return out;
@@ -132,28 +132,34 @@ export function keepInWorld(o, r) {
   return false;
 }
 
-// Returns events for effects: { landed: impact speed } or null
-export function stepCar(car, keys, dt) {
+// Returns events for effects: { landed: impact speed } or null, and the surface the step used ("dirt" while wet).
+// physics: resolved (car-math.js resolvePhysics, `resolved: true`) is used as is, the per-frame path with no allocation;
+// a raw override object is resolved on the spot (allocating: the tools' path). {} is the defaults.
+export function stepCar(car, keys, dt, physics = DEFAULT_PHYSICS) {
+  const P = physics.resolved === true ? physics : resolvePhysics(physics);
   const s = car.s;
   const dirt = onDirt(s.x, s.z), wet = !s.air && onWater(s.x, s.z); // the air over the river is not water
+  // The surface: wading is dirt whatever the ground under the water; then the track's tarmac, the road, grass
+  const surface = wet ? "dirt" : onTarmac(s.x, s.z) ? "tarmac" : dirt ? "dirt" : "grass";
+  const tarmac = surface === "tarmac", pull = tarmac ? P.tarmac.pull : P.dirt.pull;
   // A jump boost (boost-math.js) raises the top speed for a moment and drives the car there; the brake or the river ends it
   if (s.boost > 0 && (keys.down || wet)) s.boost = 0;
   const boosting = s.boost > 0;
-  let top = MAX_F * topShare(dirt, dirt ? 1 : racewayWeight(s.x, s.z), wet); // grass is slow only at the Raceway; water always (car-math.js)
-  if (boosting) top = boostedTop(top);
+  let top = (tarmac ? P.tarmac.top : P.dirt.top) * topShare(dirt, dirt ? 1 : racewayWeight(s.x, s.z), wet); // grass is slow only at the Raceway (0.8 of dirt's top, beside tarmac too); water always (car-math.js)
+  if (boosting) top = boostedTop(top, tarmac ? "tarmac" : "dirt");
   const throttle = s.air ? 0 : (keys.up ? 1 : 0) - (keys.down ? 1 : 0);
-  if (boosting && !s.air && throttle > 0) s.speed = Math.min(top, s.speed + ACCEL * 1.6 * dt); // the boost pays while you are on the throttle
-  if (throttle > 0) s.speed += (s.speed < 0 ? BRAKE : ACCEL * accelShare(wet)) * dt;
-  else if (throttle < 0) s.speed -= (s.speed > 0 ? BRAKE : ACCEL * 0.7) * dt;
+  if (boosting && !s.air && throttle > 0) s.speed = Math.min(top, s.speed + pull * 1.6 * dt); // the boost pays while you are on the throttle
+  if (throttle > 0) s.speed += (s.speed < 0 ? BRAKE : pull * accelShare(wet)) * dt;
+  else if (throttle < 0) s.speed -= (s.speed > 0 ? BRAKE : P.dirt.pull * 0.7) * dt;
   else if (!s.air) s.speed -= Math.sign(s.speed) * Math.min(Math.abs(s.speed), ROLL * dt);
-  if (s.speed > top) s.speed = Math.max(top, s.speed - BRAKE * slowShare(wet) * dt); // ease down when leaving the road or as a boost ends (must out-pull ACCEL, or the throttle creeps past top); water drags hard
+  if (s.speed > top) s.speed = Math.max(top, s.speed - easeRate(pull, wet) * dt); // ease down when leaving the road or as a boost ends (out-pulls the throttle by 1 m/s², so it never creeps past top); water drags hard
   s.boost = Math.max(0, s.boost - dt);
   s.speed = Math.max(-MAX_R, s.speed);
 
   const steerIn = steerInput(keys); // the arrow keys, or a number from the touch stick (stick-math.js)
   s.steer += (steerIn - s.steer) * Math.min(1, dt * 10);
   const grip = s.air ? 0.15 : Math.min(1, Math.abs(s.speed) / 8);
-  s.heading += s.steer * TURN * grip * Math.sign(s.speed) * dt;
+  s.heading += s.steer * turnRate(tarmac ? "tarmac" : "dirt", Math.abs(s.speed), P) * grip * Math.sign(s.speed) * dt; // tarmac steers less at speed
 
   const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
   const nx = s.x + fx * s.speed * dt, nz = s.z + fz * s.speed * dt;
@@ -173,7 +179,22 @@ export function stepCar(car, keys, dt) {
   }
 
   const hit = pushOut(s.x, s.z, CAR_R);
-  if (hit) { s.x = hit.x; s.z = hit.z; s.speed *= 0.35; }
+  if (hit) {
+    // The graze rule (car-math.js): k is how square-on the car meets the wall (0 along it, 1 head-on, either way round).
+    // The first frame of contact keeps 0.8 of the speed at a graze down to 0.35 head-on; rubbing along afterwards
+    // costs little unless the car is pushed square into it. A graze turns the car away from the wall a little.
+    s.x = hit.x; s.z = hit.z;
+    const k = Math.abs(fx * hit.nx + fz * hit.nz);
+    const away = Math.sign(hit.nx * fz - hit.nz * fx || 1); // the turn that rotates the forward vector toward the normal
+    if (!s.wall) {
+      s.speed *= hitSpeedShare(k, P.graze);
+      s.heading += grazeNudge(k, P.graze) * away;
+    } else {
+      s.speed *= slideShare(k, P.graze);
+      s.heading += grazeNudge(k, P.graze) * away * Math.min(1, dt * 10);
+    }
+  }
+  s.wall = !!hit;
   if (keepInWorld(s, CAR_R)) s.speed *= 0.6;
   // Into the river at speed: a splash (the effects and the sound read it)
   const nowWet = !s.air && onWater(s.x, s.z); // flying over the channel is not in it; the landing frame sets this next time round
@@ -238,5 +259,5 @@ export function stepCar(car, keys, dt) {
     if (front) hub.rotation.y = s.steer * 0.45;
     w.rotation.x -= (s.speed * dt) / 0.45;
   });
-  return { event, dirt, wet: s.wet, fx, fz, boost: s.boost };
+  return { event, dirt, wet: s.wet, fx, fz, boost: s.boost, surface };
 }

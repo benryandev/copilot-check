@@ -380,7 +380,7 @@ function stepCrates(dt) {
 // ── Dust ──────────────────────────────────────────────────────────────
 let dustCarry = 0, baseFov = 55;
 function emitDust(dt, info) {
-  if (reduceMotion || !dust || info.wet) return; // in the river the spray takes over
+  if (reduceMotion || !dust || info.wet || info.surface === "tarmac") return; // in the river the spray takes over; tarmac throws up no dust
   const s = car.s;
   const { fx, fz } = info;
   const rx = -fz, rz = fx;
@@ -1171,7 +1171,7 @@ function frame() {
     { const j = jumpAt(px, pz) || jumpAt(px - info.fx, pz - info.fz); if (stuntTakeoff(wasAir, car.s.air, j, info.fx, info.fz)) stuntStart(j); } // off a stunt ramp, heading up it: the side-on camera
     brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on, info.boost > 0);
     fps?.mark("car"); // the ?fps=1 readout's sections: the car's step
-    sound.tick(dt, { speed: car.s.speed, throttle: (keys.up ? 1 : 0) - (keys.down ? 1 : 0), surface: car.s.air ? "air" : info.wet ? "water" : info.dirt ? "dirt" : onCobbles(car.s.x, car.s.z) ? "cobble" : "grass", boost: info.boost > 0 });
+    sound.tick(dt, { speed: car.s.speed, throttle: (keys.up ? 1 : 0) - (keys.down ? 1 : 0), surface: car.s.air ? "air" : info.wet ? "water" : info.surface === "tarmac" ? "tarmac" : info.dirt ? "dirt" : onCobbles(car.s.x, car.s.z) ? "cobble" : "grass", boost: info.boost > 0 });
     fps?.mark("sound"); // the engine and road sounds following the car
     if (info.event?.landed > 4) sound.land(Math.min(1, info.event.landed / 14));
     if (info.event?.splash) sound.splash(Math.min(1, info.event.splash / 16));
