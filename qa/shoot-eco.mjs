@@ -257,7 +257,9 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         await page.waitForFunction(() => window.__eco.car.s.wall, null, { timeout: 15000 }).catch(() => {});
         await page.waitForTimeout(350);
         await page.evaluate(() => { window.__eco.keys.up = false; });
-        console.log('walls', JSON.stringify(await page.evaluate(() => { const s = window.__eco.car.s; return { speed: s.speed, wall: s.wall, heading: s.heading }; })));
+        const wallState = await page.evaluate(() => { const s = window.__eco.car.s; return { speed: +s.speed.toFixed(1), wall: s.wall, x: +s.x.toFixed(1), z: +s.z.toFixed(1), heading: +s.heading.toFixed(3) }; });
+        console.log('walls', JSON.stringify(wallState));
+        if (!wallState.wall) errors.push(`walls: the car never touched the tyre wall (at ${wallState.x}, ${wallState.z}, ${wallState.speed} m/s); the graze was not shown`);
         await shot('walls', 200);
         await page.evaluate(() => window.__eco.toStart());
       }
