@@ -33,6 +33,8 @@ function racewayProps(track) {
  * physics: reserved for per-track overrides (plan 2); handed to nothing here. */
 export async function makeSim({ track = trackDef(), props = "cleared", physics = {} } = {}) {
   if (!track) throw new Error("makeSim: no track (the terrain is configured without one)");
+  // The floor is measured on the height field, so the terrain must be configured for this very track
+  if (track !== trackDef()) throw new Error(`makeSim: the terrain is configured for ${trackDef()?.id ?? "no track"}, not ${track.id}; call configureTerrain first`);
   const { stepCar, colliders, CAR_R } = await loadStepCar();
   const LEN = track.len, half = track.half;
   // As terrain.js builds raceGates: each gate at its rounded s, with its own half-width

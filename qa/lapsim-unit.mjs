@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { makeSim } from '../tools/lapsim/sim.mjs';
 import { cutLine } from '../tools/lapsim/cut.mjs';
 import { TRACK } from '../ecosystem/js/content.js';
+import { resolveTrack } from '../ecosystem/js/track-math.js';
 const ghost = JSON.parse(readFileSync('qa/fixtures/lapsim/ghost-ninja1-23034.json', 'utf8')).ghost;
 const line = JSON.parse(readFileSync('qa/fixtures/lapsim/line-realfi-22914.json', 'utf8'));
 test('the leader\'s lap replays within 60 ms of the real 23.034 with the bales cleared', async () => {
@@ -34,4 +35,7 @@ test('the simulator\'s gates are terrain\'s raceGates, each at its own half-widt
   const { raceGates } = await import('../ecosystem/js/terrain.js');
   const sim = await makeSim({ props: 'cleared' });
   assert.deepEqual(sim.gates.map((g) => [g.i, g.s, g.w]), raceGates.map((g) => [g.i, g.s, g.w]));
+});
+test('makeSim refuses a track the terrain is not configured for', async () => {
+  await assert.rejects(makeSim({ track: resolveTrack({ id: 'tiny-v1', half: 6, points: [[-40, -20], [40, -20], [40, 20], [-40, 20]], gates: [{ s: 60 }] }) }), /tiny-v1.*realfi-v1|realfi-v1.*tiny-v1/);
 });

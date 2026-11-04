@@ -9,7 +9,7 @@ speed limits. It runs in node with no browser and no bundler. A lap takes about 
 - `car-node.mjs`: `loadStepCar()` reads `car.js`, swaps the `three`, `build.js`, `GLTFLoader`, `freeze.js` and `post.js`
   imports for stubs, points the `./` imports at this checkout's `ecosystem/js/`, writes it to the OS temp directory and imports
   it. The physics text is never edited, and nothing generated is committed. Each call returns a fresh copy with its own collider list.
-- `sim.mjs`: `makeSim({ track, props, physics })` returns `{ runLap, pathFrom, ghostPath, project }`.
+- `sim.mjs`: `makeSim({ track, props, physics })` returns `{ runLap, pathFrom, ghostPath, project }`. `track` must be the one the terrain is configured for (`trackDef()`); any other throws, so a floor is never measured on the wrong height field.
   - `runLap(latFn, { look, dt, startBack, startSpeed, log })` returns `{ ms, valid, reason, path, crossings, hits }`. `latFn(s)` is the
     path's lateral offset (right of travel positive) at `s`.
   - `pathFrom(ctrl, DS)` makes a `latFn` from control offsets every `DS` m (Catmull-Rom). `ghostPath(trace)` makes one from a recorded lap.
