@@ -6,10 +6,10 @@ import { TRACK } from '../ecosystem/js/content.js';
 import { resolveTrack } from '../ecosystem/js/track-math.js';
 const ghost = JSON.parse(readFileSync('qa/fixtures/lapsim/ghost-ninja1-23034.json', 'utf8')).ghost;
 const line = JSON.parse(readFileSync('qa/fixtures/lapsim/line-realfi-22914.json', 'utf8'));
-test('the leader\'s lap replays within 60 ms of the real 23.034 with the bales cleared', async () => {
+test('the leader\'s lap replays within 50 ms of the real 23.034 with the bales cleared', async () => {
   const sim = await makeSim({ props: 'cleared' });
   const r = sim.runLap(sim.ghostPath(ghost.trace), { look: 9 });
-  assert.ok(r.valid, r.reason); assert.ok(Math.abs(r.ms - 23034) < 60, `${r.ms}`);
+  assert.ok(r.valid, r.reason); assert.ok(Math.abs(r.ms - 23034) < 50, `${r.ms}`);
 });
 test('the recorded floor line runs within 40 ms of 22.914', async () => {
   const sim = await makeSim({ props: 'cleared' });
