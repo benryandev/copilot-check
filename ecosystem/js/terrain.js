@@ -241,6 +241,7 @@ function placeBuilderSlots(stops) {
 // ── RealFi Raceway: gates and the infield ──────────────────────────────
 // The configured, resolved Track (track-math.js), or null in a world with no timed track; trackRoad is its road's index
 let track = null, trackRoad = -1, trackRoadS0 = 0; // trackRoadS0: the track's s at the road's first point (0 unless `start` is elsewhere)
+let hasTarmac = false; // some stretch of the track's surface list is tarmac: false on the hub, so onTarmac costs nothing there
 export const trackDef = () => track;
 // A point `s` metres along the track: position, unit forward and right (right of travel). No track: the origin, facing -z.
 export function trackAt(s) {
@@ -377,7 +378,7 @@ export function grassWeight(x, z) {
 export const onDirt = (x, z) => { const info = roadInfo(x, z); return info.d < info.half + 0.3 || jumpHeight(x, z) > 0; };
 // Is the point on the track's own road, on a tarmac stretch of its surface list? (False on a track with none, as the hub's.)
 export function onTarmac(x, z) {
-  if (!track || trackRoad < 0) return false;
+  if (!hasTarmac || trackRoad < 0) return false;
   const info = roadInfo(x, z);
   if (info.road !== trackRoad || info.d >= info.half + 0.3) return false;
   return surfaceAt(track, trackS(info.t * roads[trackRoad].len)) === "tarmac";
@@ -682,6 +683,7 @@ export function configureTerrain(cfg) {
   crossings.splice(0, crossings.length, ...findCrossings());
 
   track = cfg.track ?? null;
+  hasTarmac = !!track?.surface?.some((r) => r.kind === "tarmac");
   trackRoadS0 = track && trackRoad >= 0 ? track.sOf(roads[trackRoad].pts[0]) : 0;
   // The track's ramps are given in track s; placeJump measures road s from points[0]
   const ramps = track && trackRoad >= 0 ? (track.ramps || []).map(({ s, side, length, height, width }) => ({ road: trackRoad, s: roadS(s), side, length, height, width })) : [];

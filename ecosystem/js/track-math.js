@@ -19,7 +19,9 @@ export const inStretch = (s, from, to, len) => {
 };
 // "tarmac" inside any tarmac stretch of the track's surface list, "dirt" everywhere else (and with no list)
 export function surfaceAt(track, s) {
-  return (track.surface ?? []).some((r) => r.kind === "tarmac" && inStretch(s, r.from, r.to, track.len)) ? "tarmac" : "dirt";
+  const list = track.surface;
+  if (list) for (let i = 0; i < list.length; i++) { const r = list[i]; if (r.kind === "tarmac" && inStretch(s, r.from, r.to, track.len)) return "tarmac"; } // a plain loop: the step calls this every frame, so no closure
+  return "dirt";
 }
 
 export function resolveTrack(def) {

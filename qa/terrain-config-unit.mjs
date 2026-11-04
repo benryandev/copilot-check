@@ -61,6 +61,16 @@ test('onTarmac reads the track surface list; the hub has none', () => {
   assert.deepEqual(T.surfaceStretches(), []);
   for (let s = 0; s < T.trackLen; s += 10) { const p = T.trackAt(s); assert.equal(T.onTarmac(p.x, p.z), false); }
 });
+test('on the hub onTarmac answers false without a road search (it has no tarmac stretch)', () => {
+  // roadInfo is called through the module's own binding, so it cannot be stubbed from here: time it instead. onDirt is
+  // one roadInfo grid search; an onTarmac that skips the search is many times cheaper. Best of 3 runs of 20,000 calls.
+  const pts = []; for (let s = 0; s < T.trackLen; s += T.trackLen / 200) { const p = T.trackAt(s); pts.push([p.x, p.z]); }
+  for (const [x, z] of pts) assert.equal(T.onTarmac(x, z), false);
+  const time = (f) => { let best = Infinity, sink = 0; for (let r = 0; r < 3; r++) { const t0 = process.hrtime.bigint(); for (let i = 0; i < 20000; i++) { const [x, z] = pts[i % pts.length]; sink += f(x, z) ? 1 : 0; } best = Math.min(best, Number(process.hrtime.bigint() - t0)); } return best + sink * 0; };
+  time(T.onDirt); time(T.onTarmac); // warm both
+  const dirt = time(T.onDirt), tarmac = time(T.onTarmac);
+  assert.ok(tarmac * 5 < dirt, `onTarmac ${(tarmac / 20000).toFixed(0)} ns per call should be at least 5x cheaper than onDirt ${(dirt / 20000).toFixed(0)} ns`);
+});
 test('a wrapped stretch comes out as two road stretches', () => {
   const cfg = tinyTarmac(); cfg.track = resolveTrack({ ...cfg.track, surface: [{ from: cfg.track.len - 20, to: 20, kind: 'tarmac' }] });
   T.configureTerrain(cfg);
