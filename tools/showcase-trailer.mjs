@@ -4,9 +4,10 @@
 // With sound (v2, 1 Nov 2026): the real synth scored offline against the logged timeline; see tools/cine.mjs for the
 // machinery (virtual clock, drivers, cameras, segments, sound). Needs the site served locally
 // (PORT=8766 node qa/serve.mjs) and ffmpeg.
-//   node tools/showcase-trailer.mjs [base] [--shots a,b] [--no-audio]   → tools/out/showcase/trailer.mp4 (+ trailer-forum.mp4 under 10 MB)
+//   node tools/showcase-trailer.mjs [base] [--shots a,b] [--no-audio] [--size=WxH]   → tools/out/showcase/trailer.mp4 (+ trailer-forum.mp4 under 10 MB)
 // Each shot renders to its own segment under tools/out/showcase/trailer-frames/, so one shot can be re-cut with
-// --shots and the rest reused.
+// --shots and the rest reused. --size=1600x1200 renders into trailer-1600x1200-frames/ instead (the 4:3 element clips
+// for the Awwwards entry, 4 Nov 2026: --shots=02-convoy,05b-grid,06-record,07b-cabinet --no-audio), leaving the 16:9 set alone.
 import { createKit } from './cine.mjs';
 
 const { open, rec, skip, fills, holdNote, titleAt, dayPage, nightPage, render, finish } = await createKit({ name: 'trailer' });

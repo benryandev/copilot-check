@@ -19,11 +19,19 @@ export const SR = 48000;
 // A best lap already in this browser, so the checkpoint notes read as a gap to beat (the ghost is the board's leader)
 const BEST = { ms: 27500, splits: [9230, 13100, 18300, 21800, 23900], trace: null, posted: true };
 
-/** `name` is the output stem: tools/out/showcase/<name>.mp4, <name>-forum.mp4 and <name>-frames/. */
+/** `name` is the output stem: tools/out/showcase/<name>.mp4, <name>-forum.mp4 and <name>-frames/. With --size=WxH the
+ *  stem gains -WxH (trailer-1600x1200), so a cut at another frame size sits beside the default one and shares none of
+ *  its segments (the Awwwards element clips are 4:3 at 1600 × 1200; the posts' cuts stay 16:9). */
 export async function createKit({ name, args = process.argv.slice(2), size = [1280, 720], fps = 30 } = {}) {
   const base = args.find((a) => !a.startsWith('--')) || 'http://localhost:8766';
   const only = (args.find((a) => a.startsWith('--shots='))?.slice(8) || '').split(',').filter(Boolean);
   const NO_AUDIO = args.includes('--no-audio');
+  const sizeArg = args.find((a) => a.startsWith('--size='));
+  if (sizeArg) {
+    size = sizeArg.slice(7).split('x').map(Number);
+    if (size.length !== 2 || size.some((n) => !(n > 0))) throw new Error(`--size wants WxH, for example --size=1600x1200, not ${sizeArg}`);
+    name = `${name}-${size[0]}x${size[1]}`;
+  }
   const OUT = here('./out/showcase/'), FR = `${OUT}${name}-frames/`;
   mkdirSync(FR, { recursive: true });
   const SIZE = size, FPS = fps, DT = 1000 / FPS;
