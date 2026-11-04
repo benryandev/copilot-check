@@ -5,7 +5,7 @@ import { loadStepCar } from '../tools/lapsim/car-node.mjs';
 import { resolvePhysics } from '../ecosystem/js/car-math.js';
 import * as T from '../ecosystem/js/terrain.js';
 
-const { stepCar, colliders } = await loadStepCar();
+const { stepCar, colliders, CAR_R } = await loadStepCar();
 const DT = 1 / 60;
 const keys = { up: true };
 const fakeCar = (s) => ({ s, group: { position: { set() {} }, rotation: {} }, tilt: { rotation: {}, scale: { set() {} } }, wheels: [] });
@@ -51,9 +51,12 @@ test('dirt is unchanged: full throttle from rest reaches 24, never above; {} and
 
 test('a 15° graze at 24 m/s loses no more than 25% and continues along the wall', async () => {
   const car = mk(20); wallAt(40, 1, 60); car.s.speed = 24; car.s.heading -= 15 * Math.PI / 180; // 15° toward the right-hand wall
-  const r = run(car, keys, 1.5); // through the contact and a second beyond
+  const r = { min: Infinity }; let touched = false;
+  for (let i = 0; i < 90; i++) { stepCar(car, keys, DT); touched ||= car.s.wall === true; r.min = Math.min(r.min, car.s.speed); } // through the contact and a second beyond
+  assert.ok(touched, 'a contact frame sets the wall flag to true');
   assert.ok(r.min >= 18, `min speed ${r.min.toFixed(1)} should keep 75% of 24`);
-  assert.ok(car.s.wall !== undefined, 'the step keeps wall contact in the car state');
+  // The car touches the wall on some frame and has separated by the end (the grass track beside the wall pulls it off)
+  assert.equal(car.s.wall, false, 'separated from the wall by the end: the contact flag is cleared');
   // The wall stands 3 m beyond the road's edge, so the car runs along it on grass: at grass's top (0.8 of 24), not above
   assert.ok(car.s.speed >= 24 * 0.8 - 0.05 && along(car) > 25, `still travelling the way the wall runs (speed ${car.s.speed.toFixed(1)}, along ${along(car).toFixed(1)})`);
   assert.ok(Math.abs(Math.sin(car.s.heading - Math.atan2(-car.start.fx, -car.start.fz))) < Math.sin(5 * Math.PI / 180), 'turned parallel to the wall');
@@ -127,4 +130,45 @@ test('a reversing graze turns the direction of travel away from the wall too', a
   assert.ok(contact < 15, `in contact for ${contact} frames: it should glance off, not pin`);
   assert.ok(!car.s.wall && lat() < T.TRACK_HALF + 3 - 0.5 - 1.6 - 0.1, `separated from the wall (lateral ${lat().toFixed(2)})`);
   assert.ok(minAbs >= 9 * 0.75 && Math.abs(car.s.speed) > 8.5, `kept most of its speed (min ${minAbs.toFixed(2)}, last ${Math.abs(car.s.speed).toFixed(2)})`);
+});
+
+// C1: a wall turns a car only as much as the car can steer itself. At rest it has no grip, so the wall must not swivel it.
+test('a car at rest touching a wall keeps its heading over 5 s', async () => {
+  // Exactly CAR_R from the wall's face, parallel to it (where a nudge is largest): rounding reads contact on every frame
+  const car = mk(40); wallAt(40, 1, 200);
+  const p = car.start, off = T.TRACK_HALF + 3 - 0.5 - CAR_R;
+  car.s.x = p.x + p.rx * off; car.s.z = p.z + p.rz * off; car.s.y = T.groundHeight(car.s.x, car.s.z);
+  const h0 = car.s.heading; let contact = 0;
+  for (let i = 0; i < 300; i++) { stepCar(car, {}, DT); if (car.s.wall) contact++; }
+  assert.ok(contact > 0, 'the step reads contact at CAR_R');
+  assert.ok(Math.abs(car.s.heading - h0) < 1e-6, `heading drifted ${car.s.heading - h0} rad at rest (${contact} contact frames)`);
+});
+test('a car that drove into a wall and stopped keeps its heading once the keys are released', async () => {
+  // 15 degrees into the wall at 24 m/s, throttle and steering held into it for 2 s: pinned (the throttle holds it near
+  // 0.2 m/s, never under 0.1, so the hold is timed), then released for 1 s to settle, then 5 s with no keys
+  const car = mk(20); wallAt(40, 1, 200);
+  car.s.heading -= 15 * Math.PI / 180; car.s.speed = 24;
+  let touched = false;
+  for (let i = 0; i < 120; i++) { stepCar(car, { up: true, right: true }, DT); touched ||= car.s.wall; }
+  assert.ok(touched && Math.abs(car.s.speed) < 0.5, `pinned against the wall (speed ${car.s.speed.toFixed(2)})`);
+  for (let i = 0; i < 60; i++) stepCar(car, {}, DT);
+  const h0 = car.s.heading; let contact = 0;
+  for (let i = 0; i < 300; i++) { stepCar(car, {}, DT); if (car.s.wall) contact++; }
+  assert.ok(contact > 0, 'still touching the wall at rest');
+  assert.ok(Math.abs(car.s.heading - h0) < 1e-6, `heading drifted ${car.s.heading - h0} rad at rest against the wall (${contact} contact frames)`);
+});
+test('a dt-0 step that places the car inside a collider does not turn it', async () => {
+  const car = mk(30); wallAt(30, 1, 60);
+  const p = car.start, wallIn = T.TRACK_HALF + 3 - 0.5;
+  car.s.x = p.x + p.rx * (wallIn - CAR_R / 2); car.s.z = p.z + p.rz * (wallIn - CAR_R / 2); // half-way into the push-out radius
+  car.s.heading += 0.3; car.s.speed = 0;
+  const h0 = car.s.heading;
+  stepCar(car, {}, 0);
+  assert.equal(car.s.wall, true, 'the placement read contact');
+  assert.equal(car.s.heading, h0, 'no turn on a dt-0 placement');
+  // and moving: a dt-0 step at speed is still a placement
+  const c2 = mk(30); wallAt(30, 1, 60);
+  c2.s.x = car.s.x; c2.s.z = car.s.z; c2.s.wall = false; c2.s.heading = h0; c2.s.speed = 20;
+  stepCar(c2, {}, 0);
+  assert.equal(c2.s.heading, h0, 'no turn on a dt-0 placement at speed');
 });

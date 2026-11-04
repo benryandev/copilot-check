@@ -158,7 +158,8 @@ export function stepCar(car, keys, dt, physics = DEFAULT_PHYSICS) {
 
   const steerIn = steerInput(keys); // the arrow keys, or a number from the touch stick (stick-math.js)
   s.steer += (steerIn - s.steer) * Math.min(1, dt * 10);
-  const grip = s.air ? 0.15 : Math.min(1, Math.abs(s.speed) / 8);
+  const traction = Math.min(1, Math.abs(s.speed) / 8); // how much the wheels can turn the car: none at rest, all of it from 8 m/s
+  const grip = s.air ? 0.15 : traction;
   s.heading += s.steer * turnRate(tarmac ? "tarmac" : "dirt", Math.abs(s.speed), P) * grip * Math.sign(s.speed) * dt; // tarmac steers less at speed
 
   const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
@@ -182,13 +183,15 @@ export function stepCar(car, keys, dt, physics = DEFAULT_PHYSICS) {
   if (hit) {
     // The graze rule (car-math.js): k is how square-on the car meets the wall (0 along it, 1 head-on, either way round).
     // The first frame of contact keeps 0.8 of the speed at a graze down to 0.35 head-on; rubbing along afterwards
-    // costs little unless the car is pushed square into it. A graze turns the car away from the wall a little.
+    // costs little unless the car is pushed square into it. A graze turns the car away from the wall a little, but only
+    // as far as the car could steer itself (traction: none at rest), and never on a dt-0 placement, so a parked car against a
+    // wall stays put.
     s.x = hit.x; s.z = hit.z;
     const k = Math.abs(fx * hit.nx + fz * hit.nz);
-    const away = (Math.sign(s.speed) || 1) * Math.sign(hit.nx * fz - hit.nz * fx || 1); // turns the direction of travel toward the normal (the nose going forward, the tail reversing)
+    const away = (Math.sign(s.speed) || 1) * Math.sign(hit.nx * fz - hit.nz * fx || 1) * traction; // turns the direction of travel toward the normal (the nose going forward, the tail reversing)
     if (!s.wall) {
       s.speed *= hitSpeedShare(k, P.graze);
-      s.heading += grazeNudge(k, P.graze) * away;
+      if (dt > 0) s.heading += grazeNudge(k, P.graze) * away;
     } else {
       s.speed *= slideShare(k, P.graze);
       s.heading += grazeNudge(k, P.graze) * away * Math.min(1, dt * 10);
