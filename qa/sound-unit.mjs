@@ -54,3 +54,8 @@ test('surfaceGain: water is the loudest ground and still silent at a standstill'
   assert.ok(surfaceGain('water', 24) > surfaceGain('grass', 24), 'wading is louder than grass');
   assert.equal(surfaceGain('water', 0), 0);
 });
+
+test('tarmac has its own ground sound: a hum under dirt\'s level, saturating at the car\'s top', () => {
+  assert.equal(surfaceGain('tarmac', 24), 0.006); assert.ok(surfaceGain('tarmac', 24) < surfaceGain('dirt', 24));
+  assert.equal(surfaceGain('tarmac', 30), 0.006, 'no louder past 24');
+});

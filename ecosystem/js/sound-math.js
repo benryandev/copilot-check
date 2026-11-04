@@ -30,7 +30,7 @@ export function engineParams(speed, throttle) {
   };
 }
 
-const SURFACE = { dirt: 0.01, grass: 0.027, cobble: 0.0225, water: 0.032, air: 0 }; // road 0.45 of the first cut (Ben's mix); water added 2 Nov
+const SURFACE = { dirt: 0.01, grass: 0.027, cobble: 0.0225, tarmac: 0.006, water: 0.032, air: 0 }; // road 0.45 of the first cut (Ben's mix); water added 2 Nov
 /** Level of the rolling noise for a surface and speed (m/s). */
 export function surfaceGain(surface, speed) {
   const base = SURFACE[surface] ?? SURFACE.dirt;

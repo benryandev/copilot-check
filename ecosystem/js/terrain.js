@@ -521,9 +521,55 @@ export function buildRoads(palette) {
     m.renderOrder = 1;
     group.add(m);
   }
-  group.userData.recolour = (p) => mat.color.set(p.dirt);
+  // Tarmac stretches on the track road: a dark ribbon and two edge lines. Nothing is made where there are none (the hub).
+  const tarmacMats = [];
+  const stretches = surfaceStretches();
+  if (stretches.length && trackRoad >= 0) {
+    const road = roads[trackRoad];
+    const mk = (factor, order) => {
+      const m = new THREE.MeshLambertMaterial({ side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: factor });
+      m.userData.order = order; tarmacMats.push(m); return m;
+    };
+    const ribbonMat = mk(-3, 2), lineMat = mk(-4, 3);
+    ribbonMat.userData.key = "tarmac"; lineMat.userData.key = "tarmacLine";
+    for (const st of stretches) {
+      const sub = sliceRoad(road, st.from, st.to);
+      if (sub.pts.length < 2) continue;
+      const parts = [[sub, ribbonMat, 2], [offsetRoad(sub, road.half + 0.15), lineMat, 3], [offsetRoad(sub, -(road.half + 0.15)), lineMat, 3]];
+      for (const [r, m, order] of parts) {
+        const mesh = new THREE.Mesh(roadRibbon(r), m);
+        mesh.receiveShadow = true;
+        mesh.renderOrder = order;
+        group.add(mesh);
+      }
+    }
+  }
+  group.userData.recolour = (p) => { mat.color.set(p.dirt); for (const m of tarmacMats) m.color.set(p[m.userData.key]); };
   group.userData.recolour(palette);
   return group;
+}
+
+// The part of a road between two arc lengths, as a road of its own (end points interpolated)
+function sliceRoad(r, from, to) {
+  const pts = [], cum = [];
+  const at = (i, s) => { const k = (s - r.cum[i]) / (r.cum[i + 1] - r.cum[i] || 1); return [r.pts[i][0] + (r.pts[i + 1][0] - r.pts[i][0]) * k, r.pts[i][1] + (r.pts[i + 1][1] - r.pts[i][1]) * k]; };
+  for (let i = 0; i < r.pts.length - 1; i++) {
+    const a = r.cum[i], b = r.cum[i + 1];
+    if (b <= from || a >= to) continue;
+    if (!pts.length) { pts.push(at(i, Math.max(a, from))); cum.push(Math.max(a, from)); }
+    if (b < to) { pts.push(r.pts[i + 1]); cum.push(b); } else { pts.push(at(i, to)); cum.push(to); }
+  }
+  return { pts, cum, half: r.half, closed: false };
+}
+// A road's samples shifted sideways by `d` metres (left of travel positive), as a 0.3 m line
+function offsetRoad(r, d) {
+  const n = r.pts.length;
+  const pts = r.pts.map(([x, z], i) => {
+    const [ax, az] = r.pts[Math.max(0, i - 1)], [bx, bz] = r.pts[Math.min(n - 1, i + 1)];
+    const tx = bx - ax, tz = bz - az, l = Math.hypot(tx, tz) || 1;
+    return [x - (tz / l) * d, z + (tx / l) * d];
+  });
+  return { pts, cum: r.cum, half: -0.45, closed: false };
 }
 
 // Kicker: sampled from jumpHeight so the mesh matches the physics exactly

@@ -55,14 +55,14 @@ const PALETTE = {
     sky: 0xcfe0ec, grassA: 0x93bb6c, grassB: 0x75a056, grassBase: 0x4f7d3b, grassTip: 0xaed383,
     dirt: 0xf6ead6, dirtTop: 0xc9a97e, dirtSide: 0xa9896a, dust: 0xd9c5a3, plaza: 0xeef1f4, cobbleA: 0xded6c8, cobbleB: 0xcbc1b0, mortar: 0xb3a894,
     build: 0xf5f6f8, trim: 0x0d0d0d, wood: 0x8a6a48,
-    water: 0x4fa3c7, waterDeep: 0x2b6f93, foam: 0xeaf6fb, spray: 0xdff1f8, mud: 0x8a7a5c, blimp: "#d6dbe1",
+    water: 0x4fa3c7, waterDeep: 0x2b6f93, foam: 0xeaf6fb, spray: 0xdff1f8, mud: 0x8a7a5c, tarmac: 0x4a4e55, tarmacLine: 0xf4f4f2, blimp: "#d6dbe1",
     panel: "#ffffff", text: "#0d0d0d", sub: "#4b5563", signBoard: "#f3e9d8", signInk: "#2b2118",
   },
   dark: {
     sky: 0x0b1016, grassA: 0x2d4b2a, grassB: 0x223a20, grassBase: 0x182a16, grassTip: 0x406c37,
     dirt: 0x9b8770, dirtTop: 0x6e5a43, dirtSide: 0x56462f, dust: 0x7a6a56, plaza: 0x181c21, cobbleA: 0x2b3139, cobbleB: 0x222730, mortar: 0x15181d,
     build: 0x252a31, trim: 0xf9fafb, wood: 0x5e4631,
-    water: 0x1b3a52, waterDeep: 0x0f2435, foam: 0x7f9fb4, spray: 0x9fb8c8, mud: 0x3f3a2c, blimp: "#8d949c",
+    water: 0x1b3a52, waterDeep: 0x0f2435, foam: 0x7f9fb4, spray: 0x9fb8c8, mud: 0x3f3a2c, tarmac: 0x24272c, tarmacLine: 0xd9d9d4, blimp: "#8d949c",
     panel: "#15191e", text: "#f9fafb", sub: "#9ca3af", signBoard: "#2a241c", signInk: "#f3e9d8",
   },
 };

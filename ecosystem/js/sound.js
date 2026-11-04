@@ -160,7 +160,7 @@ export function createSound({ enabled = true, context = null, offline = false } 
     roll.phase += dt * (surface === "cobble" ? 22 : surface === "water" ? 6 : 0);
     const trem = surface === "cobble" ? 0.6 + 0.4 * Math.max(0, Math.sin(roll.phase)) : surface === "water" ? 0.75 + 0.25 * Math.sin(roll.phase) : 1; // cobbles rattle, water sloshes
     roll.g.gain.setTargetAtTime(surfaceGain(surface, speed) * trem * trim.road, now, 0.05);
-    roll.f.frequency.setTargetAtTime(surface === "grass" ? 520 : surface === "cobble" ? 1100 : surface === "water" ? 420 : 760, now, 0.1);
+    roll.f.frequency.setTargetAtTime(surface === "grass" ? 520 : surface === "cobble" ? 1100 : surface === "water" ? 420 : surface === "tarmac" ? 300 : 760, now, 0.1);
     idleFor = Math.abs(speed) > 0.3 || throttle > 0 ? 0 : idleFor + dt;
     if (musicNode) {
       const want = Math.max(0.15, Math.min(1, Math.abs(speed) / 22));
