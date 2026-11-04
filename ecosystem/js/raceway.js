@@ -3,8 +3,9 @@
 // knock about. The timing lives in race.js; the track itself is a road in content.js.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { DISTRICTS, RACE_TRACK, raceLocal } from "./content.js";
+import { DISTRICTS, TRACK } from "./content.js";
 import { raceGates, trackAt, terrainHeight, TRACK_HALF, GATE_HALF } from "./terrain.js";
+import { wallSpots, wallBoxes } from "./walls-math.js";
 import { MARKER, markerPos, drapedRing, drapedDisc } from "./focus-math.js";
 import {
   M, accent, box, cyl, mesh, canvasTexture, colliders, redraws, groupFor, addCollider, addProp, orientedBox, tintedBasic, makeLabel,
@@ -91,7 +92,7 @@ function buildGate(parent, gate, lineMat) {
     g.add(pole);
   }
   g.add(box(half * 2, 0.22, 0.22, A, 0, 6.4, 0));
-  const n = RACE_TRACK.checkpoints.length;
+  const n = raceGates.length - 1;
   const b = banner(7.2, 1.2, 1024, (ctx, w, h) => {
     ctx.fillStyle = REALFI.green;
     ctx.fillRect(0, 0, w, h);
@@ -111,18 +112,7 @@ function buildGate(parent, gate, lineMat) {
 
 // Tyre walls round the outside of the tight corners: stacks of three tyres, solid in 4 m pieces
 function buildTyreWalls(parent) {
-  const spots = [];
-  const step = 1.0, off = TRACK_HALF + 3;
-  for (let s = 0; s < RACE_TRACK.length; s += step) {
-    const a = trackAt(s - 4), b = trackAt(s + 4);
-    const turn = Math.asin(Math.max(-1, Math.min(1, a.fx * b.fz - a.fz * b.fx)));
-    if (Math.abs(turn) / 8 < 1 / 34) continue; // gentler than a 34 m radius: no wall
-    const p = trackAt(s);
-    // Inside of the corner is the way the track turns; the wall goes on the other side
-    const ix = b.fx - a.fx, iz = b.fz - a.fz;
-    const side = ix * p.rx + iz * p.rz > 0 ? -1 : 1;
-    spots.push({ s, x: p.x + p.rx * off * side, z: p.z + p.rz * off * side, fx: p.fx, fz: p.fz });
-  }
+  const spots = wallSpots(TRACK);
   const geo = new THREE.CylinderGeometry(0.45, 0.45, 0.36, 14);
   const mat = new THREE.MeshStandardMaterial({ roughness: 0.85 });
   const tyres = new THREE.InstancedMesh(geo, mat, spots.length * 3);
@@ -138,16 +128,7 @@ function buildTyreWalls(parent) {
   });
   parent.add(tyres);
   // Solid in pieces of four tyres, each turned along the track
-  for (let i = 0; i < spots.length; i += 4) {
-    const run = spots.slice(i, i + 4);
-    if (run.length < 2 || run.at(-1).s - run[0].s > 6) {
-      for (const p of run) colliders.push(orientedBox(p.x, p.z, 0.5, 0.5, 0));
-      continue;
-    }
-    const cx = run.reduce((t, p) => t + p.x, 0) / run.length, cz = run.reduce((t, p) => t + p.z, 0) / run.length;
-    const dx = run.at(-1).x - run[0].x, dz = run.at(-1).z - run[0].z;
-    colliders.push(orientedBox(cx, cz, Math.hypot(dx, dz) / 2 + 0.5, 0.5, Math.atan2(-dz, dx)));
-  }
+  for (const w of wallBoxes(spots)) colliders.push(orientedBox(w.cx, w.cz, w.hx, w.hz, w.yaw));
   return spots.length;
 }
 
@@ -209,8 +190,8 @@ function buildBoard(parent) {
   redraws.push(board.redraw);
   boardRedraw = board.redraw;
   realfiLogo.then(() => lastPal && board.redraw(lastPal));
-  const [x, z] = raceLocal(-36, -15);
-  const [tx, tz] = raceLocal(-78, -40);
+  const [x, z] = TRACK.toWorld(-36, -15);
+  const [tx, tz] = TRACK.toWorld(-78, -40);
   const g = new THREE.Group();
   g.position.set(x, terrainHeight(x, z), z);
   g.rotation.y = Math.atan2(tx - x, tz - z);

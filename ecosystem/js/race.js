@@ -5,16 +5,15 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { offerBest, retryAfterMs, recordBest, markPosted, deviceToken } from "./race-post.js";
-import { RACE_TRACK } from "./content.js";
-import { raceGates, trackAt, trackLen, groundHeight } from "./terrain.js";
+import { raceGates, trackAt, trackLen, trackDef, groundHeight } from "./terrain.js";
 import { setBoard, formatTime } from "./raceway.js";
 import { nameTag } from "./tags.js";
 import { markLive } from "./freeze.js";
 import { flyY } from "./peers-math.js";
 
 const API = "https://copilot-watch.benryan.workers.dev";
-const N = RACE_TRACK.checkpoints.length;
-const BEST_KEY = `eco-race-best:${RACE_TRACK.id}`;
+const BEST_KEY = () => `eco-race-best:${trackDef().id}`; // read per use, the track is the configured world's
+const cpCount = () => raceGates.length - 1; // the checkpoints, read live from the configured track
 const NAME_KEY = "eco-race-name";
 const $ = (id) => document.getElementById(id);
 
@@ -26,14 +25,14 @@ const sent = new Set();
 function countStage(kind) {
   if (sent.has(kind)) return;
   sent.add(kind);
-  const body = JSON.stringify({ track: RACE_TRACK.id, kind });
+  const body = JSON.stringify({ track: trackDef().id, kind });
   try {
     if (!navigator.sendBeacon?.(`${API}/race/event`, body)) fetch(`${API}/race/event`, { method: "POST", body, keepalive: true }).catch(() => {});
   } catch {}
 }
 
 let best = (() => {
-  const b = load(BEST_KEY);
+  const b = load(BEST_KEY());
   return b && Number.isFinite(b.ms) && b.ms > 0 ? b : null;
 })();
 
@@ -73,7 +72,7 @@ export function raceCancel(why) {
 function crossed(g, forward, t) {
   if (g.i === 0) {
     if (!forward) return raceCancel("Lap cancelled: you crossed the start line backwards");
-    if (lap.running && lap.next > N) return finish(t);
+    if (lap.running && lap.next > cpCount()) return finish(t);
     if (lap.running) note(`Lap not counted: you missed checkpoint ${lap.next}`, 4000);
     startLap(t);
     return;
@@ -86,7 +85,7 @@ function crossed(g, forward, t) {
     hooks.sound?.("blip");
     hooks.live?.("cp", g.i);
     const ref = best?.splits?.[g.i - 1];
-    note(ref ? `Checkpoint ${g.i} of ${N}  ${gap(ms - ref)}` : `Checkpoint ${g.i} of ${N}`, 2200);
+    note(ref ? `Checkpoint ${g.i} of ${cpCount()}  ${gap(ms - ref)}` : `Checkpoint ${g.i} of ${cpCount()}`, 2200);
   } else if (!forward && g.i === lap.next - 1) {
     // Backed over the checkpoint just taken: take it again on the way back through
     lap.next--;
@@ -132,7 +131,7 @@ function finish(t) {
   const path = k > 1 ? trace.filter((_, i) => i % k === 0 || i === trace.length - 1) : trace;
   const prevBest = best;
   const nb = recordBest(best, { ms, splits, trace: path });
-  if (nb !== best) { best = nb; save(BEST_KEY, best); }
+  if (nb !== best) { best = nb; save(BEST_KEY(), best); }
   finished = { ms, splits, trace: path, prevBest, posted: false };
   hooks.sound?.("lapFinish");
   hooks.live?.("fin", ms);
@@ -156,12 +155,12 @@ function drawHud() {
   if (!shown) return;
   const time = lap.running ? formatTime(Math.max(0, (clock - lap.start) * 1000), 2) : finished ? formatTime(finished.ms, 2) : "0:00.00";
   // Phones get the short form: the panel sits where the title was, beside the chips, and must not cover the track ahead
-  const cp = Math.min(lap.next, N + 1) - 1;
+  const cp = Math.min(lap.next, cpCount() + 1) - 1;
   const sub = liveLine
-    ? `${liveLine}${lap.running ? `  ·  CP ${cp}/${N}` : ""}`
+    ? `${liveLine}${lap.running ? `  ·  CP ${cp}/${cpCount()}` : ""}`
     : narrow.matches
-    ? (lap.running ? `CP ${cp}/${N}${best ? `  ·  best ${formatTime(best.ms, 2)}` : ""}` : best ? `Best ${formatTime(best.ms)}` : "Cross the line to start")
-    : `Best ${best ? formatTime(best.ms) : "none yet"}${lap.running ? `  ·  Checkpoint ${cp} of ${N}` : "  ·  Cross the start line"}`;
+    ? (lap.running ? `CP ${cp}/${cpCount()}${best ? `  ·  best ${formatTime(best.ms, 2)}` : ""}` : best ? `Best ${formatTime(best.ms)}` : "Cross the line to start")
+    : `Best ${best ? formatTime(best.ms) : "none yet"}${lap.running ? `  ·  Checkpoint ${cp} of ${cpCount()}` : "  ·  Cross the start line"}`;
   if (time !== lastTime) { lastTime = time; $("race-time").textContent = time; }
   if (sub !== lastSub) { lastSub = sub; $("race-sub").textContent = sub; }
 }
@@ -242,7 +241,7 @@ async function postLap(entry, retried = false) {
   try {
     // The device token goes with the lap, so a colleague on the same wifi gets their own row rather than
     // "already on the board" (4 Nov 2026); a browser that can't keep one posts as before
-    const payload = { track: RACE_TRACK.id, name, ms: entry.ms, splits: entry.splits, trace: entry.trace };
+    const payload = { track: trackDef().id, name, ms: entry.ms, splits: entry.splits, trace: entry.trace };
     let device = null;
     try { device = deviceToken(localStorage); } catch {}
     if (device) payload.device = device;
@@ -255,7 +254,7 @@ async function postLap(entry, retried = false) {
     if (res.ok && body.ok) {
       if (finished && entry.ms === finished.ms) { finished.posted = true; $("race-form").hidden = true; }
       const nb = markPosted(best, entry.ms);
-      if (nb !== best) { best = nb; save(BEST_KEY, best); }
+      if (nb !== best) { best = nb; save(BEST_KEY(), best); }
       showOffer();
       const where = body.rank ? `number ${body.rank} on the board` : "not in the top 10 this time";
       status.textContent = body.best === false && body.rank ? `${formatTime(entry.ms)} was already on the board: you're ${where}.` : `Posted ${formatTime(entry.ms)}. You're ${where}.`;
@@ -307,7 +306,7 @@ export async function fetchTop() {
   try {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 8000);
-    const res = await fetch(`${API}/race/top?track=${encodeURIComponent(RACE_TRACK.id)}`, { cache: "no-store", signal: ctl.signal });
+    const res = await fetch(`${API}/race/top?track=${encodeURIComponent(trackDef().id)}`, { cache: "no-store", signal: ctl.signal });
     clearTimeout(timer);
     if (!res.ok) throw new Error(`race/top: ${res.status}`);
     const top = readTop(await res.json());
@@ -362,7 +361,7 @@ function readGhost(body) {
   if (!g || typeof g !== "object") return null;
   const ms = Number(g.ms), name = String(g.name ?? "").slice(0, 20);
   if (!name || !Number.isFinite(ms) || ms <= 0) return null;
-  const splits = Array.isArray(g.splits) && g.splits.length === N && g.splits.every((v) => Number.isFinite(v)) ? g.splits.map(Number) : null;
+  const splits = Array.isArray(g.splits) && g.splits.length === cpCount() && g.splits.every((v) => Number.isFinite(v)) ? g.splits.map(Number) : null;
   const tr = Array.isArray(g.trace) && g.trace.length >= 2 && g.trace.every((s) => Array.isArray(s) && s.length === 4 && s.every(Number.isFinite)) ? g.trace : null;
   if (!tr && !splits) return null;
   return { name, ms, splits, trace: tr, synth: !tr };
@@ -373,7 +372,7 @@ async function fetchGhost() {
   try {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 8000);
-    const res = await fetch(`${API}/race/ghost?track=${encodeURIComponent(RACE_TRACK.id)}`, { cache: "no-store", signal: ctl.signal });
+    const res = await fetch(`${API}/race/ghost?track=${encodeURIComponent(trackDef().id)}`, { cache: "no-store", signal: ctl.signal });
     clearTimeout(timer);
     if (!res.ok) throw new Error(`race/ghost: ${res.status}`);
     setGhost(readGhost(await res.json()));
@@ -405,7 +404,7 @@ function ghostPose(e) {
     dh = Math.atan2(Math.sin(dh), Math.cos(dh)); // the short way round
     return { x: a[1] + (b[1] - a[1]) * u, z: a[2] + (b[2] - a[2]) * u, h: a[3] + dh * u };
   }
-  const times = [0, ...g.splits, g.ms], dist = [0, ...RACE_TRACK.checkpoints, trackLen];
+  const times = [0, ...g.splits, g.ms], dist = [0, ...trackDef().checkpoints, trackLen];
   let i = 1;
   while (i < times.length - 1 && e > times[i]) i++;
   const u = Math.max(0, Math.min(1, (e - times[i - 1]) / (times[i] - times[i - 1])));

@@ -239,7 +239,7 @@ function placeBuilderSlots(stops) {
 
 // ── RealFi Raceway: gates and the infield ──────────────────────────────
 // The configured, resolved Track (track-math.js), or null in a world with no timed track; trackRoad is its road's index
-let track = null, trackRoad = -1;
+let track = null, trackRoad = -1, trackRoadS0 = 0; // trackRoadS0: the track's s at the road's first point (0 unless `start` is elsewhere)
 export const trackDef = () => track;
 // A point `s` metres along the track: position, unit forward and right (right of travel). No track: the origin, facing -z.
 export function trackAt(s) {
@@ -287,7 +287,9 @@ let CREST = { height: 0 };
 const crest = (s) => (s <= CREST.from || s >= CREST.to ? 0 : CREST.height * 0.5 * (1 - Math.cos(((s - CREST.from) / (CREST.to - CREST.from)) * Math.PI * 2)));
 function trackLift(info) {
   if (info.road !== trackRoad || trackRoad < 0 || !CREST.height) return 0;
-  return crest(info.t * track.len) * (1 - smooth(track.half + 3, 22, info.d));
+  // The road's t runs from points[0]; the crest is placed in the track's own arc length, which starts at its `start`
+  const sT = (((trackRoadS0 + info.t * roads[trackRoad].len) % track.len) + track.len) % track.len;
+  return crest(sT) * (1 - smooth(track.half + 3, 22, info.d));
 }
 
 // ── Height field ───────────────────────────────────────────────────────
@@ -624,6 +626,7 @@ export function configureTerrain(cfg) {
     if (drift > 0.5) console.warn(`[eco] raceway: the road is ${roads[trackRoad].len.toFixed(1)} m but the track's lap is ${track.len.toFixed(1)} m`);
   }
   CREST = track?.lifts?.[0] ?? { height: 0 };
+  trackRoadS0 = track && trackRoad >= 0 ? track.sOf(roads[trackRoad].pts[0]) : 0;
 
   kerbGapCache.clear();
   setRidgeSeries(ridgeState.closes); // the profile is scaled to the ridge road's length
