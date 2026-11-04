@@ -259,6 +259,12 @@ Four rounds, then a blind re-score of 7.3 before its fixes:
 - `node --test qa/furniture-unit.mjs qa/terrain-unit.mjs` — where the kerb opens (gaps from road endpoints, merged, whole across the ±π seam), lamp spots beside pads (right first, none when blocked), bollard spots just outside each gap, bench and planter spots between pads; the kerb's 12 cm lip in the height field (open at mouths, under the car's bump allowance).
 - Shoot state `plaza` (HQ's rim from inside, by day and night); still `tools/showcase-stills.mjs --only=plaza` (night). Benches and planters are props in the crate system, so the crate QA covers their physics.
 
+## Track engine (4 Nov 2026)
+
+- The Raceway became a track definition (`ecosystem/tracks/realfi.js`) resolved by `track-math.js`; terrain is built by `configureTerrain`, water is a list of bodies, walls come from `walls-math.js`, and `tools/lapsim/` and `tools/tracks-json.mjs` are new tools.
+- `node --test qa/track-math-unit.mjs qa/track-realfi-unit.mjs qa/terrain-config-unit.mjs qa/water-bodies-unit.mjs qa/raceway-walls-unit.mjs qa/track-lift-unit.mjs qa/lapsim-unit.mjs qa/tracks-json-unit.mjs` — the resolver, the Raceway module against the old numbers, in-place terrain configuration, water bodies, wall spots and boxes, lifts, the lap simulator (Ninja1's 23.034 replay, the 22.914 floor line, the 26.725 centreline, the bales penalty, the 0.87 cut ratio, fixtures in `qa/fixtures/lapsim/`) and the generated tracks.json. Suite: 382 tests, 378 pass, 4 skipped.
+- Shoot states `drive`, `raceway`, `ford` and `bridge` were shot during the build. The full gate runs before the deploy and is not claimed here.
+
 ## When to run the full shoot (Ben, 2 Nov 2026)
 
 - During a build: only the states the change touches plus `drive`, at two widths, both themes, e.g. `node qa/shoot-eco.mjs http://localhost:8766 --states=ridge,drive --widths=375,1280`. About a minute.
