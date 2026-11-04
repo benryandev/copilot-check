@@ -84,3 +84,14 @@ test('race.js posts the device token with a lap and words address_full for the f
   assert.equal(reason[1], 'This network already has five names on the board.');
   assert.doesNotMatch(reason[1], /[:;–—]| - /, 'a plain sentence: no colon, semicolon or dash inside it');
 });
+
+test('bestKey and loadBest are per track and take a null track without throwing', async () => {
+  const { bestKey, loadBest } = await import('../ecosystem/js/race-post.js');
+  assert.equal(bestKey('realfi-v1'), 'eco-race-best:realfi-v1'); assert.equal(bestKey(null), null);
+  const store = { 'eco-race-best:a': { ms: 1000 }, 'eco-race-best:b': { ms: -1 } };
+  const read = (k) => store[k] ?? null;
+  assert.equal(loadBest(read, 'a').ms, 1000, 'one record per track id');
+  assert.equal(loadBest(read, 'b'), null, 'a bad record is ignored');
+  assert.equal(loadBest(read, 'c'), null);
+  assert.equal(loadBest(() => { throw new Error('must not read'); }, null), null, 'no track, no read');
+});

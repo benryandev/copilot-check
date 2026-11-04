@@ -4,7 +4,7 @@
 // just says so and there's no ghost.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { offerBest, retryAfterMs, recordBest, markPosted, deviceToken } from "./race-post.js";
+import { offerBest, retryAfterMs, recordBest, markPosted, deviceToken, bestKey, loadBest } from "./race-post.js";
 import { raceGates, trackAt, trackLen, trackDef, groundHeight } from "./terrain.js";
 import { setBoard, formatTime } from "./raceway.js";
 import { nameTag } from "./tags.js";
@@ -12,7 +12,7 @@ import { markLive } from "./freeze.js";
 import { flyY } from "./peers-math.js";
 
 const API = "https://copilot-watch.benryan.workers.dev";
-const BEST_KEY = () => `eco-race-best:${trackDef().id}`; // read per use, the track is the configured world's
+const trackId = () => trackDef()?.id ?? null; // the configured world's track, read per use (null in a world with none)
 const cpCount = () => raceGates.length - 1; // the checkpoints, read live from the configured track
 const NAME_KEY = "eco-race-name";
 const $ = (id) => document.getElementById(id);
@@ -25,16 +25,24 @@ const sent = new Set();
 function countStage(kind) {
   if (sent.has(kind)) return;
   sent.add(kind);
-  const body = JSON.stringify({ track: trackDef().id, kind });
+  const body = JSON.stringify({ track: trackId(), kind });
   try {
     if (!navigator.sendBeacon?.(`${API}/race/event`, body)) fetch(`${API}/race/event`, { method: "POST", body, keepalive: true }).catch(() => {});
   } catch {}
 }
 
-let best = (() => {
-  const b = load(BEST_KEY());
-  return b && Number.isFinite(b.ms) && b.ms > 0 ? b : null;
-})();
+let bestVal = null, bestId;
+// The best lap of the track configured now, reloaded when the track changes
+function curBest() {
+  const id = trackId();
+  if (id !== bestId) { bestId = id; bestVal = loadBest(load, id); }
+  return bestVal;
+}
+function setBest(v) {
+  bestVal = v;
+  const k = bestKey(bestId);
+  if (k) save(k, v);
+}
 
 // ── The lap ────────────────────────────────────────────────────────────
 // Time is the game's own clock (it stops while a sheet is open), so a lap can't run faster than
@@ -84,7 +92,7 @@ function crossed(g, forward, t) {
     lap.next++;
     hooks.sound?.("blip");
     hooks.live?.("cp", g.i);
-    const ref = best?.splits?.[g.i - 1];
+    const ref = curBest()?.splits?.[g.i - 1];
     note(ref ? `Checkpoint ${g.i} of ${cpCount()}  ${gap(ms - ref)}` : `Checkpoint ${g.i} of ${cpCount()}`, 2200);
   } else if (!forward && g.i === lap.next - 1) {
     // Backed over the checkpoint just taken: take it again on the way back through
@@ -129,9 +137,9 @@ function finish(t) {
   trace.push([ms, round1(here.x), round1(here.z), round2(here.h)]);
   const k = Math.ceil(trace.length / TRACE_MAX);
   const path = k > 1 ? trace.filter((_, i) => i % k === 0 || i === trace.length - 1) : trace;
-  const prevBest = best;
-  const nb = recordBest(best, { ms, splits, trace: path });
-  if (nb !== best) { best = nb; save(BEST_KEY(), best); }
+  const prevBest = curBest();
+  const nb = recordBest(curBest(), { ms, splits, trace: path });
+  if (nb !== curBest()) setBest(nb);
   finished = { ms, splits, trace: path, prevBest, posted: false };
   hooks.sound?.("lapFinish");
   hooks.live?.("fin", ms);
@@ -159,8 +167,8 @@ function drawHud() {
   const sub = liveLine
     ? `${liveLine}${lap.running ? `  ·  CP ${cp}/${cpCount()}` : ""}`
     : narrow.matches
-    ? (lap.running ? `CP ${cp}/${cpCount()}${best ? `  ·  best ${formatTime(best.ms, 2)}` : ""}` : best ? `Best ${formatTime(best.ms)}` : "Cross the line to start")
-    : `Best ${best ? formatTime(best.ms) : "none yet"}${lap.running ? `  ·  Checkpoint ${cp} of ${cpCount()}` : "  ·  Cross the start line"}`;
+    ? (lap.running ? `CP ${cp}/${cpCount()}${curBest() ? `  ·  best ${formatTime(curBest().ms, 2)}` : ""}` : curBest() ? `Best ${formatTime(curBest().ms)}` : "Cross the line to start")
+    : `Best ${curBest() ? formatTime(curBest().ms) : "none yet"}${lap.running ? `  ·  Checkpoint ${cp} of ${cpCount()}` : "  ·  Cross the start line"}`;
   if (time !== lastTime) { lastTime = time; $("race-time").textContent = time; }
   if (sub !== lastSub) { lastSub = sub; $("race-sub").textContent = sub; }
 }
@@ -214,7 +222,7 @@ const REASONS = {
 // The device's best, when it beats this lap and never made the board (a 429 between two quick laps, a missed
 // tap): one button posts it from here
 function showOffer() {
-  const offer = finished ? offerBest(best, finished.ms) : null;
+  const offer = finished ? offerBest(curBest(), finished.ms) : null;
   $("race-best-note").hidden = !offer;
   if (offer) $("race-best-time").textContent = formatTime(offer.ms);
 }
@@ -227,7 +235,7 @@ $("race-form").addEventListener("submit", (e) => {
   postLap({ ms: f.ms, splits: f.splits, trace: f.trace });
 });
 $("race-best-post").addEventListener("click", () => {
-  const b = offerBest(best, finished ? finished.ms : Infinity);
+  const b = offerBest(curBest(), finished ? finished.ms : Infinity);
   if (b) postLap({ ms: b.ms, splits: b.splits, trace: b.trace });
 });
 async function postLap(entry, retried = false) {
@@ -241,7 +249,7 @@ async function postLap(entry, retried = false) {
   try {
     // The device token goes with the lap, so a colleague on the same wifi gets their own row rather than
     // "already on the board" (4 Nov 2026); a browser that can't keep one posts as before
-    const payload = { track: trackDef().id, name, ms: entry.ms, splits: entry.splits, trace: entry.trace };
+    const payload = { track: trackId(), name, ms: entry.ms, splits: entry.splits, trace: entry.trace };
     let device = null;
     try { device = deviceToken(localStorage); } catch {}
     if (device) payload.device = device;
@@ -253,8 +261,8 @@ async function postLap(entry, retried = false) {
     const body = await res.json().catch(() => ({}));
     if (res.ok && body.ok) {
       if (finished && entry.ms === finished.ms) { finished.posted = true; $("race-form").hidden = true; }
-      const nb = markPosted(best, entry.ms);
-      if (nb !== best) { best = nb; save(BEST_KEY(), best); }
+      const nb = markPosted(curBest(), entry.ms);
+      if (nb !== curBest()) setBest(nb);
       showOffer();
       const where = body.rank ? `number ${body.rank} on the board` : "not in the top 10 this time";
       status.textContent = body.best === false && body.rank ? `${formatTime(entry.ms)} was already on the board: you're ${where}.` : `Posted ${formatTime(entry.ms)}. You're ${where}.`;
@@ -277,7 +285,7 @@ async function postLap(entry, retried = false) {
         + (code === "segment_too_fast" && Number.isInteger(body?.segment) ? ` (stretch ${body.segment + 1})` : "");
     }
   } catch {
-    status.textContent = "Leaderboard offline. Your best lap is still saved on this device.";
+    status.textContent = "Leaderboard offline. Your curBest() lap is still saved on this device.";
   } finally {
     if (!waiting) postButtons().forEach((b) => (b.disabled = false));
   }
@@ -306,7 +314,7 @@ export async function fetchTop() {
   try {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 8000);
-    const res = await fetch(`${API}/race/top?track=${encodeURIComponent(trackDef().id)}`, { cache: "no-store", signal: ctl.signal });
+    const res = await fetch(`${API}/race/top?track=${encodeURIComponent(trackId())}`, { cache: "no-store", signal: ctl.signal });
     clearTimeout(timer);
     if (!res.ok) throw new Error(`race/top: ${res.status}`);
     const top = readTop(await res.json());
@@ -372,7 +380,7 @@ async function fetchGhost() {
   try {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 8000);
-    const res = await fetch(`${API}/race/ghost?track=${encodeURIComponent(trackDef().id)}`, { cache: "no-store", signal: ctl.signal });
+    const res = await fetch(`${API}/race/ghost?track=${encodeURIComponent(trackId())}`, { cache: "no-store", signal: ctl.signal });
     clearTimeout(timer);
     if (!res.ok) throw new Error(`race/ghost: ${res.status}`);
     setGhost(readGhost(await res.json()));
@@ -404,7 +412,7 @@ function ghostPose(e) {
     dh = Math.atan2(Math.sin(dh), Math.cos(dh)); // the short way round
     return { x: a[1] + (b[1] - a[1]) * u, z: a[2] + (b[2] - a[2]) * u, h: a[3] + dh * u };
   }
-  const times = [0, ...g.splits, g.ms], dist = [0, ...trackDef().checkpoints, trackLen];
+  const times = [0, ...g.splits, g.ms], dist = [0, ...(trackDef()?.checkpoints ?? []), trackLen];
   let i = 1;
   while (i < times.length - 1 && e > times[i]) i++;
   const u = Math.max(0, Math.min(1, (e - times[i - 1]) / (times[i] - times[i - 1])));

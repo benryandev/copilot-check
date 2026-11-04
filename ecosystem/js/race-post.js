@@ -44,3 +44,13 @@ export function deviceToken(store, random = (n) => crypto.getRandomValues(new Ui
     return null;
   }
 }
+
+// The device's best lap is kept per track. The key and the load take the track id as an argument, so a world
+// configured after import (or with no track at all) gets its own record, and a null id reads as none.
+export const bestKey = (id) => (id ? `eco-race-best:${id}` : null);
+export function loadBest(read, id) {
+  const k = bestKey(id);
+  if (!k) return null;
+  const b = read(k);
+  return b && Number.isFinite(b.ms) && b.ms > 0 ? b : null;
+}
