@@ -7,10 +7,11 @@
 //   node tools/showcase-trailer.mjs [base] [--shots a,b] [--no-audio] [--size=WxH]   → tools/out/showcase/trailer.mp4 (+ trailer-forum.mp4 under 10 MB)
 // Each shot renders to its own segment under tools/out/showcase/trailer-frames/, so one shot can be re-cut with
 // --shots and the rest reused. --size=1600x1200 renders into trailer-1600x1200-frames/ instead (the 4:3 element clips
-// for the Awwwards entry, 4 Nov 2026: --shots=02-convoy,05b-grid,06-record,07b-cabinet --no-audio), leaving the 16:9 set alone.
+// for the Awwwards entry, 4 Nov 2026: --shots=02-convoy,05b-grid,06c-ghost,07b-cabinet --no-audio), leaving the 16:9
+// set alone. Shots marked `extra` (06c-ghost) render only when --shots names them and never join the trailer cut.
 import { createKit } from './cine.mjs';
 
-const { open, rec, skip, fills, holdNote, titleAt, dayPage, nightPage, render, finish } = await createKit({ name: 'trailer' });
+const { only, open, rec, skip, fills, holdNote, titleAt, dayPage, nightPage, render, finish } = await createKit({ name: 'trailer' });
 
 const SHOTS = [
   ['01-arrival', async () => {
@@ -130,6 +131,27 @@ const SHOTS = [
     await rec(page, 2.8, (t) => holdNote(page, 8.3 + t));
     await page.evaluate(() => { window.__cine.stop(); document.getElementById('race-hud').style.setProperty('display', 'none', 'important'); });
   }],
+  // Extra, never in the trailer cut: the Awwwards "Race the ghost" element clip (4 Nov 2026). The board leader's lap is
+  // four seconds quicker than the scripted car, so in 06-record the ghost is out of frame within a second. Here the
+  // ghost is a stand-in running the lap at the car's own pace along the centreline, the car a lane to its right, the
+  // chase camera behind both; the stand-in is set after the worker's ghost has loaded, so nothing overwrites it.
+  ['06c-ghost', async () => {
+    const page = await dayPage();
+    await page.evaluate(() => { window.__eco.toStart(); document.getElementById('race-hud').style.removeProperty('display'); });
+    await skip(page, 1.0);
+    await page.evaluate(() => new Promise((r) => setTimeout(r, 2500)));
+    await page.evaluate(async () => {
+      const C = window.__cine, tr = C.track, e = C.e;
+      const { RACE_TRACK } = await import('/ecosystem/js/content.js');
+      const v = 24.8; // m/s, a touch over the car's 24, so the ghost edges ahead over the shot
+      e.ghostPreview(null, { name: 'Juno', ms: Math.round((RACE_TRACK.length / v) * 1000), splits: RACE_TRACK.checkpoints.map((s) => Math.round((s / v) * 1000)) });
+      C.place(tr, -12, 2.6, 24);
+      C.follow(tr, -12, 2.6);
+      C.cam(C.chase(11, 3.4, -1.2, { ahead: 6, lift: 1.3, k: 6 }));
+    });
+    await rec(page, 4.5, (t) => holdNote(page, t));
+    await page.evaluate(() => { window.__cine.stop(); window.__eco.ghostPreview(null); document.getElementById('race-hud').style.setProperty('display', 'none', 'important'); });
+  }, { extra: true }],
   ['06b-fireworks', async () => {
     const page = await nightPage();
     await page.evaluate(() => {
@@ -190,5 +212,7 @@ const SHOTS = [
   }],
 ];
 
-await render(SHOTS);
-await finish(SHOTS);
+// Shots marked extra render only when --shots names them and never join the cut
+const cut = SHOTS.filter((s) => !s[2]?.extra);
+await render(only.length ? SHOTS : cut);
+await finish(cut);
