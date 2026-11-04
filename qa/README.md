@@ -221,7 +221,7 @@ node qa/shoot.mjs --states=submit,submitErrors,submitDone   # the project submis
 ```
 
 States: `loading`, `intro`, `drive` (on the Liquidations pad), `stop` (its sheet), `map`, `mapEnd` (Map view
-scrolled to the bottom), `raceway` (start line), `race` (lap-finish sheet, filled in by the script). 375 and 768 run
+scrolled to the bottom), `raceway` (start line), `walls` (the car grazing the hairpin's tyre wall at 24 m/s, turned along it), `race` (lap-finish sheet, filled in by the script). 375 and 768 run
 as touch devices, so the driving buttons show and tap targets are checked. Exit code 1 if anything is found.
 
 Each frame is audited: sideways scroll (against the device width: a mobile viewport widens itself to fit oversized

@@ -28,7 +28,7 @@ const HEIGHT = { 360: 780, 375: 812, 390: 844, 430: 932, 768: 1024, 844: 390, 10
 const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
-const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'windsocks', 'stop', 'plaza', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race', 'deeplink', 'guide'];
+const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'windsocks', 'stop', 'plaza', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'walls', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race', 'deeplink', 'guide'];
 const pick = opt('states') || ALL;
 const FUNDING = JSON.parse(readFileSync(new URL('./fixtures/funding-2026-11-02.json', import.meta.url), 'utf8')); // the windsocks' fixed comparison (2 Nov 2026: ADA out straight, BTC gentle)
 const out = new URL('./shots/', import.meta.url).pathname;
@@ -240,6 +240,27 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       await page.evaluate(() => document.querySelector('#map [data-close]').click());
       await page.evaluate(() => window.__eco.toStart());
       await shot('raceway', 3000); // the race HUD updates every 16 frames
+      // The graze rule on the hairpin's tyre walls: 12 m before a point 8 m into the first auto wall run, 15 degrees into it at 24 m/s, then real frames
+      if (pick.includes('walls')) {
+        await page.evaluate(async () => {
+          const { wallSpots } = await import('/ecosystem/js/walls-math.js');
+          const { trackDef } = await import('/ecosystem/js/terrain.js');
+          const tr = trackDef(), spots = wallSpots(tr), w = spots[8]; // 8 m into the first run, so the nose meets a side of the wall and not its end
+          const p = tr.at(w.s - 12), side = w.side, a = 15 * Math.PI / 180;
+          const dx = p.fx * Math.cos(a) + p.rx * side * Math.sin(a), dz = p.fz * Math.cos(a) + p.rz * side * Math.sin(a);
+          const off = tr.half + 3 - 3.2; // the wall's line less the lateral run of 12 m at 15 degrees, so the nose meets it at the spot
+          const e = window.__eco;
+          e.placeCar(p.x + p.rx * side * off, p.z + p.rz * side * off, Math.atan2(-dx, -dz));
+          e.car.s.speed = 24; e.keys.up = true;
+        });
+        // The software renderer runs few frames a second, so wait on the car (the wall touched, then a few frames more), not the clock
+        await page.waitForFunction(() => window.__eco.car.s.wall, null, { timeout: 15000 }).catch(() => {});
+        await page.waitForTimeout(350);
+        await page.evaluate(() => { window.__eco.keys.up = false; });
+        console.log('walls', JSON.stringify(await page.evaluate(() => { const s = window.__eco.car.s; return { speed: s.speed, wall: s.wall, heading: s.heading }; })));
+        await shot('walls', 200);
+        await page.evaluate(() => window.__eco.toStart());
+      }
       // The ghost, held 1.4 s into a stand-in leader's lap so it sits just ahead of the car (the real board may be offline here)
       await page.evaluate(() => window.__eco.ghostPreview(1.4, { name: 'Ben', ms: 25449, splits: [8570, 11900, 16630, 19950, 21840] }));
       await shot('ghost', 1500);

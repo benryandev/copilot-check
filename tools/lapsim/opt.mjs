@@ -1,13 +1,13 @@
 // Hill-climb the lateral path.
-//   node tools/lapsim/opt.mjs --track realfi --seed <ghost.json|centreline|ctrl.json> --rng 11 --iters 4000 --out out.json [--amp 0.5]
+//   node tools/lapsim/opt.mjs --track realfi --seed <ghost.json|centreline|ctrl.json> --rng 11 --iters 4000 --out out.json [--amp 0.5] [--physics file.json]
 import { writeFileSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { makeSim, trackForCli } from "./sim.mjs";
 
-const { values: a } = parseArgs({ options: { track: { type: "string", default: "realfi" }, seed: { type: "string" }, rng: { type: "string", default: "1" }, iters: { type: "string", default: "2000" }, out: { type: "string" }, amp: { type: "string", default: "1" } } });
-if (!a.seed || !a.out) { console.error("usage: opt.mjs --track realfi --seed <ghost.json|centreline|ctrl.json> --rng N --iters N --out out.json [--amp X]"); process.exit(2); }
+const { values: a } = parseArgs({ options: { track: { type: "string", default: "realfi" }, seed: { type: "string" }, rng: { type: "string", default: "1" }, iters: { type: "string", default: "2000" }, out: { type: "string" }, amp: { type: "string", default: "1" }, physics: { type: "string" } } });
+if (!a.seed || !a.out) { console.error("usage: opt.mjs --track realfi --seed <ghost.json|centreline|ctrl.json> --rng N --iters N --out out.json [--amp X] [--physics file.json]"); process.exit(2); }
 const track = trackForCli(a.track);
-const sim = await makeSim({ track, props: "cleared" }); // bales, crates and cones cleared, as in the record holders' sessions
+const sim = await makeSim({ track, props: "cleared", physics: a.physics ? JSON.parse(readFileSync(a.physics, "utf8")) : {} }); // bales, crates and cones cleared, as in the record holders' sessions
 const { LEN } = sim;
 let rs = Number(a.rng) || 1; const rnd = () => { rs = (rs * 1103515245 + 12345) & 0x7fffffff; return rs / 0x7fffffff; };
 const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd());
@@ -25,7 +25,7 @@ let best = evalC(ctrl), bestC = ctrl.slice();
 console.log(`${a.seed} seed: ${best} ms`);
 const iters = Number(a.iters), AS = Number(a.amp);
 let accepted = 0;
-const save = (it) => writeFileSync(a.out, JSON.stringify({ ms: best, ctrl: bestC, DS, look: LOOK, seedName: a.seed, it }));
+const save = (it) => writeFileSync(a.out, JSON.stringify({ ms: best, ctrl: bestC, DS, look: LOOK, seedName: a.seed, it, physics: sim.physics }));
 for (let it = 0; it < iters; it++) {
   const c = bestC.slice();
   const centre = Math.floor(rnd() * NC), w = [1, 1, 2, 3, 5, 8][Math.floor(rnd() * 6)];

@@ -1,16 +1,17 @@
 // Details of a line: splits, sector times against a ghost, path length, grass and air time, sensitivity to lookahead,
 // frame rate, start speed and props, an SVG map, and (with --write) the track's floor and speed limits.
-//   node tools/lapsim/analyse.mjs --track realfi --line out.json [--ghost ghost.json] [--svg out.svg] [--write]
+//   node tools/lapsim/analyse.mjs --track realfi --line out.json [--ghost ghost.json] [--svg out.svg] [--write] [--physics file.json]
 // The SVG is written as SVG only; render it to PNG by hand with `qlmanage -t -s 2000 -o . out.svg`.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
 import { makeSim, trackForCli } from "./sim.mjs";
 
-const { values: a } = parseArgs({ options: { track: { type: "string", default: "realfi" }, line: { type: "string" }, ghost: { type: "string" }, svg: { type: "string" }, write: { type: "boolean", default: false } } });
-if (!a.line) { console.error("usage: analyse.mjs --track realfi --line out.json [--ghost ghost.json] [--svg out.svg] [--write]"); process.exit(2); }
+const { values: a } = parseArgs({ options: { track: { type: "string", default: "realfi" }, line: { type: "string" }, ghost: { type: "string" }, svg: { type: "string" }, write: { type: "boolean", default: false }, physics: { type: "string" } } });
+if (!a.line) { console.error("usage: analyse.mjs --track realfi --line out.json [--ghost ghost.json] [--svg out.svg] [--write] [--physics file.json]"); process.exit(2); }
 const track = trackForCli(a.track);
-const cleared = await makeSim({ track, props: "cleared" }), placed = await makeSim({ track, props: "placed" });
+const physics = a.physics ? JSON.parse(readFileSync(a.physics, "utf8")) : {};
+const cleared = await makeSim({ track, props: "cleared", physics }), placed = await makeSim({ track, props: "placed", physics });
 const { LEN, gates } = cleared;
 const b = JSON.parse(readFileSync(a.line, "utf8"));
 const fmt = (ms) => `${Math.floor(ms / 60000)}:${((ms % 60000) / 1000).toFixed(3).padStart(6, "0")}`;
@@ -45,7 +46,7 @@ if (a.write) {
   const secSpeeds = seg(splits).map((ms, i) => (ends[i] - starts[i]) / (ms / 1000));
   const avg = LEN / (r.ms / 1000);
   const round1 = (v) => Math.round(v * 10) / 10;
-  const out = { track: a.track, floorMs: r.ms, limits: { maxSpeed: round1(avg * 1.08), segMaxSpeed: round1(Math.max(...secSpeeds) * 1.15) } };
+  const out = { track: a.track, floorMs: r.ms, limits: { maxSpeed: round1(avg * 1.08), segMaxSpeed: round1(Math.max(...secSpeeds) * 1.15) }, physics: cleared.physics };
   const dir = fileURLToPath(new URL("./results/", import.meta.url));
   mkdirSync(dir, { recursive: true });
   writeFileSync(`${dir}${a.track}.json`, JSON.stringify(out, null, 2) + "\n");

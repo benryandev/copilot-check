@@ -39,3 +39,9 @@ test('the simulator\'s gates are terrain\'s raceGates, each at its own half-widt
 test('makeSim refuses a track the terrain is not configured for', async () => {
   await assert.rejects(makeSim({ track: resolveTrack({ id: 'tiny-v1', half: 6, points: [[-40, -20], [40, -20], [40, 20], [-40, 20]], gates: [{ s: 60 }] }) }), /tiny-v1.*realfi-v1|realfi-v1.*tiny-v1/);
 });
+test('makeSim resolves physics once and an override reaches the step', async () => {
+  const sim = await makeSim({ physics: { dirt: { top: 20 } } });
+  assert.equal(sim.physics.resolved, true); assert.equal(sim.physics.dirt.top, 20);
+  const r = sim.runLap(() => 0, { startSpeed: 20, maxT: 12 });
+  assert.ok(Math.max(...r.path.map((p) => p[3])) <= 20 * 1.2 + 1e-6, 'never past a boosted 20');
+});

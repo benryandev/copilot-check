@@ -3,6 +3,7 @@
 import { trackDef } from "../../ecosystem/js/terrain.js";
 import { wallSpots, wallBoxes } from "../../ecosystem/js/walls-math.js";
 import { loadStepCar } from "./car-node.mjs";
+import { resolvePhysics } from "../../ecosystem/js/car-math.js";
 
 const STEP = 0.25;
 function orientedBox(cx, cz, hx, hz, yaw) {
@@ -30,12 +31,13 @@ function racewayProps(track) {
 }
 
 /** props: "cleared" (none, the floor's convention) or "placed" (the Raceway's bales, crates and cones).
- * physics: reserved for per-track overrides (plan 2); handed to nothing here. */
+ * physics: overrides for the car's feel ({ dirt, tarmac, graze }, any subset), resolved once here and handed to every step. */
 export async function makeSim({ track = trackDef(), props = "cleared", physics = {} } = {}) {
   if (!track) throw new Error("makeSim: no track (the terrain is configured without one)");
   // The floor is measured on the height field, so the terrain must be configured for this very track
   if (track !== trackDef()) throw new Error(`makeSim: the terrain is configured for ${trackDef()?.id ?? "no track"}, not ${track.id}; call configureTerrain first`);
   const { stepCar, colliders, CAR_R } = await loadStepCar();
+  physics = resolvePhysics(physics); // once, so stepCar never allocates per frame
   const LEN = track.len, half = track.half;
   // As terrain.js builds raceGates: each gate at its rounded s, with its own half-width
   const gates = track.gates.map((g) => { const s = Math.round(g.s); return { i: g.i, s, ...track.at(s), w: g.w }; });

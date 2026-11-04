@@ -17,8 +17,10 @@ speed limits. It runs in node with no browser and no bundler. A lap takes about 
   - `props: "cleared"` removes the bales, crate stacks and cones. This is the floor's convention: the record holders' laps
     were driven with the props knocked out of the way, and the floor must be a time a clean lap can approach. `props: "placed"` puts
     the Raceway's props back (they cost about 1.3 s on the leader's line, and a bale hit can break the line outright).
-  - `physics` is reserved for per-track overrides (the tarmac numbers arrive with plan 2). It is passed to `stepCar` untouched
-    and does nothing yet.
+  - `physics` overrides the car's feel: `{ dirt: { top, pull, turn }, tarmac: { top, pull, turn, turnHigh, vLow, vHigh }, graze: { min, headOn, nudge } }`,
+    any subset. `makeSim` resolves it once (`resolvePhysics`) and hands the resolved object to every `stepCar`; `sim.physics` is that object.
+    `opt.mjs` and `analyse.mjs` take `--physics file.json` (an overrides object) and write the resolved physics under `physics` in their output;
+    `analyse --write` records it in `results/<track>.json`.
 - `opt.mjs`: the hill-climb over the lateral offsets.
 - `analyse.mjs`: splits, sector diffs against a ghost, path length, grass and air time, sensitivity to lookahead, frame rate, start
   speed and props, an SVG map, and `--write`.
