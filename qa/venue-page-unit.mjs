@@ -27,7 +27,8 @@ test('the venue Map has a Theme row for phones (Light, Dark), shown only while t
   const row = /<fieldset class="quality map-theme">\s*<legend>Theme<\/legend>\s*<button type="button" class="chip" data-scheme="light">Light<\/button>\s*<button type="button" class="chip" data-scheme="dark">Dark<\/button>\s*<\/fieldset>/;
   assert.match(venue, row);
   const map = /<dialog id="map"[\s\S]*?<\/dialog>/.exec(venue)[0];
-  assert.ok(map.indexOf('data-music="off"') < map.indexOf('map-theme') && map.indexOf('map-theme') < map.indexOf('Keep driving'), 'in the Map sheet, after Music, before Keep driving');
+  // First of the settings, so a phone sees it without scrolling the sheet (at 375 by 812 the sticky Keep driving covers the last row)
+  assert.ok(map.indexOf('map-groups') < map.indexOf('map-theme') && map.indexOf('map-theme') < map.indexOf('data-quality="auto"'), 'in the Map sheet, after the rows, before Graphics');
   assert.doesNotMatch(hub, /map-theme|data-scheme/);
   const css = readFileSync('ecosystem/ecosystem.css', 'utf8');
   assert.match(css, /\n\.map-theme \{ display: none; \}/);
