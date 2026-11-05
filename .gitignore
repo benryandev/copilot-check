@@ -8,3 +8,6 @@ qa/shots/
 qa/private-words.txt
 tools/out/
 .superpowers/
+
+# The Lagoon share card's background still: tools/og-lagoon.mjs makes it and the card in one run
+tools/og-lagoon-world.png

@@ -40,7 +40,14 @@ test('the venue page has its own meta, is indexed now the Lagoon is on, and the 
   assert.match(h, /<title>[^<]*The Lagoon[^<]*<\/title>/);
   assert.doesNotMatch(h, /name="robots"/, 'no robots noindex');
   for (const k of ['name="description"', 'property="og:description"', 'name="twitter:description"']) assert.match(h, new RegExp(`<meta ${k} content="[^"]{60,}">`), k);
-  assert.match(h, /<meta property="og:image:alt" content="[^"]*Drive around Strike[^"]*">/, 'the alt describes the hub\'s og.png honestly');
+  // R28: the venue's own share card (tools/og-lagoon.mjs), referenced by both cards, with an alt that describes it
+  const IMG = 'https://strike.benryan.com.au/ecosystem/tracks/lagoon/og.png';
+  assert.match(h, new RegExp(`<meta property="og:image" content="${IMG}">`)); assert.match(h, new RegExp(`<meta name="twitter:image" content="${IMG}">`));
+  assert.doesNotMatch(h, /ecosystem\/img\/og\.png/, 'not the hub\'s card');
+  const png = readFileSync('ecosystem/tracks/lagoon/og.png');
+  assert.equal(png.readUInt32BE(16), 1200); assert.equal(png.readUInt32BE(20), 630);
+  assert.ok(png.length < 300 * 1024, `${png.length} bytes`);
+  assert.match(h, /<meta property="og:image:alt" content="An aerial view of the Lagoon[^"]*Race the Lagoon\.">/, 'the alt describes the venue card');
   assert.match(h, /<link rel="canonical" href="https:\/\/strike\.benryan\.com\.au\/ecosystem\/tracks\/lagoon\/">/);
   assert.match(h, /<meta property="og:url" content="https:\/\/strike\.benryan\.com\.au\/ecosystem\/tracks\/lagoon\/">/);
   assert.match(h, /<meta property="og:image:alt" content="[^"]*Lagoon[^"]*">/);
