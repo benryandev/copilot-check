@@ -1,6 +1,6 @@
 // Pure parts of live racing (no three.js, no DOM): node --test qa/race-live-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { gridSlot, positionLine, countdownText, clockOffset, raceErrNote } from '../ecosystem/js/race-live-math.js';
+import { gridSlot, positionLine, countdownText, clockOffset, raceErrNote, celebrationNote } from '../ecosystem/js/race-live-math.js';
 
 test('gridSlot: two staggered columns 3 m apart from 14 m behind the line, host on the left', () => {
   assert.deepEqual(gridSlot(1), { back: 14, v: -1.6 });
@@ -58,4 +58,14 @@ test('raceErrNote: a race asked for away from the Raceway shows the room\'s why 
   assert.equal(raceErrNote({ t: 'err', error: 'race_full' }), null);
   assert.equal(raceErrNote({ t: 'err', error: 'dup', why: 'This device is driving in another tab' }), null);
   assert.equal(raceErrNote(null), null);
+});
+
+test('the record note names the venue, and the hub keeps "the Raceway"', () => {
+  const rec = { name: 'Ana', ms: 30120 }, t = '0:30.120';
+  assert.equal(celebrationNote(rec, true, t), "You're #1 on the Raceway with 0:30.120");
+  assert.equal(celebrationNote(rec, false, t), 'Ana just took #1 on the Raceway with 0:30.120');
+  assert.equal(celebrationNote(rec, true, t, 'The Lagoon'), "You're #1 on The Lagoon with 0:30.120");
+  assert.equal(celebrationNote(rec, false, t, 'The Lagoon'), 'Ana just took #1 on The Lagoon with 0:30.120');
+  assert.equal(celebrationNote({ ...rec, trackName: 'Elsewhere' }, false, t, 'The Lagoon'), 'Ana set a new record on Elsewhere with 0:30.120');
+  for (const n of [celebrationNote(rec, true, t, 'The Lagoon'), celebrationNote(rec, false, t)]) assert.ok(!/[:;\u2013\u2014-]/.test(n.replace(/\d:\d\d\.\d{3}/, '')), 'no colon, semicolon or dash in the sentence');
 });

@@ -30,6 +30,7 @@ import { buildTreeBelt, buildArchTrees, treeDensity } from "./trees.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R, brakeLights } from "./car.js";
 import { tint } from "./colours.js";
 import { buildRaceway, formatTime, boardPose, boardCanvas, boardMarker } from "./raceway.js";
+import { celebrationNote } from "./race-live-math.js";
 import { celebrateOnce } from "./race-post.js";
 import { createSound } from "./sound.js";
 import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive, raceReset, raceError } from "./race-live.js";
@@ -980,7 +981,7 @@ export async function runWorld(entry) {
     fireworks.userData.launch(s.x + fx * 50, s.y, s.z + fz * 50, { rx: -fz, rz: fx }); // in the sky ahead, whichever way you face
   }
   function showCelebration({ rec, self }) {
-    peersNote(self ? `You're #1 on the Raceway with ${formatTime(rec.ms)}` : rec.trackName ? `${rec.name} set a new record on ${rec.trackName} with ${formatTime(rec.ms)}` : `${rec.name} just took #1 on the Raceway with ${formatTime(rec.ms)}`, 6000);
+    peersNote(celebrationNote(rec, self, formatTime(rec.ms), entry.kind === "venue" ? trackDef().name : null), 6000); // the hub keeps "the Raceway", a venue uses its own name
     launchFireworks();
     sound.fanfare();
   }

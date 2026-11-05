@@ -39,3 +39,13 @@ export function raceErrNote(m) {
   const why = typeof m.why === "string" && m.why.trim() ? m.why.trim().slice(0, 120) : "Live races run at the Raceway for now";
   return { text: why, ms: 4000 };
 }
+
+/** The note when a new #1 lands. `time` is the record already formatted. `venueName` is the current venue's own name (the
+ *  Lagoon), or null on the hub, where the track stays "the Raceway". A record that names its track (trackName) keeps that
+ *  name. No colons, semicolons or dashes. */
+export function celebrationNote(rec, self, time, venueName = null) {
+  const place = venueName ?? "the Raceway";
+  if (self) return `You're #1 on ${place} with ${time}`;
+  if (rec.trackName) return `${rec.name} set a new record on ${rec.trackName} with ${time}`;
+  return `${rec.name} just took #1 on ${place} with ${time}`;
+}
