@@ -23,7 +23,7 @@ test('tracks.json is up to date and the Raceway entry matches the worker as depl
 test('the Lagoon is open: minMs is round(0.97 × floorMs) from its lap-simulator results, with both limits', async () => {
   const res = JSON.parse(readFileSync(resolve(root, 'tools/lapsim/results/lagoon.json'), 'utf8'));
   const e = (await generate())['lagoon-v2'];
-  assert.equal(e.minMs, Math.round(0.97 * res.floorMs)); assert.equal(e.minMs, 28691);
+  assert.equal(e.minMs, Math.round(0.97 * res.floorMs)); assert.equal(e.minMs, 28803);
   assert.equal(e.maxSpeed, res.limits.maxSpeed); assert.equal(e.segMaxSpeed, res.limits.segMaxSpeed);
   for (const k of ['checkpoints', 'length', 'minMs', 'maxSpeed', 'segMaxSpeed']) assert.ok(e[k] != null, k); // the worker's openTracks needs all five
 });

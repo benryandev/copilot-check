@@ -72,7 +72,7 @@ test('trackForCli configures a venue from its track module, and realfi stays the
 });
 
 // The Lagoon (plan 5 task 3): its floor line, Turn 1's lift, the water jump. Each test configures the venue and restores the hub.
-const lagoonLine = JSON.parse(readFileSync('qa/fixtures/lapsim/line-lagoon-29578.json', 'utf8'));
+const lagoonLine = JSON.parse(readFileSync('qa/fixtures/lapsim/line-lagoon-29694.json', 'utf8'));
 async function lagoonSim() {
   const { trackForCli } = await import('../tools/lapsim/sim.mjs');
   const T = await import('../ecosystem/js/terrain.js');
@@ -151,23 +151,21 @@ test('the recorded exit sweep: the lip 10 m past the walls\' end (Ben\'s LIP_FRO
   assert.deepEqual(res.inlet.exit.sweep.map((sw) => sw.dt), ['1/60', '1/30']);
   for (const sw of res.inlet.exit.sweep) assert.deepEqual(sw.runs.map((q) => q.v0), [0, 5, 8, 10, 12, 15, 20, 23]);
 });
-test('the back arc (lagoon-v2): the line steers through the kink clean, and leaves the ground or holds the brow over the crest', async () => {
+test('the back arc (lagoon-v2): the line steers through the kink clean, and the brow holds it 1.5 m up at the crest\'s peak', async () => {
   const { sim, T, restore } = await lagoonSim();
   try {
-    const t = sim.track, r = lagoonRun(sim), P = r.path, k = t.walls[2];
+    const t = sim.track, r = lagoonRun(sim), P = r.path, k = t.walls[3];
     const kink = P.filter((p) => p[1] >= k.from && p[1] <= k.to), lat = kink.map((p) => p[2]);
     assert.ok(Math.max(...lat) - Math.min(...lat) >= 3, `the line's offset across the kink spans ${(Math.max(...lat) - Math.min(...lat)).toFixed(1)} m`);
     assert.equal(r.wallHits, 0, 'no wall hits, the kink included');
-    // over the crest: air time, or on the ground at the peak 1.5 m above the same spot with the crest taken away (the flat grass)
+    // At the crest's peak the line is on the brow: the ground under it (the car's y, or less if it is airborne) 1.5 m or more
+    // above the same spot with the crest taken away (the flat grass). A line round the crest's shoulder fails this.
     const [lift] = t.lifts, peak = (lift.from + lift.to) / 2;
-    const crest = P.filter((p) => p[1] >= lift.from && p[1] < lift.to);
-    if (!crest.some((p) => p[5] === 1)) {
-      const row = crest.reduce((b, p) => (Math.abs(p[1] - peak) < Math.abs(b[1] - peak) ? p : b));
-      const { venueEntry } = await import('../ecosystem/js/entries.js');
-      const up = T.groundHeight(row[7], row[8]);
-      T.configureTerrain(venueEntry({ ...lagoonDef, lifts: [] }, { slug: 'lagoon' }).terrain);
-      const flat = T.groundHeight(row[7], row[8]);
-      assert.ok(up - flat >= 1.5, `no air over the crest, and the brow holds the car ${(up - flat).toFixed(2)} m above the flat at s ${row[1]}`);
-    }
+    const row = P.filter((p) => p[1] >= lift.from && p[1] < lift.to).reduce((b, p) => (Math.abs(p[1] - peak) < Math.abs(b[1] - peak) ? p : b));
+    const { venueEntry } = await import('../ecosystem/js/entries.js');
+    const up = T.groundHeight(row[7], row[8]);
+    T.configureTerrain(venueEntry({ ...lagoonDef, lifts: [] }, { slug: 'lagoon' }).terrain);
+    const flat = T.groundHeight(row[7], row[8]);
+    assert.ok(up - flat >= 1.5, `the brow holds the line ${(up - flat).toFixed(2)} m above the flat at s ${row[1]} (offset ${row[2]} m)`);
   } finally { restore(); }
 });

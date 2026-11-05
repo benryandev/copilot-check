@@ -78,11 +78,11 @@ floor line (108 control points at 6 m). `qa/lapsim-unit.mjs` pins them: the repl
 line within 40 ms of 22.914, the centreline flat out is 26.725 s, the three ramps are worth about 1.5 s, and the cut ratio is 87%.
 If a pin moves, `car.js`, the terrain or the wall maths changed.
 
-`qa/fixtures/lapsim/line-lagoon-29578.json` is the Lagoon's floor line on lagoon-v2 (142 control points at 6 m, with its
+`qa/fixtures/lapsim/line-lagoon-29694.json` is the Lagoon's floor line on lagoon-v2 (142 control points at 6 m, with its
 throttle): the best clean lap of three optimiser runs from the centreline at 4000 iterations on the relaid layout of 6 Nov 2026
-(rng 7 29.578, rng 11 29.812, rng 3 30.169 with a wall hit; the floor is the best clean lap). The pins: it replays within 50 ms of
-29.578 with no wall hits, it lifts below 27 m/s for Turn 1, it lands the jump dry, its offset spans 3 m or more across the walled
-kink, it leaves the ground over the crest (or the brow holds it 1.5 m up), the inlet's straight approach lands wet at 85% of
+(rng 7 29.694, rng 11 29.980, rng 3 30.603, all clean, with the crest walled; the floor is the best clean lap). The pins: it
+replays within 50 ms of 29.694 with no wall hits, it lifts below 27 m/s for Turn 1, it lands the jump dry, its offset spans 3 m or more across the walled
+kink, the brow holds it 1.5 m or more above the flat at the crest's peak (walls along the crest keep it on the road there), the inlet's straight approach lands wet at 85% of
 tarmac top and dry at 92% at 1/60 and 1/30, and from the hairpin's exit (`exitJump`) it wades from 0 and clears from 20.
 
 ## Fragility worth knowing

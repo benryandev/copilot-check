@@ -9,7 +9,7 @@
 // The lagoon-v2 relay (6 Nov 2026): the hairpin's exit is the end of the Turn 1 walls ([126, -60], s 195.9, gate 2 there).
 // The ramp's lip sits 10 m past it (s 205.9; the plan proposed 15, Ben chose 10), so the ramp's foot is past the walls and
 // the water 18 m past the foot (s 215.9), 20 m past the exit where v1's sat 30 m past it: a car leaving the hairpin slowly
-// cannot reach take-off speed and wades. The back arc gets a blind crest between gates 7 and 8 (lifts) and a walled
+// cannot reach take-off speed and wades. The back arc gets a blind, walled crest between gates 7 and 8 (lifts, walls[2]) and a walled
 // right-left kink between gates 9 and 10 (two inserted points, walls on both sides), so the lap is no longer flat out there.
 // floorMs and limits are tools/lapsim/results/lagoon.json (analyse --write on the optimiser's best clean lap).
 export default {
@@ -27,7 +27,7 @@ export default {
   // inlet's far bank (water s 215.9 + halfW 9.5 + 10 = 235.4), so its shift off [126, -30] (s 225.9) is 9.5.
   // Gates 1, 2 and 10 are as wide as the road (half 6, not the default 7.5): the cut line through the gates alone then stays
   // above 88% of the lap (88.2%; 87.8% with every gate at 7.5, the kink adding length the gates do not pin), and the floor
-  // line crosses all three well inside (gate lat -4.8, -1.2, -4.8).
+  // line crosses all three well inside (gate lat -4.9, -1.2, -4.7).
   gates: [
     { at: [105, -88], half: 6 }, { at: [126, -60], half: 6 }, { at: [126, -30], shift: 9.5 }, { at: [85, 97] }, { at: [25, 77] },
     { at: [-25, 77] }, { at: [-85, 97] }, { at: [-133, 55] }, { at: [-145, 20] }, { at: [-150, -20], half: 6 }, { at: [-140, -48] },
@@ -47,6 +47,7 @@ export default {
   walls: [
     { from: 119.9, to: 195.9, sides: [-1, 1] }, // [79, -65] to [126, -60]: Turn 1, from the end of the start straight to the corner's exit
     { from: 401.8, to: 525.9, sides: [-1, 1] }, // [50, 93] to [-50, 95]: the esses
+    { from: 575, to: 625, sides: [-1, 1] }, // about [-98, 95] to [-132, 63]: the crest (lifts[0]), so the line takes the brow, not its shoulder
     { from: 670.0, to: 713.9, sides: [-1, 1] }, // [-145, 20] to [-150, -20]: the kink, gate 9 to gate 10
   ],
   surface: [{ from: 757.9, to: 215.9, kind: "tarmac" }], // [-130, -56] in the last corner, across the line to the water (306 m, 36%)
@@ -60,6 +61,6 @@ export default {
   // The road home (entries.js venueEntry): square off the start straight's outside at s 65 (about [25, -60]), past the start-line
   // stand's end (s 45) and well short of Turn 1's walls (s 119.9), out to the tree belt; the infield is the lake (plan 5 R13)
   home: { s: 65, side: 1 },
-  floorMs: 29578,
-  limits: { maxSpeed: 31, segMaxSpeed: 37.9 },
+  floorMs: 29694,
+  limits: { maxSpeed: 30.8, segMaxSpeed: 38 },
 };

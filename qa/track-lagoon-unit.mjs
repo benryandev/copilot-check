@@ -26,7 +26,7 @@ test('the Lagoon resolves: 11 gates in order, lap about 845 m, start on the stra
   const w = t.water[0];
   assert.ok(t.gates.some((g) => g.s > w.s + w.halfW + 8 && g.s < w.s + w.halfW + 14), 'first gate after the water sits about 10 m past the far bank');
   // the floor and limits are the optimiser's (tools/lapsim/results/lagoon.json, the lagoon-v2 relay)
-  assert.equal(lagoon.floorMs, 29578); assert.deepEqual(lagoon.limits, { maxSpeed: 31, segMaxSpeed: 37.9 });
+  assert.equal(lagoon.floorMs, 29694); assert.deepEqual(lagoon.limits, { maxSpeed: 30.8, segMaxSpeed: 38 });
 });
 
 test('every written s is the named point\'s s on the resolved track (to 0.5 m)', () => {
@@ -36,11 +36,13 @@ test('every written s is the named point\'s s on the resolved track (to 0.5 m)',
   // the tarmac starts in the last corner (between [-140, -48] and [-120, -60]), so the surface changes mid-corner
   near(lagoon.surface[0].from, sAt(-130, -56), 'tarmac from [-130, -56]'); assert.equal(lagoon.surface[0].to, lagoon.water[0].s, 'tarmac to the water');
   assert.ok(lagoon.surface[0].from > sAt(-140, -48) && lagoon.surface[0].from < sAt(-120, -60), 'inside the last corner');
-  assert.equal(lagoon.walls.length, 3);
+  assert.equal(lagoon.walls.length, 4);
   near(lagoon.walls[0].from, sAt(79, -65), 'Turn 1 walls from [79, -65]'); near(lagoon.walls[0].to, sAt(126, -60), 'Turn 1 walls to [126, -60]');
   near(lagoon.walls[1].from, sAt(50, 93), 'esses walls from [50, 93]'); near(lagoon.walls[1].to, sAt(-50, 95), 'esses walls to [-50, 95]');
+  // the crest's walls run along the lift, so the line goes over the brow, not round its shoulder
+  near(lagoon.walls[2].from, lagoon.lifts[0].from, 'crest walls from the lift\'s start'); near(lagoon.walls[2].to, lagoon.lifts[0].to, 'crest walls to the lift\'s end');
   // the kink's walls run from gate 9 ([-145, 20]) to gate 10 ([-150, -20]), and both gates keep their points
-  near(lagoon.walls[2].from, sAt(-145, 20), 'kink walls from gate 9 [-145, 20]'); near(lagoon.walls[2].to, sAt(-150, -20), 'kink walls to gate 10 [-150, -20]');
+  near(lagoon.walls[3].from, sAt(-145, 20), 'kink walls from gate 9 [-145, 20]'); near(lagoon.walls[3].to, sAt(-150, -20), 'kink walls to gate 10 [-150, -20]');
   near(t.gates[9].s, sAt(-145, 20), 'gate 9 at [-145, 20]'); near(t.gates[10].s, sAt(-150, -20), 'gate 10 at [-150, -20]');
   for (const w of lagoon.walls) assert.deepEqual(w.sides, [-1, 1]);
   // plan 5 R13: the jump stand moved north off the inlet's channel, its south end 2 m past the far bank (water s + halfW)
@@ -64,7 +66,7 @@ test('the back arc: a blind crest between gates 7 and 8, a walled right-left kin
   const [lift] = lagoon.lifts;
   assert.ok(lift.from > t.gates[7].s && lift.to < t.gates[8].s, 'the crest lies between gate 7 and gate 8');
   assert.ok(Math.abs((lift.from + lift.to) / 2 - sAt(-120, 85)) < 5, 'its peak near [-120, 85]');
-  const kink = lagoon.walls[2];
+  const kink = lagoon.walls[3];
   assert.deepEqual(kink.sides, [-1, 1]);
   // the two inserted centreline points sit between gate 9 [-145, 20] and gate 10 [-150, -20]
   const i9 = lagoon.points.findIndex(([x, y]) => x === -145 && y === 20), i10 = lagoon.points.findIndex(([x, y]) => x === -150 && y === -20);
