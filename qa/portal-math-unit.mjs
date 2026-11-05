@@ -95,15 +95,15 @@ test('landingSpot: a venue lands on its grid facing the straight', async () => {
   assert.ok(Math.abs(-Math.sin(spot.heading) - g.fx) < 1e-9 && Math.abs(-Math.cos(spot.heading) - g.fz) < 1e-9);
 });
 
-test('landingSpot: the hub lands on the venue road 10 m short of the arch, facing the ring', () => {
+test('landingSpot: the hub lands on the venue road 18 m short of the arch, facing the ring', () => {
   const venue = { key: 'lagoon', track: 'lagoon-v1', url: '/ecosystem/tracks/lagoon/', name: 'The Lagoon', off: 'partners' };
   const districts = { partners: { centre: [100, 0], exits: [{ at: [120, 0], dir: [1, 0], to: 'x' }] } };
   const [r] = venueRoads([venue], districts);
   const spot = landingSpot({ from: 'lagoon-v1', to: '/ecosystem/' }, hubEntry(), [r]);
   const end = r.points[r.points.length - 1], start = r.points[0];
   const ux = (end[0] - start[0]) / VENUE_ROAD, uz = (end[1] - start[1]) / VENUE_ROAD;
-  // 15 m back from the far end (the arch is 5 m back), on the road's line
-  assert.ok(Math.abs(spot.x - (end[0] - ux * 15)) < 1e-9 && Math.abs(spot.z - (end[1] - uz * 15)) < 1e-9, JSON.stringify(spot));
+  // 23 m back from the far end (the arch is 5 m back), on the road's line
+  assert.ok(Math.abs(spot.x - (end[0] - ux * 23)) < 1e-9 && Math.abs(spot.z - (end[1] - uz * 23)) < 1e-9, JSON.stringify(spot));
   // facing back toward the ring: the car's forward is minus the road's direction
   assert.ok(Math.abs(-Math.sin(spot.heading) + ux) < 1e-9 && Math.abs(-Math.cos(spot.heading) + uz) < 1e-9);
   // and the key or url match too; an unknown venue lands at the spawn

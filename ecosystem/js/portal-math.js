@@ -100,9 +100,10 @@ export function venueArchRoad(track, { length = 40, clear = 4, half = 3.6, grid 
 }
 
 /** Where a landing puts the car, stopped: a venue on its grid facing the straight (its spawn); the hub on the venue road the
- * record came from, `past` m back toward the ring from that road's arch (`back` m short of the road's end), facing the ring.
+ * record came from, `past` m back toward the ring from that road's arch (18: the chase camera, 11 m behind and 6.5 m up, then sits
+ * 7 m clear of the arch's beam at 6.4 m rather than inside it, Task 5 review) (`back` m short of the road's end), facing the ring.
  * `roads` are the hub's venue roads ({ venue, points }); a record from no known road lands at the spawn. */
-export function landingSpot(record, entry, roads = [], { back = 5, past = 10 } = {}) {
+export function landingSpot(record, entry, roads = [], { back = 5, past = 18 } = {}) {
   const spawn = { x: entry.spawn.x, z: entry.spawn.z, heading: entry.spawn.heading };
   if (entry.kind === "venue") return spawn;
   const from = record?.from;

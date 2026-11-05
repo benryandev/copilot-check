@@ -917,6 +917,9 @@ export async function runWorld(entry) {
     portalGo();
   }
   entry.portalGo = (venue) => portalOut(venue);
+  // Back or Forward to a page that left through an arch: a back/forward-cache restore would bring it back locked under the
+  // opaque veil with the flight done, so it loads afresh instead (its normal opening; the record was consumed by the next page)
+  addEventListener("pageshow", (e) => { if (e.persisted && portal) location.reload(); });
 
   // Put the car down somewhere, stopped (the raceway's start)
   function placeCar(x, z, heading) {
