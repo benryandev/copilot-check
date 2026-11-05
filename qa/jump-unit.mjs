@@ -64,20 +64,20 @@ function mk(s, speed = 0) {
 const pastLip = (car) => { const p = T.trackAt(LIP); return (car.s.x - p.x) * p.fx + (car.s.z - p.z) * p.fz; };
 
 /** Approach at exactly v (tarmac top pinned at v, throttle held) from 60 m before the inlet; follow a second past the landing. */
-function jump(v) {
+function jump(v, dt = DT, phase = 0) {
   const phys = resolvePhysics({ tarmac: { top: v } });
-  const car = mk(W - 60, v);
+  const car = mk(W - 60 + phase, v);
   let landed = null, splash = null, takeoff = null, n = 0;
   const after = [];
-  for (let i = 0; i < Math.round(4 / DT); i++) {
-    const info = stepCar(car, keys, DT, phys); n++;
-    if (takeoff === null && car.s.air) takeoff = { speed: car.s.speed, vy: car.s.vy, at: pastLip(car) };
+  for (let i = 0; i < Math.round(4 / dt); i++) {
+    const info = stepCar(car, keys, dt, phys); n++;
+    if (takeoff === null && car.s.air) takeoff = { speed: car.s.speed, vy: car.s.vy, at: pastLip(car), x: car.s.x, z: car.s.z };
     if (info.event?.splash && splash === null) splash = { speed: info.event.splash, at: pastLip(car) };
     if (info.event?.landed !== undefined && landed === null) {
       landed = { at: pastLip(car), speed: car.s.speed, boost: info.event.boost ?? 0, wet: T.onWater(car.s.x, car.s.z), airTime: info.event.airTime, n };
       continue;
     }
-    if (landed && n - landed.n <= 60) after.push({ t: (n - landed.n) * DT, speed: car.s.speed, wet: info.wet });
+    if (landed && n - landed.n <= 60) after.push({ t: (n - landed.n) * dt, speed: car.s.speed, wet: info.wet });
   }
   return { landed, splash, takeoff, after };
 }
@@ -95,6 +95,29 @@ test('a committed entry (exactly 90% of 30) clears the inlet dry with a boost, w
     assert.equal(r.landed.speed, 27, 'the horizontal speed held through the flight');
     assert.equal(r.landed.wet, false); assert.ok(r.landed.boost > 0, 'a boost on landing');
     assert.equal(r.splash, null, 'no splash');
+  } finally { T.configureTerrain(hub); }
+});
+
+// At 1/30 a frame carries a 27 m/s car 0.9 m, past LIP_SETBACK: the step that takes it off the lip ends over the inlet's
+// edge. It is in the air, not in the water, so it raises no splash (the venue's jump frame showed a burst of spray hanging
+// by the lip, 6 Nov 2026); the landing still splashes when it is short.
+test('the frame that takes off over the water raises no splash at 1/30 as at 1/60, and a short landing still splashes', () => {
+  T.configureTerrain(inletWorld());
+  try {
+    for (const dt of [1 / 60, 1 / 30]) {
+      const hz = Math.round(1 / dt);
+      // Every phase of the frame against the lip: some put the takeoff frame's end inside onWater's edge
+      let overWater = 0;
+      for (let k = 0; k < 20; k++) {
+        const r = jump(27, dt, (k / 20) * 27 * dt);
+        assert.ok(r.takeoff, `took off at 1/${hz}`);
+        if (T.onWater(r.takeoff.x, r.takeoff.z)) overWater++;
+        assert.equal(r.splash, null, `no splash at 1/${hz}, phase ${k} (${JSON.stringify(r.splash)}, takeoff ${r.takeoff.at.toFixed(2)} m past the lip)`);
+      }
+      if (hz === 30) assert.ok(overWater > 0, 'some phase takes off over the water (else the test proves nothing)');
+      const short = jump(25.5, dt);
+      assert.ok(short.splash && short.splash.at > 1, `a short landing splashes at 1/${hz} (${JSON.stringify(short.splash)})`);
+    }
   } finally { T.configureTerrain(hub); }
 });
 

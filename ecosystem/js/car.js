@@ -238,6 +238,9 @@ export function stepCar(car, keys, dt, physics = DEFAULT_PHYSICS) {
       s.airTime = 0;
       s.airHit = false;
       s.y += s.vy * dt;
+      // The frame that carries the car past a lip can end inside onWater's edge (at 1/30 a 30 m/s car moves 1 m, more than
+      // LIP_SETBACK): it is in the air, not in the water, so no splash and not wet
+      if (s.wet && event?.splash) { s.wet = false; delete event.splash; if (!Object.keys(event).length) event = null; }
     } else {
       s.vy = vyGround;
       s.y = g;
