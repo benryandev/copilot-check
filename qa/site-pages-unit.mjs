@@ -73,3 +73,25 @@ test('localToday is the Brisbane calendar day (UTC+10, no DST), not UTC', () => 
   assert.equal(localToday(Date.UTC(2026, 10, 3, 13, 59)), '2026-11-03', '23:59 Brisbane');
   assert.equal(localToday(Date.UTC(2026, 10, 3, 14, 0)), '2026-11-04', 'midnight Brisbane');
 });
+
+// Venues: tracks on their own pages. None are open yet (VENUES is empty), so the committed files carry nothing of them
+// (the drift test above); a fixture list of one shows all four listings render it.
+test('a venue renders in the stops page, the guides index, llms.txt and the sitemap; none listed renders nothing', () => {
+  const venue = { key: 'lagoon', name: 'The Lagoon', url: '/ecosystem/tracks/lagoon/', line: 'A lap round a tarmac lagoon with a water jump.' };
+  const find = (files, p) => files.find((f) => f.path === p).content;
+  const none = buildAll({ venues: [] }), one = buildAll({ venues: [venue] });
+  assert.deepEqual(none, buildAll(), 'an empty list is the default');
+  const stops = find(one, 'ecosystem/stops/index.html');
+  assert.ok(stops.includes('id="venues"') && stops.includes('The Lagoon') && stops.includes('A lap round a tarmac lagoon with a water jump.') && stops.includes('href="/ecosystem/tracks/lagoon/"'), 'stops page section');
+  assert.ok(stops.indexOf('id="venues"') > stops.indexOf('id="district-yard"'), 'after the districts');
+  const idx = find(one, 'ecosystem/guides/index.html');
+  assert.ok(idx.includes('<a href="/ecosystem/tracks/lagoon/">The Lagoon</a>: A lap round a tarmac lagoon'), 'guides index line');
+  const txt = find(one, 'llms.txt');
+  assert.ok(txt.includes('- [The Lagoon](https://strike.benryan.com.au/ecosystem/tracks/lagoon/): A lap round a tarmac lagoon with a water jump.'), 'llms entry');
+  assert.deepEqual(txt.match(/^## .*$/gm), ['## Tools', '## The ecosystem world', '## Venues', '## Guides']);
+  for (const l of txt.split('\n').filter((l) => l.startsWith('- '))) assert.match(l, /^- \[[^\]]+\]\(https:\/\/[^)\s]+\): \S[^\n]*[^\s.]\.$/, l);
+  assert.ok(find(one, 'sitemap.xml').includes('<loc>https://strike.benryan.com.au/ecosystem/tracks/lagoon/</loc>'), 'sitemap url');
+  for (const f of ['ecosystem/stops/index.html', 'ecosystem/guides/index.html', 'llms.txt', 'sitemap.xml']) {
+    assert.ok(!find(none, f).includes('tracks/lagoon') && !find(none, f).includes('id="venues"'), `${f} has no venue when none is listed`);
+  }
+});

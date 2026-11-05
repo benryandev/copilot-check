@@ -1,5 +1,9 @@
 // Design-QA screenshots for the ecosystem world (dev only).
-// Usage: node qa/shoot-eco.mjs [baseUrl] [--states=intro,map] [--widths=375,1280] [--themes=dark]
+// Usage: node qa/shoot-eco.mjs [baseUrl] [--states=intro,map] [--widths=375,1280] [--themes=dark] [--page=/ecosystem/tracks/lagoon/]
+// --page shoots a venue page instead of the hub: loading, grid (no intro sheet; the car on the grid once it has opened),
+// drive, peers, map, raceway, ghost, race, as the hub's states of those names are shot. Two hub states cross the portal and
+// need ?venues=1 (the shoot adds it): portalOut (the flight to the Lagoon frozen mid-way with the portalHold hook) and
+// portalIn (the venue's hold, then the landed frame). They run with --page or on their own: --states=portalOut,portalIn.
 // Shoots each state × width × theme to qa/shots/eco-<state>-<width>-<theme>.png and prints, per frame:
 //   - sideways scroll, sheets past the viewport, HUD pieces off-screen or overlapping each other;
 //   - tap targets under 44px on touch layouts (375 and 768 run as touch devices);
@@ -29,7 +33,12 @@ const PHONE = new Set([360, 375, 390, 430, 844]);
 const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '1001', '1024', '1279', '1280', '1440', '1920']).map(Number);
 const THEMES = opt('themes') || ['light', 'dark'];
 const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'windsocks', 'stop', 'plaza', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'walls', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race', 'deeplink', 'guide'];
-const pick = opt('states') || ALL;
+const PAGE = args.find(a => a.startsWith('--page='))?.slice(7) || null;
+const VENUE_STATES = ['loading', 'grid', 'drive', 'peers', 'map', 'raceway', 'ghost', 'race'], PORTAL_STATES = ['portalOut', 'portalIn'];
+const pick = opt('states') || (PAGE ? [...VENUE_STATES, ...PORTAL_STATES] : ALL);
+const hubFlow = !PAGE && pick.some(x => ALL.includes(x));
+const venueFlow = !!PAGE && pick.some(x => VENUE_STATES.includes(x));
+const portalFlow = pick.some(x => PORTAL_STATES.includes(x));
 const FUNDING = JSON.parse(readFileSync(new URL('./fixtures/funding-2026-11-02.json', import.meta.url), 'utf8')); // the windsocks' fixed comparison (2 Nov 2026: ADA out straight, BTC gentle)
 const out = new URL('./shots/', import.meta.url).pathname;
 await mkdir(out, { recursive: true });
@@ -139,178 +148,246 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       for (const i of found) console.log(`     ${state}-${tag}: ${i}`);
     };
     try {
-      // No live room in the shoot (peers are injected below); the opening flight only when it is being shot
-      await page.goto(`${base}/ecosystem/?mp=0${pick.includes('arrive') ? '' : '&arrive=0'}#${theme}`, { waitUntil: 'domcontentloaded' });
-      if (pick.includes('loading')) { await sleep(150); await page.screenshot({ path: `${out}eco-loading-${tag}.png` }); }
-      // The opening flight: title card in, the city still high in frame (wall-clock timed, so the same moment here)
-      if (pick.includes('arrive')) {
-        await page.waitForFunction(() => document.body.classList.contains('is-arriving'), null, { timeout: 60000 });
-        await shot('arrive', 1900);
-      }
-      await page.waitForFunction(() => window.__eco && document.getElementById('intro').open, null, { timeout: 60000 });
-      await page.evaluate(() => document.fonts.ready);
-      await shot('intro', 2500);
-      await page.click('#start');
-      await page.evaluate(() => window.__eco.teleport('liquidations'));
-      await shot('drive');
-      await page.evaluate(() => window.__eco.boost(1.4)); // a jump just landed: afterburner lamps, wider camera, more dust
-      await shot('boost', 350);
-      // The river: the Community spoke bridge from the road, then the car in the Token ford with an entry burst of spray
-      await page.evaluate(async () => {
-        const T = await import('/ecosystem/js/terrain.js');
-        const c = T.crossings.find((c) => T.roads[c.road].kind === 'spoke' && T.roads[c.road].to === 'community');
-        const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
-        window.__eco.placeCar(c.x - fx * 14, c.z - fz * 14, Math.atan2(-fx, -fz));
-      });
-      await shot('bridge', 900);
-      await page.evaluate(async () => {
-        const T = await import('/ecosystem/js/terrain.js');
-        const e = window.__eco, c = T.crossings.find((c) => T.roads[c.road].kind === 'spoke' && T.roads[c.road].to === 'token');
-        const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
-        e.placeCar(c.x + fx * 0.5, c.z + fz * 0.5, Math.atan2(-fx, -fz));
-        e.splash();
-      });
-      await shot('ford', 400);
-      await page.evaluate(() => { window.__eco.blimp.setAngle(282); window.__eco.stunt(); }); // mid-flight over the river, the side-on camera up, the blimp in the top left
-      await shot('stunt', 400);
-      // Chart Ridge: a fixed day's closes so the still is stable, the car a few metres in, looking along the chart
-      await page.evaluate(async () => {
-        const T = await import('/ecosystem/js/terrain.js');
-        const e = window.__eco, r = T.roads[T.RIDGE_ROAD];
-        e.ridge.set([80120, 80040, 79880, 79910, 79650, 79420, 79500, 79310, 78990, 78760, 78820, 78540, 78410, 78600, 78880, 79050, 78970, 79240, 79480, 79350, 79610, 79820, 79700, 79930]);
-        const p = r.curve.getPointAt(14 / r.len), t = r.curve.getTangentAt(14 / r.len);
-        e.placeCar(p.x, p.z, Math.atan2(-t.x, -t.z));
-      });
-      await shot('ridge', 600);
-      // Funding windsocks: the fixed comparison, the car on the Perps spoke level with the board (past the jump), looking up the row
-      await page.evaluate(async (raw) => {
-        const T = await import('/ecosystem/js/terrain.js');
-        const e = window.__eco, r = T.roads.find((x) => x.kind === 'spoke' && x.to === 'perps');
-        e.windsocks.set(raw);
-        const p = r.curve.getPointAt(66 / r.len), t = r.curve.getTangentAt(66 / r.len);
-        e.placeCar(p.x, p.z, Math.atan2(-t.x, -t.z));
-      }, FUNDING);
-      await shot('windsocks', 2500); // the socks ease up over about two seconds
-      await page.evaluate(() => window.__eco.teleport('liquidations')); // back on the pad for the stop sheet below
-      await page.click('#prompt-btn');
-      await shot('stop');
-      // Plaza furniture: HQ's rim from the inside, a kerb arc, bollards at a mouth, a lamp by the pad (HQ has no benches: nine mouths leave no room)
-      await page.evaluate(() => { const e = window.__eco; document.querySelector('#stop [data-close]')?.click(); e.teleport('strike'); e.placeCar(16, 14, Math.PI / 2); });
-      await shot('plaza', 600);
-      await page.evaluate(() => window.__eco.teleport('liquidations'));
-      await page.click('#prompt-btn'); // the stop sheet again, so the states after this keep their old starting point
-      await page.evaluate(() => document.querySelector('#stop [data-close]').click());
-      await page.evaluate(() => window.__eco.teleport('fillyard'));
-      await shot('yard', 3000); // the conveyor and whatever the trade stream has sent
-      await page.click('#prompt-btn');
-      await shot('yardSheet'); // its sheet, with the three figures from the stream
-      await page.evaluate(() => document.querySelector('#stop [data-close]').click());
-      // The arcade cabinet from its pad, then its sheet with the game running in the frame and an injected board
-      await page.evaluate(() => { const e = window.__eco; e.arcadeBoard([{ name: 'Juno', score: 640, level: 7, won: false }, { name: 'Rook', score: 410, level: 5, won: false }, { name: 'Aveli', score: 230, level: 3, won: false }]); e.teleport('arcade-flappy-coin'); });
-      await shot('cabinet', 1200);
-      if (pick.includes('arcade')) {
-        await page.click('#prompt-btn');
-        await page.waitForFunction(() => { const f = document.querySelector('#arcade iframe'); return !!f?.contentDocument?.getElementById('c') && f.contentDocument.readyState === 'complete'; }, null, { timeout: 20000 });
-        await shot('arcade', 1500);
-        await page.evaluate(() => document.querySelector('#arcade [data-close]').click());
-      }
-      // Three other visitors stood around the car (no room needed), then the who's-here sheet
-      await page.evaluate(() => {
-        const c = window.__eco.car.s, sin = Math.sin(c.heading), cos = Math.cos(c.heading);
-        // f metres ahead of the car and r to its right, so they sit in the camera's view whichever way it faces
-        const at = (f, r) => ({ x: c.x - sin * f + cos * r, z: c.z - cos * f - sin * r });
-        window.__eco.peersInject([
-          { id: 'p1', name: 'Aveli', colour: '#22d3ee', ...at(4, -6), h: c.heading + 0.4 },
-          { id: 'p2', name: 'ADA_ACE', colour: '#facc15', ...at(6, 6), h: c.heading - 0.3 },
-          { id: 'p3', name: 'Driver 07', colour: '#ec4899', ...at(13, -10), h: c.heading + 3 },
-        ]);
-      });
-      await shot('peers', 2500);
-      // Emotes: the row open, a wave over our car and a flag over Aveli's
-      await page.evaluate(() => { const e = window.__eco.emote; e.open(); e.show('me', 0); e.show('p1', 3); });
-      await shot('emote', 500);
-      await page.evaluate(() => window.__eco.emote.close());
-      await page.click('#peers-chip');
-      await shot('peersSheet');
-      await page.evaluate(() => document.querySelector('#peers [data-close]').click());
-      await page.click('#open-map');
-      await shot('map');
-      await page.evaluate(() => { const d = document.getElementById('map'); d.scrollTop = d.scrollHeight; });
-      await shot('mapEnd');
-      await page.evaluate(() => document.querySelector('#map [data-close]').click());
-      await page.evaluate(() => window.__eco.toStart());
-      await shot('raceway', 3000); // the race HUD updates every 16 frames
-      // The graze rule on the hairpin's tyre walls: 12 m before a point 8 m into the first auto wall run, 15 degrees into it at 24 m/s, then real frames
-      if (pick.includes('walls')) {
+      if (hubFlow) {
+        // No live room in the shoot (peers are injected below); the opening flight only when it is being shot
+        await page.goto(`${base}/ecosystem/?mp=0${pick.includes('arrive') ? '' : '&arrive=0'}#${theme}`, { waitUntil: 'domcontentloaded' });
+        if (pick.includes('loading')) { await sleep(150); await page.screenshot({ path: `${out}eco-loading-${tag}.png` }); }
+        // The opening flight: title card in, the city still high in frame (wall-clock timed, so the same moment here)
+        if (pick.includes('arrive')) {
+          await page.waitForFunction(() => document.body.classList.contains('is-arriving'), null, { timeout: 60000 });
+          await shot('arrive', 1900);
+        }
+        await page.waitForFunction(() => window.__eco && document.getElementById('intro').open, null, { timeout: 60000 });
+        await page.evaluate(() => document.fonts.ready);
+        await shot('intro', 2500);
+        await page.click('#start');
+        await page.evaluate(() => window.__eco.teleport('liquidations'));
+        await shot('drive');
+        await page.evaluate(() => window.__eco.boost(1.4)); // a jump just landed: afterburner lamps, wider camera, more dust
+        await shot('boost', 350);
+        // The river: the Community spoke bridge from the road, then the car in the Token ford with an entry burst of spray
         await page.evaluate(async () => {
-          const { wallSpots } = await import('/ecosystem/js/walls-math.js');
-          const { trackDef } = await import('/ecosystem/js/terrain.js');
-          const tr = trackDef(), spots = wallSpots(tr), w = spots[8]; // 8 m into the first run, so the nose meets a side of the wall and not its end
-          const p = tr.at(w.s - 12), side = w.side, a = 15 * Math.PI / 180;
-          const dx = p.fx * Math.cos(a) + p.rx * side * Math.sin(a), dz = p.fz * Math.cos(a) + p.rz * side * Math.sin(a);
-          const off = tr.half + 3 - 3.2; // the wall's line less the lateral run of 12 m at 15 degrees, so the nose meets it at the spot
-          const e = window.__eco;
-          e.placeCar(p.x + p.rx * side * off, p.z + p.rz * side * off, Math.atan2(-dx, -dz));
-          // Record that contact happened, on whichever frame: a graze on a straight wall lasts only a few frames, so polling
-          // for contact still holding would depend on the renderer's speed. A setter on the flag sees every frame's write.
-          const s = e.car.s; let wall = false;
-          window.__wallTouches = 0;
-          Object.defineProperty(s, 'wall', { configurable: true, enumerable: true, get: () => wall, set: (v) => { wall = v; if (v) window.__wallTouches++; } });
-          s.speed = 24; e.keys.up = true;
+          const T = await import('/ecosystem/js/terrain.js');
+          const c = T.crossings.find((c) => T.roads[c.road].kind === 'spoke' && T.roads[c.road].to === 'community');
+          const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+          window.__eco.placeCar(c.x - fx * 14, c.z - fz * 14, Math.atan2(-fx, -fz));
         });
-        // The software renderer runs few frames a second, so wait on the car (the wall touched, then a few frames more), not the clock
-        const touched = await page.waitForFunction(() => window.__wallTouches > 0, null, { timeout: 15000 }).then(() => true, () => false);
-        await page.waitForTimeout(350);
+        await shot('bridge', 900);
+        await page.evaluate(async () => {
+          const T = await import('/ecosystem/js/terrain.js');
+          const e = window.__eco, c = T.crossings.find((c) => T.roads[c.road].kind === 'spoke' && T.roads[c.road].to === 'token');
+          const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
+          e.placeCar(c.x + fx * 0.5, c.z + fz * 0.5, Math.atan2(-fx, -fz));
+          e.splash();
+        });
+        await shot('ford', 400);
+        await page.evaluate(() => { window.__eco.blimp.setAngle(282); window.__eco.stunt(); }); // mid-flight over the river, the side-on camera up, the blimp in the top left
+        await shot('stunt', 400);
+        // Chart Ridge: a fixed day's closes so the still is stable, the car a few metres in, looking along the chart
+        await page.evaluate(async () => {
+          const T = await import('/ecosystem/js/terrain.js');
+          const e = window.__eco, r = T.roads[T.RIDGE_ROAD];
+          e.ridge.set([80120, 80040, 79880, 79910, 79650, 79420, 79500, 79310, 78990, 78760, 78820, 78540, 78410, 78600, 78880, 79050, 78970, 79240, 79480, 79350, 79610, 79820, 79700, 79930]);
+          const p = r.curve.getPointAt(14 / r.len), t = r.curve.getTangentAt(14 / r.len);
+          e.placeCar(p.x, p.z, Math.atan2(-t.x, -t.z));
+        });
+        await shot('ridge', 600);
+        // Funding windsocks: the fixed comparison, the car on the Perps spoke level with the board (past the jump), looking up the row
+        await page.evaluate(async (raw) => {
+          const T = await import('/ecosystem/js/terrain.js');
+          const e = window.__eco, r = T.roads.find((x) => x.kind === 'spoke' && x.to === 'perps');
+          e.windsocks.set(raw);
+          const p = r.curve.getPointAt(66 / r.len), t = r.curve.getTangentAt(66 / r.len);
+          e.placeCar(p.x, p.z, Math.atan2(-t.x, -t.z));
+        }, FUNDING);
+        await shot('windsocks', 2500); // the socks ease up over about two seconds
+        await page.evaluate(() => window.__eco.teleport('liquidations')); // back on the pad for the stop sheet below
+        await page.click('#prompt-btn');
+        await shot('stop');
+        // Plaza furniture: HQ's rim from the inside, a kerb arc, bollards at a mouth, a lamp by the pad (HQ has no benches: nine mouths leave no room)
+        await page.evaluate(() => { const e = window.__eco; document.querySelector('#stop [data-close]')?.click(); e.teleport('strike'); e.placeCar(16, 14, Math.PI / 2); });
+        await shot('plaza', 600);
+        await page.evaluate(() => window.__eco.teleport('liquidations'));
+        await page.click('#prompt-btn'); // the stop sheet again, so the states after this keep their old starting point
+        await page.evaluate(() => document.querySelector('#stop [data-close]').click());
+        await page.evaluate(() => window.__eco.teleport('fillyard'));
+        await shot('yard', 3000); // the conveyor and whatever the trade stream has sent
+        await page.click('#prompt-btn');
+        await shot('yardSheet'); // its sheet, with the three figures from the stream
+        await page.evaluate(() => document.querySelector('#stop [data-close]').click());
+        // The arcade cabinet from its pad, then its sheet with the game running in the frame and an injected board
+        await page.evaluate(() => { const e = window.__eco; e.arcadeBoard([{ name: 'Juno', score: 640, level: 7, won: false }, { name: 'Rook', score: 410, level: 5, won: false }, { name: 'Aveli', score: 230, level: 3, won: false }]); e.teleport('arcade-flappy-coin'); });
+        await shot('cabinet', 1200);
+        if (pick.includes('arcade')) {
+          await page.click('#prompt-btn');
+          await page.waitForFunction(() => { const f = document.querySelector('#arcade iframe'); return !!f?.contentDocument?.getElementById('c') && f.contentDocument.readyState === 'complete'; }, null, { timeout: 20000 });
+          await shot('arcade', 1500);
+          await page.evaluate(() => document.querySelector('#arcade [data-close]').click());
+        }
+        // Three other visitors stood around the car (no room needed), then the who's-here sheet
+        await page.evaluate(() => {
+          const c = window.__eco.car.s, sin = Math.sin(c.heading), cos = Math.cos(c.heading);
+          // f metres ahead of the car and r to its right, so they sit in the camera's view whichever way it faces
+          const at = (f, r) => ({ x: c.x - sin * f + cos * r, z: c.z - cos * f - sin * r });
+          window.__eco.peersInject([
+            { id: 'p1', name: 'Aveli', colour: '#22d3ee', ...at(4, -6), h: c.heading + 0.4 },
+            { id: 'p2', name: 'ADA_ACE', colour: '#facc15', ...at(6, 6), h: c.heading - 0.3 },
+            { id: 'p3', name: 'Driver 07', colour: '#ec4899', ...at(13, -10), h: c.heading + 3 },
+          ]);
+        });
+        await shot('peers', 2500);
+        // Emotes: the row open, a wave over our car and a flag over Aveli's
+        await page.evaluate(() => { const e = window.__eco.emote; e.open(); e.show('me', 0); e.show('p1', 3); });
+        await shot('emote', 500);
+        await page.evaluate(() => window.__eco.emote.close());
+        await page.click('#peers-chip');
+        await shot('peersSheet');
+        await page.evaluate(() => document.querySelector('#peers [data-close]').click());
+        await page.click('#open-map');
+        await shot('map');
+        await page.evaluate(() => { const d = document.getElementById('map'); d.scrollTop = d.scrollHeight; });
+        await shot('mapEnd');
+        await page.evaluate(() => document.querySelector('#map [data-close]').click());
+        await page.evaluate(() => window.__eco.toStart());
+        await shot('raceway', 3000); // the race HUD updates every 16 frames
+        // The graze rule on the hairpin's tyre walls: 12 m before a point 8 m into the first auto wall run, 15 degrees into it at 24 m/s, then real frames
+        if (pick.includes('walls')) {
+          await page.evaluate(async () => {
+            const { wallSpots } = await import('/ecosystem/js/walls-math.js');
+            const { trackDef } = await import('/ecosystem/js/terrain.js');
+            const tr = trackDef(), spots = wallSpots(tr), w = spots[8]; // 8 m into the first run, so the nose meets a side of the wall and not its end
+            const p = tr.at(w.s - 12), side = w.side, a = 15 * Math.PI / 180;
+            const dx = p.fx * Math.cos(a) + p.rx * side * Math.sin(a), dz = p.fz * Math.cos(a) + p.rz * side * Math.sin(a);
+            const off = tr.half + 3 - 3.2; // the wall's line less the lateral run of 12 m at 15 degrees, so the nose meets it at the spot
+            const e = window.__eco;
+            e.placeCar(p.x + p.rx * side * off, p.z + p.rz * side * off, Math.atan2(-dx, -dz));
+            // Record that contact happened, on whichever frame: a graze on a straight wall lasts only a few frames, so polling
+            // for contact still holding would depend on the renderer's speed. A setter on the flag sees every frame's write.
+            const s = e.car.s; let wall = false;
+            window.__wallTouches = 0;
+            Object.defineProperty(s, 'wall', { configurable: true, enumerable: true, get: () => wall, set: (v) => { wall = v; if (v) window.__wallTouches++; } });
+            s.speed = 24; e.keys.up = true;
+          });
+          // The software renderer runs few frames a second, so wait on the car (the wall touched, then a few frames more), not the clock
+          const touched = await page.waitForFunction(() => window.__wallTouches > 0, null, { timeout: 15000 }).then(() => true, () => false);
+          await page.waitForTimeout(350);
+          await page.evaluate(() => { window.__eco.keys.up = false; });
+          const wallState = await page.evaluate(() => { const s = window.__eco.car.s; return { speed: +s.speed.toFixed(1), wall: s.wall, touches: window.__wallTouches, x: +s.x.toFixed(1), z: +s.z.toFixed(1), heading: +s.heading.toFixed(3) }; });
+          console.log('walls', JSON.stringify(wallState));
+          if (!touched) errors.push(`walls: the car never touched the tyre wall (at ${wallState.x}, ${wallState.z}, ${wallState.speed} m/s); the graze was not shown`);
+          await shot('walls', 200);
+          await page.evaluate(() => { const s = window.__eco.car.s, v = s.wall; delete s.wall; s.wall = v; delete window.__wallTouches; window.__eco.toStart(); }); // back to a plain field
+        }
+        // The ghost, held 1.4 s into a stand-in leader's lap so it sits just ahead of the car (the real board may be offline here)
+        await page.evaluate(() => window.__eco.ghostPreview(1.4, { name: 'Ben', ms: 25449, splits: [8570, 11900, 16630, 19950, 21840] }));
+        await shot('ghost', 1500);
+        await page.evaluate(() => window.__eco.ghostPreview(null));
+        // A new #1 just announced by the room: the note, and the fireworks run ahead to their first bursts
+        await page.evaluate(() => window.__eco.celebrate({ name: 'Aveli', ms: 24650 }, 1.9));
+        await shot('fireworks', 400);
+        // Live racing: on the grid with two others and the countdown up; mid-race with the position line; the invite
+        await page.evaluate(() => { document.getElementById('peers-note').hidden = true; const e = window.__eco; e.toStart(); e.peersInject([{ id: 'p1', name: 'Juno', colour: '#22d3ee' }, { id: 'p2', name: 'Rook', colour: '#facc15' }]); e.raceLiveInject('grid'); });
+        await page.evaluate(async () => {
+          const { trackAt, trackLen } = await import('/ecosystem/js/terrain.js');
+          const { gridSlot } = await import('/ecosystem/js/race-live-math.js');
+          for (const [id, k] of [['p1', 2], ['p2', 3]]) { const g = gridSlot(k), p = trackAt(trackLen - g.back); window.__eco.peersMove(id, p.x + p.rx * g.v, p.z + p.rz * g.v, Math.atan2(-p.fx, -p.fz)); }
+        });
+        await shot('raceGrid', 3000); // the race HUD updates every 16 frames
+        await page.evaluate(() => window.__eco.raceLiveInject('pos'));
+        await shot('racePos', 800);
+        await page.evaluate(() => { window.__eco.raceLiveInject('invite'); window.__eco.peersInject(null); });
+        await shot('raceInvite', 400);
+        await page.evaluate(() => document.getElementById('race-invite').hidden = true);
+        // The lap-finish sheet, filled in as openFinish() fills it
+        await page.evaluate(() => {
+          document.getElementById('race-result').textContent = '0:25.853';
+          document.getElementById('race-gap').textContent = 'New best, 1.417 s faster than your last best (0:27.270).';
+          document.getElementById('race-form').hidden = false;
+          document.getElementById('race-best-note').hidden = false; // the device's unposted best, offered under the form
+          document.getElementById('race-best-time').textContent = '0:24.892';
+          document.getElementById('race').showModal();
+        });
+        await shot('race');
+        // A deep link (?stop=slp): a fresh load that lands on the pad with the sheet open, no flight, no intro
+        if (pick.includes('deeplink')) {
+          await page.goto(`${base}/ecosystem/?mp=0&stop=slp#${theme}`, { waitUntil: 'domcontentloaded' });
+          await page.waitForFunction(() => window.__eco && document.getElementById('stop').open && !document.getElementById('loader'), null, { timeout: 60000 });
+          await shot('deeplink', 600);
+        }
+        // A guide inside the world: the HQ sheet's "Read the guide" mounts the guide page in the #guide sheet
+        if (pick.includes('guide')) {
+          await page.goto(`${base}/ecosystem/?mp=0&stop=strike#${theme}`, { waitUntil: 'domcontentloaded' });
+          await page.waitForFunction(() => window.__eco && document.getElementById('stop').open && !document.getElementById('loader'), null, { timeout: 60000 });
+          await page.click('#stop-guides a');
+          await page.waitForFunction(() => document.getElementById('guide').open && document.querySelector('#guide h1'), null, { timeout: 20000 });
+          await shot('guide', 600);
+        }
+      }
+      // A venue page: no intro sheet, the car starts on the grid. Same states as the hub's where the page is the same.
+      if (venueFlow) {
+        await page.goto(`${base}${PAGE}?mp=0#${theme}`, { waitUntil: 'domcontentloaded' });
+        if (pick.includes('loading')) { await sleep(150); await page.screenshot({ path: `${out}eco-loading-${tag}.png` }); }
+        await page.waitForFunction(() => window.__eco && !document.getElementById('loader'), null, { timeout: 120000 });
+        await page.evaluate(() => document.fonts.ready);
+        const grid = await page.evaluate(() => { const s = window.__eco.car.s; return { intro: document.getElementById('intro').open, holding: document.body.classList.contains('is-holding'), speed: s.speed, title: document.getElementById('where')?.textContent?.trim() }; });
+        // A direct visit (no record from an arch) still opens the intro sheet on the venue; a landing never does. Close it the way a visitor would, then the grid is what is shot.
+        if (grid.intro) { console.log(`note ${tag}: a direct visit to ${PAGE} opens #intro (a landing through the arch does not)`); await page.click('#start'); }
+        if (grid.holding) errors.push('the venue is still holding');
+        if (grid.speed !== 0) errors.push(`the car is not stopped on the grid (${grid.speed} m/s)`);
+        if (/lagoon\/?$/.test(PAGE) && grid.title !== 'The Lagoon') errors.push(`the HUD title is "${grid.title}", not "The Lagoon"`);
+        await shot('grid', 2500);
+        // Driving: up held for a spell, then let go (software frames are few, so the car has not gone far)
+        await page.evaluate(() => { window.__eco.keys.up = true; });
+        await sleep(2500);
         await page.evaluate(() => { window.__eco.keys.up = false; });
-        const wallState = await page.evaluate(() => { const s = window.__eco.car.s; return { speed: +s.speed.toFixed(1), wall: s.wall, touches: window.__wallTouches, x: +s.x.toFixed(1), z: +s.z.toFixed(1), heading: +s.heading.toFixed(3) }; });
-        console.log('walls', JSON.stringify(wallState));
-        if (!touched) errors.push(`walls: the car never touched the tyre wall (at ${wallState.x}, ${wallState.z}, ${wallState.speed} m/s); the graze was not shown`);
-        await shot('walls', 200);
-        await page.evaluate(() => { const s = window.__eco.car.s, v = s.wall; delete s.wall; s.wall = v; delete window.__wallTouches; window.__eco.toStart(); }); // back to a plain field
+        await shot('drive', 300);
+        // Three other visitors stood around the car, as on the hub
+        await page.evaluate(() => {
+          const c = window.__eco.car.s, sin = Math.sin(c.heading), cos = Math.cos(c.heading);
+          const at = (f, r) => ({ x: c.x - sin * f + cos * r, z: c.z - cos * f - sin * r });
+          window.__eco.peersInject([
+            { id: 'p1', name: 'Aveli', colour: '#22d3ee', ...at(4, -6), h: c.heading + 0.4 },
+            { id: 'p2', name: 'ADA_ACE', colour: '#facc15', ...at(6, 6), h: c.heading - 0.3 },
+            { id: 'p3', name: 'Driver 07', colour: '#ec4899', ...at(13, -10), h: c.heading + 3 },
+          ]);
+        });
+        await shot('peers', 2500);
+        await page.evaluate(() => window.__eco.peersInject(null));
+        await page.click('#open-map');
+        await shot('map');
+        await page.evaluate(() => document.querySelector('#map [data-close]').click());
+        await page.evaluate(() => window.__eco.toStart());
+        await shot('raceway', 3000);
+        await page.evaluate(() => window.__eco.ghostPreview(1.4, { name: 'Ben', ms: 25449, splits: [8570, 11900, 16630, 19950, 21840] }));
+        await shot('ghost', 1500);
+        await page.evaluate(() => window.__eco.ghostPreview(null));
+        await page.evaluate(() => {
+          document.getElementById('race-result').textContent = '0:25.853';
+          document.getElementById('race-gap').textContent = 'New best, 1.417 s faster than your last best (0:27.270).';
+          document.getElementById('race-form').hidden = false;
+          document.getElementById('race-best-note').hidden = false;
+          document.getElementById('race-best-time').textContent = '0:24.892';
+          document.getElementById('race').showModal();
+        });
+        await shot('race');
       }
-      // The ghost, held 1.4 s into a stand-in leader's lap so it sits just ahead of the car (the real board may be offline here)
-      await page.evaluate(() => window.__eco.ghostPreview(1.4, { name: 'Ben', ms: 25449, splits: [8570, 11900, 16630, 19950, 21840] }));
-      await shot('ghost', 1500);
-      await page.evaluate(() => window.__eco.ghostPreview(null));
-      // A new #1 just announced by the room: the note, and the fireworks run ahead to their first bursts
-      await page.evaluate(() => window.__eco.celebrate({ name: 'Aveli', ms: 24650 }, 1.9));
-      await shot('fireworks', 400);
-      // Live racing: on the grid with two others and the countdown up; mid-race with the position line; the invite
-      await page.evaluate(() => { document.getElementById('peers-note').hidden = true; const e = window.__eco; e.toStart(); e.peersInject([{ id: 'p1', name: 'Juno', colour: '#22d3ee' }, { id: 'p2', name: 'Rook', colour: '#facc15' }]); e.raceLiveInject('grid'); });
-      await page.evaluate(async () => {
-        const { trackAt, trackLen } = await import('/ecosystem/js/terrain.js');
-        const { gridSlot } = await import('/ecosystem/js/race-live-math.js');
-        for (const [id, k] of [['p1', 2], ['p2', 3]]) { const g = gridSlot(k), p = trackAt(trackLen - g.back); window.__eco.peersMove(id, p.x + p.rx * g.v, p.z + p.rz * g.v, Math.atan2(-p.fx, -p.fz)); }
-      });
-      await shot('raceGrid', 3000); // the race HUD updates every 16 frames
-      await page.evaluate(() => window.__eco.raceLiveInject('pos'));
-      await shot('racePos', 800);
-      await page.evaluate(() => { window.__eco.raceLiveInject('invite'); window.__eco.peersInject(null); });
-      await shot('raceInvite', 400);
-      await page.evaluate(() => document.getElementById('race-invite').hidden = true);
-      // The lap-finish sheet, filled in as openFinish() fills it
-      await page.evaluate(() => {
-        document.getElementById('race-result').textContent = '0:25.853';
-        document.getElementById('race-gap').textContent = 'New best, 1.417 s faster than your last best (0:27.270).';
-        document.getElementById('race-form').hidden = false;
-        document.getElementById('race-best-note').hidden = false; // the device's unposted best, offered under the form
-        document.getElementById('race-best-time').textContent = '0:24.892';
-        document.getElementById('race').showModal();
-      });
-      await shot('race');
-      // A deep link (?stop=slp): a fresh load that lands on the pad with the sheet open, no flight, no intro
-      if (pick.includes('deeplink')) {
-        await page.goto(`${base}/ecosystem/?mp=0&stop=slp#${theme}`, { waitUntil: 'domcontentloaded' });
-        await page.waitForFunction(() => window.__eco && document.getElementById('stop').open && !document.getElementById('loader'), null, { timeout: 60000 });
-        await shot('deeplink', 600);
-      }
-      // A guide inside the world: the HQ sheet's "Read the guide" mounts the guide page in the #guide sheet
-      if (pick.includes('guide')) {
-        await page.goto(`${base}/ecosystem/?mp=0&stop=strike#${theme}`, { waitUntil: 'domcontentloaded' });
-        await page.waitForFunction(() => window.__eco && document.getElementById('stop').open && !document.getElementById('loader'), null, { timeout: 60000 });
-        await page.click('#stop-guides a');
-        await page.waitForFunction(() => document.getElementById('guide').open && document.querySelector('#guide h1'), null, { timeout: 20000 });
-        await shot('guide', 600);
+      // Across the portal: the hub preview's flight to the venue, frozen mid-way; then released, the venue holds and lands
+      if (portalFlow) {
+        await page.goto(`${base}/ecosystem/?venues=1&mp=0&arrive=0#${theme}`, { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => window.__eco && document.getElementById('intro').open, null, { timeout: 120000 });
+        await page.click('#start');
+        await sleep(500);
+        await page.evaluate(() => { const [l] = window.__eco.portalLines(); window.__eco.placeCar(l.x - l.fx * 15, l.z - l.fz * 15, Math.atan2(-l.fx, -l.fz)); window.__eco.keys.up = true; });
+        await page.waitForFunction(() => window.__eco.portalState?.(), null, { timeout: 60000 });
+        await page.evaluate(() => { window.__eco.keys.up = false; });
+        await page.waitForFunction(() => window.__eco.portalState().t > 0.5, null, { timeout: 60000 });
+        await page.evaluate(() => window.__eco.portalHold(true));
+        await shot('portalOut', 400);
+        await page.evaluate(() => window.__eco.portalHold(false));
+        await page.waitForURL(u => u.pathname.startsWith('/ecosystem/tracks/'), { timeout: 60000 });
+        await page.waitForFunction(() => document.body.classList.contains('is-holding'), null, { timeout: 60000 });
+        await page.waitForFunction(() => window.__eco && !document.body.classList.contains('is-holding') && !document.getElementById('loader'), null, { timeout: 180000 });
+        await shot('portalIn', 2500);
       }
       problems += errors.length;
       for (const e of errors) console.log(`     ${tag}: page error ${e}`);

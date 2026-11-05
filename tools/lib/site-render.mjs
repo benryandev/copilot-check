@@ -7,6 +7,11 @@ import { guidePath, guidesForStop, sortedGuides } from './guide-render.mjs';
 export { THEME_TOGGLE };
 const DOCS = 'https://docs.strikefinance.org';
 
+// Venues (tracks on their own pages, content.js VENUES): a name, one line and a URL. None are open yet, so the lists below
+// add nothing while VENUES is empty. A venue's own `line` wins; otherwise a plain default.
+export const venueLine = (v) => v.line || `${v.name}, a track on its own page, reached by a road off the ring.`;
+const venueList = (ctx) => ctx.venues || [];
+
 // Page order: the hub, the ring clockwise from north (content.js ORDER), then the two off-ring places.
 export const ORDER = ['hub', 'perps', 'earn', 'collateral', 'partners', 'developers', 'analytics', 'community', 'token', 'chains', 'raceway', 'yard'];
 
@@ -55,6 +60,20 @@ ${stop.points.map((t) => `          <li>${esc(t)}</li>`).join('\n')}
         ${live}${guide ? `\n${guide}` : ''}
         <p class="stop-actions"><a class="br-button br-button--secondary" href="${stopHref(stop.key)}">Drive there</a> <a class="stop-doc" href="${esc(stop.docs)}" rel="noopener">${esc(docsLabel(stop))}</a>${site}</p>
       </article>`;
+}
+
+function renderVenues(venues) {
+  if (!venues.length) return '';
+  return `
+    <section class="district district-venues" id="venues" aria-labelledby="h-venues">
+      <h2 id="h-venues">Venues</h2>
+      <p class="district-line">Tracks on their own pages, each reached by a road off the ring.</p>
+${venues.map((v) => `      <article class="stop district-venues" id="venue-${esc(v.key)}">
+        <h3>${esc(v.name)}</h3>
+        <p>${esc(venueLine(v))}</p>
+        <p class="stop-actions"><a class="br-button br-button--secondary" href="${esc(v.url)}">Drive there</a></p>
+      </article>`).join('\n')}
+    </section>`;
 }
 
 function renderDistrict(key, { stops, districts, labels, guides }) {
@@ -145,12 +164,12 @@ export function renderStopsPage(ctx) {
       <details class="stops-jump" id="stops-jump">
         <summary>Jump to a district</summary>
         <ul>
-${nav}
+${nav}${venueList(ctx).length ? '\n        <li><a href="#venues">Venues</a></li>' : ''}
         </ul>
       </details>
     </nav>
     <main class="stops-main" id="main">
-${order.map((k) => renderDistrict(k, ctx)).join('\n')}
+${order.map((k) => renderDistrict(k, ctx)).join('\n')}${renderVenues(venueList(ctx))}
     </main>
   </div>
   <footer class="br-band-dark">
@@ -177,9 +196,14 @@ ${entries.map((e) => `  <url>\n    <loc>${esc(e.loc)}</loc>\n    <lastmod>${esc(
 // /llms.txt (llmstxt.org): the site's name, a one-paragraph summary, then the tools, the world and the guides, each
 // entry a link and one line. The guides come from guides.json, so a new guide appears on the next site-pages run.
 // No dates inside, so the file's bytes move only when an entry does.
-export function renderLlmsTxt({ guides }) {
+export function renderLlmsTxt({ guides, venues = [] }) {
   const entry = (name, url, line) => `- [${name}](${url}): ${line}`;
   const guideEntries = sortedGuides(guides).map((g) => entry(g.title, SITE + guidePath(g.slug), g.subtitle));
+  const venueSection = venues.length ? `## Venues
+
+${venues.map((v) => entry(v.name, SITE + v.url, venueLine(v))).join('\n')}
+
+` : '';
   return `# Copilot Check
 
 > Independent tools for copy trading on Strike Finance, a perpetuals exchange on Cardano that mirrors Hyperliquid wallets: check a wallet before copying it, paper-copy it with your own settings, get an alert when a copy needs a look, and learn Strike through a drivable 3D map of its ecosystem and plain-English guides.
@@ -197,7 +221,7 @@ ${entry('Copilot Watch', 'https://t.me/CopilotWatchBot', 'a Telegram bot that se
 ${entry('Strike Ecosystem', SITE + '/ecosystem/', 'a drivable 3D map of Strike\'s features, with districts on dirt roads around Strike HQ, a pad at every feature that opens a sheet with live figures, a raceway, and a yard where every trade on Strike arrives as a crate.')}
 ${entry('Every stop, as text', SITE + '/ecosystem/stops/', 'every district and every stop in the world as plain text, what each feature does, each with a link that opens the world at that pad.')}
 
-## Guides
+${venueSection}## Guides
 
 ${entry('Strike guides: start here', SITE + '/ecosystem/guides/', 'plain-English guides to Strike, from what a perp is to a first small trade, each one opening inside the world.')}
 ${guideEntries.join('\n')}

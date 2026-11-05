@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { STOPS, DISTRICTS } from '../ecosystem/js/content.js';
+import { STOPS, DISTRICTS, VENUES } from '../ecosystem/js/content.js';
 import { LABELS } from '../ecosystem/js/data.js';
 import { ORDER, renderLlmsTxt, renderReview, renderSitemap, renderStopsPage } from './lib/site-render.mjs';
 import { guidePath, renderGuidePage, renderGuidesIndex, renderGuidesModule, renderStillsCss } from './lib/guide-render.mjs';
@@ -58,15 +58,17 @@ export function readGuides() {
 export const localToday = (ms = Date.now()) => new Date(ms + 10 * 3600 * 1000).toISOString().slice(0, 10);
 const isoToday = localToday;
 
-export function buildAll({ state = readState(), today = isoToday(), guidesFile = readGuides() } = {}) {
+export function buildAll({ state = readState(), today = isoToday(), guidesFile = readGuides(), venues = VENUES } = {}) {
   const guides = guidesFile.guides || {};
-  const base = { stops: STOPS, districts: DISTRICTS, order: ORDER, labels: LABELS, guides };
+  const base = { stops: STOPS, districts: DISTRICTS, order: ORDER, labels: LABELS, guides, venues };
   const renders = {
     stops: () => renderStopsPage({ ...base, generated: DATE_MARK }),
     'guides-index': () => renderGuidesIndex(guidesFile, base),
   };
   for (const g of Object.values(guides)) renders[g.slug] = () => renderGuidePage(g, base);
-  const pages = [...PAGES, ...Object.values(guides).map((g) => ({ path: guidePath(g.slug), render: g.slug }))];
+  // A venue's page hashes its own directory (ecosystem/tracks/<slug>/); with VENUES empty this adds nothing
+  const venuePages = venues.map((v) => ({ path: v.url, files: [v.url.replace(/^\//, '').replace(/\/$/, '')] }));
+  const pages = [...PAGES, ...Object.values(guides).map((g) => ({ path: guidePath(g.slug), render: g.slug })), ...venuePages];
   const next = {};
   const entries = pages.map((p) => {
     const hash = p.render ? sha(renders[p.render]()) : hashFiles(p.files);

@@ -133,7 +133,7 @@ ${next ? `        <a class="br-button br-button--secondary" href="${guidePath(ne
   });
 }
 
-export function renderGuidesIndex(file, { stops, districts }) {
+export function renderGuidesIndex(file, { stops, districts, venues = [] }) {
   const all = sortedGuides(file.guides);
   const canonical = `${SITE}/ecosystem/guides/`;
   const card = (g) => `        <li><a class="guide-card" href="${guidePath(g.slug)}">
@@ -156,7 +156,7 @@ export function renderGuidesIndex(file, { stops, districts }) {
 ${start.map(card).join('\n')}
         </ol>
       </section>
-${features.length ? `      <section>\n        <h2 id="feature-guides">Feature guides</h2>\n        <ul class="guide-cards">\n${features.map(card).join('\n')}\n        </ul>\n      </section>\n` : ''}      <div class="sheet-actions">
+${features.length ? `      <section>\n        <h2 id="feature-guides">Feature guides</h2>\n        <ul class="guide-cards">\n${features.map(card).join('\n')}\n        </ul>\n      </section>\n` : ''}${venues.length ? `      <section>\n        <h2 id="venues">Venues</h2>\n        <ul>\n${venues.map((v) => `          <li><a href="${esc(v.url)}">${esc(v.name)}</a>: ${esc(v.line || `${v.name}, a track on its own page, reached by a road off the ring.`)}</li>`).join('\n')}\n        </ul>\n      </section>\n` : ''}      <div class="sheet-actions">
         <a class="br-button guide-drive" href="/ecosystem/?stop=getting-started"><span class="br-button-label">Drive to Getting started</span></a>
         <a class="br-button br-button--secondary" href="/ecosystem/stops/"><span class="br-button-label">Every stop as text</span></a>
       </div>
