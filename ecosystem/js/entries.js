@@ -4,6 +4,7 @@
 
 import { SPAWN, MULTIPLAYER, HUB_COLOUR } from "./content.js";
 import { frameToWorld, resolveTrack } from "./track-math.js";
+import { venueArchRoad } from "./portal-math.js";
 
 const BUILDERS = ["districts", "stops", "boards", "monuments", "yard", "ridge", "windsocks", "blimp", "furniture", "signs", "props", "bridges", "raceway", "portal"];
 const builders = (on) => Object.fromEntries(BUILDERS.map((k) => [k, on(k)]));
@@ -12,7 +13,7 @@ const MAX_RADIUS = 320; // the room's pose bound is 400 m; a venue world stays w
 
 export function hubEntry() {
   return {
-    kind: "hub", zone: "hub", title: "Strike ecosystem", terrain: null, builders: builders(() => true),
+    kind: "hub", zone: "hub", url: HOME, title: "Strike ecosystem", terrain: null, builders: builders(() => true),
     spawn: { ...SPAWN }, arrival: "flight", track: null, portal: null, home: HOME, multiplayer: MULTIPLAYER, carColour: HUB_COLOUR,
   };
 }
@@ -30,11 +31,14 @@ export function venueEntry(mod, { slug }) {
   const radius = extent + 80;
   if (!(radius < MAX_RADIUS)) throw new Error(`venueEntry: ${track.id} needs a world radius of ${Math.round(radius)} m; venues must stay under ${MAX_RADIUS} m`);
   const grid = track.at(track.len - 14);
+  // The road home: 40 m off the start straight beside the grid, clear of the track, to an arch named for Strike HQ (Task 5b).
+  // `from: "raceway"` puts the arch in the raceway's group, which the frame culls by distance to the track.
+  const home = { kind: "venue", from: "raceway", to: "home", venue: { key: "home", name: "Strike HQ", colour: HUB_COLOUR, url: HOME }, points: venueArchRoad(track) };
   return {
-    kind: "venue", zone: track.id, title: track.name,
+    kind: "venue", zone: track.id, url: `/ecosystem/tracks/${slug}/`, title: track.name,
     terrain: {
       world: { cx: 0, cz: 0, radius },
-      roads: [{ kind: "track", from: "track", to: "track", closed: true, half: track.half, points: track.worldPoints }],
+      roads: [{ kind: "track", from: "track", to: "track", closed: true, half: track.half, points: track.worldPoints }, home],
       jumps: [], waters: [], districts: {}, stops: [], track, // the track's ramps and inlets are derived in configureTerrain
     },
     builders: builders((k) => k === "raceway" || k === "portal"),

@@ -36,19 +36,24 @@ import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flo
 import { initMonuments, applyMonuments, monumentsTick, monumentValues, onMonumentStats, injectSlpFills, monumentsState } from "./monuments.js";
 import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer, sendEmote, peerGroup, closePeers, peersConnects } from "./peers.js";
 import { initEmotes, openEmotes, closeEmotes, toggleEmotes, emoteKeydown, showBubble, emoteTick, activeEmotes } from "./emote.js";
-import { loader, paint, wantsArrival, startArrival } from "./arrive.js";
+import { loader, paint, wantsArrival, startArrival, startLanding } from "./arrive.js";
 import { createPost, toGlow } from "./post.js";
 import { initArcade, openArcade, arcadeOpen, injectArcadeBoard } from "./arcade.js";
 import { createFps } from "./fps.js";
 import { TIERS, startTier, nextTier, SLOW_MS, WINDOW } from "./quality-math.js";
 import { markLive, freezeStatic } from "./freeze.js";
-import { portalLines, crossed, flightPath, portalRecord, PORTAL_KEY } from "./portal-math.js";
+import { portalLines, crossed, flightPath, portalRecord, readPortal, landingSpot, PORTAL_KEY } from "./portal-math.js";
 import { mergeStatic, collapseStatic, disposeOrphans, pruneEmpty } from "./merge.js";
 
 // The body below is the hub's world as it was in main.js, wrapped: `entry` (entries.js) says which world it builds, where
 // the car starts, how the visitor arrives and which of the hub's builders run. Once per page.
 export async function runWorld(entry) {
   if (entry.terrain) configureTerrain(entry.terrain); // a venue's world; the hub's configures itself at load (terrain.js)
+  // The portal in (Task 5b): a fresh hand-off record for this page means the visitor came through an arch. The loader holds
+  // (its coin, no bar or text), the world builds as usual, then the landing below. readPortal consumes the record either way;
+  // blocked storage reads as no record.
+  const landing = (() => { try { return readPortal(sessionStorage, { to: entry.url, now: Date.now() }); } catch { return null; } })();
+  if (landing) document.body.classList.add("is-holding");
 
   const $ = (id) => document.getElementById(id);
   const root = document.documentElement;
@@ -124,11 +129,11 @@ export async function runWorld(entry) {
   if (entry.builders.furniture) buildBollards(scene); // and bollards either side of every road mouth
   if (entry.builders.signs) buildRoadSigns(scene);
   // Venues (plan 4): the roads off the ring to tracks on their own pages are in the hub's terrain only with ?venues=1
-  // (content.js venuesPreview); each gets its arch. A venue page has none of these roads, so nothing is built there.
+  // (content.js venuesPreview); each gets its arch. A venue page has one, its road home to the hub (entries.js).
   const venueRoadList = entry.builders.portal ? roads.filter((r) => r.kind === "venue") : [];
   venueRoadList.forEach((r) => buildVenueArch(scene, r.venue, r));
   // The portal out (Task 5a): each arch's crossing line, computed once. On the hub an arch leads to its venue's page; on a
-  // venue page an arch road (none yet) leads home. With no venue roads the list is empty and the frame skips the test.
+  // venue page its one arch road (entries.js, beside the grid) leads home. With no venue roads the list is empty and the frame skips the test.
   const archLines = portalLines(venueRoadList, venueRoadList.map((r) => r.venue)).map((l) => (entry.kind === "venue" ? { ...l, target: { url: entry.home } } : l));
   if (entry.builders.props) addProps(scene, { planters: tier().planters }); // includes the plaza benches and planters (furniture-math.js)
   await load.step(STEPS[2]);
@@ -1361,7 +1366,17 @@ export async function runWorld(entry) {
   // Strike HQ has no spoke road of its own (teleportDistrict needs one), so its link lands at the spawn by the hub.
   const asked = parseDeepLink(location.search, stops().map((s) => s.key), Object.keys(districts()));
   const deepLink = entry.kind === "venue" && asked.kind !== "start" ? { kind: null, key: null } : asked; // a venue honours ?start=1 only
-  if (deepLink.kind === "start") { toStart(); paused = false; }
+  // Through an arch (the record read at the top): the car waits on its landing spot, stopped, and the camera comes down from
+  // the other page's last frame to the chase pose; no intro, and the input unlocks when it lands
+  if (landing) {
+    const spot = landingSpot(landing, entry, roads);
+    placeCar(spot.x, spot.z, spot.heading);
+    arrival = startLanding({
+      camera, from: landing, chase: { pos: camera.position.clone(), look: camLook.clone() },
+      onDone: () => { placeCamera(0, true); paused = false; document.body.classList.remove("is-holding"); },
+    });
+  }
+  else if (deepLink.kind === "start") { toStart(); paused = false; }
   else if (deepLink.kind === "district") { if (deepLink.key === "hub") placeCar(entry.spawn.x, entry.spawn.z, entry.spawn.heading); else teleportDistrict(deepLink.key); paused = false; }
   else if (deepLink.kind === "stop") { const s = stops().find((x) => x.key === deepLink.key); teleport(s); openStop(s); $("stop").querySelector("[data-close] .br-button-label").textContent = "Start driving"; } // nobody has driven yet; openStop puts "Keep driving" back next time
   // The flight starts under the loader, so the first frame anyone sees is already moving
@@ -1379,7 +1394,7 @@ export async function runWorld(entry) {
   setTimeout(() => $("loader").remove(), 450);
 
   // Test hook for automated checks (no effect on play)
-  window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, teleport: (key) => teleport(stops().find((s) => s.key === key)), keys, stick, focusBoard, focusEnd, focus, boardPose, boardMarker, camera, project: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight }; }, jumps, groundHeight, placeCamera, placeCar, colliders, pads, portalLines: () => archLines, portalState: () => portal && { t: portal.t, to: portal.target.url }, portalHold: (on) => { portalHeld = !!on; }, deepLink, paused: () => paused,
+  window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, teleport: (key) => teleport(stops().find((s) => s.key === key)), keys, stick, focusBoard, focusEnd, focus, boardPose, boardMarker, camera, project: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight }; }, jumps, groundHeight, placeCamera, placeCar, colliders, pads, portalLines: () => archLines, portalState: () => portal && { t: portal.t, to: portal.target.url }, portalHold: (on) => { portalHeld = !!on; }, landing: () => landing, deepLink, paused: () => paused,
     blimp: { setAngle: (deg) => blimp?.userData.setAngle(deg == null ? null : (deg * Math.PI) / 180), pose: () => blimp?.userData.pose(), setLivery: (n) => blimp?.userData.setLivery(n), liveries: () => blimp?.userData.liveries }, // no blimp on a venue
     stunt: () => { const j = jumps.find((o) => o.stunt && o.fx < 0); const lip = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length }; Object.assign(car.s, { x: lip.x + j.fx * 6, z: lip.z, heading: Math.atan2(-j.fx, -j.fz), speed: 24, air: true, vy: 2, airTime: 0.3 }); car.s.y = groundHeight(lip.x, lip.z) + j.height + 1.2; placeCamera(0, true); stuntStart(j); stunt.k = 1; stuntTick(0); } /* the snap first: it resets the stunt */, stuntState: () => ({ k: stunt.k, on: stunt.on }), // QA: mid-flight over the river with the side-on camera up
     splash: (age = 0.35) => { sprayBurst(car.s.x, Math.max(car.s.y, WATER_LEVEL), car.s.z, 40); spray?.userData.step(age); } /* pre-aged, so a still catches the burst spread rather than under the car */, sprayCount: () => sprayCount, // river QA: an entry burst on demand, and how many puffs have flown

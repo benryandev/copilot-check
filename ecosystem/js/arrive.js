@@ -44,6 +44,11 @@ const TITLE = { in: 0.35, out: 3.3 }; // s
 const NOKEYS = { up: false, down: false, left: false, right: false };
 const cubic = (u) => (u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2);
 const ease = (u) => cubic(Math.max(0, (u - HOLD) / (1 - HOLD)));
+// The flight's clock, shared by the arrival and the landing: wall time, each step capped at MAX_STEP
+function wallClock() {
+  let last = performance.now(), t = 0;
+  return () => { const now = performance.now(); t += Math.min((now - last) / 1000, MAX_STEP); last = now; return t; };
+}
 
 export function startArrival({ camera, scene, sky, car, hq, chase, stepCar, settle, landed, onDone }) {
   const el = $("arrive");
@@ -53,7 +58,8 @@ export function startArrival({ camera, scene, sky, car, hq, chase, stepCar, sett
   const back = Math.hypot(dx, dz), angle = Math.atan2(dx, dz);
   const hqLook = new THREE.Vector3(hq[0], 6, hq[1]);
   const pos = new THREE.Vector3(), look = new THREE.Vector3();
-  let last = performance.now(), t = 0;
+  const clock = wallClock();
+  let t = 0;
   let active = true, dropped = false, shown = false;
 
   document.body.classList.add("is-arriving");
@@ -95,9 +101,7 @@ export function startArrival({ camera, scene, sky, car, hq, chase, stepCar, sett
 
   function tick(dt) {
     if (!active) return;
-    const now = performance.now();
-    t += Math.min((now - last) / 1000, MAX_STEP);
-    last = now;
+    t = clock();
     const u = Math.min(1, t / DURATION), e = ease(u);
     const a = angle + START.yaw * (1 - e), d = back + (START.dist - back) * (1 - e);
     pos.set(s.x + Math.sin(a) * d, chase.pos.y + (START.height - chase.pos.y) * (1 - e), s.z + Math.cos(a) * d);
@@ -127,4 +131,28 @@ export function startArrival({ camera, scene, sky, car, hq, chase, stepCar, sett
   }
 
   return { tick, skip: () => skip(), get active() { return active; }, progress: () => Math.min(1, t / DURATION) };
+}
+
+// The landing (Task 5b): the page was reached through an arch. The camera starts where the other page's flight drew its last
+// frame (the hand-off record's cam and look) and comes down over LAND_S to the chase pose behind the car, already placed
+// and stopped on its landing spot. No title, no skip: it is short, and the input stays locked until onDone.
+const LAND_S = 1.5;
+export function startLanding({ camera, from, chase, onDone }) {
+  const p0 = new THREE.Vector3(...from.cam), l0 = new THREE.Vector3(...from.look);
+  const pos = new THREE.Vector3(), look = new THREE.Vector3();
+  const clock = wallClock();
+  let t = 0, active = true;
+  const place = (e) => {
+    camera.position.copy(pos.lerpVectors(p0, chase.pos, e));
+    camera.lookAt(look.lerpVectors(l0, chase.look, e));
+  };
+  place(0);
+  function tick() {
+    if (!active) return;
+    t = clock();
+    const u = Math.min(1, t / LAND_S);
+    place(cubic(u));
+    if (u >= 1) { active = false; onDone(); }
+  }
+  return { tick, get active() { return active; }, progress: () => Math.min(1, t / LAND_S) };
 }

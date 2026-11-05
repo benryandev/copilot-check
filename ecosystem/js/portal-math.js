@@ -70,3 +70,37 @@ export function portalLines(roads, venues, { back = 5 } = {}) {
     return { ...archLine({ pts: p }, { x, z, half }), x, z, half, target: r.venue };
   });
 }
+
+// ── The landing (Task 5b) ──────────────────────────────────────────────
+/** A venue's road back to the hub: `length` m straight out sideways from the track beside the grid (the start straight at
+ * track.at(len - 14)), on the side clearer of the rest of the track. Its centreline starts `clear` m plus its own half width
+ * outside the track's edge and every point stays at least track.half + clear from the track's centreline. Points, 5 of them. */
+export function venueArchRoad(track, { length = 40, clear = 4, half = 3.6, grid = 14 } = {}) {
+  const g = track.at(track.len - grid);
+  const rx = -g.fz, rz = g.fx; // the straight's right
+  const d0 = track.half + clear + half;
+  const line = (sgn) => [0, 0.25, 0.5, 0.75, 1].map((k) => { const d = d0 + length * k; return [g.x + sgn * rx * d, g.z + sgn * rz * d]; });
+  const gap = (pts) => Math.min(...pts.map(([x, z]) => Math.min(...track.pts.map(([tx, tz]) => Math.hypot(x - tx, z - tz)))));
+  const [a, b] = [line(1), line(-1)];
+  return gap(a) >= gap(b) ? a : b;
+}
+
+/** Where a landing puts the car, stopped: a venue on its grid facing the straight (its spawn); the hub on the venue road the
+ * record came from, `past` m back toward the ring from that road's arch (`back` m short of the road's end), facing the ring.
+ * `roads` are the hub's venue roads ({ venue, points }); a record from no known road lands at the spawn. */
+export function landingSpot(record, entry, roads = [], { back = 5, past = 10 } = {}) {
+  const spawn = { x: entry.spawn.x, z: entry.spawn.z, heading: entry.spawn.heading };
+  if (entry.kind === "venue") return spawn;
+  const from = record?.from;
+  const road = roads.find((r) => r.kind === "venue" && r.venue && [r.venue.key, r.venue.track, r.venue.url].includes(from));
+  if (!road) return spawn;
+  const p = road.pts ?? road.points;
+  let left = back + past, i = p.length - 1, x = p[i][0], z = p[i][1], dx = 0, dz = 0;
+  while (i > 0) {
+    const [ax, az] = p[i - 1], seg = Math.hypot(ax - x, az - z);
+    if (seg > 0) { dx = (ax - x) / seg; dz = (az - z) / seg; } // toward the ring
+    if (seg >= left) { x += dx * left; z += dz * left; left = 0; break; }
+    left -= seg; x = ax; z = az; i--;
+  }
+  return { x, z, heading: Math.atan2(-dx, -dz) }; // the car faces (-sin h, -cos h)
+}

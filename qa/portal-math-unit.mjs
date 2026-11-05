@@ -61,3 +61,52 @@ test('portalLines: one venue road → one line at its arch (5 m short of the far
   assert.deepEqual(portalLines([], []), []);
   assert.deepEqual(portalLines(roads, [{ key: 'other' }]), []);
 });
+
+// ── The landing (Task 5b) ──
+import { venueArchRoad, landingSpot } from '../ecosystem/js/portal-math.js';
+import { venueEntry, hubEntry } from '../ecosystem/js/entries.js';
+import { venueRoads, VENUE_ROAD } from '../ecosystem/js/content.js';
+
+const minGap = (pts, track) => Math.min(...pts.map(([x, z]) => Math.min(...track.pts.map(([tx, tz]) => Math.hypot(x - tx, z - tz)))));
+
+test('venueArchRoad: 40 m straight off the grid, every point clear of the track by its half width plus 4 m (the Lagoon and RealFi)', async () => {
+  for (const slug of ['lagoon', 'realfi']) {
+    const mod = (await import(`../ecosystem/tracks/${slug}.js`)).default;
+    const e = venueEntry(mod, { slug }), t = e.track, pts = venueArchRoad(t);
+    assert.equal(pts.length, 5);
+    const len = Math.hypot(pts[4][0] - pts[0][0], pts[4][1] - pts[0][1]);
+    assert.ok(Math.abs(len - 40) < 1e-6, `${slug} length ${len}`);
+    assert.ok(minGap(pts, t) >= t.half + 4, `${slug} gap ${minGap(pts, t)} < ${t.half + 4}`);
+    // leaves the straight beside the grid: the start is level with the grid, square to the straight
+    const g = t.at(t.len - 14), along = (pts[0][0] - g.x) * g.fx + (pts[0][1] - g.z) * g.fz;
+    assert.ok(Math.abs(along) < 1e-6, `${slug} along ${along}`);
+    assert.ok(Math.hypot(pts[4][0], pts[4][1]) < e.terrain.world.radius, `${slug} inside the world`);
+    assert.deepEqual(e.terrain.roads[1].points, pts);
+  }
+});
+
+test('landingSpot: a venue lands on its grid facing the straight', async () => {
+  const lagoon = (await import('../ecosystem/tracks/lagoon.js')).default;
+  const e = venueEntry(lagoon, { slug: 'lagoon' });
+  const spot = landingSpot({ from: 'hub', to: e.url }, e);
+  assert.deepEqual(spot, { x: e.spawn.x, z: e.spawn.z, heading: e.spawn.heading });
+  const g = e.track.at(e.track.len - 14);
+  assert.ok(Math.abs(-Math.sin(spot.heading) - g.fx) < 1e-9 && Math.abs(-Math.cos(spot.heading) - g.fz) < 1e-9);
+});
+
+test('landingSpot: the hub lands on the venue road 10 m short of the arch, facing the ring', () => {
+  const venue = { key: 'lagoon', track: 'lagoon-v1', url: '/ecosystem/tracks/lagoon/', name: 'The Lagoon', off: 'partners' };
+  const districts = { partners: { centre: [100, 0], exits: [{ at: [120, 0], dir: [1, 0], to: 'x' }] } };
+  const [r] = venueRoads([venue], districts);
+  const spot = landingSpot({ from: 'lagoon-v1', to: '/ecosystem/' }, hubEntry(), [r]);
+  const end = r.points[r.points.length - 1], start = r.points[0];
+  const ux = (end[0] - start[0]) / VENUE_ROAD, uz = (end[1] - start[1]) / VENUE_ROAD;
+  // 15 m back from the far end (the arch is 5 m back), on the road's line
+  assert.ok(Math.abs(spot.x - (end[0] - ux * 15)) < 1e-9 && Math.abs(spot.z - (end[1] - uz * 15)) < 1e-9, JSON.stringify(spot));
+  // facing back toward the ring: the car's forward is minus the road's direction
+  assert.ok(Math.abs(-Math.sin(spot.heading) + ux) < 1e-9 && Math.abs(-Math.cos(spot.heading) + uz) < 1e-9);
+  // and the key or url match too; an unknown venue lands at the spawn
+  assert.deepEqual(landingSpot({ from: 'lagoon' }, hubEntry(), [r]), spot);
+  const h = hubEntry();
+  assert.deepEqual(landingSpot({ from: 'nowhere' }, h, [r]), { x: h.spawn.x, z: h.spawn.z, heading: h.spawn.heading });
+});

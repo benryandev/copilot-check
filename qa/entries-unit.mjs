@@ -33,7 +33,9 @@ test('venueEntry centres the track, sizes the world and turns the hub builders o
     assert.ok(extent >= Math.hypot(40, 20) - 1 && extent < Math.hypot(40, 20) + 6, `extent ${extent}`);
     assert.equal(e.terrain.world.radius, extent + 80); assert.equal(e.terrain.world.cx, 0); assert.equal(e.terrain.world.cz, 0);
     assert.equal(e.terrain.track, e.track);
-    assert.equal(e.terrain.roads.length, 1);
+    assert.equal(e.terrain.roads.length, 2); // the track, then the road home (Task 5b)
+    assert.equal(e.terrain.roads[1].kind, 'venue'); assert.equal(e.terrain.roads[1].venue.url, '/ecosystem/'); assert.equal(e.terrain.roads[1].venue.name, 'Strike HQ');
+    assert.equal(e.url, '/ecosystem/tracks/tiny/');
     const r = e.terrain.roads[0];
     assert.equal(r.kind, 'track'); assert.equal(r.closed, true); assert.equal(r.half, 6); assert.deepEqual(r.points, pts);
     assert.deepEqual(e.terrain.jumps, []); assert.deepEqual(e.terrain.waters, []); assert.deepEqual(e.terrain.districts, {}); assert.deepEqual(e.terrain.stops, []);

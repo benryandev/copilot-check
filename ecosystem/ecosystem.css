@@ -568,6 +568,8 @@ body:has(#touch:not([hidden])) .arrive-key { display: none; }
 body.is-driving .hud-foot { opacity: 0; transform: translate(-50%, 0.5rem); transition-duration: 400ms; }
 body.is-driving .hud-foot a { pointer-events: none; }
 body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transition: none; } /* gone at once; they fade back in */
+body.is-holding :is(.hud, .touch) { opacity: 0; pointer-events: none; transition: none; } /* through an arch: the landing has the screen */
+body.is-holding #loader :is(.loader-text, .loader-bar) { visibility: hidden; } /* the hold: the coin alone, no progress */
 @media (prefers-reduced-motion: reduce) { .arrive, .hud, .touch, .stick-knob { transition: none; } }
 /* The mark turns like the coin on HQ: two faces back to back, each hiding its reverse, so whichever face comes
    round shows the mark the right way (one flat image turned in 3D showed it mirrored for half of every turn) */
