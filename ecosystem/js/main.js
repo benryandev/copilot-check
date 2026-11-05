@@ -30,11 +30,11 @@ import { tint } from "./colours.js";
 import { buildRaceway, formatTime, boardPose, boardCanvas, boardMarker } from "./raceway.js";
 import { celebrateOnce } from "./race-post.js";
 import { createSound } from "./sound.js";
-import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive, raceReset } from "./race-live.js";
+import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive, raceReset, raceError } from "./race-live.js";
 import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview, refreshGhost } from "./race.js";
 import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
 import { initMonuments, applyMonuments, monumentsTick, monumentValues, onMonumentStats, injectSlpFills, monumentsState } from "./monuments.js";
-import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer, sendEmote, peerGroup } from "./peers.js";
+import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer, sendEmote, peerGroup, closePeers, peersConnects } from "./peers.js";
 import { initEmotes, openEmotes, closeEmotes, toggleEmotes, emoteKeydown, showBubble, emoteTick, activeEmotes } from "./emote.js";
 import { loader, paint, wantsArrival, startArrival } from "./arrive.js";
 import { createPost, toGlow } from "./post.js";
@@ -875,7 +875,7 @@ function launchFireworks() {
   fireworks.userData.launch(s.x + fx * 70, s.y, s.z + fz * 70, { rx: -fz, rz: fx }); // in the sky ahead, whichever way you face
 }
 function showCelebration({ rec, self }) {
-  peersNote(self ? `You're #1 on the Raceway with ${formatTime(rec.ms)}` : `${rec.name} just took #1 on the Raceway with ${formatTime(rec.ms)}`, 6000);
+  peersNote(self ? `You're #1 on the Raceway with ${formatTime(rec.ms)}` : rec.trackName ? `${rec.name} set a new record on ${rec.trackName}` : `${rec.name} just took #1 on the Raceway with ${formatTime(rec.ms)}`, 6000);
   launchFireworks();
   sound.fanfare();
 }
@@ -890,16 +890,28 @@ function celebrate(rec, { self = false } = {}) {
 }
 
 // ── Other visitors ────────────────────────────────────────────────────
-initPeers({ scene, car, tierName: () => tierName, enabled: MULTIPLAYER && new URLSearchParams(location.search).get("mp") !== "0", spray: sprayAt });
+initPeers({ scene, car, zone: "hub", tierName: () => tierName, enabled: MULTIPLAYER && new URLSearchParams(location.search).get("mp") !== "0", spray: sprayAt });
 const peerItem = (p) => {
   const li = document.createElement("li");
   li.className = "peers-item";
   const dot = document.createElement("i");
   dot.className = "peers-dot";
   dot.style.setProperty("--c", p.colour);
-  li.append(dot, Object.assign(document.createElement("strong"), { textContent: p.name }), Object.assign(document.createElement("span"), { textContent: p.district }));
+  const where = p.zone == null ? p.district : p.zone === peersState().zone ? `${p.district} · on ${zoneName(p.zone)}` : `on ${zoneName(p.zone)}`; // my own row has no zone
+  li.append(dot, Object.assign(document.createElement("strong"), { textContent: p.name }), Object.assign(document.createElement("span"), { textContent: where }));
   return li;
 };
+// Zone names for the sheet: the hub, or a track's name from the registry (read once, when the sheet first opens)
+let trackNames = null;
+const zoneName = (z) => (z === "hub" ? "the hub" : trackNames?.[z] || z);
+function loadTrackNames() {
+  if (trackNames) return;
+  trackNames = {};
+  fetch("/ecosystem/tracks/tracks.json").then((r) => (r.ok ? r.json() : {})).then((reg) => {
+    for (const [id, t] of Object.entries(reg || {})) if (typeof t?.name === "string") trackNames[id] = t.name;
+    if ($("peers").open) fillPeersSheet(peersState());
+  }).catch(() => {});
+}
 let noteTimer = null;
 function peersNote(text, ms = 2200) {
   if (anyOpen()) return;
@@ -910,11 +922,12 @@ function peersNote(text, ms = 2200) {
   noteTimer = setTimeout(() => { el.hidden = true; }, ms);
 }
 function drawPeers(state) {
-  const chip = $("peers-chip"), n = state.peers.length;
+  const chip = $("peers-chip"), n = Math.max(0, (state.online ?? state.peers.length + 1) - 1); // everyone, in any zone
   chip.dataset.status = state.status;
   const label = (long, short) => { chip.querySelector(".chip-long").textContent = long; chip.querySelector(".chip-short").textContent = short; };
   if (state.status === "on") { chip.hidden = false; label(n ? `${n + 1} driving` : "Just you", String(n + 1)); }
   else if (state.status === "offline") { chip.hidden = false; label("Offline", "Off"); }
+  else if (state.status === "dup") { chip.hidden = false; label("In another tab", "Tab"); }
   else chip.hidden = true;
   chip.setAttribute("aria-label", state.status === "on" ? `${n + 1} driving now, open the list` : "Who's driving now");
   if ($("peers").open) fillPeersSheet(state);
@@ -923,7 +936,7 @@ function drawPeers(state) {
 function fillPeersSheet(state) {
   const list = $("peers-list"), st = $("peers-status");
   list.replaceChildren(...[...(state.me ? [{ ...state.me, district: ownDistrict(state.me) }] : []), ...state.peers].map(peerItem));
-  st.textContent = state.status === "on" ? (state.peers.length ? "" : "Nobody else right now. Send a friend the link.") : state.status === "offline" ? "The room is away. Reconnecting." : "Multiplayer is off for this session.";
+  st.textContent = state.status === "on" ? (state.peers.length ? "" : "Nobody else right now. Send a friend the link.") : state.status === "offline" ? "The room is away. Reconnecting." : state.status === "dup" ? "This device is driving in another tab. Reload here to drive in this one." : "Multiplayer is off for this session.";
   if (document.activeElement !== $("peers-name")) $("peers-name").value = state.me?.name || "";
 }
 // Your own row: the "you" tag only once a name is chosen (the default name is "You", so the row read "You you")
@@ -946,8 +959,10 @@ onPeers((state, event) => {
   if (event?.type === "record") celebrate(event);
   if (event?.type === "emote") showBubble(event.id, event.e);
   if (event?.type === "race") raceEvent(event.m);
-  if (event?.type === "offline" || event?.type === "on") raceReset(); // a new socket is a new identity: any race is over for us
+  if (event?.type === "offline" || event?.type === "on" || event?.type === "dup") raceReset(); // a new socket is a new identity: any race is over for us
+  if (event?.type === "dup") peersNote("This device is driving in another tab", 6000); // final: peers.js does not reconnect
   if (event?.type === "err") {
+    raceError(event);
     const why = { race_full: "The grid is full (8). You can watch.", race_running: "A race is already on. Wait for it to finish.", race_none: "That race is over." }[event.error];
     if (why) raceNote(why, 3000);
   }
@@ -959,7 +974,7 @@ onPeers((state, event) => {
   }
   if (event?.type === "err" && event.error === "rate") $("peers-status").textContent = "One name change every 10 seconds.";
 });
-$("peers-chip").addEventListener("click", () => { fillPeersSheet(peersState()); show($("peers")); });
+$("peers-chip").addEventListener("click", () => { loadTrackNames(); fillPeersSheet(peersState()); show($("peers")); });
 $("peers-form").addEventListener("submit", (e) => {
   e.preventDefault();
   setPeerName($("peers-name").value);
@@ -1293,7 +1308,7 @@ window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, tele
   stunt: () => { const j = jumps.find((o) => o.stunt && o.fx < 0); const lip = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length }; Object.assign(car.s, { x: lip.x + j.fx * 6, z: lip.z, heading: Math.atan2(-j.fx, -j.fz), speed: 24, air: true, vy: 2, airTime: 0.3 }); car.s.y = groundHeight(lip.x, lip.z) + j.height + 1.2; placeCamera(0, true); stuntStart(j); stunt.k = 1; stuntTick(0); } /* the snap first: it resets the stunt */, stuntState: () => ({ k: stunt.k, on: stunt.on }), // QA: mid-flight over the river with the side-on camera up
   splash: (age = 0.35) => { sprayBurst(car.s.x, Math.max(car.s.y, WATER_LEVEL), car.s.z, 40); spray?.userData.step(age); } /* pre-aged, so a still catches the burst spread rather than under the car */, sprayCount: () => sprayCount, // river QA: an entry burst on demand, and how many puffs have flown
   overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
-  info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState,
+  info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState, peersClose: closePeers, peersConnects,
   ridge: { set: (closes) => applyRidge(closes), series: () => ridgeSeries() }, // Chart Ridge: QA and clips set a series by hand
   windsocks: { set: (raw) => windsocks.userData.apply(normaliseFunding(raw)), state: () => windsocks.userData.state() }, // funding windsocks: QA sets a comparison by hand
   cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks, sound,

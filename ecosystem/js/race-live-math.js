@@ -31,3 +31,11 @@ export function clockOffset(samples) {
   const est = samples.map((s) => s.serverNow - (s.sentAt + (s.receivedAt - s.sentAt) / 2)).sort((a, b) => a - b);
   return est[Math.floor(est.length / 2)];
 }
+
+/** The note for a room error that belongs to live racing, or null: a race asked for away from the Raceway shows the
+ *  room's own words (capped), with the same words when an older room sends none. */
+export function raceErrNote(m) {
+  if (!m || m.error !== "race_zone") return null;
+  const why = typeof m.why === "string" && m.why.trim() ? m.why.trim().slice(0, 120) : "Live races run at the Raceway for now";
+  return { text: why, ms: 4000 };
+}

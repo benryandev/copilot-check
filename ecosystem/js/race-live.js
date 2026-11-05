@@ -2,7 +2,7 @@
 // it: puts the car on the grid, locks the throttle until the shared Go, shows the countdown and positions, reports
 // checkpoints and the finish, and offers the Race / Join buttons. The lap itself is still timed by race.js, line to
 // line, so a race lap can post to the leaderboard like any other.
-import { gridSlot, positionLine, countdownText } from "./race-live-math.js";
+import { gridSlot, positionLine, countdownText, raceErrNote } from "./race-live-math.js";
 import { trackAt, trackLen } from "./terrain.js";
 import { sendRace, serverNow, setRacers, peersState } from "./peers.js";
 import { setLiveLine, setGhostHidden } from "./race.js";
@@ -22,6 +22,12 @@ export function initRaceLive(h) {
   $("race-invite-no").addEventListener("click", hideInvite);
   for (const id of ["peers-race", "race-go"]) $(id).addEventListener("click", () => { hooks.closeSheets?.(); raceButton(); });
   draw();
+}
+
+/** An err from the room (via peers.js): a race opened or joined from a venue gets the room's why as a note. */
+export function raceError(m) {
+  const n = raceErrNote(m);
+  if (n) hooks.note?.(n.text, n.ms);
 }
 
 /** A race.* message from the room (via peers.js). */

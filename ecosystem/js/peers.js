@@ -9,6 +9,7 @@ import { paint as carPaint } from "./build.js";
 import { nameTag } from "./tags.js";
 import { markLive } from "./freeze.js";
 import { clockOffset } from "./race-live-math.js";
+import { deviceToken } from "./race-post.js";
 import { nextSendDelay, poseAt, pickDrawn, backoff, flyY, opacityFor, pingSample, renderDelay, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE, sprayDue } from "./peers-math.js";
 
 const WS_DEFAULT = "wss://copilot-world.benryan.workers.dev/ws";
@@ -20,6 +21,9 @@ const round1 = (v) => Math.round(v * 10) / 10, round2 = (v) => Math.round(v * 10
 let hooks = {}; // { scene, car, tierName(), socket?() }
 let url = WS_DEFAULT;
 let ws = null, status = "off", me = null, attempt = 0, retry = null, everOn = false, injected = false, enabled = false;
+let zone = "hub", roomZones = null, dupSeen = false, connects = 0; // my zone (a track id or hub); the room's per-zone counts; the room said this device is in another tab
+// A zone the room may send: a track id or hub; anything else (an old room sends none) is the hub
+const zoneOf = (z) => (typeof z === "string" && /^[a-z0-9-]{1,40}$/.test(z) ? z : "hub");
 const peers = new Map(); // id → { id, name, colour, samples, lastSeen, car, building, pinned }
 const listeners = new Set();
 let lastSent = -Infinity;
@@ -37,12 +41,28 @@ export function districtAt(x, z) {
 // ── State for the HUD ──────────────────────────────────────────────────
 export function peersState() {
   return {
-    status, me,
+    status, me, zone,
+    online: me ? peers.size + 1 : 0, // everyone, in any zone (the room lists them all)
+    zones: zoneCounts(),
     peers: [...peers.values()].map((p) => {
       const last = p.samples[p.samples.length - 1];
-      return { id: p.id, name: p.name, colour: p.colour, district: last ? districtAt(last.x, last.z) : "Just arrived" };
+      return { id: p.id, name: p.name, colour: p.colour, zone: p.zone, district: last ? districtAt(last.x, last.z) : "Just arrived" };
     }),
   };
+}
+// The room's counts when it sent them (ok and n), else counted from the list (an old room, or stand-ins)
+function zoneCounts() {
+  if (roomZones) return { ...roomZones };
+  const z = {};
+  if (me) z[zone] = 1;
+  for (const p of peers.values()) z[p.zone] = (z[p.zone] || 0) + 1;
+  return z;
+}
+function keepZones(zs) {
+  if (!zs || typeof zs !== "object") return;
+  const z = {};
+  for (const [k, v] of Object.entries(zs)) if (Number.isFinite(v) && v >= 0) z[zoneOf(k)] = (z[zoneOf(k)] || 0) + v;
+  roomZones = z;
 }
 export const onPeers = (f) => listeners.add(f);
 const emit = (event = null) => { const s = peersState(); listeners.forEach((f) => f(s, event)); };
@@ -52,7 +72,7 @@ function add(p) {
   if (!me || p.id === me.id || peers.has(p.id)) return;
   const now = performance.now();
   const samples = Number.isFinite(p.x) ? [{ at: now, x: p.x, z: p.z, h: p.h || 0 }] : [];
-  peers.set(p.id, { id: p.id, name: p.name, colour: p.colour, samples, lastSeen: now, car: null, building: null, pinned: false, parkedAt: null });
+  peers.set(p.id, { id: p.id, name: p.name, colour: p.colour, zone: zoneOf(p.zone), samples, lastSeen: now, car: null, building: null, pinned: false, parkedAt: null });
 }
 function disposeCar(p) {
   if (p.car) {
@@ -79,12 +99,14 @@ function handle(m) {
       me = { id: m.id, name: m.name, colour: m.colour };
       status = "on"; everOn = true; attempt = 0;
       clearAll();
-      (m.peers || []).forEach(add);
+      roomZones = null; keepZones(m.zones);
+      (Array.isArray(m.peers) ? m.peers : []).forEach(add);
       emit({ type: "on" });
       ping(); // the server clock, for race countdowns
       if (m.race) emit({ type: "race", m: { t: "race.sync", ...m.race } }); // a race already on when we arrived
       break;
-    case "join": add(m); emit({ type: "join", name: m.name }); break;
+    case "join": add(m); emit({ type: "join", name: m.name, zone: zoneOf(m.zone) }); break;
+    case "n": keepZones(m.zones); emit({ type: "n" }); break;
     case "leave": remove(m.id); emit({ type: "leave" }); break;
     case "rename": { const p = peers.get(m.id); if (p) { p.name = m.name; p.car?.tag.redraw(); emit({ type: "rename" }); } break; }
     case "named": if (me) { me.name = m.name; emit({ type: "named", name: m.name, reason: m.reason, asked: m.asked }); } break; // the typed name stays in storage; the room's rendering ("Aveli (2)") is shown, not kept
@@ -92,7 +114,7 @@ function handle(m) {
       const now = performance.now();
       for (const [id, x, z, h, , j] of m.p || []) {
         const p = peers.get(id);
-        if (!p) continue;
+        if (!p || p.zone !== zone) continue; // the room sends only my zone; an old room sends everyone, all in the hub
         const sample = { at: now, x, z, h };
         if (j) { p.samples = [sample]; p.fly = null; } // a teleport: snap, don't slide across the map
         else { p.samples.push(sample); if (p.samples.length > 12) p.samples.shift(); }
@@ -100,9 +122,9 @@ function handle(m) {
       }
       break;
     }
-    case "record": emit({ type: "record", name: String(m.name ?? "").slice(0, 20), ms: Number(m.ms), track: m.track }); break; // a new #1 on the Raceway
+    case "record": emit({ type: "record", name: String(m.name ?? "").slice(0, 20), ms: Number(m.ms), track: m.track, trackName: typeof m.trackName === "string" ? m.trackName.slice(0, 40) : null }); break; // a new #1 on a track
     case "emote": emit({ type: "emote", id: String(m.id), e: Number(m.e) }); break; // someone waved (emote.js draws it)
-    case "err": emit({ type: "err", error: m.error }); break;
+    case "err": if (m.error === "dup") dupSeen = true; emit({ type: "err", error: m.error, why: typeof m.why === "string" ? m.why : undefined }); break;
     case "pong": { pings = pingSample(pings, { sentAt: Number(m.echo), receivedAt: performance.now(), serverNow: Number(m.now) }); offset = clockOffset(pings); break; }
     default: if (typeof m.t === "string" && m.t.startsWith("race.")) emit({ type: "race", m }); break;
   }
@@ -111,13 +133,14 @@ function handle(m) {
 function connect() {
   if (ws || injected || !enabled) return;
   status = everOn ? "offline" : "connecting";
+  connects++;
   emit({ type: "connecting" });
   let sock;
   try { sock = hooks.socket ? hooks.socket(url) : new WebSocket(url); } catch (err) { console.warn("[eco] peers", err); return scheduleRetry(); }
   ws = sock;
   sock.addEventListener("open", () => {
-    const owner = read(OWNER_KEY);
-    sock.send(JSON.stringify({ t: "hi", v: 1, name: read(NAME_KEY) || undefined, ...(owner ? { owner } : {}) }));
+    const owner = read(OWNER_KEY), device = deviceToken(localStorage);
+    sock.send(JSON.stringify({ t: "hi", v: 1, name: read(NAME_KEY) || undefined, zone, ...(device ? { device } : {}), ...(owner ? { owner } : {}) }));
   });
   sock.addEventListener("message", (e) => {
     for (const line of String(e.data).split("\n")) {
@@ -125,15 +148,28 @@ function connect() {
       try { handle(JSON.parse(line)); } catch (err) { console.warn("[eco] peers frame", err); }
     }
   });
-  sock.addEventListener("close", () => {
+  sock.addEventListener("close", (e) => {
     if (ws !== sock) return;
     ws = null;
-    clearAll();
-    if (status === "on" || everOn) status = "offline";
-    emit({ type: "offline" });
-    scheduleRetry();
+    closed(e.code, e.reason);
   });
   sock.addEventListener("error", () => {}); // close follows
+}
+// The socket is gone. A duplicate close (this device opened the world in another tab, and the room keeps the newer
+// one) is final: reconnecting would close the other tab, which would reconnect and close this one, for ever.
+function closed(code, reason) {
+  clearAll();
+  roomZones = null;
+  if ((code === 4001 && reason === "dup") || dupSeen) {
+    dupSeen = false;
+    status = "dup";
+    if (retry) { clearTimeout(retry); retry = null; }
+    emit({ type: "dup" });
+    return;
+  }
+  if (status === "on" || everOn) status = "offline";
+  emit({ type: "offline" });
+  scheduleRetry();
 }
 function scheduleRetry() {
   if (retry) return;
@@ -164,8 +200,9 @@ export function setRacers(ids) {
 }
 
 let heartbeat = null;
-export function initPeers({ scene, car, tierName, enabled: on = true, wsUrl, socket, spray }) {
+export function initPeers({ scene, car, tierName, enabled: on = true, wsUrl, socket, spray, zone: z = "hub" }) {
   hooks = { scene, car, tierName: tierName || (() => "high"), socket, spray };
+  zone = zoneOf(z);
   enabled = on;
   if (!enabled) { status = "off"; emit({ type: "off" }); return; }
   // Ben's owner token can arrive as #owner=… (easier than a console on a phone); it's stored and the hash is cleared
@@ -261,6 +298,7 @@ export function peersTick(dt, camPos) {
   // its latest sample as its own sender's rate needs (150 ms at 10 Hz, more for a sparse one).
   const cands = [];
   for (const p of peers.values()) {
+    if (p.zone !== zone) { park(p, now); continue; } // listed and counted, but driving somewhere else
     const gone = !p.pinned && now - p.lastSeen > GONE_MS;
     const pose = gone ? null : poseAt(p.samples, now - renderDelay(p.samples));
     if (!pose || Math.hypot(pose.x - camPos.x, pose.z - camPos.z) > DRAW_RANGE) { park(p, now); continue; }
@@ -306,10 +344,20 @@ export function injectPeers(list) {
   injected = true;
   if (ws) { const s = ws; ws = null; s.close(); }
   clearAll();
+  roomZones = null;
   me = me || { id: "me", name: read(NAME_KEY) || "You", colour: "#22c55e" };
   status = "on";
   for (const p of list) { add(p); const q = peers.get(p.id); if (q) q.pinned = true; }
   drawn = new Set();
   rank = 0; // re-rank on the next tick so the stand-ins are drawn at once
   emit({ type: "inject" });
+}
+
+/** Connect attempts so far (the smoke checks a duplicate close makes none). */
+export const peersConnects = () => connects;
+/** Simulate the room closing our socket (code, reason), stand-ins or not: the same path a real close takes. */
+export function closePeers(code, reason = "") {
+  injected = false;
+  if (ws) { const s = ws; ws = null; s.close(); }
+  closed(code, reason);
 }

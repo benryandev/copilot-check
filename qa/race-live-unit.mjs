@@ -1,6 +1,6 @@
 // Pure parts of live racing (no three.js, no DOM): node --test qa/race-live-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { gridSlot, positionLine, countdownText, clockOffset } from '../ecosystem/js/race-live-math.js';
+import { gridSlot, positionLine, countdownText, clockOffset, raceErrNote } from '../ecosystem/js/race-live-math.js';
 
 test('gridSlot: two staggered columns 3 m apart from 14 m behind the line, host on the left', () => {
   assert.deepEqual(gridSlot(1), { back: 14, v: -1.6 });
@@ -49,4 +49,13 @@ test('clockOffset: the median of server-minus-local estimates, half the round tr
     { sentAt: 2000, receivedAt: 2100, serverNow: 52040 },
   ];
   assert.equal(clockOffset(samples), 50000, 'the median ignores the slow one'); // estimates 50000, 50600, 49990 → median 50000
+});
+
+test('raceErrNote: a race asked for away from the Raceway shows the room\'s why for 4 s; other errors are not its business', () => {
+  assert.deepEqual(raceErrNote({ t: 'err', error: 'race_zone', why: 'Live races run at the Raceway for now' }), { text: 'Live races run at the Raceway for now', ms: 4000 });
+  assert.deepEqual(raceErrNote({ t: 'err', error: 'race_zone' }), { text: 'Live races run at the Raceway for now', ms: 4000 }, 'an old room without why: the same words');
+  assert.equal(raceErrNote({ t: 'err', error: 'race_zone', why: 'x'.repeat(200) }).text.length, 120, 'the room\'s text is capped');
+  assert.equal(raceErrNote({ t: 'err', error: 'race_full' }), null);
+  assert.equal(raceErrNote({ t: 'err', error: 'dup', why: 'This device is driving in another tab' }), null);
+  assert.equal(raceErrNote(null), null);
 });

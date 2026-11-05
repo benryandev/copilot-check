@@ -48,7 +48,60 @@ const peerPos = (page, name) => page.evaluate((n) => {
   return g ? { x: g.position.x, z: g.position.z, visible: g.visible, district: p.district } : null;
 }, name);
 
+// Zones and the duplicate close, without the room: the page points at a port nobody answers, so every connect
+// attempt fails fast and is counted; stand-ins are injected, then a server close is simulated through the test hook.
+async function zones() {
+  const ctx = await browser.newContext({ viewport: { width: 800, height: 520 } });
+  await ctx.addInitScript(() => localStorage.setItem('eco-race-name', JSON.stringify('Smoke Z')));
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => console.log('  [Z] page error', String(e).split('\n')[0]));
+  await page.goto(`${base}/ecosystem/?arrive=0&ws=${encodeURIComponent('ws://127.0.0.1:9/ws')}`, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.__eco && document.getElementById('intro').open, null, { timeout: 60000 });
+  await page.click('#start');
+  await page.evaluate(() => {
+    const s = window.__eco.car.s;
+    window.__eco.peersInject([
+      { id: 'zh', name: 'Hub Peer', colour: '#3b82f6', zone: 'hub', x: s.x + 6, z: s.z, h: 0 },
+      { id: 'zl', name: 'Lagoon Peer', colour: '#f97316', zone: 'lagoon-v1', x: s.x - 6, z: s.z, h: 0 },
+    ]);
+  });
+  const st = await state(page);
+  if (st.online !== 3) fail(`online should be 3 (me + 2 in any zone), is ${st.online}`);
+  if (st.zones?.hub !== 2 || st.zones?.['lagoon-v1'] !== 1) fail(`zones should be { hub: 2, lagoon-v1: 1 }, are ${JSON.stringify(st.zones)}`);
+  if (st.peers.find((p) => p.id === 'zl')?.zone !== 'lagoon-v1') fail('the lagoon peer has lost its zone');
+  await until(async () => (await chip(page)) === '3 driving', `the chip should count everyone ("3 driving"), reads "${await chip(page)}"`);
+  await until(() => page.evaluate(() => window.__eco.peerGroup('zh')?.visible === true), "the hub peer's car is never drawn", 15000);
+  await sleep(1500);
+  const lagoon = await page.evaluate(() => window.__eco.peerGroup('zl')?.visible ?? false);
+  if (lagoon) fail("the lagoon peer's car is drawn on the hub");
+  // The who's-here sheet: both listed; the lagoon row says where (the registry has no lagoon-v1 name yet: the id fallback)
+  await page.click('#peers-chip');
+  const rows = await until(() => page.evaluate(() => { const t = [...document.querySelectorAll('#peers-list li')].map((li) => li.textContent); return t.some((x) => x.includes('on lagoon-v1')) ? t : null; }), 'the sheet never says "on lagoon-v1"');
+  if (!rows.some((t) => t.startsWith('Hub Peer') && t.includes('on the hub'))) fail(`the hub row should say "on the hub": ${JSON.stringify(rows)}`);
+  if (!rows.some((t) => t.startsWith('Lagoon Peer') && t.includes('on lagoon-v1'))) fail(`the lagoon row should say "on lagoon-v1": ${JSON.stringify(rows)}`);
+  if (rows[0].includes(' on ')) fail(`my own row says nothing extra: ${rows[0]}`);
+  await page.evaluate(() => document.querySelector('#peers [data-close]').click());
+  // A duplicate close is final: status dup, the note, and no reconnect attempt in the next 5 s
+  const before = await page.evaluate(() => window.__eco.peersConnects());
+  await page.evaluate(() => window.__eco.peersClose(4001, 'dup'));
+  if ((await state(page)).status !== 'dup') fail(`status after a dup close should be dup, is ${(await state(page)).status}`);
+  const note = await page.evaluate(() => { const n = document.getElementById('peers-note'); return n.hidden ? '' : n.textContent; });
+  if (note !== 'This device is driving in another tab') fail(`the note should say "This device is driving in another tab", says "${note}"`);
+  await sleep(5000);
+  const after = await page.evaluate(() => window.__eco.peersConnects());
+  if (after !== before) fail(`a dup close reconnected (${after - before} attempts in 5 s)`);
+  if ((await state(page)).status !== 'dup') fail('status left dup');
+  if (!/another tab/.test(await chip(page))) fail(`the chip should say another tab, reads "${await chip(page)}"`);
+  // Control: any other close reconnects as before
+  await page.evaluate(() => window.__eco.peersClose(1006, ''));
+  await until(() => page.evaluate((b) => window.__eco.peersConnects() > b, after), 'an ordinary close never reconnected', 35000);
+  console.log('ok   peers zones (own zone drawn, everyone counted, zone names in the sheet, dup close final)');
+  await ctx.close();
+}
+
 try {
+  await zones();
+  if (process.env.NO_ROOM) { console.log('     room part skipped (NO_ROOM)'); await browser.close(); process.exit(0); }
   const a = await open('Smoke A');
   await until(async () => (await state(a)).status === 'on', 'A never joined the room');
   const b = await open('Smoke B');
