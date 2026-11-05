@@ -93,6 +93,8 @@ async function zones() {
   if (after !== before) fail(`a dup close reconnected (${after - before} attempts in 5 s)`);
   if ((await state(page)).status !== 'dup') fail('status left dup');
   if (!/another tab/.test(await chip(page))) fail(`the chip should say another tab, reads "${await chip(page)}"`);
+  const aria = await page.evaluate(() => document.getElementById('peers-chip').getAttribute('aria-label'));
+  if (aria !== 'This device is driving in another tab') fail(`the dup chip's aria-label should say what it shows, reads "${aria}"`);
   // Control: any other close reconnects as before
   await page.evaluate(() => window.__eco.peersClose(1006, ''));
   await until(() => page.evaluate((b) => window.__eco.peersConnects() > b, after), 'an ordinary close never reconnected', 35000);

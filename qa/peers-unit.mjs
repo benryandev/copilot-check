@@ -1,6 +1,6 @@
 // Pure parts of the multiplayer client (no three.js, no DOM): node --test qa/peers-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { nextSendDelay, interp, pickDrawn, backoff, poseAt, sprayDue, SEND_MS, IDLE_MS, DELAY_MS } from '../ecosystem/js/peers-math.js';
+import { nextSendDelay, interp, pickDrawn, backoff, poseAt, sprayDue, safeDevice, hiMessage, SEND_MS, IDLE_MS, DELAY_MS } from '../ecosystem/js/peers-math.js';
 
 test('nextSendDelay: 100 ms moving, 1000 ms still', () => {
   assert.equal(SEND_MS, 100); assert.equal(IDLE_MS, 1000); assert.equal(DELAY_MS, 150);
@@ -121,4 +121,15 @@ test('flyY: the ground jumping up under a parked or rolling car (a new ridge ser
   let g = 4, peak = -Infinity;
   for (let i = 0; i < 120; i++) { g -= 20 * dt * 0.1; const y = flyY(st, g, dt); peak = Math.max(peak, y - g); }
   assert.ok(peak < 0.3, `rose ${peak.toFixed(2)} m above the ground`);
+});
+
+test('hi without storage: a throwing storage getter gives no device field, and the hi is still built', () => {
+  const blocked = () => { throw new DOMException('The operation is insecure.', 'SecurityError'); };
+  assert.equal(safeDevice(() => 'x'.repeat(32), blocked), null, 'the global itself throws');
+  assert.equal(safeDevice(() => { throw new Error('quota'); }, () => ({})), null, 'the token read throws');
+  assert.equal(safeDevice(() => 'a'.repeat(32), () => ({})), 'a'.repeat(32));
+  const hi = hiMessage({ name: 'Nova', zone: 'hub', owner: null, device: safeDevice(() => 'x', blocked) });
+  assert.deepEqual(hi, { t: 'hi', v: 1, name: 'Nova', zone: 'hub' });
+  assert.ok(!('device' in hi) && !('owner' in hi));
+  assert.deepEqual(hiMessage({ name: '', zone: 'realfi-v1', owner: 'o', device: 'd' }), { t: 'hi', v: 1, name: undefined, zone: 'realfi-v1', device: 'd', owner: 'o' });
 });

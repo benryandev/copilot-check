@@ -10,7 +10,7 @@ import { nameTag } from "./tags.js";
 import { markLive } from "./freeze.js";
 import { clockOffset } from "./race-live-math.js";
 import { deviceToken } from "./race-post.js";
-import { nextSendDelay, poseAt, pickDrawn, backoff, flyY, opacityFor, pingSample, renderDelay, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE, sprayDue } from "./peers-math.js";
+import { nextSendDelay, poseAt, pickDrawn, backoff, flyY, opacityFor, pingSample, renderDelay, DELAY_MS, QUIET_MS, GONE_MS, PARK_MS, IDLE_MS, DRAW_CAP, DRAW_RANGE, sprayDue, safeDevice, hiMessage } from "./peers-math.js";
 
 const WS_DEFAULT = "wss://copilot-world.benryan.workers.dev/ws";
 const NAME_KEY = "eco-race-name", OWNER_KEY = "eco-owner";
@@ -139,8 +139,8 @@ function connect() {
   try { sock = hooks.socket ? hooks.socket(url) : new WebSocket(url); } catch (err) { console.warn("[eco] peers", err); return scheduleRetry(); }
   ws = sock;
   sock.addEventListener("open", () => {
-    const owner = read(OWNER_KEY), device = deviceToken(localStorage);
-    sock.send(JSON.stringify({ t: "hi", v: 1, name: read(NAME_KEY) || undefined, zone, ...(device ? { device } : {}), ...(owner ? { owner } : {}) }));
+    const device = safeDevice(deviceToken, () => localStorage); // blocked storage: no device field, hi still goes out
+    sock.send(JSON.stringify(hiMessage({ name: read(NAME_KEY), zone, owner: read(OWNER_KEY), device })));
   });
   sock.addEventListener("message", (e) => {
     for (const line of String(e.data).split("\n")) {

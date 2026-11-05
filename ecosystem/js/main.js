@@ -929,7 +929,7 @@ function drawPeers(state) {
   else if (state.status === "offline") { chip.hidden = false; label("Offline", "Off"); }
   else if (state.status === "dup") { chip.hidden = false; label("In another tab", "Tab"); }
   else chip.hidden = true;
-  chip.setAttribute("aria-label", state.status === "on" ? `${n + 1} driving now, open the list` : "Who's driving now");
+  chip.setAttribute("aria-label", state.status === "on" ? `${n + 1} driving now, open the list` : state.status === "dup" ? "This device is driving in another tab" : "Who's driving now");
   if ($("peers").open) fillPeersSheet(state);
   if ($("map").open) fillMapPeers(state);
 }

@@ -104,3 +104,12 @@ export function sprayDue(p, now, moved) {
   p.sprayAt = now;
   return true;
 }
+
+/** The device token for `hi`, or null when storage is blocked: reading the storage global itself can throw, and a join must not depend on it. */
+export function safeDevice(tokenFor, getStore) {
+  try { return tokenFor(getStore()) || null; } catch { return null; }
+}
+/** The `hi` frame: no token means no `device` field, never no `hi`. */
+export function hiMessage({ name, zone, owner, device }) {
+  return { t: 'hi', v: 1, name: name || undefined, zone, ...(device ? { device } : {}), ...(owner ? { owner } : {}) };
+}
