@@ -38,6 +38,8 @@ function curBest() {
   if (id !== bestId) { bestId = id; bestVal = loadBest(load, id); }
   return bestVal;
 }
+/** The device's best lap on the configured track ({ ms, … }) or null: the venue's Map row reads it (map-math.js venueRecord). */
+export const deviceBest = () => curBest();
 function setBest(v) {
   bestVal = v;
   const k = bestKey(bestId);

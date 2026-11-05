@@ -14,8 +14,34 @@ test('the venue page shares the hub\'s HUD and sheets', () => {
   assert.deepEqual([...ids(venue)].sort(), [...ids(hub)].sort());
   for (const id of REQUIRED) assert.ok(ids(venue).has(id), id);
   // The venue's own copy: the opening card's title and the intro dialog (plan 5 Task 5); everything else is the hub's
-  const same = (h) => h.replace(/<script type="module" src="[^"]+"><\/script>/, '').replace(/<dialog id="intro"[\s\S]*?<\/dialog>/, '').replace(/<p class="arrive-title">[^<]*<\/p>/, '');
-  assert.equal(same(body(venue)), same(body(hub)), 'the body differs only in its entry script, its opening title and its intro');
+  // R31 and R32 (fix wave G, H): the Map sheet's lede and the footer are the venue's too
+  const same = (h) => h.replace(/<script type="module" src="[^"]+"><\/script>/, '').replace(/<dialog id="intro"[\s\S]*?<\/dialog>/, '').replace(/<p class="arrive-title">[^<]*<\/p>/, '')
+    .replace(/<footer class="hud hud-foot">[\s\S]*?<\/footer>/, '').replace(/(<dialog id="map"[\s\S]*?<h2 id="map-title">Where to\?<\/h2>\s*)<p class="muted">[^<]*<\/p>/, '$1');
+  assert.equal(same(body(venue)), same(body(hub)), 'the body differs only in its entry script, its opening title, its intro, its Map lede and its footer');
+});
+
+const foot = (h) => /<footer class="hud hud-foot">[\s\S]*?<\/footer>/.exec(h)[0];
+const mapLede = (h) => /<h2 id="map-title">Where to\?<\/h2>\s*<p class="muted">([^<]*)<\/p>/.exec(h)[1];
+test('the venue footer: no live-data note or stops link, the credit and disclosure kept, a link home (R32)', () => {
+  const v = foot(venue);
+  assert.doesNotMatch(v, /Live data/); assert.doesNotMatch(v, /Every stop/); assert.doesNotMatch(v, /\/ecosystem\/stops\//);
+  assert.match(v, /Made with <a href="https:\/\/threejs\.org"[^>]*>three\.js<\/a>/);
+  assert.match(v, /Independent, not affiliated with Strike/); assert.match(v, /Not affiliated with Strike/);
+  assert.match(v, /<a href="https:\/\/benryan\.com\.au">Built by Ben Ryan<\/a>/);
+  assert.match(v, /<a class="foot-home" href="\/ecosystem\/">Back to the World<\/a>/);
+  // The hub's footer is as it was
+  assert.equal(foot(hub), `<footer class="hud hud-foot">
+    <span class="foot-live">Live data: Strike public API ·</span>
+    <span class="foot-credit">Made with <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a></span>
+    <span><span class="foot-long">Independent, not affiliated with Strike</span><span class="foot-short">Not affiliated with Strike</span></span>
+    <a href="/ecosystem/stops/">Every stop</a>
+    <a href="https://benryan.com.au">Built by Ben Ryan</a>
+  </footer>`);
+  assert.match(readFileSync('ecosystem/ecosystem.css', 'utf8'), /\.hud-foot \.foot-home \{ display: none; \}/, 'hidden on phones, as the stops link is');
+});
+test('the venue Map sheet\'s lede names its two ways out (R31); the hub\'s is as it was', () => {
+  assert.equal(mapLede(venue), 'Drive back to the world, or go to the start line.');
+  assert.equal(mapLede(hub), 'Pick a feature to drive straight to it, or read about it here.');
 });
 
 const intro = (h) => /<dialog id="intro"[\s\S]*?<\/dialog>/.exec(h)[0];

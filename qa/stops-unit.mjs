@@ -74,7 +74,12 @@ test("the Lagoon's copy obeys Ben's copy rule: its line, its page's descriptions
   const meta = [...page.matchAll(/<meta (?:name|property)="(?:description|og:description|twitter:description|og:image:alt|og:title|twitter:title)" content="([^"]+)">/g)].map((m) => m[1]);
   const dialog = /<dialog id="intro"[\s\S]*?<\/dialog>/.exec(page)[0];
   const paras = [...dialog.matchAll(/<(h1|p)[^>]*>([\s\S]*?)<\/\1>/g)].map((m) => m[2]).filter((t) => !t.includes('data-guide-link')).map((t) => t.replace(/<[^>]+>/g, ''));
-  const texts = [VENUES.find((v) => v.key === 'lagoon').line, ...meta, ...paras];
+  // The Map sheet's lede and the footer's link home (fix wave G, H) and the venue Map rows' fixed lines (map-math.js venueRecord)
+  const lede = /<h2 id="map-title">Where to\?<\/h2>\s*<p class="muted">([^<]*)<\/p>/.exec(page)[1];
+  const home = /<a class="foot-home" href="[^"]+">([^<]+)<\/a>/.exec(page)[1];
+  const { venueRecord } = await import('../ecosystem/js/map-math.js');
+  const fmt = (ms) => `${ms} ms`, rows = [venueRecord({ status: 'ok', top: [] }, null, fmt), venueRecord({ status: 'offline', top: [] }, null, fmt), venueRecord({ status: 'ok', top: [] }, { ms: 1 }, fmt)].flatMap((r) => [r.title, r.text]);
+  const texts = [VENUES.find((v) => v.key === 'lagoon').line, ...meta, ...paras, lede, home, ...rows];
   assert.ok(meta.length === 6 && paras.length >= 3, `${meta.length} meta, ${paras.length} intro lines`);
   const bad = texts.filter((t) => COPY_PUNCT.test(t) || CHECK_DATE.test(t) || BANNED.some((re) => re.test(t)));
   assert.deepEqual(bad, [], bad.join('\n'));

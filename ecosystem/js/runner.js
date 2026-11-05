@@ -33,7 +33,8 @@ import { buildRaceway, formatTime, boardPose, boardCanvas, boardMarker } from ".
 import { celebrateOnce } from "./race-post.js";
 import { createSound } from "./sound.js";
 import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive, raceReset, raceError } from "./race-live.js";
-import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview, refreshGhost } from "./race.js";
+import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview, refreshGhost, deviceBest } from "./race.js";
+import { venueRecord } from "./map-math.js";
 import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
 import { initMonuments, applyMonuments, monumentsTick, monumentValues, onMonumentStats, injectSlpFills, monumentsState } from "./monuments.js";
 import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer, sendEmote, peerGroup, closePeers, peersConnects } from "./peers.js";
@@ -1075,11 +1076,37 @@ export async function runWorld(entry) {
     $("peers-status").textContent = "Saving…";
   });
 
+  // A venue's own Map rows (R31): its name with Go to start, then its lap record (the board's best, else the device's). The
+  // hub's Strike figures are not shown on a venue, and the venue's name-only cards keep their button beside them on a phone.
+  function venueMapRows() {
+    const h = Object.assign(document.createElement("div"), { className: "map-group-row" });
+    h.append(Object.assign(document.createElement("p"), { className: "map-group", textContent: trackDef().name }));
+    const start = Object.assign(document.createElement("button"), { type: "button", className: "map-read", textContent: "Go to start" });
+    start.setAttribute("aria-label", "Go to the start line");
+    start.addEventListener("click", () => teleportDistrict("raceway"));
+    h.append(start);
+    const ul = Object.assign(document.createElement("ul"), { className: "map-list" });
+    const li = Object.assign(document.createElement("li"), { className: "map-item map-item--row" });
+    const card = Object.assign(document.createElement("button"), { type: "button", className: "map-go", id: "map-venue-record" });
+    card.addEventListener("click", () => teleportDistrict("raceway"));
+    fillVenueRecord(card);
+    li.append(card);
+    ul.append(li);
+    return [h, ul];
+  }
+  function fillVenueRecord(card) {
+    const r = venueRecord(raceBoard(), deviceBest(), formatTime);
+    card.setAttribute("aria-label", `${r.title}, ${r.text}. Go to the start line.`);
+    card.replaceChildren(Object.assign(document.createElement("strong"), { textContent: r.title }), Object.assign(document.createElement("span"), { textContent: r.text }));
+  }
   function openMap() {
     raceCancel("Lap cancelled: Map view");
     if (Date.now() - raceBoard().at > 60_000) fetchTop();
-    fillStats($("map-live"), ["volume24h", "openInterest", "markets", "maxLeverage"]);
-    const groups = Object.entries(districts()).flatMap(([key, d]) => {
+    const onVenue = entry.kind === "venue";
+    $("map-live").hidden = onVenue;
+    if (!onVenue) fillStats($("map-live"), ["volume24h", "openInterest", "markets", "maxLeverage"]);
+    const groups = onVenue ? venueMapRows() : [];
+    groups.push(...Object.entries(districts()).flatMap(([key, d]) => {
       if (!stops().some((s) => s.district === key)) return [];
       const h = document.createElement("div");
       h.className = "map-group-row";
@@ -1121,13 +1148,13 @@ export async function runWorld(entry) {
       top.id = "map-race-top";
       top.append(Object.assign(document.createElement("p"), { className: "map-group", textContent: "Top 10 laps" }), topList());
       return [h, ul, top];
-    });
+    }));
     // Venues, after the districts: each a "Drive in" that hands over to the venue's page (the portal flight from Task 5
     // when the entry has one, else a plain page load)
     if (venueRoadList.length) {
       const ul = Object.assign(document.createElement("ul"), { className: "map-list" });
       ul.append(...venueRoadList.map(({ venue }) => {
-        const li = Object.assign(document.createElement("li"), { className: "map-item" });
+        const li = Object.assign(document.createElement("li"), { className: entry.kind === "venue" ? "map-item map-item--row" : "map-item" });
         const drive = () => (entry.portalGo ? entry.portalGo(venue) : location.assign(venue.url));
         const name = Object.assign(document.createElement("button"), { type: "button", className: "map-go" }); // the card does what its button does
         name.setAttribute("aria-label", `Go to ${venue.name}`);
@@ -1154,6 +1181,8 @@ export async function runWorld(entry) {
   onBoard(() => {
     const el = $("map-race-top");
     if (el) el.replaceChildren(el.firstChild, topList());
+    const rec = $("map-venue-record");
+    if (rec) fillVenueRecord(rec);
   });
   $("intro-map").addEventListener("click", openMap);
   $("start").addEventListener("click", () => $("intro").close());
@@ -1242,7 +1271,7 @@ export async function runWorld(entry) {
         const s = stops().find((x) => x.key === openKey);
         if (s.live) fillStats($("stop-live"), s.live);
       }
-      if ($("map").open) fillStats($("map-live"), ["volume24h", "openInterest", "markets", "maxLeverage"]);
+      if ($("map").open && entry.kind !== "venue") fillStats($("map-live"), ["volume24h", "openInterest", "markets", "maxLeverage"]);
     } catch (err) {
       console.warn("[eco] live data", err);
     }

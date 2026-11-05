@@ -431,6 +431,7 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
   .hud-title .br-label { display: none; }
   .foot-credit { display: none; } /* phones: the disclosure and the credit link are what fit */
   body:not(.guide-page) .hud-foot a[href="/ecosystem/stops/"] { display: none; } /* the stops page link lives on the intro and in Map view; at 11 px the line has no room for it on a 360 px phone */
+  .hud-foot .foot-home { display: none; } /* a venue's way home, likewise: the arch, the intro and Map view carry it (R32) */
   .hud-foot { font-size: 0.7rem; }
   .pad-btn { width: 4rem; height: 4rem; }
   .pad-gas { width: 4.75rem; height: 4.75rem; }
@@ -485,6 +486,12 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
   .map-item { flex-direction: column; }
   .map-read { align-self: flex-end; }
   .map-item + .map-item { margin-top: var(--space-xs); }
+}
+/* A venue's name-only cards (its lap record, Back to the World) keep the button beside them on a phone: under a card with no
+   description it sat alone on a row of its own (R31, the venue only; runner.js venueMapRows) */
+@media (max-width: 480px) {
+  .map-item--row { flex-direction: row; }
+  .map-item--row .map-read { align-self: center; }
 }
 
 /* ── Open prompt: one panel, district-coloured edge, Enter keycap ──── */
