@@ -45,3 +45,18 @@ test('vercel.json\'s site-wide CSP and security headers cover the venue path', (
   assert.ok(new RegExp(`^${csp.source}$`).test('/ecosystem/tracks/lagoon/'), csp.source);
   assert.ok(new RegExp(`^${csp.source}$`).test('/ecosystem/tracks/lagoon.js'), 'the track module too');
 });
+
+test('the view-transition opt-in is on the world pages only (review I1)', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs');
+  assert.doesNotMatch(readFileSync(new URL('../ecosystem/ecosystem.css', import.meta.url), 'utf8'), /@view-transition/);
+  assert.match(readFileSync(new URL('../ecosystem/portal.css', import.meta.url), 'utf8'), /@view-transition\s*\{\s*navigation:\s*auto/);
+  assert.match(head(hub), /\/ecosystem\/portal\.css/); assert.match(head(venue), /\/ecosystem\/portal\.css/);
+  const dir = new URL('../ecosystem/', import.meta.url);
+  const pages = [];
+  const walk = (u) => { for (const d of readdirSync(u, { withFileTypes: true })) { if (d.isDirectory() && !['vendor', 'models', 'img', 'js'].includes(d.name)) walk(new URL(d.name + '/', u)); else if (d.name === 'index.html') pages.push(new URL(d.name, u)); } };
+  walk(dir);
+  for (const u of pages) {
+    const h = head(readFileSync(u, 'utf8'));
+    if (/\/ecosystem\/portal\.css/.test(h)) assert.ok(/ecosystem\/index\.html$|tracks\/lagoon\/index\.html$/.test(u.pathname), `${u.pathname} loads portal.css`);
+  }
+});

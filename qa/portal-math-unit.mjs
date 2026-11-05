@@ -125,3 +125,14 @@ test('landingStart: the offsets land over the spot, turned by the change of head
   assert.equal(landingStart({ cam: [1, 2, 3], look: [0, 0, 0] }, { x: 0, z: 0, heading: 0 }), null); // the old world-coordinate record
   assert.equal(landingStart(null, { x: 0, z: 0, heading: 0 }), null);
 });
+
+test('handoffBase: a crossing measures from the car; Drive-in from afar measures from the arch with the road heading', async () => {
+  const { handoffBase } = await import('../ecosystem/js/portal-math.js');
+  const car = { x: 500, y: 2, z: -300, heading: 0.7 };
+  assert.deepEqual(handoffBase('cross', car, { x: 1, z: 2, fx: 0, fz: -1 }, 3), { pos: [500, 2, -300], heading: 0.7 });
+  const b = handoffBase('go', car, { x: 10, z: -40, fx: 0, fz: -1 }, 3);
+  assert.deepEqual(b.pos, [10, 3, -40]); assert.ok(Math.abs(b.heading) < 1e-12); // facing -z is heading 0
+  const e = handoffBase('go', car, { x: 0, z: 0, fx: 1, fz: 0 }, 0); // road runs +x: car faces (-sin h, -cos h) = (1,0) at h = -pi/2
+  assert.ok(Math.abs(e.heading + Math.PI / 2) < 1e-12);
+  assert.deepEqual(handoffBase('go', car, { x: 0, z: 0 }, 0).pos, [500, 2, -300]); // no usable road direction: the car
+});

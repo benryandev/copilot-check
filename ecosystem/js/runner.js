@@ -42,7 +42,7 @@ import { initArcade, openArcade, arcadeOpen, injectArcadeBoard } from "./arcade.
 import { createFps } from "./fps.js";
 import { TIERS, startTier, nextTier, SLOW_MS, WINDOW } from "./quality-math.js";
 import { markLive, freezeStatic } from "./freeze.js";
-import { portalLines, crossed, flightPath, portalRecord, readPortal, landingSpot, landingStart, PORTAL_KEY } from "./portal-math.js";
+import { portalLines, crossed, flightPath, portalRecord, readPortal, landingSpot, landingStart, handoffBase, PORTAL_KEY } from "./portal-math.js";
 import { mergeStatic, collapseStatic, disposeOrphans, pruneEmpty } from "./merge.js";
 
 // The body below is the hub's world as it was in main.js, wrapped: `entry` (entries.js) says which world it builds, where
@@ -884,7 +884,7 @@ export async function runWorld(entry) {
   let portal = null, portalLatch = 0; // portalLatch: the clock time before which a crossing is ignored (2 s after the last)
   const veil = archLines.length ? document.body.appendChild(Object.assign(document.createElement("div"), { id: "portal-veil" })) : null;
   if (veil) veil.setAttribute("aria-hidden", "true");
-  function portalOut(target) {
+  function portalOut(target, via = "cross") {
     if (portal || !target?.url) return;
     portalLatch = clock.elapsedTime + 2;
     dialogs.forEach((d) => d.open && d.close());
@@ -892,7 +892,7 @@ export async function runWorld(entry) {
     const s = car.s, line = archLines.find((l) => l.target.url === target.url);
     const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
     const to = line ? { x: line.x, z: line.z, fx: line.fx, fz: line.fz } : { x: s.x + fx * 20, z: s.z + fz * 20, fx, fz }; // no arch for it here: up and ahead of the car
-    portal = { target, t: 0, done: false, to, from: { pos: camera.position.toArray(), look: camLook.toArray() }, look: camLook.toArray() };
+    portal = { target, via, t: 0, done: false, to, from: { pos: camera.position.toArray(), look: camLook.toArray() }, look: camLook.toArray() };
     if (veil) { veil.style.background = `#${new THREE.Color(pal().sky).getHexString()}`; veil.style.opacity = "0"; }
     if (reduceMotion) { if (veil) veil.style.opacity = "1"; portalGo(); } // R7: no flight; the record and the page load at once, behind the veil
   }
@@ -900,8 +900,8 @@ export async function runWorld(entry) {
   // carries ?venues=1 when the record that brought it was a preview (R6); `to` stays the bare path the next page matches.
   function portalGo() {
     portal.done = true;
-    const c = [car.s.x, car.s.y, car.s.z], off = (v) => v.map((n, i) => n - c[i]);
-    const rec = portalRecord({ from: entry.zone, to: portal.target.url, camOff: off(camera.position.toArray()), lookOff: off(portal.look), heading: car.s.heading, preview, now: Date.now() });
+    const base = handoffBase(portal.via, car.s, portal.to, groundHeight(portal.to.x, portal.to.z)), c = base.pos, off = (v) => v.map((n, i) => n - c[i]);
+    const rec = portalRecord({ from: entry.zone, to: portal.target.url, camOff: off(camera.position.toArray()), lookOff: off(portal.look), heading: base.heading, preview, now: Date.now() });
     try { sessionStorage.setItem(PORTAL_KEY, JSON.stringify(rec)); } catch {}
     location.assign(entry.kind === "venue" && preview && portal.target.url === entry.home ? `${entry.home}?venues=1` : portal.target.url);
   }
@@ -916,7 +916,10 @@ export async function runWorld(entry) {
     if (k < 1 || portal.done) return;
     portalGo();
   }
-  entry.portalGo = (venue) => portalOut(venue);
+  entry.portalGo = (venue) => portalOut(venue, "go");
+  // Review I1: portal.css opts the world pages into cross-document view transitions; only a portal hand-off keeps one, any
+  // other navigation away (a link, reload, Back) skips it so nothing changes for a player who never meets an arch.
+  addEventListener("pageswap", (e) => { if (!portal) e.viewTransition?.skipTransition(); });
   // Back or Forward to a page that left through an arch: a back/forward-cache restore would bring it back locked under the
   // opaque veil with the flight done, so it loads afresh instead (its normal opening; the record was consumed by the next page)
   addEventListener("pageshow", (e) => { if (e.persisted && portal) location.reload(); });

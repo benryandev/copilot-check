@@ -44,6 +44,14 @@ export function flightPath(t, from, to) {
  * `preview` when the departing hub page had ?venues=1, so the round trip comes back to a hub that still has the venue roads. */
 export const portalRecord = ({ from, to, camOff, lookOff, heading, preview = false, now }) => ({ from, to, camOff, lookOff, heading, preview: !!preview, at: now });
 
+/** Where the hand-off offsets are measured from (review I2): the car for a crossing (it is at the arch), but for the Map
+ * view's "Drive in" the car is far away, so the arch itself (`to` { x, z, fx, fz }, `y` the ground there) with the road's
+ * heading, the way a car at the arch would face (the car faces (-sin h, -cos h)). */
+export function handoffBase(via, car, to, y = 0) {
+  if (via !== "go" || !to || !Number.isFinite(to.fx) || !Number.isFinite(to.fz)) return { pos: [car.x, car.y, car.z], heading: car.heading };
+  return { pos: [to.x, y, to.z], heading: Math.atan2(-to.fx, -to.fz) };
+}
+
 /** The landing's first camera (R5): the record's offsets turned by the change of heading (the record's heading to the
  * spot's) and applied at the spot, `y` being the car's height there. The car faces (-sin h, -cos h); turning by d about y
  * maps that to the facing at h + d. A record without usable offsets gives null (the landing then starts at the chase pose). */

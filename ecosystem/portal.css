@@ -1,0 +1,3 @@
+/* Loaded by the two world pages only (the hub and each venue), never the guides: opts them into the cross-document view
+   transition that carries the portal's last frame across (Chrome 126+, Safari 18.2+). The runner skips it unless a portal ran. */
+@view-transition { navigation: auto; }
