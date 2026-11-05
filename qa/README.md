@@ -435,6 +435,27 @@ Chrome excludes the scroll container's padding, so a bar meant to sit flush with
 negative `bottom` of the padding's size; `:focus-visible` matches a heading focused by script at load, so a
 shared link shows the ring unless the heading opts out.
 
+## The Lagoon venue page (5–6 Nov 2026): the first venue's kit loop
+
+The first page beyond the hub. Shot with `node qa/shoot-eco.mjs <base> --page=/ecosystem/tracks/lagoon/` (states grid, drive,
+intro, jump, loading, map, peers, portalIn, portalOut, race; frames `eco-lagoon-*`). Scores on the six pillars:
+
+| Read | Overall | Notes |
+|---|---|---|
+| First score (gate) | 7.3 | 11 defects: hub copy and panels carried onto the venue (Map lede and rows, footer, share image), the gantry clipped at 375 and 768, shoot states that did not exercise what they named |
+| Re-score after the fix wave | 8.1 | 10 of 11 fixed; the gantry clipping left (the hub clips the same at 375: a camera framing fix for both pages) |
+| Blind re-score (fresh reviewer, frames only) | 6.6 | 21 defects; 14 are the hub's shared UI the venue inherits (HUD sub-line, intro focus ring, lap sheet autofocus, Map view type mix, the emoji wave control) and went to a hub backlog; the venue-only ones were fixed in a second scoped pass |
+| Final re-score | 8.3 | the venue's own work 8.9 with the hub-shared items excluded; left: the ramp deck in the jump camera's foreground, the Map's Music row below the fold at 375, gate 3's sign clipped in the jump frame |
+
+Lighthouse on the venue page: accessibility 100, SEO 100, best practices 100 once the worker knew the track (96 while it
+answered 404 for its board). Phone tier against the hub, driving on the start straight: 40 draw calls vs 72, 316K triangles
+vs 339K, 1.0 ms script vs 1.8 ms, both at the display's 8.3 ms cap.
+
+The hub-unchanged proof with a venue road present: the Raceway canvases and the board hash identical to main, the ground
+hash identical outside a 60 m window round the venue road, its arch and its tree belt, and the mesh delta accounted for
+item by item (the road, the arch sign and beam, the belt): the masked rule replaces the whole-grid hash now that a road
+exists by design.
+
 ## Multiplayer smoke (`qa/peers-smoke.mjs`)
 
 ```sh
