@@ -570,6 +570,10 @@ body.is-driving .hud-foot a { pointer-events: none; }
 body.is-arriving :is(.hud, .touch) { opacity: 0; pointer-events: none; transition: none; } /* gone at once; they fade back in */
 body.is-holding :is(.hud, .touch) { opacity: 0; pointer-events: none; transition: none; } /* through an arch: the landing has the screen */
 body.is-holding #loader :is(.loader-text, .loader-bar) { visibility: hidden; } /* the hold: the coin alone, no progress */
+/* The hold paints in the veil's colour (runner.js pal().sky) from the first frame, so the flight's veil hands straight over to it
+   with no flash of the page background; theme.js sets is-portal before first paint, the runner drops it on landing */
+html.is-portal, html.is-portal body, html.is-portal .loader { background: #cfe0ec; }
+html.is-portal.dark, html.is-portal.dark body, html.is-portal.dark .loader { background: #0b1016; }
 @media (prefers-reduced-motion: reduce) { .arrive, .hud, .touch, .stick-knob { transition: none; } }
 /* The mark turns like the coin on HQ: two faces back to back, each hiding its reverse, so whichever face comes
    round shows the mark the right way (one flat image turned in 3D showed it mirrored for half of every turn) */

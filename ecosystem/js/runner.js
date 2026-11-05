@@ -42,7 +42,7 @@ import { initArcade, openArcade, arcadeOpen, injectArcadeBoard } from "./arcade.
 import { createFps } from "./fps.js";
 import { TIERS, startTier, nextTier, SLOW_MS, WINDOW } from "./quality-math.js";
 import { markLive, freezeStatic } from "./freeze.js";
-import { portalLines, crossed, flightPath, portalRecord, readPortal, landingSpot, PORTAL_KEY } from "./portal-math.js";
+import { portalLines, crossed, flightPath, portalRecord, readPortal, landingSpot, landingStart, PORTAL_KEY } from "./portal-math.js";
 import { mergeStatic, collapseStatic, disposeOrphans, pruneEmpty } from "./merge.js";
 
 // The body below is the hub's world as it was in main.js, wrapped: `entry` (entries.js) says which world it builds, where
@@ -54,6 +54,10 @@ export async function runWorld(entry) {
   // blocked storage reads as no record.
   const landing = (() => { try { return readPortal(sessionStorage, { to: entry.url, now: Date.now() }); } catch { return null; } })();
   if (landing) document.body.classList.add("is-holding");
+  else document.documentElement.classList.remove("is-portal"); // theme.js saw a record, but a stale or foreign one: the normal opening
+  // The preview (Task 5c, R6): a hub page with ?venues=1 sends it in the record; a venue brought here by such a record sends
+  // its way home back to the hub with ?venues=1 restored, so the round trip lands on a hub that still has the venue roads.
+  const preview = !!landing?.preview || new URLSearchParams(location.search).get("venues") === "1";
 
   const $ = (id) => document.getElementById(id);
   const root = document.documentElement;
@@ -890,6 +894,16 @@ export async function runWorld(entry) {
     const to = line ? { x: line.x, z: line.z, fx: line.fx, fz: line.fz } : { x: s.x + fx * 20, z: s.z + fz * 20, fx, fz }; // no arch for it here: up and ahead of the car
     portal = { target, t: 0, done: false, to, from: { pos: camera.position.toArray(), look: camLook.toArray() }, look: camLook.toArray() };
     if (veil) { veil.style.background = `#${new THREE.Color(pal().sky).getHexString()}`; veil.style.opacity = "0"; }
+    if (reduceMotion) { if (veil) veil.style.opacity = "1"; portalGo(); } // R7: no flight; the record and the page load at once, behind the veil
+  }
+  // The hand-off (R5): the camera and look as offsets from the car with its heading, then the page load. A venue's way home
+  // carries ?venues=1 when the record that brought it was a preview (R6); `to` stays the bare path the next page matches.
+  function portalGo() {
+    portal.done = true;
+    const c = [car.s.x, car.s.y, car.s.z], off = (v) => v.map((n, i) => n - c[i]);
+    const rec = portalRecord({ from: entry.zone, to: portal.target.url, camOff: off(camera.position.toArray()), lookOff: off(portal.look), heading: car.s.heading, preview, now: Date.now() });
+    try { sessionStorage.setItem(PORTAL_KEY, JSON.stringify(rec)); } catch {}
+    location.assign(entry.kind === "venue" && preview && portal.target.url === entry.home ? `${entry.home}?venues=1` : portal.target.url);
   }
   let portalHeld = false; // QA: window.__eco.portalHold(true) freezes the flight for a mid-flight screenshot
   function portalTick(dt) {
@@ -900,10 +914,7 @@ export async function runWorld(entry) {
     portal.look = f.look;
     if (veil) veil.style.opacity = String(Math.min(1, Math.max(0, (portal.t - (PORTAL_S - VEIL_S)) / VEIL_S)));
     if (k < 1 || portal.done) return;
-    portal.done = true;
-    const rec = portalRecord({ from: entry.zone, to: portal.target.url, cam: camera.position.toArray(), look: portal.look, heading: car.s.heading, now: Date.now() });
-    try { sessionStorage.setItem(PORTAL_KEY, JSON.stringify(rec)); } catch {}
-    location.assign(portal.target.url);
+    portalGo();
   }
   entry.portalGo = (venue) => portalOut(venue);
 
@@ -1103,7 +1114,7 @@ export async function runWorld(entry) {
         return li;
       }));
       const h = Object.assign(document.createElement("div"), { className: "map-group-row" });
-      h.append(Object.assign(document.createElement("p"), { className: "map-group", textContent: "Venues" }));
+      h.append(Object.assign(document.createElement("p"), { className: "map-group", textContent: entry.kind === "venue" ? "Back to the hub" : "Venues" })); // R8: a venue's one entry is the way home
       groups.push(h, ul);
     }
     $("map-groups").replaceChildren(...groups);
@@ -1302,7 +1313,7 @@ export async function runWorld(entry) {
     blimp?.userData.tick(t);
     sky.userData.tick(t, dt, camera.position);
     fps?.mark("fx"); // dust, spray, fireworks, grass, water, the blimp, the sky
-    if (portal) portalTick(Math.min(raw, 0.1)); // the flight runs on the wall clock (capped): a slow frame must not stretch it
+    if (portal) { if (!portal.done) portalTick(Math.min(raw, 0.1)); } // the flight runs on the wall clock (capped): a slow frame must not stretch it; once handed off (or at once under reduced motion) the camera holds still
     else if (arrival?.active) arrival.tick(dt);
     else if (!debugCam) { placeCamera(dt); stuntTick(dt); focusTick(dt); cineCam?.(dt); }
     if ((frameNo++ & 15) === 0) {
@@ -1371,10 +1382,12 @@ export async function runWorld(entry) {
   if (landing) {
     const spot = landingSpot(landing, entry, roads);
     placeCar(spot.x, spot.z, spot.heading);
-    arrival = startLanding({
-      camera, from: landing, chase: { pos: camera.position.clone(), look: camLook.clone() },
-      onDone: () => { placeCamera(0, true); paused = false; document.body.classList.remove("is-holding"); },
-    });
+    const land = () => { placeCamera(0, true); paused = false; document.body.classList.remove("is-holding"); document.documentElement.classList.remove("is-portal"); };
+    // R5: the other page's last frame, as offsets from its car, put over this landing spot; R7: under reduced motion (or a
+    // record without offsets) no flight, the car and camera are simply there once the hold lifts
+    const from = landingStart(landing, spot, car.s.y);
+    if (reduceMotion || !from) land();
+    else arrival = startLanding({ camera, from, chase: { pos: camera.position.clone(), look: camLook.clone() }, onDone: land });
   }
   else if (deepLink.kind === "start") { toStart(); paused = false; }
   else if (deepLink.kind === "district") { if (deepLink.key === "hub") placeCar(entry.spawn.x, entry.spawn.z, entry.spawn.heading); else teleportDistrict(deepLink.key); paused = false; }

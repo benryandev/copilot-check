@@ -6,4 +6,7 @@
   var h = location.hash;
   var dark = h === '#dark' ? true : h === '#light' ? false : saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
   document.documentElement.classList.add(dark ? 'dark' : 'light');
+  // The ecosystem portal (Task 5c): a hand-off record waiting means this page was reached through an arch, so the hold
+  // paints in the veil's sky colour from the first frame instead of the page background (ecosystem.css html.is-portal)
+  try { if (sessionStorage.getItem('eco-portal')) document.documentElement.classList.add('is-portal'); } catch (e) { /* storage blocked */ }
 })();

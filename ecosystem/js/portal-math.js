@@ -39,8 +39,22 @@ export function flightPath(t, from, to) {
   };
 }
 
-/** The hand-off the next page reads. */
-export const portalRecord = ({ from, to, cam, look, heading, now }) => ({ from, to, cam, look, heading, at: now });
+/** The hand-off the next page reads (Task 5c, R5/R6): the last frame's camera and look as offsets from the car ([dx, dy, dz],
+ * y from the car's own height) with the car's heading, so the next page can put the same pose over its own landing spot;
+ * `preview` when the departing hub page had ?venues=1, so the round trip comes back to a hub that still has the venue roads. */
+export const portalRecord = ({ from, to, camOff, lookOff, heading, preview = false, now }) => ({ from, to, camOff, lookOff, heading, preview: !!preview, at: now });
+
+/** The landing's first camera (R5): the record's offsets turned by the change of heading (the record's heading to the
+ * spot's) and applied at the spot, `y` being the car's height there. The car faces (-sin h, -cos h); turning by d about y
+ * maps that to the facing at h + d. A record without usable offsets gives null (the landing then starts at the chase pose). */
+export function landingStart(record, spot, y = 0) {
+  const ok = (a) => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);
+  if (!ok(record?.camOff) || !ok(record?.lookOff)) return null;
+  const d = spot.heading - (Number.isFinite(record.heading) ? record.heading : spot.heading);
+  const c = Math.cos(d), s = Math.sin(d);
+  const at = ([dx, dy, dz]) => [spot.x + dx * c + dz * s, y + dy, spot.z - dx * s + dz * c];
+  return { cam: at(record.camOff), look: at(record.lookOff) };
+}
 
 /** The record when it is for `to` and fresh, else null; the key is always removed (consumed once); garbage reads as null. */
 export function readPortal(store, { to, now, maxAge = 30_000 }) {

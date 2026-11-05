@@ -33,8 +33,9 @@ test('flightPath: starts at the chase pose, ends 60 m up over the arch looking d
 });
 
 test('readPortal: the record once; null when stale, for another page, garbage, or read twice', () => {
-  const rec = portalRecord({ from: 'hub', to: 'lagoon', cam: [1, 2, 3], look: [0, 0, 0], heading: 1.5, now: 1000 });
-  assert.equal(rec.at, 1000);
+  const rec = portalRecord({ from: 'hub', to: 'lagoon', camOff: [1, 2, 3], lookOff: [0, 0, 0], heading: 1.5, now: 1000 });
+  assert.equal(rec.at, 1000); assert.equal(rec.preview, false); assert.deepEqual(rec.camOff, [1, 2, 3]);
+  assert.equal(portalRecord({ from: 'hub', to: 'x', camOff: [0, 0, 0], lookOff: [0, 0, 0], heading: 0, preview: true, now: 1 }).preview, true);
   const s = store(); s.setItem('eco-portal', JSON.stringify(rec));
   assert.deepEqual(readPortal(s, { to: 'lagoon', now: 5000 }), rec);
   assert.equal(readPortal(s, { to: 'lagoon', now: 5000 }), null);
@@ -109,4 +110,18 @@ test('landingSpot: the hub lands on the venue road 10 m short of the arch, facin
   assert.deepEqual(landingSpot({ from: 'lagoon' }, hubEntry(), [r]), spot);
   const h = hubEntry();
   assert.deepEqual(landingSpot({ from: 'nowhere' }, h, [r]), { x: h.spawn.x, z: h.spawn.z, heading: h.spawn.heading });
+});
+
+// ── The record as offsets (Task 5c, R5) ──
+import { landingStart } from '../ecosystem/js/portal-math.js';
+test('landingStart: the offsets land over the spot, turned by the change of heading; no offsets → null', () => {
+  const near = (a, b) => a.forEach((v, i) => assert.ok(Math.abs(v - b[i]) < 1e-9, `${a} vs ${b}`));
+  const rec = { camOff: [0, 60, 8], lookOff: [0, -2, -30], heading: 0 }; // 60 m up, 8 m behind, looking 30 m ahead (facing -z)
+  const same = landingStart(rec, { x: 100, z: -50, heading: 0 }, 3);
+  near(same.cam, [100, 63, -42]); near(same.look, [100, 1, -80]);
+  // a spot facing +x (heading -π/2: (-sin h, -cos h) = (1, 0)) turns "ahead" from -z to +x
+  const turned = landingStart(rec, { x: 0, z: 0, heading: -Math.PI / 2 }, 0);
+  near(turned.cam, [-8, 60, 0]); near(turned.look, [30, -2, 0]);
+  assert.equal(landingStart({ cam: [1, 2, 3], look: [0, 0, 0] }, { x: 0, z: 0, heading: 0 }), null); // the old world-coordinate record
+  assert.equal(landingStart(null, { x: 0, z: 0, heading: 0 }), null);
 });
