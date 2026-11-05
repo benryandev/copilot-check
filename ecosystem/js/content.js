@@ -133,7 +133,7 @@ ROADS.push({ kind: "drive", from: "perps", to: "yard", points: [[-5, -102], [-10
 // `line` (tools/site-pages.mjs). ROADS is the pre-venue list plus one road per venue (qa/content-unit.mjs).
 export const VENUES = [
   { key: "lagoon", name: "The Lagoon", track: "lagoon-v1", url: "/ecosystem/tracks/lagoon/", off: "partners", colour: 0x2fa7c9,
-    line: "A timed lap on tarmac and dirt with a jump over the water, on its own page past the Partners ring." },
+    line: "A timed lap on tarmac and dirt with a jump over the water, on its own page off the ring road by Partners & Integrations." },
 ];
 // Kept for QA and the portal record's flag (?venues=1): the same list with or without it now the Lagoon is on
 export function venuesPreview() {

@@ -1,7 +1,9 @@
 // The Lagoon (venue track, design 7.10) as a track definition (see track-math.js for the shape).
 // Plain data: a venue track needs no frame (entries.js venueEntry places it on the venue origin).
 // Every `s` below was computed once with resolveTrack on these points (lap 844.5 m) and is written as a number;
-// the comment names the point it came from. Change the track and give it a new id.
+// the comment names the point it came from. Once the track is open (it holds board records), a layout change needs a new
+// id so old laps and ghosts do not sit on a new layout. Before it opened it kept lagoon-v1 through plan 5's layout change,
+// because no record existed yet; that exception ends with the first posted lap.
 // Plan 5 (5 Nov 2026): Turn 1 is a flat right kink off the start straight ([79, -65] [93, -78]) into a walled 150° left
 // hairpin ([105, -88] [119, -85] [126, -72], about 17 m) that a 30 m/s car must lift for, then north to the inlet. The right-hand side
 // sits 19 m west and the top 35 m north of the sketch, which keeps the tarmac share near a third with its start in the last corner.

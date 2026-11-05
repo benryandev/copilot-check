@@ -24,10 +24,14 @@ test('the venue intro is the Lagoon\'s own, with the hub\'s buttons and keys', (
   assert.match(v, /<h1>The Lagoon<\/h1>/);
   assert.match(v, /tarmac/); assert.match(v, /dirt/);
   // lagoon.js `surface`: tarmac from the last corner across the line to the water, so the lap ends on tarmac (review I1)
-  assert.doesNotMatch(venue, /ends on dirt/); assert.match(v, /back onto tarmac for the last corner/); assert.match(v, /hairpin/); assert.match(v, /tyre walls/); assert.match(v, /esses/); assert.match(v, /board/);
+  assert.doesNotMatch(venue, /ends on dirt/); assert.match(v, /back onto tarmac for the last corner/); assert.match(v, /Line up the ramp out of the hairpin to jump the water, or you wade through it\./, 'the run-up from the hairpin\'s exit clears; a car off the ramp wades (fix wave A)');
+  assert.doesNotMatch(venue, /committed/, 'a stopped car at the hairpin\'s exit still clears, so the page claims no committed exit'); assert.match(v, /tyre walls/); assert.match(v, /esses/); assert.match(v, /board/);
   const ids = (h) => [...h.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(ids(v), ids(hb), 'the same ids (start, intro-race, intro-map), which the runner wires');
-  assert.equal(/<ul class="keys">[\s\S]*?<\/ul>/.exec(v)[0], /<ul class="keys">[\s\S]*?<\/ul>/.exec(hb)[0], 'the same keys');
+  // The hub's keys without the pad line: Enter opens a pad (runner.js) and a venue has none (fix wave B)
+  const keys = (h) => /<ul class="keys">[\s\S]*?<\/ul>/.exec(h)[0];
+  assert.doesNotMatch(keys(v), /a pad/);
+  assert.equal(keys(v), keys(hb).replace(/\n\s*<li><span class="key">Enter<\/span> open a pad<\/li>/, ''), 'the hub\'s keys less the pad line');
   assert.match(venue, /<p class="arrive-title">The Lagoon<\/p>/, 'the opening card names the venue');
 });
 
@@ -41,6 +45,8 @@ test('the venue page has its own meta, is indexed now the Lagoon is on, and the 
   assert.match(h, /<meta property="og:url" content="https:\/\/strike\.benryan\.com\.au\/ecosystem\/tracks\/lagoon\/">/);
   assert.match(h, /<meta property="og:image:alt" content="[^"]*Lagoon[^"]*">/);
   assert.match(h, /<meta name="description" content="[^"]*Lagoon[^"]*">/);
+  const desc = /<meta name="description" content="([^"]+)">/.exec(h)[1];
+  assert.ok(desc.length <= 160, `the description fits a search result: ${desc.length} characters`);
   assert.match(venue, /<script type="module" src="\/ecosystem\/js\/venue\.js"><\/script>/);
   assert.doesNotMatch(venue, /js\/main\.js/);
   assert.doesNotMatch(head(hub), /noindex/, 'the hub stays indexed');

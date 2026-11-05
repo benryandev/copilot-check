@@ -8,7 +8,7 @@ import lagoon from '../ecosystem/tracks/lagoon.js';
 
 const wrapLen = (from, to, len) => (to - from + len) % len;
 
-test('the Lagoon resolves: 11 gates in order, lap about 780 m, start on the straight, tarmac about a third', () => {
+test('the Lagoon resolves: 11 gates in order, lap about 845 m, start on the straight, tarmac about a third', () => {
   const t = resolveTrack(lagoon);
   assert.equal(lagoon.id, 'lagoon-v1'); assert.equal(lagoon.name, 'The Lagoon'); assert.equal(lagoon.sponsor, null); assert.equal(t.half, 6);
   assert.equal(lagoon.points.length, 25); assert.deepEqual(lagoon.start, [-40, -60]);
