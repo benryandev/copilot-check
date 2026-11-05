@@ -40,7 +40,8 @@ test('every written s is the named point\'s s on the resolved track (to 0.5 m)',
   near(lagoon.walls[0].from, sAt(79, -65), 'Turn 1 walls from [79, -65]'); near(lagoon.walls[0].to, sAt(126, -60), 'Turn 1 walls to [126, -60]');
   near(lagoon.walls[1].from, sAt(50, 93), 'esses walls from [50, 93]'); near(lagoon.walls[1].to, sAt(-50, 95), 'esses walls to [-50, 95]');
   for (const w of lagoon.walls) assert.deepEqual(w.sides, [-1, 1]);
-  near(lagoon.stands[0].s, lagoon.water[0].s + 14, 'the jump stand at water s + 14');
+  // plan 5 R13: the jump stand moved north off the inlet's channel, its south end 2 m past the far bank (water s + halfW)
+  near(lagoon.stands[0].s, lagoon.water[0].s + lagoon.water[0].halfW + 2 + lagoon.stands[0].len / 2, 'the jump stand 2 m past the far bank');
   // The ramp's low end at water s - halfW - RAMP.length - LIP_SETBACK, so the lip sits on the near bank
   const r = lagoon.ramps[0];
   near(r.s, lagoon.water[0].s - 9.5 - RAMP.length - LIP_SETBACK, 'ramp low end');

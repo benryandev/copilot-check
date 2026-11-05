@@ -41,9 +41,12 @@ export default {
   lifts: [],
   // s is the stand's centre, off its signed offset from the centreline (+ is the track's right: the outside in the venue's frame)
   stands: [
-    { s: 241.5, off: 16, len: 40 }, // outside the water jump, facing the landing (water s 227.5 + 14)
+    { s: 259, off: 16, len: 40 }, // outside the water jump, facing the landing: s 239 to 279, its south end 2 m past the inlet's far bank (s 227.5 + halfW 9.5 = 237; plan 5 R13)
     { s: 0, off: 16, len: 90 }, // along the start straight, centred on the line ([-40, -60])
   ],
+  // The road home (entries.js venueEntry): square off the start straight's outside at s 65 (about [25, -60]), past the start-line
+  // stand's end (s 45) and well short of Turn 1's walls (s 119.8), out to the tree belt; the infield is the lake (plan 5 R13)
+  home: { s: 65, side: 1 },
   floorMs: 29469,
   limits: { maxSpeed: 30.9, segMaxSpeed: 35.6 },
 };

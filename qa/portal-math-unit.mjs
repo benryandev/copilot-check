@@ -64,7 +64,7 @@ test('portalLines: one venue road → one line at its arch (5 m short of the far
 });
 
 // ── The landing (Task 5b) ──
-import { venueArchRoad, landingSpot } from '../ecosystem/js/portal-math.js';
+import { venueArchRoad, landingSpot, portalLines } from '../ecosystem/js/portal-math.js';
 import { venueEntry, hubEntry } from '../ecosystem/js/entries.js';
 import { venueRoads, VENUE_ROAD } from '../ecosystem/js/content.js';
 
@@ -82,8 +82,34 @@ test('venueArchRoad: 40 m straight off the grid, every point clear of the track 
     const g = t.at(t.len - 14), along = (pts[0][0] - g.x) * g.fx + (pts[0][1] - g.z) * g.fz;
     assert.ok(Math.abs(along) < 1e-6, `${slug} along ${along}`);
     assert.ok(Math.hypot(pts[4][0], pts[4][1]) < e.terrain.world.radius, `${slug} inside the world`);
-    assert.deepEqual(e.terrain.roads[1].points, pts);
+    if (!t.home) assert.deepEqual(e.terrain.roads[1].points, pts, `${slug}: a track with no \`home\` keeps the road beside the grid`);
   }
+});
+
+// Plan 5 Task 1b (ruling R13 ii): the Lagoon's infield is the lake, so its road home leaves the start straight's OUTER side
+// past the start-line stand and runs out to the tree belt, the home arch at the tree line (radius − 60)
+test('venueArchRoad with { s, side, to }: the Lagoon\'s road home leaves the start straight\'s outside at s 65 and ends with its arch at the tree line', async () => {
+  const lagoon = (await import('../ecosystem/tracks/lagoon.js')).default;
+  const e = venueEntry(lagoon, { slug: 'lagoon' }), t = e.track, R = e.terrain.world.radius;
+  assert.deepEqual(t.home, { s: 65, side: 1 });
+  const road = e.terrain.roads[1], pts = road.points;
+  assert.deepEqual(pts, venueArchRoad(t, { s: 65, side: 1, to: R - 60 + 5 }));
+  assert.equal(pts.length, 5);
+  const g = t.at(65), [x0, z0] = pts[0];
+  assert.ok(Math.abs((x0 - g.x) * g.fx + (z0 - g.z) * g.fz) < 1e-6, 'square to the straight at s 65');
+  assert.ok((x0 - g.x) * g.rx + (z0 - g.z) * g.rz > t.half, 'on the outside (the track\'s right)');
+  assert.ok(minGap(pts, t) >= t.half + 4, `clear of the track: ${minGap(pts, t).toFixed(1)}`);
+  // past the start-line stand's end (s 0 ± 45) and short of Turn 1's walls (s 119.8)
+  const stand = t.stands.find((st) => st.s === 0);
+  assert.ok(65 - 3.6 > stand.s + stand.len / 2 + 10, 'the road\'s edge 10 m or more past the stand\'s end');
+  assert.ok(65 + 3.6 < t.walls[0].from - 40, 'well short of Turn 1');
+  // the arch (5 m back from the road's end, portalLines) stands at the tree line
+  const [line] = portalLines([{ ...road, pts }], [road.venue]);
+  assert.ok(Math.abs(Math.hypot(line.x, line.z) - (R - 60)) < 0.5, `arch at r ${Math.hypot(line.x, line.z).toFixed(2)}, tree line ${(R - 60).toFixed(2)}`);
+  assert.ok(Math.hypot(...pts[4]) < R - 50, 'the road ends in the belt\'s first metres');
+  // the grid and the landing are unchanged
+  const grid = t.at(t.len - 14);
+  assert.ok(Math.abs(e.spawn.x - grid.x) < 1e-9 && Math.abs(e.spawn.z - grid.z) < 1e-9);
 });
 
 test('landingSpot: a venue lands on its grid facing the straight', async () => {

@@ -23,8 +23,10 @@ import { createGrass, createDust, createFireworks } from "./effects.js";
 import { createSky } from "./sky.js";
 import {
   M, animated, pads, crates, boards, colliders, districtGroups,
-  buildStops, buildBoard, buildRoadSigns, buildVenueArch, addCrates, addProps, recolourMaterials, setTicker, modelsReady,
+  buildStops, buildBoard, buildRoadSigns, buildVenueArch, addCrates, addProps, recolourMaterials, setTicker, modelsReady, groupFor, orientedBox,
 } from "./build.js";
+import { buildStands } from "./stands.js";
+import { buildTreeBelt, buildArchTrees, treeDensity } from "./trees.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R, brakeLights } from "./car.js";
 import { tint } from "./colours.js";
 import { buildRaceway, formatTime, boardPose, boardCanvas, boardMarker } from "./raceway.js";
@@ -135,13 +137,22 @@ export async function runWorld(entry) {
   // Venues (plan 4): the roads off the ring to tracks on their own pages are in the hub's terrain only with ?venues=1
   // (content.js venuesPreview); each gets its arch. A venue page has one, its road home to the hub (entries.js).
   const venueRoadList = entry.builders.portal ? roads.filter((r) => r.kind === "venue") : [];
-  venueRoadList.forEach((r) => buildVenueArch(scene, r.venue, r));
+  // On the hub each venue road also runs into a short belt of trees with its arch in the gap (trees.js, plan 5 amendment 1),
+  // built from the same list, so with no venue roads (VENUES empty, no ?venues=1) there is no tree; a venue rings itself below
+  const treeBelts = [];
+  venueRoadList.forEach((r) => { buildVenueArch(scene, r.venue, r); if (entry.kind === "hub") treeBelts.push(buildArchTrees(groupFor(scene, r.from), r, pal(), { density: treeDensity(tierName) })); });
   // The portal out (Task 5a): each arch's crossing line, computed once. On the hub an arch leads to its venue's page; on a
   // venue page its one arch road (entries.js, beside the grid) leads home. With no venue roads the list is empty and the frame skips the test.
   const archLines = portalLines(venueRoadList, venueRoadList.map((r) => r.venue)).map((l) => (entry.kind === "venue" ? { ...l, target: { url: entry.home } } : l));
   if (entry.builders.props) addProps(scene, { planters: tier().planters }); // includes the plaza benches and planters (furniture-math.js)
   await load.step(STEPS[2]);
   if (entry.builders.raceway) buildRaceway(scene);
+  // The grandstands (stands.js): the track's own list, none on the hub's Raceway; one collider box each, the crowd's sway a uniform a frame
+  let stands = null;
+  if (entry.builders.stands) stands = buildStands(scene, trackDef(), pal(), { reduceMotion });
+  if (stands) { colliders.push(...stands.userData.boxes.map((b) => orientedBox(b.cx, b.cz, b.hx, b.hz, b.yaw))); if (stands.userData.tick) animated.push(stands.userData.tick); }
+  // A venue's world is ringed by a belt of trees on the bowl's rim (trees.js), open where the road home and the channel cross it
+  if (entry.kind === "venue") treeBelts.push(buildTreeBelt(scene, WORLD.radius, pal(), { density: treeDensity(tierName) }));
   if (trackDef()) document.querySelectorAll("[data-track-name]").forEach((el) => { el.textContent = trackDef().name; }); // the race sheets' and prompts' eyebrows
   if (entry.builders.yard) buildYard();
   if (entry.builders.bridges) buildBridges(scene, pal());
@@ -187,6 +198,7 @@ export async function runWorld(entry) {
     waterMesh = buildWater(pal(), { tier: tierName, reduceMotion });
     scene.add(waterMesh);
     freezeStatic(waterMesh);
+    treeBelts.forEach((b) => b.userData.setDensity(treeDensity(tierName))); // half the trees on the phone and low tiers
     post.enable(t.bloom);
     resize();
     document.querySelectorAll("[data-quality]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.quality === qualityPref)));
@@ -213,7 +225,7 @@ export async function runWorld(entry) {
     sky.userData.setNight(dark);
     // With bloom on, every pad ring is pushed to the same glow luminance whatever its district colour; without it they stay as tinted
     if (post.on) pads.forEach((pd) => toGlow(pd.ring.material.color));
-    [ground, roadMesh, jumpMesh, plazaMesh, kerbMesh, bedMesh, waterMesh, grass, dust, spray, ridgeMesh, windsocks].forEach((o) => o?.userData.recolour?.(p));
+    [ground, roadMesh, jumpMesh, plazaMesh, kerbMesh, bedMesh, waterMesh, grass, dust, spray, ridgeMesh, windsocks, stands, ...treeBelts].forEach((o) => o?.userData.recolour?.(p));
   }
   $("theme").addEventListener("click", () => {
     dark = !dark;

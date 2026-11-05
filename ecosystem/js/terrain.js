@@ -377,14 +377,17 @@ function edgeRise(x, z) {
 }
 // A venue's bowl (cfg.bowl = { from, to, height }, entries.js): the ground rises `height` m between `from` and `to` m from
 // the world's centre, so the tree belt stands on a rim. Opened where water runs out through it, over BOWL_OPEN m past the
-// bank (a gentler valley than the rim's notch). The hub has none: null, and terrainHeight never calls this.
+// bank (a gentler valley than the rim's notch), and the same way for any road but the track (the road home runs out into the
+// belt, and its ribbon must not climb the rim; the track never reaches the bowl). The hub has none: null, and terrainHeight
+// never calls this.
 let bowl = null;
-const BOWL_OPEN = 24;
-function bowlRise(x, z) {
+const BOWL_OPEN = 24, ROAD_OPEN = 18; // a road's opening is whole 18 m past its edge, inside roadInfo's 26 m reach, so it never steps
+function bowlRise(x, z, info) {
   const r = Math.hypot(x - WORLD.cx, z - WORLD.cz);
   if (r <= bowl.from) return 0;
   const w = waterInfo(x, z, waterMaxHalf + BOWL_OPEN);
-  return bowl.height * smooth(bowl.from, bowl.to, r) * smooth(2, BOWL_OPEN, w.d - w.half);
+  const road = info.road >= 0 && info.road !== trackRoad ? smooth(2, ROAD_OPEN, info.d - info.half) : 1;
+  return bowl.height * smooth(bowl.from, bowl.to, r) * smooth(2, BOWL_OPEN, w.d - w.half) * road;
 }
 
 // ── Chart Ridge ────────────────────────────────────────────────────────
@@ -432,7 +435,7 @@ export function terrainHeight(x, z, info = roadInfo(x, z), lift = true) {
     if (e > waterReach) continue;
     flat = Math.min(flat, lakeFlat(e)); open = Math.min(open, rimOpen(e, 0)); cut = Math.max(cut, lakeBed(e, L.depth));
   }
-  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) * flat + trackLift(info) + edgeRise(x, z) * open + (bowl ? bowlRise(x, z) : 0) - cut + (lift ? ridgeLift(info) + kerbLift(x, z, info) : 0);
+  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) * flat + trackLift(info) + edgeRise(x, z) * open + (bowl ? bowlRise(x, z, info) : 0) - cut + (lift ? ridgeLift(info) + kerbLift(x, z, info) : 0);
 }
 // The one truth for where the ground is: terrain and jumps, or a bridge deck where one spans the river
 export function groundHeight(x, z) {

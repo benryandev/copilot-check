@@ -4,7 +4,7 @@ import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { hubEntry, venueEntry } from '../ecosystem/js/entries.js';
 
-const BUILDERS = ['districts', 'stops', 'boards', 'monuments', 'yard', 'ridge', 'windsocks', 'blimp', 'furniture', 'signs', 'props', 'bridges', 'raceway', 'portal'];
+const BUILDERS = ['districts', 'stops', 'boards', 'monuments', 'yard', 'ridge', 'windsocks', 'blimp', 'furniture', 'signs', 'props', 'bridges', 'raceway', 'portal', 'stands'];
 // A rectangle 80 by 40 whose centre sits at (100, 50), so centring has work to do
 const tiny = ({ origin, angle }) => ({
   id: 'tiny-v1', name: 'Tiny', sponsor: null, half: 6, frame: { origin, angle },
@@ -40,7 +40,7 @@ test('venueEntry centres the track, sizes the world and turns the hub builders o
     assert.equal(r.kind, 'track'); assert.equal(r.closed, true); assert.equal(r.half, 6); assert.deepEqual(r.points, pts);
     assert.deepEqual(e.terrain.jumps, []); assert.deepEqual(e.terrain.waters, []); assert.deepEqual(e.terrain.districts, {}); assert.deepEqual(e.terrain.stops, []);
     assert.deepEqual(Object.keys(e.builders).sort(), [...BUILDERS].sort());
-    for (const k of BUILDERS) assert.equal(e.builders[k], k === 'raceway' || k === 'portal', `builder ${k}`);
+    for (const k of BUILDERS) assert.equal(e.builders[k], k === 'raceway' || k === 'portal' || k === 'stands', `builder ${k}`);
     const g = e.track.at(e.track.len - 14);
     assert.ok(Math.abs(e.spawn.x - g.x) < 1e-9 && Math.abs(e.spawn.z - g.z) < 1e-9, 'spawn on the grid');
     assert.ok(Math.abs(-Math.sin(e.spawn.heading) - g.fx) < 1e-9 && Math.abs(-Math.cos(e.spawn.heading) - g.fz) < 1e-9, 'facing along the track');

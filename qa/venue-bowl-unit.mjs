@@ -49,3 +49,19 @@ test('the channel runs out through the rim at the water: its centreline is under
     for (const [x, z] of out) { assert.ok(T.groundHeight(x, z) < T.WATER_LEVEL, `${T.groundHeight(x, z).toFixed(2)} at r ${Math.hypot(x, z).toFixed(0)}`); assert.ok(T.onWater(x, z)); }
   } finally { T.configureTerrain(hub); }
 });
+
+// Plan 5 Task 1b (Task 1a review minor 1): the road home runs out into the belt, so the bowl opens for it as it does for the
+// water: the drive to the arch stays level (the road's ribbon never climbs the rim)
+test('the bowl opens for the road home: level along it and across its width, out to its end in the belt', () => {
+  const home = entry.terrain.roads.find((r) => r.to === 'home');
+  T.configureTerrain(entry.terrain);
+  let pts;
+  try { const r = T.roads.find((x) => x.to === 'home'); pts = []; for (let i = 0; i < r.pts.length; i++) { const [x, z] = r.pts[i], t = r.curve.getTangentAt(Math.min(1, r.cum[i] / r.len)); for (const v of [-r.half, 0, r.half]) pts.push([x - t.z * v, z + t.x * v]); } } finally { T.configureTerrain(hub); }
+  const end = home.points.at(-1);
+  assert.ok(Math.hypot(...end) > extent + 20, 'the road reaches past where the rise begins');
+  const h = rise(pts);
+  for (let i = 0; i < h.length; i++) assert.ok(Math.abs(h[i]) < 0.05, `${h[i].toFixed(3)} m of bowl on the road at r ${Math.hypot(...pts[i]).toFixed(1)}`);
+  // and the rim is still there off the road: 6 m at R − 10 on the far side of the world from the road
+  const [ex, ez] = end, far = [-ex / Math.hypot(ex, ez) * (R - 10), -ez / Math.hypot(ex, ez) * (R - 10)];
+  assert.ok(rise([far])[0] > 5.5);
+});

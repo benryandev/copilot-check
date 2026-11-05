@@ -95,13 +95,19 @@ export function portalLines(roads, venues, { back = 5 } = {}) {
 
 // ── The landing (Task 5b) ──────────────────────────────────────────────
 /** A venue's road back to the hub: `length` m straight out sideways from the track beside the grid (the start straight at
- * track.at(len - 14)), on the side clearer of the rest of the track. Its centreline starts `clear` m plus its own half width
- * outside the track's edge and every point stays at least track.half + clear from the track's centreline. Points, 5 of them. */
-export function venueArchRoad(track, { length = 40, clear = 4, half = 3.6, grid = 14 } = {}) {
-  const g = track.at(track.len - grid);
+ * track.at(len - grid)), on the side clearer of the rest of the track. Its centreline starts `clear` m plus its own half width
+ * outside the track's edge and every point stays at least track.half + clear from the track's centreline. Points, 5 of them.
+ * Options for a track that says where its road leaves (its `home`, entries.js): `s` the track's s to leave square from (the
+ * grid's when omitted), `side` +1 the track's right or -1 its left (the clearer side when 0), and `to` a radius from the
+ * venue's origin to run out to instead of `length` (the road then ends where it crosses that circle). */
+export function venueArchRoad(track, { length = 40, clear = 4, half = 3.6, grid = 14, s = null, side = 0, to = null } = {}) {
+  const g = track.at(s ?? track.len - grid);
   const rx = -g.fz, rz = g.fx; // the straight's right
   const d0 = track.half + clear + half;
-  const line = (sgn) => [0, 0.25, 0.5, 0.75, 1].map((k) => { const d = d0 + length * k; return [g.x + sgn * rx * d, g.z + sgn * rz * d]; });
+  // out to the circle of radius `to`: the larger root of |g + sgn r d|² = to² (r is a unit vector)
+  const reach = (sgn) => { if (to == null) return length; const b = sgn * (g.x * rx + g.z * rz), c = g.x * g.x + g.z * g.z - to * to; return -b + Math.sqrt(b * b - c) - d0; };
+  const line = (sgn) => { const L = reach(sgn); return [0, 0.25, 0.5, 0.75, 1].map((k) => { const d = d0 + L * k; return [g.x + sgn * rx * d, g.z + sgn * rz * d]; }); };
+  if (side) return line(Math.sign(side));
   const gap = (pts) => Math.min(...pts.map(([x, z]) => Math.min(...track.pts.map(([tx, tz]) => Math.hypot(x - tx, z - tz)))));
   const [a, b] = [line(1), line(-1)];
   return gap(a) >= gap(b) ? a : b;

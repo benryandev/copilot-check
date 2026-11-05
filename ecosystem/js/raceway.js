@@ -4,7 +4,7 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { raceGates, trackAt, trackDef, terrainHeight, TRACK_HALF, GATE_HALF, districts } from "./terrain.js";
-import { boardHeader, brandFor } from "./sponsor-math.js";
+import { boardHeader, brandFor, racewayProps } from "./sponsor-math.js";
 import { wallSpots, wallBoxes } from "./walls-math.js";
 import { MARKER, markerPos, drapedRing, drapedDisc } from "./focus-math.js";
 import {
@@ -253,29 +253,11 @@ export function boardPose() {
 export const boardCanvas = () => boardTex.image;
 
 // ── Things to knock about ──────────────────────────────────────────────
-function propsAt(parent, kind, s, v, lift = 0) {
-  const p = trackAt(s);
-  addProp(parent, kind, p.x + p.rx * v, p.z + p.rz * v, yawOf(p), lift);
-}
-// Three RealFi crates: two side by side, one on top
-function crateStack(parent, s, v) {
-  const p = trackAt(s);
-  for (const k of [-0.65, 0.65]) addProp(parent, "crate", p.x + p.rx * (v + k), p.z + p.rz * (v + k), yawOf(p));
-  addProp(parent, "crate", p.x + p.rx * v, p.z + p.rz * v, yawOf(p) + 0.3, 1.2);
-}
+// The Raceway's crates, cones and bales (sponsor-math.js racewayProps): none on a track with no sponsor
 function buildProps(parent) {
-  // Either side of the start, outside the gantry
-  for (const v of [-(TRACK_HALF + 4), TRACK_HALF + 4]) crateStack(parent, 8, v);
-  // The chicane through the S-bend: crate stacks on alternate sides, cones leading in
-  [[352, -3.2], [374, 3.2], [396, -3.2]].forEach(([s, v]) => {
-    crateStack(parent, s, v);
-    for (const k of [6, 10]) propsAt(parent, "cone", s - k, v * 1.25);
-  });
-  // Bales on the inside of both hairpins
-  for (const s of [205, 213, 221, 544, 552, 560]) {
-    const a = trackAt(s - 4), b = trackAt(s + 4), p = trackAt(s);
-    const inner = (b.fx - a.fx) * p.rx + (b.fz - a.fz) * p.rz > 0 ? 1 : -1;
-    propsAt(parent, "bale", s, inner * (TRACK_HALF + 1.6));
+  for (const q of racewayProps(trackDef())) {
+    const p = trackAt(q.s);
+    addProp(parent, q.kind, p.x + p.rx * q.v, p.z + p.rz * q.v, yawOf(p) + q.yaw, q.lift);
   }
 }
 

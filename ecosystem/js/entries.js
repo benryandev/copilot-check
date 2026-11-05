@@ -6,7 +6,7 @@ import { SPAWN, MULTIPLAYER, HUB_COLOUR } from "./content.js";
 import { frameToWorld, resolveTrack } from "./track-math.js";
 import { venueArchRoad } from "./portal-math.js";
 
-const BUILDERS = ["districts", "stops", "boards", "monuments", "yard", "ridge", "windsocks", "blimp", "furniture", "signs", "props", "bridges", "raceway", "portal"];
+const BUILDERS = ["districts", "stops", "boards", "monuments", "yard", "ridge", "windsocks", "blimp", "furniture", "signs", "props", "bridges", "raceway", "portal", "stands"];
 const builders = (on) => Object.fromEntries(BUILDERS.map((k) => [k, on(k)]));
 const HOME = "/ecosystem/";
 const MAX_RADIUS = 320; // the room's pose bound is 400 m; a venue world stays well inside it
@@ -31,9 +31,13 @@ export function venueEntry(mod, { slug }) {
   const radius = extent + 80;
   if (!(radius < MAX_RADIUS)) throw new Error(`venueEntry: ${track.id} needs a world radius of ${Math.round(radius)} m; venues must stay under ${MAX_RADIUS} m`);
   const grid = track.at(track.len - 14);
-  // The road home: 40 m off the start straight beside the grid, clear of the track, to an arch named for Strike HQ (Task 5b).
-  // `from: "raceway"` puts the arch in the raceway's group, which the frame culls by distance to the track.
-  const home = { kind: "venue", from: "raceway", to: "home", venue: { key: "home", name: "Strike HQ", colour: HUB_COLOUR, url: HOME }, points: venueArchRoad(track) };
+  // The road home, to an arch named for Strike HQ (Task 5b): where the track says (its `home`: the Lagoon's leaves the start
+  // straight's outside at s 65, past the start-line stand, since its infield is the lake; plan 5 R13) it runs out to the tree
+  // belt and ends 5 m into it, so the arch (5 m back from the end) stands at the tree line, radius − 60; otherwise 40 m off the
+  // start straight beside the grid, clear of the track. `from: "raceway"` puts the arch in the raceway's group, which the frame
+  // culls by distance to the track.
+  const homePts = track.home ? venueArchRoad(track, { s: track.home.s, side: track.home.side, to: radius - 60 + 5 }) : venueArchRoad(track);
+  const home = { kind: "venue", from: "raceway", to: "home", venue: { key: "home", name: "Strike HQ", colour: HUB_COLOUR, url: HOME }, points: homePts };
   return {
     kind: "venue", zone: track.id, url: `/ecosystem/tracks/${slug}/`, title: track.name,
     terrain: {
@@ -44,7 +48,7 @@ export function venueEntry(mod, { slug }) {
       // the belt's inner 30 m, so the belt stands on a rim and no point of the track or its run-off changes height (R2)
       bowl: { from: extent + 20, to: extent + 50, height: 6 },
     },
-    builders: builders((k) => k === "raceway" || k === "portal"),
+    builders: builders((k) => k === "raceway" || k === "portal" || k === "stands"),
     spawn: { x: grid.x, z: grid.z, heading: Math.atan2(-grid.fx, -grid.fz) }, // the car faces (-sin h, -cos h)
     arrival: "portal", track, portal: { to: HOME, from: slug }, home: HOME, multiplayer: MULTIPLAYER,
     carColour: track.sponsor?.colour ?? HUB_COLOUR,
