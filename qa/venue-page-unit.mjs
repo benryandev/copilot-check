@@ -68,8 +68,8 @@ test('the venue intro is the Lagoon\'s own, with the hub\'s buttons and keys', (
   assert.match(v, /<h1>The Lagoon<\/h1>/);
   assert.match(v, /tarmac/); assert.match(v, /dirt/);
   // lagoon.js `surface`: tarmac from the last corner across the line to the water, so the lap ends on tarmac (review I1)
-  assert.doesNotMatch(venue, /ends on dirt/); assert.match(v, /back onto tarmac for the last corner/); assert.match(v, /Line up the ramp out of the hairpin to jump the water, or you wade through it\./, 'the run-up from the hairpin\'s exit clears; a car off the ramp wades (fix wave A)');
-  assert.doesNotMatch(venue, /committed/, 'a stopped car at the hairpin\'s exit still clears, so the page claims no committed exit'); assert.match(v, /tyre walls/); assert.match(v, /esses/); assert.match(v, /board/);
+  assert.doesNotMatch(venue, /ends on dirt/); assert.match(v, /A timed lap on tarmac and dirt, with a board of best times\./); assert.match(v, /Line up the ramp out of the hairpin to jump the water, or you wade through it\./, 'the run-up from the hairpin\'s exit clears; a car off the ramp wades (fix wave A)');
+  assert.doesNotMatch(venue, /committed/, 'a stopped car at the hairpin\'s exit still clears, so the page claims no committed exit'); assert.match(v, /[Tt]yre walls/); assert.match(v, /esses/); assert.match(v, /board/);
   const ids = (h) => [...h.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(ids(v), ids(hb), 'the same ids (start, intro-race, intro-map), which the runner wires');
   // The hub's keys without the pad line: Enter opens a pad (runner.js) and a venue has none (fix wave B)
@@ -77,6 +77,12 @@ test('the venue intro is the Lagoon\'s own, with the hub\'s buttons and keys', (
   assert.doesNotMatch(keys(v), /a pad/);
   assert.equal(keys(v), keys(hb).replace(/\n\s*<li><span class="key">Enter<\/span> open a pad<\/li>/, ''), 'the hub\'s keys less the pad line');
   assert.match(venue, /<p class="arrive-title">The Lagoon<\/p>/, 'the opening card names the venue');
+  // The phone intro fits a 375 by 667 screen with its buttons and no scroll (the blind read, 6 Nov 2026: at 812 the buttons sat at
+  // the bottom, and at 667 the sheet scrolled 109 px and #start's autofocus pushed the title off the top). Measured with the shoot's
+  // browser after the trim: no scroll at 375 by 667. The venue's own sentences are held to that length.
+  const lede = /<h1>The Lagoon<\/h1>\s*<p>([^<]+)<\/p>/.exec(v)[1], home = /<\/span>([^<]+)<span class="intro-more">/.exec(v)[1];
+  assert.ok(lede.length <= 170, `the lede is ${lede.length} characters`);
+  assert.equal(home, 'Map view or the arch takes you home to Strike HQ. ');
 });
 
 test('the venue page has its own meta, is indexed now the Lagoon is on, and the venue entry', () => {
