@@ -1432,7 +1432,7 @@ export async function runWorld(entry) {
   modelsReady().then(() => { freezeStatic(scene); mergeWorld(); });
   requestAnimationFrame(frame);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  await load.step("Fetching the car and live figures");
+  await load.step(entry.kind === "venue" ? "Fetching the car" : "Fetching the car and live figures"); // a venue fetches no figures (its Map hides them, its HUD has none)
   await Promise.all([
     sleep(700), // long enough to read as a moment, not a flicker
     Promise.race([Promise.allSettled([modelsReady(), car.ready]), sleep(8000)]),

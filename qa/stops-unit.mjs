@@ -79,7 +79,12 @@ test("the Lagoon's copy obeys Ben's copy rule: its line, its page's descriptions
   const home = /<a class="foot-home" href="[^"]+">([^<]+)<\/a>/.exec(page)[1];
   const { venueRecord } = await import('../ecosystem/js/map-math.js');
   const fmt = (ms) => `${ms} ms`, rows = [venueRecord({ status: 'ok', top: [] }, null, fmt), venueRecord({ status: 'offline', top: [] }, null, fmt), venueRecord({ status: 'ok', top: [] }, { ms: 1 }, fmt)].flatMap((r) => [r.title, r.text]);
-  const texts = [VENUES.find((v) => v.key === 'lagoon').line, ...meta, ...paras, lede, home, ...rows];
+  // The venue's loading lines (runner.js): its three build steps and the last one, which names no live figures (the venue fetches none)
+  const runner = readFileSync(new URL('../ecosystem/js/runner.js', import.meta.url), 'utf8');
+  const steps = JSON.parse(/const STEPS = entry\.kind === "venue" \? (\[[^\]]+\])/.exec(runner)[1]);
+  const last = /await load\.step\(entry\.kind === "venue" \? "([^"]+)" : "Fetching the car and live figures"\)/.exec(runner)?.[1];
+  assert.equal(last, 'Fetching the car', 'the venue\'s last loading line');
+  const texts = [VENUES.find((v) => v.key === 'lagoon').line, ...meta, ...paras, lede, home, ...rows, ...steps, last];
   assert.ok(meta.length === 6 && paras.length >= 3, `${meta.length} meta, ${paras.length} intro lines`);
   const bad = texts.filter((t) => COPY_PUNCT.test(t) || CHECK_DATE.test(t) || BANNED.some((re) => re.test(t)));
   assert.deepEqual(bad, [], bad.join('\n'));
