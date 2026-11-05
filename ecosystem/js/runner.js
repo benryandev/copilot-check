@@ -23,7 +23,7 @@ import { createGrass, createDust, createFireworks } from "./effects.js";
 import { createSky } from "./sky.js";
 import {
   M, animated, pads, crates, boards, colliders, districtGroups,
-  buildStops, buildBoard, buildRoadSigns, addCrates, addProps, recolourMaterials, setTicker, modelsReady,
+  buildStops, buildBoard, buildRoadSigns, buildVenueArch, addCrates, addProps, recolourMaterials, setTicker, modelsReady,
 } from "./build.js";
 import { createCar, stepCar, pushOut, keepInWorld, CAR_R, brakeLights } from "./car.js";
 import { tint } from "./colours.js";
@@ -122,6 +122,10 @@ export async function runWorld(entry) {
   if (entry.builders.monuments) initMonuments({ coarse, reduceMotion }); // the live centrepieces (monuments.js): attach to the pads' groups, poll the SLP fills
   if (entry.builders.furniture) buildBollards(scene); // and bollards either side of every road mouth
   if (entry.builders.signs) buildRoadSigns(scene);
+  // Venues (plan 4): the roads off the ring to tracks on their own pages are in the hub's terrain only with ?venues=1
+  // (content.js venuesPreview); each gets its arch. A venue page has none of these roads, so nothing is built there.
+  const venueRoadList = entry.builders.portal ? roads.filter((r) => r.kind === "venue") : [];
+  venueRoadList.forEach((r) => buildVenueArch(scene, r.venue, r));
   if (entry.builders.props) addProps(scene, { planters: tier().planters }); // includes the plaza benches and planters (furniture-math.js)
   await load.step(STEPS[2]);
   if (entry.builders.raceway) buildRaceway(scene);
@@ -601,7 +605,7 @@ export async function runWorld(entry) {
       if (info.d < 12) {
         const r = roads[info.road];
         const ahead = Math.cos(s.heading) * -info.tz + Math.sin(s.heading) * -info.tx > 0;
-        text = `Road to ${ds[ahead ? r.to : r.from]?.name ?? trackDef().name}`;
+        text = r.kind === "venue" ? `Road to ${r.venue.name}` : `Road to ${ds[ahead ? r.to : r.from]?.name ?? trackDef().name}`;
       } else text = "Off the road";
     }
     if (text !== whereText) { whereText = text; $("where").textContent = text; }
@@ -1037,6 +1041,27 @@ export async function runWorld(entry) {
       top.append(Object.assign(document.createElement("p"), { className: "map-group", textContent: "Top 10 laps" }), topList());
       return [h, ul, top];
     });
+    // Venues, after the districts: each a "Drive in" that hands over to the venue's page (the portal flight from Task 5
+    // when the entry has one, else a plain page load)
+    if (venueRoadList.length) {
+      const ul = Object.assign(document.createElement("ul"), { className: "map-list" });
+      ul.append(...venueRoadList.map(({ venue }) => {
+        const li = Object.assign(document.createElement("li"), { className: "map-item" });
+        const drive = () => (entry.portalGo ? entry.portalGo(venue) : location.assign(venue.url));
+        const name = Object.assign(document.createElement("button"), { type: "button", className: "map-go" }); // the card does what its button does
+        name.setAttribute("aria-label", `Go to ${venue.name}`);
+        name.append(Object.assign(document.createElement("strong"), { textContent: venue.name }));
+        name.addEventListener("click", drive);
+        const go = Object.assign(document.createElement("button"), { type: "button", className: "map-read", textContent: "Drive in" });
+        go.setAttribute("aria-label", `Drive in to ${venue.name}`);
+        go.addEventListener("click", drive);
+        li.append(name, go);
+        return li;
+      }));
+      const h = Object.assign(document.createElement("div"), { className: "map-group-row" });
+      h.append(Object.assign(document.createElement("p"), { className: "map-group", textContent: "Venues" }));
+      groups.push(h, ul);
+    }
     $("map-groups").replaceChildren(...groups);
     show($("map"));
     fillMapPeers(peersState());

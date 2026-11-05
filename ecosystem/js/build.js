@@ -1018,6 +1018,12 @@ export function buildRoadSigns(scene) {
   });
 }
 
+// A venue's gateway (plan 4): the district arch with the venue's name and colour, 5 m short of the venue road's far end,
+// in the group of the district the road leaves from. Crossing it is the portal's trigger (portal-math.js, Task 5).
+export function buildVenueArch(scene, venue, road) {
+  buildArch(groupFor(scene, road.from), road, { name: venue.name, colour: venue.colour }, 5);
+}
+
 // A gateway over the road where it enters a district, with the district's name on the beam
 function buildArch(parent, road, d, back = 5, { start = false } = {}) {
   const t = start ? back / road.len : 1 - back / road.len; // `start`: the arch stands at the road's beginning instead, facing a car leaving the plaza

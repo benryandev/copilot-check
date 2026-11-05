@@ -128,6 +128,29 @@ ROADS.push({ kind: "drive", from: "perps", to: "yard", points: [[-5, -102], [-10
   const bez = (t) => [0, 1].map((k) => (1 - t) ** 3 * p0[k] + 3 * (1 - t) ** 2 * t * p1[k] + 3 * (1 - t) * t * t * p2[k] + t ** 3 * p3[k]);
   ROADS.push({ kind: "ridge", from: "analytics", to: "developers", points: Array.from({ length: 7 }, (_, i) => bez(i / 6)) });
 }
+// ── Venues: tracks on their own pages (/ecosystem/tracks/<slug>/), each reached by a 40 m road off the ring ending at an
+// arch. None are open yet; ?venues=1 previews the Lagoon. With the list empty ROADS is exactly as before (qa/content-unit.mjs).
+export const VENUES = [];
+const PREVIEW = [{ key: "lagoon", name: "The Lagoon", track: "lagoon-v1", url: "/ecosystem/tracks/lagoon/", off: "partners", colour: 0x2fa7c9 }];
+export function venuesPreview() {
+  const q = typeof location === "undefined" ? "" : location.search;
+  return new URLSearchParams(q).get("venues") === "1" ? PREVIEW : VENUES;
+}
+export const VENUE_ROAD = 40;
+// The road leaves the `off` district's ring exit farther from the Raceway's link road, and runs straight for 40 m
+// half way between the ring road's direction and straight out from HQ (clear of both the ring and the plaza).
+export function venueRoads(list, districts, link = null) {
+  return list.map((venue) => {
+    const d = districts[venue.off];
+    const far = (e) => (link ? Math.hypot(e.at[0] - link[0], e.at[1] - link[1]) : 0);
+    const exit = [...d.exits].sort((a, b) => far(b) - far(a))[0];
+    const ol = Math.hypot(...d.centre), out = [d.centre[0] / ol, d.centre[1] / ol];
+    const dx = exit.dir[0] + out[0], dz = exit.dir[1] + out[1], l = Math.hypot(dx, dz);
+    const u = [dx / l, dz / l], [x0, z0] = exit.at;
+    const points = [0, 0.25, 0.5, 0.75, 1].map((k) => [x0 + u[0] * VENUE_ROAD * k, z0 + u[1] * VENUE_ROAD * k]);
+    return { kind: "venue", from: venue.off, to: venue.key, venue, points, exit: exit.to };
+  });
+}
 export const TRACK_ROAD = ROADS.findIndex((r) => r.kind === "track");
 // Race control sits in the infield by the start straight, facing it
 const raceControl = STOPS.find((s) => s.key === "raceway");
@@ -154,6 +177,8 @@ for (const key of RING_KEYS) {
     return { to: other, dir: towards(d, p[0], p[1]), at: p };
   });
 }
+// The venue roads go after every other road, so the indices above (TRACK_ROAD, the jumps' spokes) are unchanged
+ROADS.push(...venueRoads(venuesPreview(), DISTRICTS, ROADS.find((r) => r.kind === "link" && r.from === "partners")?.points[0]));
 
 // Jumps: a kicker on one half of a spoke, so the other half is always a flat way past.
 // `t` is how far along the road (0–1), `side` +1 right / −1 left of the direction of travel.
