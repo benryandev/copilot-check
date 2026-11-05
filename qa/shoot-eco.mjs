@@ -121,6 +121,25 @@ function audit() {
   return issues;
 }
 
+// The start gantry's twelve key points (beam ends at 5.6 and 7.45 m, post tops and feet, outer and inner faces) projected through
+// the live camera: every one must sit inside the viewport with a 3% margin, or the grid shot clips the gantry (Lagoon v2 Task 3).
+async function gantryFit(page) {
+  return page.evaluate(() => {
+    const e = window.__eco, g = e.raceGates[0], rx = -g.fz, rz = g.fx, pts = [];
+    const add = (name, lat, y) => { const x = g.x + rx * lat, z = g.z + rz * lat; pts.push([name, e.project(x, y, z)]); };
+    for (const lat of [-9.1, 9.1]) for (const y of [5.6, 7.45]) add(`beam ${lat < 0 ? 'L' : 'R'} ${y}`, lat, e.groundHeight(g.x, g.z) + y);
+    for (const lat of [-8.8, -7.6, 7.6, 8.8]) { add(`post top ${lat}`, lat, e.groundHeight(g.x, g.z) + 7.4); add(`post foot ${lat}`, lat, e.groundHeight(g.x, g.z)); }
+    const W = innerWidth, H = innerHeight, mx = W * 0.03, my = H * 0.03;
+    let worst = Infinity, bad = [];
+    for (const [name, p] of pts) {
+      const m = Math.min(p.x - mx, W - mx - p.x, p.y - my, H - my - p.y);
+      worst = Math.min(worst, m);
+      if (m < 0) bad.push(`${name} at ${Math.round(p.x)},${Math.round(p.y)} (${Math.round(-m)}px outside)`);
+    }
+    return { worst: Math.round(worst), bad, W, H };
+  });
+}
+
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 let problems = 0;
 // Self-test: the audit must catch a translucent panel that fails only over a dark scene (and parse its color(srgb)
@@ -260,6 +279,7 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         await page.evaluate(() => document.querySelector('#map [data-close]').click());
         await page.evaluate(() => window.__eco.toStart());
         await shot('raceway', 3000); // the race HUD updates every 16 frames
+        { const f = await gantryFit(page); console.log(`gantry ${tag} hub worst margin ${f.worst}px`); if (f.bad.length) errors.push(`raceway: the start gantry is clipped (${f.bad.join('; ')})`); }
         // The graze rule on the hairpin's tyre walls: 12 m before a point 8 m into the first auto wall run, 15 degrees into it at 24 m/s, then real frames
         if (pick.includes('walls')) {
           await page.evaluate(async () => {
@@ -349,6 +369,7 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         if (grid.speed !== 0) errors.push(`the car is not stopped on the grid (${grid.speed} m/s)`);
         if (/lagoon\/?$/.test(PAGE) && grid.title !== 'The Lagoon') errors.push(`the HUD title is "${grid.title}", not "The Lagoon"`);
         await shot('grid', 2500);
+        { const f = await gantryFit(page); console.log(`gantry ${tag} venue worst margin ${f.worst}px`); if (f.bad.length) errors.push(`grid: the start gantry is clipped (${f.bad.join('; ')})`); }
         // Driving: up held until the car is over the line with the lap clock running (software frames are few, so wait on
         // the car, not the clock), then let go
         if (pick.includes('drive')) {

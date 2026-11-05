@@ -58,6 +58,7 @@ function setBest(v) {
 // the car can: 24 m/s at most, under the worker's 30 m/s check.
 let clock = 0;
 const lap = { running: false, start: 0, next: 1, splits: [] };
+export const lapRunning = () => lap.running;
 let finished = null; // { ms, splits, trace, prevBest } for the finish sheet
 let hooks = {};
 // The lap's path, for the ghost: [t ms, x, z, heading] ten times a second, thinned to the worker's cap

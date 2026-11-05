@@ -7,6 +7,7 @@ import { guidesForStop } from "./guides.js";
 import { mountGuide, closeGuide, onPopState, rewriteLinks, guideLinkText } from "./guide-sheet.js";
 import { fetchLive, fetchKlines, fetchFunding, LABELS } from "./data.js";
 import { normaliseFunding, pollDue } from "./windsock-math.js";
+import { chaseFrame, behindLine } from "./camera-math.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo, setRidgeSeries, onRidge, ridgeSeries, districts, stops, trackDef, configureTerrain } from "./terrain.js";
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { stuntPose, stuntStep, stuntTakeoff, stuntEase } from "./stunt-math.js";
@@ -34,7 +35,7 @@ import { celebrationNote } from "./race-live-math.js";
 import { celebrateOnce } from "./race-post.js";
 import { createSound } from "./sound.js";
 import { initRaceLive, raceEvent, raceLiveTick, onLap, raceLocked, raceOnGrid, raceLiveState, redrawRaceButtons, injectRaceLive, raceReset, raceError } from "./race-live.js";
-import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, ghostPreview, refreshGhost, deviceBest } from "./race.js";
+import { initRace, raceTick, raceHud, raceCancel, raceRefresh, fetchTop, raceBoard, onBoard, topList, toStart, lapRunning, ghostPreview, refreshGhost, deviceBest } from "./race.js";
 import { venueRecord } from "./map-math.js";
 import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flow.js";
 import { initMonuments, applyMonuments, monumentsTick, monumentValues, onMonumentStats, injectSlpFills, monumentsState } from "./monuments.js";
@@ -527,7 +528,9 @@ export async function runWorld(entry) {
     if (snap && focus.on) { focusEnd(); focus.k = 0; } // a teleport (Map view, a guide, a race grid) ends the zoom at once // a teleport mid-flight must not leave the camera easing back from the river
     const s = car.s;
     const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
-    const back = 11 + Math.max(0, s.speed) * 0.12;
+    // On the grid (stopped behind the start line, no lap running) the portrait camera pulls back to take the gantry in
+    const grid = !lapRunning() && s.speed < 0.5 && !!raceGates[0] && behindLine(s, raceGates[0]);
+    const { back, ahead, lift: baseLift } = chaseFrame({ aspect: camera.aspect, speed: s.speed, grid });
     const want = new THREE.Vector3(s.x - fx * back, s.y + 6.5, s.z - fz * back);
     // Never dip under a hill behind the car
     want.y = Math.max(want.y, groundHeight(want.x, want.z) + 2);
@@ -542,7 +545,7 @@ export async function runWorld(entry) {
     }
     // Portrait: aim nearer and lower so the car sits above the driving buttons, not under them
     // While fireworks are up the camera looks up a little to take them in (the look target eases, so it tilts gently)
-    const ahead = camera.aspect < 1 ? 1 : 4, lift = (camera.aspect < 1 ? 0.6 : 2.2) + (fireworks?.userData.active() ? 2 : 0);
+    const lift = baseLift + (fireworks?.userData.active() ? 2 : 0);
     const look = new THREE.Vector3(s.x + fx * ahead, s.y + lift, s.z + fz * ahead);
     camPos.lerp(want, snap ? 1 : 1 - Math.exp(-dt * (t < 1 ? 20 : 5)));
     camLook.lerp(look, snap ? 1 : 1 - Math.exp(-dt * 8));
