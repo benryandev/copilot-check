@@ -6,10 +6,13 @@
 export const offerBest = (best, lapMs) =>
   best && Array.isArray(best.splits) && !best.posted && best.ms < lapMs ? best : null;
 
-// Keep ms, splits and the trace of the best lap, so it can be posted later with its ghost
-export function recordBest(best, { ms, splits, trace }) {
+// Keep ms, splits and the trace of the best lap, so it can be posted later with its ghost, and the layout it was set on
+// (`len`, layoutLen of the track), so a relayout under the same id drops it (loadBest)
+export function recordBest(best, { ms, splits, trace, len }) {
   if (best && best.ms <= ms) return best;
-  return { ms, splits, trace: trace || null, posted: false };
+  const nb = { ms, splits, trace: trace || null, posted: false };
+  if (Number.isFinite(len)) nb.len = len;
+  return nb;
 }
 
 export const markPosted = (best, ms) => (best && best.ms === ms ? { ...best, posted: true } : best);
@@ -48,9 +51,20 @@ export function deviceToken(store, random = (n) => crypto.getRandomValues(new Ui
 // The device's best lap is kept per track. The key and the load take the track id as an argument, so a world
 // configured after import (or with no track at all) gets its own record, and a null id reads as none.
 export const bestKey = (id) => (id ? `eco-race-best:${id}` : null);
-export function loadBest(read, id) {
+// A layout's signature: the resolved track's lap length in whole metres. A track can keep its id through a relayout (the
+// Lagoon's lap went from 779.6 m to 844.5 m as lagoon-v1, 5 Nov 2026), and a best from the old layout may be one the new
+// one cannot beat (0:27.922 under a 29.469 s floor), so a record carries the length it was set on.
+export const layoutLen = (track) => (track && Number.isFinite(track.len) ? Math.round(track.len) : null);
+// Records from before the signature have no `len`. Only the Raceway had bests then and it has never been relaid (642 m), so
+// its unsigned records stay good and no hub player loses a best; on any other track an unsigned record is from an old layout.
+export const LEGACY_BEST_IDS = ["realfi-v1"];
+/** The stored best for track `id` on the layout of length `len` (layoutLen), or null: none, a bad record, or one from
+ * another layout (a different `len`, or none on a track that is not in LEGACY_BEST_IDS). The caller may delete a dropped key. */
+export function loadBest(read, id, len) {
   const k = bestKey(id);
   if (!k) return null;
   const b = read(k);
-  return b && Number.isFinite(b.ms) && b.ms > 0 ? b : null;
+  if (!(b && Number.isFinite(b.ms) && b.ms > 0)) return null;
+  if (b.len === undefined) return LEGACY_BEST_IDS.includes(id) ? b : null;
+  return b.len === len ? b : null;
 }

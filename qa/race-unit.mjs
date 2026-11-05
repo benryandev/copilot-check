@@ -88,10 +88,50 @@ test('race.js posts the device token with a lap and words address_full for the f
 test('bestKey and loadBest are per track and take a null track without throwing', async () => {
   const { bestKey, loadBest } = await import('../ecosystem/js/race-post.js');
   assert.equal(bestKey('realfi-v1'), 'eco-race-best:realfi-v1'); assert.equal(bestKey(null), null);
-  const store = { 'eco-race-best:a': { ms: 1000 }, 'eco-race-best:b': { ms: -1 } };
+  const store = { 'eco-race-best:a': { ms: 1000, len: 500 }, 'eco-race-best:b': { ms: -1, len: 500 } };
   const read = (k) => store[k] ?? null;
-  assert.equal(loadBest(read, 'a').ms, 1000, 'one record per track id');
-  assert.equal(loadBest(read, 'b'), null, 'a bad record is ignored');
-  assert.equal(loadBest(read, 'c'), null);
-  assert.equal(loadBest(() => { throw new Error('must not read'); }, null), null, 'no track, no read');
+  assert.equal(loadBest(read, 'a', 500).ms, 1000, 'one record per track id');
+  assert.equal(loadBest(read, 'b', 500), null, 'a bad record is ignored');
+  assert.equal(loadBest(read, 'c', 500), null);
+  assert.equal(loadBest(() => { throw new Error('must not read'); }, null, 500), null, 'no track, no read');
+});
+
+test('a local best carries its layout\'s length: dropped after a relayout, kept on the same layout, legacy records kept only on the Raceway', async () => {
+  const { loadBest, layoutLen, LEGACY_BEST_IDS } = await import('../ecosystem/js/race-post.js');
+  const T = await import('../ecosystem/js/terrain.js');
+  const { venueEntry } = await import('../ecosystem/js/entries.js');
+  const lagoon = (await import('../ecosystem/tracks/lagoon.js')).default;
+  assert.equal(layoutLen({ len: 844.5045 }), 845, 'whole metres'); assert.equal(layoutLen(null), null);
+  const hubLen = layoutLen(T.trackDef()), lagLen = layoutLen(venueEntry(lagoon, { slug: 'lagoon' }).track);
+  assert.equal(T.trackDef().id, 'realfi-v1'); assert.equal(hubLen, 642, 'the Raceway, never relaid');
+  assert.equal(lagLen, 845, 'the Lagoon after its 65 m relayout');
+  assert.deepEqual(LEGACY_BEST_IDS, ['realfi-v1']);
+  // recordBest writes the signature, and a slower lap keeps the record it beat (signature and all)
+  const b = recordBest(null, { ms: 30100, splits: [1], trace: [], len: lagLen });
+  assert.equal(b.len, 845);
+  assert.equal(recordBest(b, { ms: 31000, splits: [2], trace: [], len: lagLen }), b);
+  assert.equal(markPosted(b, 30100).len, 845, 'posting keeps the signature');
+  assert.equal('len' in recordBest(null, { ms: 1, splits: [], trace: [] }), false, 'no length given, none written');
+  const store = {
+    'eco-race-best:lagoon-v1': { ms: 27922, splits: [], len: 780 }, // set on the old 779.6 m layout
+    'eco-race-best:realfi-v1': { ms: 24892, splits: [] }, // a hub best from before signatures
+  };
+  const read = (k) => store[k] ?? null;
+  assert.equal(loadBest(read, 'lagoon-v1', lagLen), null, 'a different len is dropped');
+  store['eco-race-best:lagoon-v1'] = { ms: 30100, splits: [], len: 845 };
+  assert.equal(loadBest(read, 'lagoon-v1', lagLen).ms, 30100, 'the same len is kept');
+  store['eco-race-best:lagoon-v1'] = { ms: 27922, splits: [] };
+  assert.equal(loadBest(read, 'lagoon-v1', lagLen), null, 'a legacy record without len is dropped on the Lagoon');
+  assert.equal(loadBest(read, 'realfi-v1', hubLen).ms, 24892, 'a legacy record without len is kept on the Raceway');
+  store['eco-race-best:realfi-v1'] = { ms: 24892, splits: [], len: 642 };
+  assert.equal(loadBest(read, 'realfi-v1', hubLen).ms, 24892, 'a signed Raceway record is kept');
+  store['eco-race-best:realfi-v1'] = { ms: 24892, splits: [], len: 600 };
+  assert.equal(loadBest(read, 'realfi-v1', hubLen), null, 'and dropped if the Raceway is ever relaid');
+});
+
+test('race.js loads the best with the layout\'s length, deletes a dropped record, and records the length with a new best', () => {
+  const src = readFileSync('ecosystem/js/race.js', 'utf8');
+  assert.match(src, /bestVal = loadBest\(load, id, layoutLen\(trackDef\(\)\)\)/);
+  assert.match(src, /if \(!bestVal && k && load\(k\) !== null\) drop\(k\)/);
+  assert.match(src, /recordBest\(curBest\(\), \{ ms, splits, trace: path, len: layoutLen\(trackDef\(\)\) \}\)/);
 });

@@ -4,7 +4,7 @@
 // just says so and there's no ghost.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { offerBest, retryAfterMs, recordBest, markPosted, deviceToken, bestKey, loadBest } from "./race-post.js";
+import { offerBest, retryAfterMs, recordBest, markPosted, deviceToken, bestKey, loadBest, layoutLen } from "./race-post.js";
 import { raceGates, trackAt, trackLen, trackDef, groundHeight } from "./terrain.js";
 import { setBoard, formatTime } from "./raceway.js";
 import { nameTag } from "./tags.js";
@@ -19,6 +19,7 @@ const $ = (id) => document.getElementById(id);
 
 const load = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } };
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const drop = (k) => { try { localStorage.removeItem(k); } catch {} };
 // Anonymous funnel counts (opened the world, reached the raceway, started a lap, finished one): each
 // stage is sent at most once per page load, and the worker counts a visitor once per stage per day.
 const sent = new Set();
@@ -32,10 +33,16 @@ function countStage(kind) {
 }
 
 let bestVal = null, bestId;
-// The best lap of the track configured now, reloaded when the track changes
+// The best lap of the track configured now, reloaded when the track changes. A record from another layout of the same id
+// (race-post.js loadBest) is dropped, and its key with it, so the HUD and the "New best" sheet start afresh
 function curBest() {
   const id = trackId();
-  if (id !== bestId) { bestId = id; bestVal = loadBest(load, id); }
+  if (id !== bestId) {
+    bestId = id;
+    bestVal = loadBest(load, id, layoutLen(trackDef()));
+    const k = bestKey(id);
+    if (!bestVal && k && load(k) !== null) drop(k);
+  }
   return bestVal;
 }
 /** The device's best lap on the configured track ({ ms, … }) or null: the venue's Map row reads it (map-math.js venueRecord). */
@@ -140,7 +147,7 @@ function finish(t) {
   const k = Math.ceil(trace.length / TRACE_MAX);
   const path = k > 1 ? trace.filter((_, i) => i % k === 0 || i === trace.length - 1) : trace;
   const prevBest = curBest();
-  const nb = recordBest(curBest(), { ms, splits, trace: path });
+  const nb = recordBest(curBest(), { ms, splits, trace: path, len: layoutLen(trackDef()) });
   if (nb !== curBest()) setBest(nb);
   finished = { ms, splits, trace: path, prevBest, posted: false };
   hooks.sound?.("lapFinish");
