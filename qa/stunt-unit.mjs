@@ -120,7 +120,7 @@ test('standSide: the stand nearest the ramp along the lap gives the side by its 
   assert.equal(standSide(10, [], 844.5, -1), -1); assert.equal(standSide(10, undefined, 844.5, 1), 1);
 });
 
-test('the Lagoon\'s stand-side pose: on the stand\'s side, 12 m off the ramp lane, below 4 m, looking along the flight', () => {
+test('the Lagoon\'s stand-side pose: on the stand\'s side, 12 m off the ramp lane, a quarter of the flight past the lip, below 4 m, looking along the flight', () => {
   T.configureTerrain(lagoonCfg());
   try {
     assert.equal(STAND_OFF, 12); assert.equal(STAND_UP, 3);
@@ -129,13 +129,15 @@ test('the Lagoon\'s stand-side pose: on the stand\'s side, 12 m off the ramp lan
     const lat = (p) => (p.x - l.x) * j.rx + (p.z - l.z) * j.rz, fwd = (p) => (p.x - l.x) * j.fx + (p.z - l.z) * j.fz;
     const st = trk.stands.find((s) => s.s === 259), sp = trk.at(st.s), stand = { x: sp.x + sp.rx * st.off, z: sp.z + sp.rz * st.off };
     assert.ok(lat(stand) > 0 && Math.abs(lat(c) - 12) < 1e-9, `the jump stand at ${lat(stand).toFixed(1)} m, the camera at ${lat(c).toFixed(2)} m: same side, 12 m off the lane`);
-    assert.ok(Math.abs(fwd(c)) < 1e-9, `level with the lip (${fwd(c)})`);
+    assert.ok(Math.abs(fwd(c) - j.bank / 4) < 1e-9, `a quarter of the flight past the lip (${fwd(c)} vs ${j.bank / 4})`);
+    // The ramp the car has just left is behind the camera: its whole length is short of the camera along the flight
+    assert.ok(fwd({ x: j.ox, z: j.oz }) < fwd(c) && fwd(l) < fwd(c), 'the ramp, foot to lip, behind the camera');
     assert.ok(c.y - T.WATER_LEVEL < 4 && Math.abs(c.y - T.WATER_LEVEL - 3) < 1e-9, `3 m up (${c.y})`);
     assert.ok(c.y > T.groundHeight(c.x, c.z) + 1.5, 'clear of the ground under it');
     const far = { x: l.x + j.fx * j.bank, z: l.z + j.fz * j.bank }, mid = { x: l.x + j.fx * j.bank / 2, z: l.z + j.fz * j.bank / 2 };
     const look = (p) => { const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz); return (dx * j.fx + dz * j.fz) / d; };
-    assert.ok(look(far) > 0.8, `the far bank is ahead of the camera along the flight (cos ${look(far).toFixed(2)})`);
-    assert.ok(look(mid) > 0.5, `so is the middle of the flight (cos ${look(mid).toFixed(2)})`);
+    assert.ok(look(far) > 0.7, `the far bank is ahead of the camera along the flight (cos ${look(far).toFixed(2)})`);
+    assert.ok(look(mid) > 0.3, `so is the middle of the flight (cos ${look(mid).toFixed(2)})`);
     assert.equal(T.onWater(far.x - j.fx * 0.5, far.z - j.fz * 0.5), true, 'bank is where the water ends'); assert.equal(T.onWater(far.x + j.fx * 0.5, far.z + j.fz * 0.5), false);
   } finally { T.configureTerrain(hubCfg); }
 });
