@@ -541,7 +541,7 @@ export async function runWorld(entry) {
     }
     // Portrait: aim nearer and lower so the car sits above the driving buttons, not under them
     // While fireworks are up the camera looks up a little to take them in (the look target eases, so it tilts gently)
-    const ahead = camera.aspect < 1 ? 1 : 4, lift = (camera.aspect < 1 ? 0.6 : 2.2) + (fireworks?.userData.active() ? 3.5 : 0);
+    const ahead = camera.aspect < 1 ? 1 : 4, lift = (camera.aspect < 1 ? 0.6 : 2.2) + (fireworks?.userData.active() ? 2 : 0);
     const look = new THREE.Vector3(s.x + fx * ahead, s.y + lift, s.z + fz * ahead);
     camPos.lerp(want, snap ? 1 : 1 - Math.exp(-dt * (t < 1 ? 20 : 5)));
     camLook.lerp(look, snap ? 1 : 1 - Math.exp(-dt * 8));
@@ -977,7 +977,7 @@ export async function runWorld(entry) {
   function launchFireworks() {
     if (!fireworks) return;
     const s = car.s, fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
-    fireworks.userData.launch(s.x + fx * 70, s.y, s.z + fz * 70, { rx: -fz, rz: fx }); // in the sky ahead, whichever way you face
+    fireworks.userData.launch(s.x + fx * 50, s.y, s.z + fz * 50, { rx: -fz, rz: fx }); // in the sky ahead, whichever way you face
   }
   function showCelebration({ rec, self }) {
     peersNote(self ? `You're #1 on the Raceway with ${formatTime(rec.ms)}` : rec.trackName ? `${rec.name} set a new record on ${rec.trackName} with ${formatTime(rec.ms)}` : `${rec.name} just took #1 on the Raceway with ${formatTime(rec.ms)}`, 6000);

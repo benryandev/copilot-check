@@ -189,6 +189,10 @@ export function createDust(max, palette, key = "dust") {
 // per-particle colour; no fog, so they read from far off. Nothing is drawn until launch() is called.
 const FIREWORK_COLOURS = [0xffd166, 0x26fab0, 0xff6b9d, 0x5ad8ff, 0xffffff, 0xff9f43];
 const FW_G = 10; // m/s²: slower than real gravity, so the sparks hang
+// A rocket's apex, metres above its launch ground, and where it bursts. The day sky's clouds start at 26 m (sky.js
+// CLOUD_MIN_Y), and a burst that opens inside them reads as "too high to see". The sphere throws its highest sparks about
+// 8 m above its centre (speed 16, drag 1.1, gravity 7), so an apex of 15 m keeps every spark under 23 m, 3 m below the floor.
+export const FW_APEX_MIN = 14.2, FW_APEX_MAX = 15;
 export function createFireworks(max = 1400) {
   const pos = new Float32Array(max * 3), size = new Float32Array(max), alpha = new Float32Array(max), col = new Float32Array(max * 3);
   const geo = new THREE.BufferGeometry();
@@ -258,7 +262,8 @@ export function createFireworks(max = 1400) {
         rockets = rockets.filter((k) => k.at > clock);
         for (const k of due) {
           tmp.set(k.colour);
-          emit({ x: k.x, y: k.y, z: k.z, vx: rnd(-1.5, 1.5), vy: rnd(25, 28), vz: rnd(-1.5, 1.5), s: 1.1, life: rnd(1.4, 1.6), r: tmp.r, g: tmp.g, b: tmp.b, rocket: true, drag: 0 });
+          const apex = rnd(FW_APEX_MIN, FW_APEX_MAX), vy = Math.sqrt(2 * FW_G * apex); // no drag, so it peaks at v²/2g after v/g seconds
+          emit({ x: k.x, y: k.y, z: k.z, vx: rnd(-1.5, 1.5), vy, vz: rnd(-1.5, 1.5), s: 1.1, life: vy / FW_G, r: tmp.r, g: tmp.g, b: tmp.b, rocket: true, drag: 0 });
         }
       }
       if (!rockets.length) clock = 0;
