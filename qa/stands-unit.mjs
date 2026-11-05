@@ -63,6 +63,28 @@ test('no stand comes nearer than 2 m to the track\'s edge', () => withLagoon(() 
   });
 }));
 
+test('every stand sits on the ground along its whole length: its boxes\' bottom at or below the ground mesh every metre along both long edges', () => withLagoon(() => {
+  const g = buildStands(new THREE.Scene(), trk, pal);
+  const stands = g.children.filter((o) => o.isGroup);
+  assert.equal(stands.length, trk.stands.length);
+  g.updateMatrixWorld(true);
+  g.userData.boxes.forEach((b, i) => {
+    let bottom = Infinity; const bb = new THREE.Box3();
+    stands[i].children.forEach((m) => { if (m.isMesh) bottom = Math.min(bottom, bb.setFromObject(m).min.y); });
+    // Every box, not only the lowest: each one reaches the same depth, so no tier front or end shows a gap either
+    const lows = stands[i].children.filter((m) => m.isMesh).map((m) => bb.setFromObject(m).min.y);
+    assert.ok(Math.max(...lows) - Math.min(...lows) < 1e-6, `stand ${i}: every box reaches the same depth`);
+    const c = Math.cos(b.yaw), s = Math.sin(b.yaw);
+    let worst = -Infinity;
+    for (let u = -b.hx; u <= b.hx + 1e-9; u += 1) for (const v of [-b.hz, b.hz]) {
+      const x = b.cx + u * c + v * s, z = b.cz - u * s + v * c, y = T.groundVertexHeight(x, z); // what buildGround writes
+      worst = Math.max(worst, bottom - y);
+      assert.ok(bottom <= y, `stand ${i} at u ${u.toFixed(0)} v ${v}: bottom ${bottom.toFixed(2)} above the ground ${y.toFixed(2)}`);
+    }
+    assert.ok(worst <= -0.9, `stand ${i}: at least 0.9 m into the ground everywhere (closest ${(-worst).toFixed(2)} m)`);
+  });
+}));
+
 test('the crowd is one instanced draw for every stand, and sways only with motion allowed', () => withLagoon(() => {
   const g = buildStands(new THREE.Scene(), trk, pal);
   const inst = []; g.traverse((o) => { if (o.isInstancedMesh) inst.push(o); });

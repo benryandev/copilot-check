@@ -2,13 +2,14 @@
 // lateral `off` (+ the track's right, − its left), its seats rising away from the track, with a crowd on the tiers. The crowd is
 // one instanced mesh of coloured dots for every stand (one draw), swaying in the vertex shader (one uniform a frame, nothing
 // under reduced motion). One collider box per stand, returned for the runner to make solid (userData.boxes, the shape
-// walls-math.js wallBoxes gives: { cx, cz, hx, hz, yaw }, local x along the track); nothing else here is solid.
+// walls-math.js wallBoxes gives: { cx, cz, hx, hz, yaw }, local x along the track); nothing else here is solid. Each stand's
+// boxes reach a metre below the lowest ground under its footprint (standLow), so it sits on the ground on any slope.
 // Imports three.js and terrain.js only, so node can build it (qa/stands-unit.mjs).
 
 import * as THREE from "../vendor/three.module.min.js";
-import { terrainHeight } from "./terrain.js";
+import { terrainHeight, groundHeight, groundVertexHeight } from "./terrain.js";
 
-export const STAND = { depth: 8, tiers: 4, rise: 0.8, seat: 0.9, base: 1 }; // m: depth, tier count, each tier's rise, crowd spacing, how far the base sinks
+export const STAND = { depth: 8, tiers: 4, rise: 0.8, seat: 0.9, base: 1, sample: 3 }; // m: depth, tier count, each tier's rise, crowd spacing, how far the base sinks below the lowest ground, footprint sample spacing
 const CROWD = [0xe4572e, 0x2fa7c9, 0xf3b61f, 0x76b041, 0xf5f6f8, 0x7d5ba6, 0x1b1f24, 0xef8a17]; // shirts, the same in both themes
 
 // A seeded random, so the crowd is the same on every load (the scene's fingerprint is stable)
@@ -23,6 +24,21 @@ export function standBoxes(track) {
   });
 }
 
+/** The lowest ground under a stand's footprint: sampled every STAND.sample m or closer along both long edges, the centreline
+ * and both ends, from the analytic ground and from what the ground mesh writes (groundVertexHeight), whichever is lower. */
+export function standLow(b) {
+  const c = Math.cos(b.yaw), s = Math.sin(b.yaw);
+  const nu = Math.max(1, Math.ceil((b.hx * 2) / STAND.sample)), nv = Math.max(1, Math.ceil((b.hz * 2) / STAND.sample));
+  let low = Infinity;
+  for (let i = 0; i <= nu; i++) for (let j = 0; j <= nv; j++) {
+    if (i > 0 && i < nu && j > 0 && j < nv && j * 2 !== nv) continue; // the outline and the centreline
+    const u = -b.hx + (b.hx * 2 * i) / nu, v = -b.hz + (b.hz * 2 * j) / nv;
+    const x = b.cx + u * c + v * s, z = b.cz - u * s + v * c;
+    low = Math.min(low, groundHeight(x, z), groundVertexHeight(x, z));
+  }
+  return low;
+}
+
 /** Builds every stand of `track` into one group added to `scene`; null (and nothing added) for a track with none. */
 export function buildStands(scene, track, palette, { reduceMotion = false } = {}) {
   const boxes = standBoxes(track);
@@ -34,24 +50,27 @@ export function buildStands(scene, track, palette, { reduceMotion = false } = {}
   const seats = [];
   for (const b of boxes) {
     const g = new THREE.Group();
-    const y0 = terrainHeight(b.cx, b.cz);
+    const y0 = terrainHeight(b.cx, b.cz); // the seats' level, where the crowd sits
+    // Every box reaches STAND.base below the lowest ground under the footprint, so a stand on a slope or a hump (the start
+    // stand's centre is 2.9 m above its ends) shows no gap anywhere; the part below the seats is a plain plinth
+    const sink = Math.max(0, y0 - standLow(b)) + STAND.base;
     g.position.set(b.cx, y0, b.cz);
     g.rotation.y = b.yaw;
     const L = b.hx * 2;
     for (let i = 0; i < STAND.tiers; i++) { // each tier a step up and back, from below the ground so a slope never shows a gap
-      const top = STAND.rise * (i + 1), h = top + STAND.base;
+      const top = STAND.rise * (i + 1), h = top + sink;
       const m = new THREE.Mesh(new THREE.BoxGeometry(L, h, td), mats.seat);
       m.position.set(0, top - h / 2, -STAND.depth / 2 + td * (i + 0.5));
       g.add(m);
       seats.push({ b, y: y0 + top, v: -STAND.depth / 2 + td * (i + 0.35) });
     }
-    const backH = STAND.rise * STAND.tiers + 2.4 + STAND.base; // a back wall above the top tier, and the two ends
+    const backH = STAND.rise * STAND.tiers + 2.4 + sink; // a back wall above the top tier, and the two ends
     const back = new THREE.Mesh(new THREE.BoxGeometry(L + 0.4, backH, 0.3), mats.frame);
-    back.position.set(0, backH / 2 - STAND.base, STAND.depth / 2 - 0.15);
+    back.position.set(0, backH / 2 - sink, STAND.depth / 2 - 0.15);
     g.add(back);
     for (const x of [-L / 2, L / 2]) {
       const end = new THREE.Mesh(new THREE.BoxGeometry(0.3, backH, STAND.depth), mats.frame);
-      end.position.set(x, backH / 2 - STAND.base, 0);
+      end.position.set(x, backH / 2 - sink, 0);
       g.add(end);
     }
     g.traverse((o) => { if (o.isMesh) o.castShadow = o.receiveShadow = true; });
