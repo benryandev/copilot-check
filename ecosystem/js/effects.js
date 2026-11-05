@@ -191,8 +191,11 @@ const FIREWORK_COLOURS = [0xffd166, 0x26fab0, 0xff6b9d, 0x5ad8ff, 0xffffff, 0xff
 const FW_G = 10; // m/s²: slower than real gravity, so the sparks hang
 // A rocket's apex, metres above its launch ground, and where it bursts. The day sky's clouds start at 26 m (sky.js
 // CLOUD_MIN_Y), and a burst that opens inside them reads as "too high to see". The sphere throws its highest sparks about
-// 8 m above its centre (speed 16, drag 1.1, gravity 7), so an apex of 15 m keeps every spark under 23 m, 3 m below the floor.
-export const FW_APEX_MIN = 14.2, FW_APEX_MAX = 15;
+// 8 m above its centre (speed 16, drag 1.1, gravity 7), so an apex of 14.6 m keeps every spark under 23 m, 3 m below the floor.
+// How long a burst's sparks are worth watching (their lives are 1.5 to 2.3 s): a moving anchor aims this much further on, so the
+// burst is `ahead` metres in front about a second into its life, not only at the moment it opens.
+const FW_WATCH = 1.2;
+export const FW_APEX_MIN = 14.3, FW_APEX_MAX = 14.6;
 export function createFireworks(max = 1400) {
   const pos = new Float32Array(max * 3), size = new Float32Array(max), alpha = new Float32Array(max), col = new Float32Array(max * 3);
   const geo = new THREE.BufferGeometry();
@@ -243,12 +246,14 @@ export function createFireworks(max = 1400) {
         r: white ? 1 : p.r, g: white ? 1 : p.g, b: white ? 1 : p.b, drag: 1.1, flicker: rnd(6, 11) });
     }
   }
-  /** Rockets from around (cx, cz) at ground height cy, spread along the right vector (rx, rz) and its normal. */
-  function launch(cx, cy, cz, { rx = 1, rz = 0, count = 6 } = {}) {
+  /** Rockets ahead of a moving anchor. `anchor()` gives { x, y, z, fx, fz, v }: the ground point, the unit forward vector
+   *  and the forward speed (m/s). Each rocket asks for it at its own launch moment and goes up `ahead` metres in front, plus
+   *  the distance the anchor covers while the rocket climbs and its sparks hang (FW_WATCH), so the burst is `ahead` metres
+   *  in front of where the anchor will be a moment into its life. The sideways spread is along the right vector (-fz, fx). A rocket in the air keeps its course. */
+  function launch(anchor, { count = 6, ahead = 50 } = {}) {
     const delays = [0, 0.55, 0.95, 1.5, 1.95, 2.6, 3.1, 3.5];
     for (let i = 0; i < count; i++) {
-      const side = rnd(-30, 30), along = rnd(-14, 14);
-      rockets.push({ at: delays[i % delays.length] + (i >= delays.length ? 3.8 : 0), x: cx + rx * side - rz * along, y: cy, z: cz + rz * side + rx * along, colour: FIREWORK_COLOURS[(Math.random() * FIREWORK_COLOURS.length) | 0] });
+      rockets.push({ at: delays[i % delays.length] + (i >= delays.length ? 3.8 : 0), anchor, ahead, side: rnd(-30, 30), along: rnd(-14, 14), colour: FIREWORK_COLOURS[(Math.random() * FIREWORK_COLOURS.length) | 0] });
     }
     anyLive = true;
   }
@@ -263,6 +268,8 @@ export function createFireworks(max = 1400) {
         for (const k of due) {
           tmp.set(k.colour);
           const apex = rnd(FW_APEX_MIN, FW_APEX_MAX), vy = Math.sqrt(2 * FW_G * apex); // no drag, so it peaks at v²/2g after v/g seconds
+          const a = k.anchor(), rx = -a.fz, rz = a.fx, lead = k.ahead + Math.max(0, a.v || 0) * (vy / FW_G + FW_WATCH);
+          k.x = a.x + a.fx * lead + rx * k.side - rz * k.along; k.y = a.y; k.z = a.z + a.fz * lead + rz * k.side + rx * k.along;
           emit({ x: k.x, y: k.y, z: k.z, vx: rnd(-1.5, 1.5), vy, vz: rnd(-1.5, 1.5), s: 1.1, life: vy / FW_G, r: tmp.r, g: tmp.g, b: tmp.b, rocket: true, drag: 0 });
         }
       }

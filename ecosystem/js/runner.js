@@ -977,8 +977,8 @@ export async function runWorld(entry) {
   let celebrated = null, celebrationPending = null;
   function launchFireworks() {
     if (!fireworks) return;
-    const s = car.s, fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
-    fireworks.userData.launch(s.x + fx * 50, s.y, s.z + fz * 50, { rx: -fz, rz: fx }); // in the sky ahead, whichever way you face
+    // Each rocket asks for the car's position and heading when it leaves the ground, so they stay ahead of you as you drive
+    fireworks.userData.launch(() => { const s = car.s; return { x: s.x, y: s.y, z: s.z, fx: -Math.sin(s.heading), fz: -Math.cos(s.heading), v: s.speed }; }, { ahead: 50 });
   }
   function showCelebration({ rec, self }) {
     peersNote(celebrationNote(rec, self, formatTime(rec.ms), entry.kind === "venue" ? trackDef().name : null), 6000); // the hub keeps "the Raceway", a venue uses its own name
