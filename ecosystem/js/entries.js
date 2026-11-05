@@ -14,9 +14,20 @@ const MAX_RADIUS = 320; // the room's pose bound is 400 m; a venue world stays w
 export function hubEntry() {
   return {
     kind: "hub", zone: "hub", url: HOME, title: "Strike ecosystem", terrain: null, builders: builders(() => true),
-    spawn: { ...SPAWN }, arrival: "flight", track: null, portal: null, home: HOME, multiplayer: MULTIPLAYER, carColour: HUB_COLOUR,
+    spawn: { ...SPAWN }, arrival: "flight", flight: null, track: null, portal: null, home: HOME, multiplayer: MULTIPLAYER, carColour: HUB_COLOUR,
   };
 }
+
+// How a page opens (ruling R10, spec 7.2): through an arch, a portal record is waiting and the car lands with no intro;
+// otherwise the entry's own arrival, the opening flight that ends in the intro (hub and venue alike; runner.js asks
+// wantsArrival() for it, so reduced motion and a second visit in the tab skip straight to the intro)
+export const arrivalFor = (entry, landing) => (landing ? "portal" : entry.arrival);
+
+// A venue's opening flight (arrive.js flightPath): from high over the venue, FLIGHT.back m out from its centre on the
+// grid's side, looking at the centre so the lake and the whole track are in view, down to the chase camera on the grid.
+// The fog is pushed out past the far side of the track for the overview and closes back in on the way down, and the clouds
+// (26 to 50 m up, under the start) are moved off the venue's middle so they do not hide the track (`clouds`, sky.js clear).
+const FLIGHT = { back: 60, height: 230, fog: 40, clouds: 150 };
 
 // A track module is a function of its frame ({ origin, angle }) returning the definition; a plain definition works too.
 // The frame's origin is shifted so the centroid of the track's points lands on the venue origin, angle 0, which moves
@@ -37,7 +48,12 @@ export function venueEntry(mod, { slug }) {
   // start straight beside the grid, clear of the track. `from: "raceway"` puts the arch in the raceway's group, which the frame
   // culls by distance to the track.
   const homePts = track.home ? venueArchRoad(track, { s: track.home.s, side: track.home.side, to: radius - 60 + 5 }) : venueArchRoad(track);
-  const home = { kind: "venue", from: "raceway", to: "home", venue: { key: "home", name: "Strike HQ", colour: HUB_COLOUR, url: HOME }, points: homePts };
+  // R22: the arch is signed "Back to the World"; the venue keeps the name Strike HQ, so the where-label reads "Road to Strike HQ"
+  const home = { kind: "venue", from: "raceway", to: "home", venue: { key: "home", name: "Strike HQ", sign: "Back to the World", colour: HUB_COLOUR, url: HOME }, points: homePts };
+  const gl = Math.hypot(grid.x, grid.z) || 1;
+  const at = [(grid.x / gl) * FLIGHT.back, (grid.z / gl) * FLIGHT.back];
+  const reach = Math.max(...track.pts.map(([x, z]) => Math.hypot(x - at[0], z - at[1])));
+  const flight = { at, height: FLIGHT.height, look: [0, 0], clouds: FLIGHT.clouds, fog: { near: Math.round(Math.hypot(FLIGHT.back, FLIGHT.height)), far: Math.round(Math.hypot(reach, FLIGHT.height) + FLIGHT.fog) } };
   return {
     kind: "venue", zone: track.id, url: `/ecosystem/tracks/${slug}/`, title: track.name,
     terrain: {
@@ -50,7 +66,7 @@ export function venueEntry(mod, { slug }) {
     },
     builders: builders((k) => k === "raceway" || k === "portal" || k === "stands"),
     spawn: { x: grid.x, z: grid.z, heading: Math.atan2(-grid.fx, -grid.fz) }, // the car faces (-sin h, -cos h)
-    arrival: "portal", track, portal: { to: HOME, from: slug }, home: HOME, multiplayer: MULTIPLAYER,
+    arrival: "flight", flight, track, portal: { to: HOME, from: slug }, home: HOME, multiplayer: MULTIPLAYER,
     carColour: track.sponsor?.colour ?? HUB_COLOUR,
   };
 }

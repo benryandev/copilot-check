@@ -10,7 +10,7 @@
   </url>
   <url>
     <loc>https://strike.benryan.com.au/ecosystem/stops/</loc>
-    <lastmod>2026-11-04</lastmod>
+    <lastmod>2026-11-05</lastmod>
   </url>
   <url>
     <loc>https://strike.benryan.com.au/ecosystem/submit/</loc>
@@ -18,7 +18,7 @@
   </url>
   <url>
     <loc>https://strike.benryan.com.au/ecosystem/guides/</loc>
-    <lastmod>2026-11-04</lastmod>
+    <lastmod>2026-11-05</lastmod>
   </url>
   <url>
     <loc>https://strike.benryan.com.au/ecosystem/guides/what-is-strike/</loc>
@@ -39,5 +39,9 @@
   <url>
     <loc>https://strike.benryan.com.au/ecosystem/guides/your-first-trade/</loc>
     <lastmod>2026-11-03</lastmod>
+  </url>
+  <url>
+    <loc>https://strike.benryan.com.au/ecosystem/tracks/lagoon/</loc>
+    <lastmod>2026-11-05</lastmod>
   </url>
 </urlset>

@@ -3,7 +3,7 @@
 // the hub, a short belt across each venue road at its arch with the road in its gap: node --test qa/trees-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-globalThis.location = { search: '?venues=1' }; // the hub's venue road exists only in the preview (content.js venuesPreview)
+globalThis.location = { search: '?venues=1' }; // the hub's venue road (on by default since plan 5 Task 5; ?venues=1 gives the same list)
 const THREE = await import('../ecosystem/vendor/three.module.min.js');
 const T = await import('../ecosystem/js/terrain.js');
 const { venueEntry } = await import('../ecosystem/js/entries.js');

@@ -1,6 +1,8 @@
 // Deep links into the world (no three.js): ?stop=<key> opens the world at that pad with its sheet open,
-// ?district=<key> arrives at the district's plaza. Query flags like ?arrive, ?mp and ?mix; the hash stays
-// for #owner=. Unit tests: qa/deeplink-unit.mjs. Keys are validated before any lookup.
+// ?district=<key> arrives at the district's plaza (both hub-only), and ?start=1 puts the car on a track's grid: a
+// venue page's own (the only deep link a venue honours, ruling R21), the RealFi Raceway's on the hub, as ?stop=raceway
+// does. Query flags like ?arrive, ?mp and ?mix; the hash stays for #owner=. Unit tests: qa/deeplink-unit.mjs. Keys are
+// validated before any lookup.
 
 export const BAD_KEY = /[^a-z0-9-]/;
 

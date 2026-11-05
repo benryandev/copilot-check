@@ -27,7 +27,7 @@ test('llms.txt lists the tools, the world, the stops page and every guide, one l
   const txt = buildAll().find((f) => f.path === 'llms.txt').content;
   assert.ok(txt.startsWith('# Copilot Check\n\n> '), 'H1 then a blockquote summary (llmstxt.org)');
   assert.ok(txt.includes('Not affiliated with Strike'), 'the disclosure');
-  assert.deepEqual(txt.match(/^## .*$/gm), ['## Tools', '## The ecosystem world', '## Guides']);
+  assert.deepEqual(txt.match(/^## .*$/gm), ['## Tools', '## The ecosystem world', '## Venues', '## Guides'], 'the Lagoon is listed');
   const entries = txt.split('\n').filter((l) => l.startsWith('- '));
   for (const l of entries) assert.match(l, /^- \[[^\]]+\]\(https:\/\/[^)\s]+\): \S[^\n]*[^\s.]\.$/, `entry is "- [name](url): one line." ${l}`);
   for (const l of entries) assert.ok(!l.includes('\n') && l.length < 400, 'one line each');
@@ -52,7 +52,7 @@ test('lastmod moves only when a page\'s content changes (state file, not git dat
   const today = '2031-01-01';
   const fresh = buildAll({ state: {}, today });
   const sitemap = fresh.find((f) => f.path === 'sitemap.xml').content;
-  assert.equal((sitemap.match(/<lastmod>2031-01-01<\/lastmod>/g) || []).length, 5 + slugs.length, 'unknown pages date to today');
+  assert.equal((sitemap.match(/<lastmod>2031-01-01<\/lastmod>/g) || []).length, 5 + slugs.length + 1, 'unknown pages (five, the guides and the Lagoon) date to today');
   const state = JSON.parse(fresh.find((f) => f.path === 'tools/lib/site-pages-state.json').content);
   assert.ok(state['/ecosystem/stops/'].hash && state['/ecosystem/stops/'].lastmod === today);
   const again = buildAll({ state, today: '2031-06-30' });
@@ -74,13 +74,13 @@ test('localToday is the Brisbane calendar day (UTC+10, no DST), not UTC', () => 
   assert.equal(localToday(Date.UTC(2026, 10, 3, 14, 0)), '2026-11-04', 'midnight Brisbane');
 });
 
-// Venues: tracks on their own pages. None are open yet (VENUES is empty), so the committed files carry nothing of them
-// (the drift test above); a fixture list of one shows all four listings render it.
+// Venues: tracks on their own pages. The Lagoon is on (content.js VENUES, plan 5 Task 5), so the committed files list it
+// (the drift test above, and the test after this one); a fixture list shows all four listings render a venue, an empty one nothing.
 test('a venue renders in the stops page, the guides index, llms.txt and the sitemap; none listed renders nothing', () => {
   const venue = { key: 'lagoon', name: 'The Lagoon', url: '/ecosystem/tracks/lagoon/', line: 'A lap round a tarmac lagoon with a water jump.' };
   const find = (files, p) => files.find((f) => f.path === p).content;
   const none = buildAll({ venues: [] }), one = buildAll({ venues: [venue] });
-  assert.deepEqual(none, buildAll(), 'an empty list is the default');
+  assert.notDeepEqual(none, buildAll(), 'the default is the Lagoon, not an empty list');
   const stops = find(one, 'ecosystem/stops/index.html');
   assert.ok(stops.includes('id="venues"') && stops.includes('The Lagoon') && stops.includes('A lap round a tarmac lagoon with a water jump.') && stops.includes('href="/ecosystem/tracks/lagoon/"'), 'stops page section');
   assert.ok(stops.indexOf('id="venues"') > stops.indexOf('id="district-yard"'), 'after the districts');
@@ -94,4 +94,15 @@ test('a venue renders in the stops page, the guides index, llms.txt and the site
   for (const f of ['ecosystem/stops/index.html', 'ecosystem/guides/index.html', 'llms.txt', 'sitemap.xml']) {
     assert.ok(!find(none, f).includes('tracks/lagoon') && !find(none, f).includes('id="venues"'), `${f} has no venue when none is listed`);
   }
+});
+
+test('the committed listings carry the Lagoon with its own line', async () => {
+  const { VENUES } = await import('../ecosystem/js/content.js');
+  const { line } = VENUES.find((v) => v.key === 'lagoon');
+  const disk = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
+  const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  assert.ok(disk('ecosystem/stops/index.html').includes(esc(line)) && disk('ecosystem/stops/index.html').includes('href="/ecosystem/tracks/lagoon/"'), 'the stops page');
+  assert.ok(disk('ecosystem/guides/index.html').includes('<a href="/ecosystem/tracks/lagoon/">The Lagoon</a>'), 'the guides index');
+  assert.ok(disk('llms.txt').includes(`- [The Lagoon](https://strike.benryan.com.au/ecosystem/tracks/lagoon/): ${line}`), 'llms.txt');
+  assert.ok(disk('sitemap.xml').includes('<loc>https://strike.benryan.com.au/ecosystem/tracks/lagoon/</loc>'), 'the sitemap');
 });

@@ -129,12 +129,15 @@ ROADS.push({ kind: "drive", from: "perps", to: "yard", points: [[-5, -102], [-10
   ROADS.push({ kind: "ridge", from: "analytics", to: "developers", points: Array.from({ length: 7 }, (_, i) => bez(i / 6)) });
 }
 // ── Venues: tracks on their own pages (/ecosystem/tracks/<slug>/), each reached by a 40 m road off the ring ending at an
-// arch. None are open yet; ?venues=1 previews the Lagoon. With the list empty ROADS is exactly as before (qa/content-unit.mjs).
-export const VENUES = [];
-const PREVIEW = [{ key: "lagoon", name: "The Lagoon", track: "lagoon-v1", url: "/ecosystem/tracks/lagoon/", off: "partners", colour: 0x2fa7c9 }];
+// arch. The Lagoon is on (plan 5 Task 5): the hub builds its road, arch, belt and Map group, and the site lists it with its
+// `line` (tools/site-pages.mjs). ROADS is the pre-venue list plus one road per venue (qa/content-unit.mjs).
+export const VENUES = [
+  { key: "lagoon", name: "The Lagoon", track: "lagoon-v1", url: "/ecosystem/tracks/lagoon/", off: "partners", colour: 0x2fa7c9,
+    line: "A timed lap on tarmac and dirt with a jump over the water, on its own page past the Partners ring." },
+];
+// Kept for QA and the portal record's flag (?venues=1): the same list with or without it now the Lagoon is on
 export function venuesPreview() {
-  const q = typeof location === "undefined" ? "" : location.search;
-  return new URLSearchParams(q).get("venues") === "1" ? PREVIEW : VENUES;
+  return VENUES;
 }
 export const VENUE_ROAD = 40;
 // The road leaves the `off` district's ring exit farther from the Raceway's link road, and runs straight for 40 m

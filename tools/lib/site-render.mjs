@@ -7,8 +7,8 @@ import { guidePath, guidesForStop, sortedGuides } from './guide-render.mjs';
 export { THEME_TOGGLE };
 const DOCS = 'https://docs.strikefinance.org';
 
-// Venues (tracks on their own pages, content.js VENUES): a name, one line and a URL. None are open yet, so the lists below
-// add nothing while VENUES is empty. A venue's own `line` wins; otherwise a plain default.
+// Venues (tracks on their own pages, content.js VENUES): a name, one line and a URL. The Lagoon is on (plan 5 Task 5); an
+// empty list adds nothing. A venue's own `line` wins; otherwise a plain default.
 export const venueLine = (v) => v.line || `${v.name}, a track on its own page, reached by a road off the ring.`;
 const venueList = (ctx) => ctx.venues || [];
 

@@ -65,6 +65,20 @@ test("every sheet obeys Ben's copy rule: plain sentences, no colon, semicolon or
   }
   assert.deepEqual(bad, [], bad.join('\n'));
 });
+// The Lagoon's reader-facing copy (plan 5 Task 5) under the same rule: its listing line, the venue page's descriptions and alt,
+// and the intro's sentences (the hub's read line, with its "Start here" link label, is shared and not the venue's copy)
+test("the Lagoon's copy obeys Ben's copy rule: its line, its page's descriptions and alt, its intro", async () => {
+  const { readFileSync } = await import('node:fs');
+  const { VENUES } = await import('../ecosystem/js/content.js');
+  const page = readFileSync(new URL('../ecosystem/tracks/lagoon/index.html', import.meta.url), 'utf8');
+  const meta = [...page.matchAll(/<meta (?:name|property)="(?:description|og:description|twitter:description|og:image:alt|og:title|twitter:title)" content="([^"]+)">/g)].map((m) => m[1]);
+  const dialog = /<dialog id="intro"[\s\S]*?<\/dialog>/.exec(page)[0];
+  const paras = [...dialog.matchAll(/<(h1|p)[^>]*>([\s\S]*?)<\/\1>/g)].map((m) => m[2]).filter((t) => !t.includes('data-guide-link')).map((t) => t.replace(/<[^>]+>/g, ''));
+  const texts = [VENUES.find((v) => v.key === 'lagoon').line, ...meta, ...paras];
+  assert.ok(meta.length === 6 && paras.length >= 3, `${meta.length} meta, ${paras.length} intro lines`);
+  const bad = texts.filter((t) => COPY_PUNCT.test(t) || CHECK_DATE.test(t) || BANNED.some((re) => re.test(t)));
+  assert.deepEqual(bad, [], bad.join('\n'));
+});
 test('merged sheets keep the names they absorbed', () => {
   const text = (k) => { const s = STOPS.find((x) => x.key === k); assert.ok(s, k); return [s.summary, ...s.points].join(' '); };
   for (const w of ['CardanoCube', 'Adastack', 'cardano.org']) assert.match(text('directories'), new RegExp(w));

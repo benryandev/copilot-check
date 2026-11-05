@@ -15,6 +15,10 @@ Built by Ben Ryan. Not affiliated with Strike Finance. Not financial advice; pas
 - [Strike Ecosystem](https://strike.benryan.com.au/ecosystem/): a drivable 3D map of Strike's features, with districts on dirt roads around Strike HQ, a pad at every feature that opens a sheet with live figures, a raceway, and a yard where every trade on Strike arrives as a crate.
 - [Every stop, as text](https://strike.benryan.com.au/ecosystem/stops/): every district and every stop in the world as plain text, what each feature does, each with a link that opens the world at that pad.
 
+## Venues
+
+- [The Lagoon](https://strike.benryan.com.au/ecosystem/tracks/lagoon/): A timed lap on tarmac and dirt with a jump over the water, on its own page past the Partners ring.
+
 ## Guides
 
 - [Strike guides: start here](https://strike.benryan.com.au/ecosystem/guides/): plain-English guides to Strike, from what a perp is to a first small trade, each one opening inside the world.

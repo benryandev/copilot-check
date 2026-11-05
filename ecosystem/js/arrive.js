@@ -1,6 +1,7 @@
 // The arrival. A loader that reports the build step by step (the world is generated, not downloaded, so each step
-// is real work), then one slow pull-in from high over Strike HQ down to the chase camera while the car drops onto
-// the road. Any key or tap skips it; it plays once per tab; reduced motion goes straight to the sheet.
+// is real work), then one slow pull-in from high over Strike HQ (or, on a venue page opened directly, high over the
+// venue: entries.js venueEntry `flight`) down to the chase camera while the car drops onto the road. Any key or tap
+// skips it; it plays once per tab; reduced motion goes straight to the sheet.
 import * as THREE from "../vendor/three.module.min.js";
 
 const $ = (id) => document.getElementById(id);
@@ -37,27 +38,49 @@ export function wantsArrival() {
 const DURATION = 6; // s of flight time: wall clock, but a stall (shaders compiling on the first frame) counts for at most
 const MAX_STEP = 0.25; // this much, so the opening is not skipped while the GPU warms up, and a slow machine still lands
 const HOLD = 0.16; // the first slice of the flight drifts at the top so the title has the overview to itself
-const START = { dist: 105, height: 88, yaw: 1.4 }; // high over the grass east of HQ; the way down is a quarter orbit that banks in behind the car (Builders' Row lines the Developers spoke south of HQ, so the south is not clear ground)
+export const START = { dist: 105, height: 88, yaw: 1.4 }; // high over the grass east of HQ; the way down is a quarter orbit that banks in behind the car (Builders' Row lines the Developers spoke south of HQ, so the south is not clear ground)
 const FOG = { near: 170, far: 400 }; // the ordinary fog would hide HQ from up there; it closes back in on the way down
 const DROP = { from: 0.3, to: 0.84, height: 70 }; // the car falls in from above the frame over this stretch of the eased flight
 const TITLE = { in: 0.35, out: 3.3 }; // s
 const NOKEYS = { up: false, down: false, left: false, right: false };
 const cubic = (u) => (u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2);
 const ease = (u) => cubic(Math.max(0, (u - HOLD) / (1 - HOLD)));
+// The flight's path (pure; qa/arrive-unit.mjs): eased progress e (0 to 1) to a camera position and look point, as arrays.
+// It orbits the car from the start pose to the chase pose: the start is START (a distance, a height and a yaw off the
+// chase direction) or a fixed point { at: [x, z], height } (a venue's, over its centre), which is turned into the same
+// distance and yaw so both fly the same arc. The look slides from `look` (HQ, or the venue centre) at 6 m to the chase look.
+export function flightPath({ s, chase, look, start = START }) {
+  const dx = chase.pos.x - s.x, dz = chase.pos.z - s.z;
+  const back = Math.hypot(dx, dz), angle = Math.atan2(dx, dz);
+  let dist = start.dist, yaw = start.yaw;
+  if (start.at) {
+    const ax = start.at[0] - s.x, az = start.at[1] - s.z;
+    dist = Math.hypot(ax, az);
+    yaw = Math.atan2(ax, az) - angle;
+    yaw = Math.atan2(Math.sin(yaw), Math.cos(yaw)); // the short way round
+  }
+  const l0 = [look[0], 6, look[1]], l1 = [chase.look.x, chase.look.y, chase.look.z];
+  const point = (e) => { const a = angle + yaw * (1 - e), d = back + (dist - back) * (1 - e); return [s.x + Math.sin(a) * d, s.z + Math.cos(a) * d]; };
+  const path = (e) => {
+    const [x, z] = point(e);
+    return { pos: [x, chase.pos.y + (start.height - chase.pos.y) * (1 - e), z], look: l0.map((v, i) => v + (l1[i] - v) * e) };
+  };
+  path.point = point; // where the camera is over the ground at e (the cloud corridor)
+  return path;
+}
+
 // The flight's clock, shared by the arrival and the landing: wall time, each step capped at MAX_STEP
 function wallClock() {
   let last = performance.now(), t = 0;
   return () => { const now = performance.now(); t += Math.min((now - last) / 1000, MAX_STEP); last = now; return t; };
 }
 
-export function startArrival({ camera, scene, sky, car, hq, chase, stepCar, settle, landed, onDone }) {
+// `hq` is where the flight looks first ([x, z]); `start` a venue's start pose and `fog` its overview fog (entries.js), else the hub's
+export function startArrival({ camera, scene, sky, car, hq, start = START, fog: fogTo = FOG, chase, stepCar, settle, landed, onDone }) {
   const el = $("arrive");
   const fog = scene.fog, fog0 = fog ? { near: fog.near, far: fog.far } : null, far0 = camera.far;
   const s = car.s;
-  const dx = chase.pos.x - s.x, dz = chase.pos.z - s.z;
-  const back = Math.hypot(dx, dz), angle = Math.atan2(dx, dz);
-  const hqLook = new THREE.Vector3(hq[0], 6, hq[1]);
-  const pos = new THREE.Vector3(), look = new THREE.Vector3();
+  const path = flightPath({ s, chase, look: hq, start });
   const clock = wallClock();
   let t = 0;
   let active = true, dropped = false, shown = false;
@@ -65,13 +88,10 @@ export function startArrival({ camera, scene, sky, car, hq, chase, stepCar, sett
   document.body.classList.add("is-arriving");
   // Clouds sit at 26–50 m; the flight starts above them. Clear the corridor from the start point in to HQ.
   // The path is an arc: clear from its start and from its midpoint
-  for (const [e, r] of [[0, 70], [0.5, 60]]) {
-    const a = angle + START.yaw * (1 - e), d = back + (START.dist - back) * (1 - e);
-    sky?.userData.clearClouds?.(s.x + Math.sin(a) * d, s.z + Math.cos(a) * d, hq[0], hq[1], r);
-  }
+  for (const [e, r] of [[0, start.clouds ?? 70], [0.5, 60]]) sky?.userData.clearClouds?.(...path.point(e), hq[0], hq[1], r); // a venue clears its middle (entries.js)
   el.hidden = false;
   car.group.visible = false;
-  camera.far = FOG.far + 40;
+  camera.far = fogTo.far + 40;
   camera.updateProjectionMatrix();
 
   const skip = (e) => {
@@ -103,14 +123,12 @@ export function startArrival({ camera, scene, sky, car, hq, chase, stepCar, sett
     if (!active) return;
     t = clock();
     const u = Math.min(1, t / DURATION), e = ease(u);
-    const a = angle + START.yaw * (1 - e), d = back + (START.dist - back) * (1 - e);
-    pos.set(s.x + Math.sin(a) * d, chase.pos.y + (START.height - chase.pos.y) * (1 - e), s.z + Math.cos(a) * d);
-    look.lerpVectors(hqLook, chase.look, e);
-    camera.position.copy(pos);
-    camera.lookAt(look);
+    const p = path(e);
+    camera.position.set(...p.pos);
+    camera.lookAt(...p.look);
     if (fog && fog0) {
-      fog.near = FOG.near + (fog0.near - FOG.near) * e;
-      fog.far = FOG.far + (fog0.far - FOG.far) * e;
+      fog.near = fogTo.near + (fog0.near - fogTo.near) * e;
+      fog.far = fogTo.far + (fog0.far - fogTo.far) * e;
     }
     // The car drops in under gravity's curve and lands with a squash and a puff; then it sits as it will in play
     const drop = Math.min(1, Math.max(0, (e - DROP.from) / (DROP.to - DROP.from)));

@@ -13,13 +13,28 @@ const REQUIRED = ['world', 'loader', 'intro', 'start', 'theme', 'touch', 'stop',
 test('the venue page shares the hub\'s HUD and sheets', () => {
   assert.deepEqual([...ids(venue)].sort(), [...ids(hub)].sort());
   for (const id of REQUIRED) assert.ok(ids(venue).has(id), id);
-  assert.equal(body(venue).replace(/<script type="module" src="[^"]+"><\/script>/, ''), body(hub).replace(/<script type="module" src="[^"]+"><\/script>/, ''), 'the body differs only in its entry script');
+  // The venue's own copy: the opening card's title and the intro dialog (plan 5 Task 5); everything else is the hub's
+  const same = (h) => h.replace(/<script type="module" src="[^"]+"><\/script>/, '').replace(/<dialog id="intro"[\s\S]*?<\/dialog>/, '').replace(/<p class="arrive-title">[^<]*<\/p>/, '');
+  assert.equal(same(body(venue)), same(body(hub)), 'the body differs only in its entry script, its opening title and its intro');
 });
 
-test('the venue page has its own meta, noindex until launch, and the venue entry', () => {
+const intro = (h) => /<dialog id="intro"[\s\S]*?<\/dialog>/.exec(h)[0];
+test('the venue intro is the Lagoon\'s own, with the hub\'s buttons and keys', () => {
+  const v = intro(venue), hb = intro(hub);
+  assert.match(v, /<h1>The Lagoon<\/h1>/);
+  assert.match(v, /tarmac/); assert.match(v, /dirt/); assert.match(v, /hairpin/); assert.match(v, /tyre walls/); assert.match(v, /esses/); assert.match(v, /board/);
+  const ids = (h) => [...h.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(ids(v), ids(hb), 'the same ids (start, intro-race, intro-map), which the runner wires');
+  assert.equal(/<ul class="keys">[\s\S]*?<\/ul>/.exec(v)[0], /<ul class="keys">[\s\S]*?<\/ul>/.exec(hb)[0], 'the same keys');
+  assert.match(venue, /<p class="arrive-title">The Lagoon<\/p>/, 'the opening card names the venue');
+});
+
+test('the venue page has its own meta, is indexed now the Lagoon is on, and the venue entry', () => {
   const h = head(venue);
   assert.match(h, /<title>[^<]*The Lagoon[^<]*<\/title>/);
-  assert.match(h, /<meta name="robots" content="noindex">/);
+  assert.doesNotMatch(h, /name="robots"/, 'no robots noindex');
+  for (const k of ['name="description"', 'property="og:description"', 'name="twitter:description"']) assert.match(h, new RegExp(`<meta ${k} content="[^"]{60,}">`), k);
+  assert.match(h, /<meta property="og:image:alt" content="[^"]*Drive around Strike[^"]*">/, 'the alt describes the hub\'s og.png honestly');
   assert.match(h, /<link rel="canonical" href="https:\/\/strike\.benryan\.com\.au\/ecosystem\/tracks\/lagoon\/">/);
   assert.match(h, /<meta property="og:url" content="https:\/\/strike\.benryan\.com\.au\/ecosystem\/tracks\/lagoon\/">/);
   assert.match(h, /<meta property="og:image:alt" content="[^"]*Lagoon[^"]*">/);

@@ -39,6 +39,7 @@ import { initMonuments, applyMonuments, monumentsTick, monumentValues, onMonumen
 import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer, sendEmote, peerGroup, closePeers, peersConnects } from "./peers.js";
 import { initEmotes, openEmotes, closeEmotes, toggleEmotes, emoteKeydown, showBubble, emoteTick, activeEmotes } from "./emote.js";
 import { loader, paint, wantsArrival, startArrival, startLanding, LAND_S } from "./arrive.js";
+import { arrivalFor } from "./entries.js";
 import { createPost, toGlow } from "./post.js";
 import { initArcade, openArcade, arcadeOpen, injectArcadeBoard } from "./arcade.js";
 import { createFps } from "./fps.js";
@@ -134,11 +135,11 @@ export async function runWorld(entry) {
   if (entry.builders.monuments) initMonuments({ coarse, reduceMotion }); // the live centrepieces (monuments.js): attach to the pads' groups, poll the SLP fills
   if (entry.builders.furniture) buildBollards(scene); // and bollards either side of every road mouth
   if (entry.builders.signs) buildRoadSigns(scene);
-  // Venues (plan 4): the roads off the ring to tracks on their own pages are in the hub's terrain only with ?venues=1
-  // (content.js venuesPreview); each gets its arch. A venue page has one, its road home to the hub (entries.js).
+  // Venues (plan 4; on by default from plan 5 Task 5): the roads off the ring to tracks on their own pages (content.js
+  // VENUES); each gets its arch. A venue page has one, its road home to the hub (entries.js).
   const venueRoadList = entry.builders.portal ? roads.filter((r) => r.kind === "venue") : [];
   // On the hub each venue road also runs into a short belt of trees with its arch in the gap (trees.js, plan 5 amendment 1),
-  // built from the same list, so with no venue roads (VENUES empty, no ?venues=1) there is no tree; a venue rings itself below
+  // built from the same list, so with no venue roads (VENUES empty) there is no tree; a venue rings itself below
   const treeBelts = [];
   venueRoadList.forEach((r) => { buildVenueArch(scene, r.venue, r); if (entry.kind === "hub") treeBelts.push(buildArchTrees(groupFor(scene, r.from), r, pal(), { density: treeDensity(tierName) })); });
   // The portal out (Task 5a): each arch's crossing line, computed once. On the hub an arch leads to its venue's page; on a
@@ -1137,7 +1138,7 @@ export async function runWorld(entry) {
         return li;
       }));
       const h = Object.assign(document.createElement("div"), { className: "map-group-row" });
-      h.append(Object.assign(document.createElement("p"), { className: "map-group", textContent: entry.kind === "venue" ? "Back to the hub" : "Venues" })); // R8: a venue's one entry is the way home
+      h.append(Object.assign(document.createElement("p"), { className: "map-group", textContent: entry.kind === "venue" ? "Back to the World" : "Venues" })); // R8: a venue's one entry is the way home; R22: titled as its arch is signed, the row names Strike HQ
       groups.push(h, ul);
     }
     $("map-groups").replaceChildren(...groups);
@@ -1416,10 +1417,12 @@ export async function runWorld(entry) {
   else if (deepLink.kind === "district") { if (deepLink.key === "hub") placeCar(entry.spawn.x, entry.spawn.z, entry.spawn.heading); else teleportDistrict(deepLink.key); paused = false; }
   else if (deepLink.kind === "stop") { const s = stops().find((x) => x.key === deepLink.key); teleport(s); openStop(s); $("stop").querySelector("[data-close] .br-button-label").textContent = "Start driving"; } // nobody has driven yet; openStop puts "Keep driving" back next time
   // The flight starts under the loader, so the first frame anyone sees is already moving
-  else if (entry.arrival === "flight" && wantsArrival()) {
+  // A venue opened directly flies in from high over the venue (entries.js `flight`), as the hub does over HQ (R10, spec 7.2)
+  else if (arrivalFor(entry, landing) === "flight" && wantsArrival()) {
     const fx = -Math.sin(car.s.heading), fz = -Math.cos(car.s.heading);
+    const over = entry.flight ? { hq: entry.flight.look, start: entry.flight, fog: entry.flight.fog } : { hq: districts().hub.centre };
     arrival = startArrival({
-      camera, scene, sky, car, hq: districts().hub.centre, stepCar,
+      camera, scene, sky, car, ...over, stepCar,
       chase: { pos: camera.position.clone(), look: camLook.clone() },
       settle: () => { placeCamera(0, true); checkPads(); updateWhere(); },
       landed: () => { car.s.squash = 0.32; emitDust(0, { event: { landed: 10 }, fx, fz, dirt: false }); },

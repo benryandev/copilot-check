@@ -2,7 +2,7 @@
 // The venue test uses a tiny fixture track (controller ruling R1); the Lagoon's own test comes with its module (Task 3).
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { hubEntry, venueEntry } from '../ecosystem/js/entries.js';
+import { hubEntry, venueEntry, arrivalFor } from '../ecosystem/js/entries.js';
 
 const BUILDERS = ['districts', 'stops', 'boards', 'monuments', 'yard', 'ridge', 'windsocks', 'blimp', 'furniture', 'signs', 'props', 'bridges', 'raceway', 'portal', 'stands'];
 // A rectangle 80 by 40 whose centre sits at (100, 50), so centring has work to do
@@ -44,7 +44,7 @@ test('venueEntry centres the track, sizes the world and turns the hub builders o
     const g = e.track.at(e.track.len - 14);
     assert.ok(Math.abs(e.spawn.x - g.x) < 1e-9 && Math.abs(e.spawn.z - g.z) < 1e-9, 'spawn on the grid');
     assert.ok(Math.abs(-Math.sin(e.spawn.heading) - g.fx) < 1e-9 && Math.abs(-Math.cos(e.spawn.heading) - g.fz) < 1e-9, 'facing along the track');
-    assert.equal(e.arrival, 'portal'); assert.equal(e.home, '/ecosystem/');
+    assert.equal(e.arrival, 'flight', 'a direct visit plays the opening flight (R10); a waiting record lands instead (arrivalFor)'); assert.equal(e.home, '/ecosystem/');
     assert.deepEqual(e.portal, { to: '/ecosystem/', from: 'tiny' });
     assert.equal(e.multiplayer, true);
   }
@@ -98,7 +98,7 @@ test('venueEntry on the Lagoon: centred, sized under the 320 m ceiling, hub buil
   const cx = pts.reduce((a, p) => a + p[0], 0) / pts.length, cz = pts.reduce((a, p) => a + p[1], 0) / pts.length;
   assert.ok(Math.abs(cx) < 1 && Math.abs(cz) < 1, 'centred');
   assert.deepEqual(e.terrain.districts, {}); assert.equal(e.builders.districts, false); assert.equal(e.builders.raceway, true); assert.equal(e.builders.portal, true);
-  assert.equal(e.arrival, 'portal'); assert.equal(e.home, '/ecosystem/'); assert.deepEqual(e.portal, { to: '/ecosystem/', from: 'lagoon' });
+  assert.equal(e.arrival, 'flight'); assert.equal(e.home, '/ecosystem/'); assert.deepEqual(e.portal, { to: '/ecosystem/', from: 'lagoon' });
   assert.equal(e.track.gates.length, 12); assert.equal(e.track.water.length, 2, 'the inlet and the lake');
   assert.equal(e.carColour, 0x22c55e, 'no sponsor: the hub green');
 });
@@ -113,4 +113,37 @@ test('the car colour: the hub green on the hub, a sponsor\'s colour on its venue
 test('venueEntry refuses a track too big for the room\'s pose bound', () => {
   const huge = tiny({ origin: [0, 0], angle: 0 }); huge.points = [[0, 0], [500, 0], [500, 300], [0, 300]]; huge.start = [250, 0];
   assert.throws(() => venueEntry(huge, { slug: 'huge' }), /320/);
+});
+
+// Ruling R22 (plan 5 Task 5): the home arch on a venue reads "Back to the World"; the venue it leads to is still named Strike HQ,
+// so the where-label reads "Road to Strike HQ" and the Map row names the destination
+test('the road home on a venue: named Strike HQ, its arch signed Back to the World', async () => {
+  const lagoon = (await import('../ecosystem/tracks/lagoon.js')).default;
+  for (const e of [venueEntry(tiny, { slug: 'tiny' }), venueEntry(lagoon, { slug: 'lagoon' })]) {
+    const home = e.terrain.roads.find((r) => r.kind === 'venue').venue;
+    assert.equal(home.name, 'Strike HQ'); assert.equal(home.sign, 'Back to the World'); assert.equal(home.key, 'home');
+  }
+  const src = readFileSync(new URL('../ecosystem/js/build.js', import.meta.url), 'utf8');
+  assert.match(src, /export function buildVenueArch\(scene, venue, road\) \{\s*buildArch\(groupFor\(scene, road\.from\), road, \{ name: venue\.sign \?\? venue\.name,/, 'buildVenueArch paints the sign, else the name');
+  const run = readFileSync(new URL('../ecosystem/js/runner.js', import.meta.url), 'utf8');
+  assert.match(run, /entry\.kind === "venue" \? "Back to the World" : "Venues"/, 'the Map group on a venue');
+  assert.match(run, /r\.kind === "venue" \? `Road to \$\{r\.venue\.name\}`/, 'the where-label names the destination');
+});
+
+// Ruling R10 (plan 4) and spec 7.2: a venue opened directly plays the opening flight as the hub does; a waiting portal record wins
+test('arrivalFor: a waiting portal record lands, otherwise the entry\'s own arrival (the flight, hub and venue alike)', () => {
+  const venue = venueEntry(tiny, { slug: 'tiny' }), hub = hubEntry(), rec = { to: '/ecosystem/tracks/tiny/' };
+  assert.equal(arrivalFor(venue, null), 'flight'); assert.equal(arrivalFor(hub, null), 'flight');
+  assert.equal(arrivalFor(venue, rec), 'portal'); assert.equal(arrivalFor(hub, rec), 'portal');
+  assert.equal(hub.flight, null, 'the hub keeps its own start over the grass east of HQ (arrive.js START)');
+});
+
+test('a venue\'s opening flight starts high over its centre, looking at it, with the fog pushed out to show the whole track', async () => {
+  const lagoon = (await import('../ecosystem/tracks/lagoon.js')).default;
+  const e = venueEntry(lagoon, { slug: 'lagoon' }), f = e.flight;
+  assert.deepEqual(f.look, [0, 0], 'it looks at the venue centre (the track is centred on it)');
+  assert.ok(Math.hypot(...f.at) <= 60, `over the centre (${f.at})`);
+  assert.ok(f.height >= 150, `high (${f.height} m)`);
+  const far = Math.max(...e.track.pts.map(([x, z]) => Math.hypot(x - f.at[0], z - f.at[1])));
+  assert.ok(f.fog.far > Math.hypot(far, f.height) + 20, 'the far side of the track is inside the fog');
 });

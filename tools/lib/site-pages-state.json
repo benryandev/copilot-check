@@ -4,20 +4,20 @@
     "lastmod": "2026-11-05"
   },
   "/ecosystem/": {
-    "hash": "2741f446b6e98a19",
+    "hash": "0403619fad19969d",
     "lastmod": "2026-11-05"
   },
   "/ecosystem/stops/": {
-    "hash": "703c600853c70e19",
-    "lastmod": "2026-11-04"
+    "hash": "6511a8768ba05e34",
+    "lastmod": "2026-11-05"
   },
   "/ecosystem/submit/": {
     "hash": "3a7bf180e3524485",
     "lastmod": "2026-11-02"
   },
   "/ecosystem/guides/": {
-    "hash": "957487f8419fda09",
-    "lastmod": "2026-11-04"
+    "hash": "53ebc216ead0108e",
+    "lastmod": "2026-11-05"
   },
   "/ecosystem/guides/what-is-strike/": {
     "hash": "254130255170cfab",
@@ -38,5 +38,9 @@
   "/ecosystem/guides/your-first-trade/": {
     "hash": "00d16188beabe19e",
     "lastmod": "2026-11-03"
+  },
+  "/ecosystem/tracks/lagoon/": {
+    "hash": "a8d95d02a7909f6d",
+    "lastmod": "2026-11-05"
   }
 }
