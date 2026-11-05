@@ -8,6 +8,7 @@ import { tint } from "./colours.js";
 import { ridgeProfile } from "./ridge-math.js";
 import { KERB, kerbGaps, inGap } from "./furniture-math.js";
 import { surfaceAt } from "./track-math.js";
+import { standSide } from "./stunt-math.js";
 
 export const ROAD_HALF = 3.6;
 // Everything per world below is filled by configureTerrain(cfg), in place: other modules hold these objects from import.
@@ -250,6 +251,25 @@ function placeJump(jump) {
   const rx = -tz / l, rz = tx / l;
   const off = j.side * (r.half - j.width / 2 - 0.2);
   return { ...j, ox: start.x + rx * off, oz: start.z + rz * off, fx: tx / l, fz: tz / l, rx, rz };
+}
+
+// A track ramp whose line meets one of the track's own inlets within STUNT_REACH m of its lip is a stunt ramp (plan 5 Task 2;
+// R5: a lake never counts, and neither does a world's river: `first` is the waters index of the track's first inlet, and
+// channelInfo never answers a lake). It gains `bank`, lip to the far bank along the line, and `standSide`, the side of the
+// track its camera takes (stunt-math.js). A world with no inlet (the hub) returns every ramp as it was.
+const STUNT_REACH = 30, STUNT_STEP = 0.1;
+function waterJump(j, ts, first) {
+  if (waters.length - lakes.length <= first) return j;
+  const lx = j.ox + j.fx * j.length, lz = j.oz + j.fz * j.length;
+  const wet = (u) => { const c = channelInfo(lx + j.fx * u, lz + j.fz * u, waterMaxHalf); return c.body >= first && c.d <= c.half; };
+  let u = 0;
+  while (u <= STUNT_REACH && !wet(u)) u += STUNT_STEP;
+  if (u > STUNT_REACH) return j;
+  while (u < STUNT_REACH + 60 && wet(u)) u += STUNT_STEP;
+  const p = track.at(ts), pts = track.worldPoints;
+  const cx = pts.reduce((a, q) => a + q[0], 0) / pts.length, cz = pts.reduce((a, q) => a + q[1], 0) / pts.length;
+  const outside = (cx - p.x) * p.rx + (cz - p.z) * p.rz >= 0 ? -1 : 1; // away from the centroid, as inletBody reads inside
+  return { ...j, stunt: true, bank: +u.toFixed(1), standSide: standSide(ts, track.stands, track.len, outside) };
 }
 
 /** The jump whose footprint holds the point, or null. */
@@ -775,7 +795,7 @@ export function configureTerrain(cfg) {
   trackRoadS0 = track && trackRoad >= 0 ? track.sOf(roads[trackRoad].pts[0]) : 0;
   // The track's ramps are given in track s; placeJump measures road s from points[0]
   const ramps = track && trackRoad >= 0 ? (track.ramps || []).map(({ s, side, length, height, width }) => ({ road: trackRoad, s: roadS(s), side, length, height, width })) : [];
-  jumps.splice(0, jumps.length, ...[...(cfg.jumps || []), ...ramps].map(placeJump));
+  jumps.splice(0, jumps.length, ...(cfg.jumps || []).map(placeJump), ...ramps.map(placeJump).map((j, i) => waterJump(j, track.ramps[i].s, bodies.length)));
   freeJumpPads.splice(0, freeJumpPads.length, ...jumps.filter((j) => j.road == null).map(freeJumpPad));
   builderSlots.splice(0, builderSlots.length, ...placeBuilderSlots(cfg.stops || []));
   plazas.splice(0, plazas.length, ...Object.values(cfg.districts || {}).filter((d) => d.plaza !== false));

@@ -1,6 +1,7 @@
 // The epic jump's side-on camera, kept free of three.js so it can be tested in node.
 // While the car is in the air off a stunt ramp the camera eases to a fixed point down the river at bank height and
-// watches the car cross; after landing the chase camera eases back.
+// watches the car cross; after landing the chase camera eases back. A venue's lone water jump is watched from the
+// grandstand's side of the track instead (plan 5 Task 2).
 export const STUNT_IN = 0.25; // s to blend in after take-off
 export const STUNT_OUT = 0.6; // s to blend back after landing
 export const STUNT_BACK = 22; // m down the river from the jump line
@@ -13,5 +14,41 @@ export const stuntTakeoff = (wasAir, air, jump, fx, fz) => !wasAir && air && !!j
 export const stuntEase = (k) => k * k * (3 - 2 * k);
 /** Blend 0..1: rises while airborne, falls once landed. */
 export const stuntBlend = (k, dt, airborne) => (airborne ? Math.min(1, k + dt / STUNT_IN) : Math.max(0, k - dt / STUNT_OUT));
-/** Where the camera stands: `at` is the river point under the jump line, `tan` the river's unit tangent there. */
-export const stuntCamera = (at, tan, waterLevel) => ({ x: at.x + tan.tx * STUNT_BACK, y: waterLevel + STUNT_UP, z: at.z + tan.tz * STUNT_BACK });
+/** Where the camera stands: `at` is the river point under the jump line, `tan` the river's unit tangent there.
+ * With `{ side: "stand", fx, fz, rx, rz, back }` (a lone ramp over a track inlet, plan 5 Task 2) it stands low and trackside
+ * instead: `back` m behind `at` along the flight (fx, fz), so level with the lip, STAND_OFF m off the ramp lane toward
+ * (rx, rz), the grandstand's side, and STAND_UP m above the water, looking along the flight toward the far bank. */
+export const STAND_OFF = 12; // m off the ramp lane
+export const STAND_UP = 3; // m above the water
+export const stuntCamera = (at, tan, waterLevel, o) =>
+  o?.side === "stand"
+    ? { x: at.x - o.fx * o.back + o.rx * STAND_OFF, y: waterLevel + STAND_UP, z: at.z - o.fz * o.back + o.rz * STAND_OFF }
+    : { x: at.x + tan.tx * STUNT_BACK, y: waterLevel + STUNT_UP, z: at.z + tan.tz * STUNT_BACK };
+/** The camera's pose for a take-off from stunt ramp `j` (of `all`). The hub's river pair: the point down the river from the
+ * middle of the two lips. A lone ramp with a far bank (terrain.js sets `bank` and `standSide` for a ramp over a track inlet):
+ * the stand-side pose, about the middle of its own flight, lip to far bank. `waterAt` is terrain.js waterInfo. */
+export function stuntPose(j, all, waterAt, waterLevel) {
+  const other = all.find((o) => o.stunt && o !== j);
+  const lipA = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length };
+  if (!other && j.bank > 0) {
+    const h = j.bank / 2, mid = { x: lipA.x + j.fx * h, z: lipA.z + j.fz * h };
+    return stuntCamera(mid, null, waterLevel, { side: "stand", fx: j.fx, fz: j.fz, rx: j.rx * j.standSide, rz: j.rz * j.standSide, back: h });
+  }
+  const lipB = other ? { x: other.ox + other.fx * other.length, z: other.oz + other.fz * other.length } : lipA;
+  const mid = { x: (lipA.x + lipB.x) / 2, z: (lipA.z + lipB.z) / 2 }, ri = waterAt(mid.x, mid.z, 12);
+  return stuntCamera(mid, ri.d < Infinity ? ri : { tx: j.rx, tz: j.rz }, waterLevel);
+}
+/** One frame of the cue, in place on `st` ({ k, on }): a landing (wet, dry or into a ramp's face: the car is not airborne in
+ * any of them) ends it for good, and the blend eases out; a snap (teleport, grid, placeCar) sets it to { k: 0, on: false }. */
+export function stuntStep(st, dt, airborne) {
+  if (!airborne) st.on = false;
+  st.k = stuntBlend(st.k, dt, st.on && airborne);
+  return st;
+}
+/** Which side of the track (+1 its right, −1 its left) the stand camera takes for a ramp at track s: the side of the stand
+ * nearest along the lap (its `off` sign), or `outside` when the track has none. */
+export function standSide(s, stands, len, outside) {
+  let best = null, bd = Infinity;
+  for (const st of stands || []) { const d = Math.abs(st.s - s) % len, w = Math.min(d, len - d); if (w < bd) { bd = w; best = st; } }
+  return best ? Math.sign(best.off) || outside : outside;
+}

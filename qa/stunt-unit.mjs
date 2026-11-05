@@ -93,3 +93,94 @@ test('the blend is eased, so the camera starts and stops gently', () => {
   assert.equal(stuntEase(0), 0); assert.equal(stuntEase(1), 1); assert.equal(stuntEase(0.5), 0.5);
   assert.ok(stuntEase(0.1) < 0.05 && stuntEase(0.9) > 0.95, 'flat at both ends');
 });
+
+// ── Plan 5 Task 2: the Lagoon's water jump, seen from the grandstand's side ──────────────────────────────────────────
+import * as T from '../ecosystem/js/terrain.js';
+import { stuntPose, stuntStep, standSide, STAND_OFF, STAND_UP } from '../ecosystem/js/stunt-math.js';
+import { venueEntry } from '../ecosystem/js/entries.js';
+import lagoon from '../ecosystem/tracks/lagoon.js';
+import { loadStepCar } from '../tools/lapsim/car-node.mjs';
+const hubCfg = T.terrainConfig();
+const lagoonCfg = () => venueEntry(lagoon, { slug: 'lagoon' }).terrain;
+
+test('the hub\'s river cue is unchanged byte for byte for both river ramps (values from 5909425)', () => {
+  const [a, b] = stunt();
+  for (const j of [a, b]) {
+    const c = stuntPose(j, jumps, riverInfo, T.WATER_LEVEL);
+    assert.deepEqual(Object.keys(c), ['x', 'y', 'z']);
+    assert.ok(Object.is(c.x, -97.63129696011403) && Object.is(c.y, 3.94) && Object.is(c.z, 39.83753704255366), JSON.stringify(c));
+  }
+  assert.deepEqual(stuntCamera({ x: -100, z: 18 }, { tx: 0, tz: 1 }, -0.06), stuntCamera({ x: -100, z: 18 }, { tx: 0, tz: 1 }, -0.06, undefined), 'no options: the river pose');
+});
+
+test('standSide: the stand nearest the ramp along the lap gives the side by its off sign; no stands falls back to the outside', () => {
+  assert.equal(standSide(217.5, [{ s: 259, off: 16 }, { s: 0, off: 16 }], 844.5, -1), 1);
+  assert.equal(standSide(217.5, [{ s: 259, off: 16 }, { s: 200, off: -16 }], 844.5, 1), -1, 'the nearer stand wins');
+  assert.equal(standSide(10, [{ s: 830, off: -16 }, { s: 120, off: 16 }], 844.5, 1), -1, 'distance wraps the line');
+  assert.equal(standSide(10, [], 844.5, -1), -1); assert.equal(standSide(10, undefined, 844.5, 1), 1);
+});
+
+test('the Lagoon\'s stand-side pose: on the stand\'s side, 12 m off the ramp lane, below 4 m, looking along the flight', () => {
+  T.configureTerrain(lagoonCfg());
+  try {
+    assert.equal(STAND_OFF, 12); assert.equal(STAND_UP, 3);
+    const j = T.jumps.find((o) => o.stunt), l = lip(j), trk = T.trackDef();
+    const c = stuntPose(j, T.jumps, T.riverInfo, T.WATER_LEVEL);
+    const lat = (p) => (p.x - l.x) * j.rx + (p.z - l.z) * j.rz, fwd = (p) => (p.x - l.x) * j.fx + (p.z - l.z) * j.fz;
+    const st = trk.stands.find((s) => s.s === 259), sp = trk.at(st.s), stand = { x: sp.x + sp.rx * st.off, z: sp.z + sp.rz * st.off };
+    assert.ok(lat(stand) > 0 && Math.abs(lat(c) - 12) < 1e-9, `the jump stand at ${lat(stand).toFixed(1)} m, the camera at ${lat(c).toFixed(2)} m: same side, 12 m off the lane`);
+    assert.ok(Math.abs(fwd(c)) < 1e-9, `level with the lip (${fwd(c)})`);
+    assert.ok(c.y - T.WATER_LEVEL < 4 && Math.abs(c.y - T.WATER_LEVEL - 3) < 1e-9, `3 m up (${c.y})`);
+    assert.ok(c.y > T.groundHeight(c.x, c.z) + 1.5, 'clear of the ground under it');
+    const far = { x: l.x + j.fx * j.bank, z: l.z + j.fz * j.bank }, mid = { x: l.x + j.fx * j.bank / 2, z: l.z + j.fz * j.bank / 2 };
+    const look = (p) => { const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz); return (dx * j.fx + dz * j.fz) / d; };
+    assert.ok(look(far) > 0.8, `the far bank is ahead of the camera along the flight (cos ${look(far).toFixed(2)})`);
+    assert.ok(look(mid) > 0.5, `so is the middle of the flight (cos ${look(mid).toFixed(2)})`);
+    assert.equal(T.onWater(far.x - j.fx * 0.5, far.z - j.fz * 0.5), true, 'bank is where the water ends'); assert.equal(T.onWater(far.x + j.fx * 0.5, far.z + j.fz * 0.5), false);
+  } finally { T.configureTerrain(hubCfg); }
+});
+
+test('stuntStep hands the camera back on any landing and never comes back after a snap', () => {
+  const st = { k: 0, on: true };
+  for (let i = 0; i < 15; i++) stuntStep(st, 1 / 60, true);
+  assert.ok(Math.abs(st.k - 1) < 1e-9 && st.on, 'in after 0.25 s of air');
+  stuntStep(st, 1 / 60, false); // down: on the bank, in the inlet or into the ramp face (the car is not airborne in any of them)
+  assert.equal(st.on, false, 'a landing ends it');
+  for (let i = 0; i < 35; i++) stuntStep(st, 1 / 60, true); // a bounce back into the air does not bring it back
+  assert.ok(Math.abs(st.k) < 1e-9 && !st.on, `fully back 0.6 s after the landing (${st.k})`);
+  const snap = { k: 0.7, on: true };
+  Object.assign(snap, { k: 0, on: false }); // placeCamera(dt, true): a teleport mid-flight
+  for (let i = 0; i < 30; i++) stuntStep(snap, 1 / 60, true); // still airborne after the teleport
+  assert.equal(snap.k, 0, 'a cancelled jump stays cancelled');
+});
+
+test('the Lagoon: a coasting take-off lands in the inlet, and the stand camera hands back on that wet landing; flat out clears it', async () => {
+  const { stepCar, colliders } = await loadStepCar();
+  T.configureTerrain(lagoonCfg());
+  try {
+    colliders.length = 0;
+    const j = T.jumps.find((o) => o.stunt), DT = 1 / 60;
+    const ride = (v, keys) => { // from 20 m before the ramp's foot, at v m/s, on the ramp's line
+      const x = j.ox - j.fx * 20, z = j.oz - j.fz * 20;
+      const s = { x, y: T.groundHeight(x, z), z, heading: Math.atan2(-j.fx, -j.fz), speed: v, steer: 0, vy: 0, air: false, squash: 0, pitch: 0, roll: 0, airTime: 0, boost: 0, airHit: false };
+      const car = { s, group: { position: { set() {} }, rotation: {} }, tilt: { rotation: {}, scale: { set() {} } }, wheels: [] };
+      const cam = { k: 0, on: false }; let took = false, land = null, wet = false;
+      for (let i = 0; i < 360 && !land; i++) {
+        const wasAir = s.air, px = s.x, pz = s.z;
+        stepCar(car, keys, DT);
+        const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading), r = T.jumpAt(px, pz) || T.jumpAt(px - fx, pz - fz);
+        if (stuntTakeoff(wasAir, s.air, r, fx, fz)) { took = true; cam.on = true; }
+        if (cam.on || cam.k > 0) stuntStep(cam, DT, s.air);
+        if (took && !s.air) { land = { x: s.x, z: s.z }; wet = T.onWater(s.x, s.z); }
+      }
+      let back = 0; while (cam.k > 0 && back < 120) { stuntStep(cam, DT, s.air); back++; }
+      return { took, land, wet, back, cam };
+    };
+    const slow = ride(22, {});
+    assert.ok(slow.took && slow.land && slow.wet, `coasting from 22 m/s takes off and lands in the inlet (${JSON.stringify(slow)})`);
+    assert.ok(!slow.cam.on && slow.cam.k === 0 && slow.back <= 37, `and the camera is back within 0.6 s (${slow.back} frames)`);
+    const fast = ride(14, { up: true });
+    assert.ok(fast.took && fast.land && !fast.wet, `flat out on the tarmac run-up clears the inlet (${JSON.stringify(fast)})`);
+    assert.ok(!fast.cam.on && fast.cam.k === 0 && fast.back <= 37, 'and hands back the same way on the far bank');
+  } finally { T.configureTerrain(hubCfg); }
+});
