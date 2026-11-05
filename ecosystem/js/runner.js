@@ -221,6 +221,7 @@ export async function runWorld(entry) {
     root.classList.toggle("light", !dark);
     $("theme").textContent = dark ? "Light" : "Dark";
     $("theme").setAttribute("aria-label", `Switch to ${dark ? "light" : "dark"} theme`);
+    document.querySelectorAll("[data-scheme]").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.scheme === "dark") === dark))); // a venue's Map theme row (phones)
     scene.background = new THREE.Color(p.sky);
     scene.fog = new THREE.Fog(p.sky, 90, 240);
     hemi.intensity = dark ? 0.55 : 1.1;
@@ -236,6 +237,14 @@ export async function runWorld(entry) {
     try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch {}
     applyTheme();
   });
+  // A venue's Map sheet carries a Theme row for phones, where the timer panel always hides the HUD's theme chip (the hub has none)
+  document.querySelectorAll("[data-scheme]").forEach((b) =>
+    b.addEventListener("click", () => {
+      dark = b.dataset.scheme === "dark";
+      try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch {}
+      applyTheme();
+    }),
+  );
 
   // ── Input ─────────────────────────────────────────────────────────────
   const keys = { up: false, down: false, left: false, right: false };
@@ -1078,7 +1087,7 @@ export async function runWorld(entry) {
   });
 
   // A venue's own Map rows (R31): its name with Go to start, then its lap record (the board's best, else the device's). The
-  // hub's Strike figures are not shown on a venue, and the venue's name-only cards keep their button beside them on a phone.
+  // hub's Strike figures are not shown on a venue. Its cards stand alone, with no button beside them to keep on a phone's row.
   function venueMapRows() {
     const h = Object.assign(document.createElement("div"), { className: "map-group-row" });
     h.append(Object.assign(document.createElement("p"), { className: "map-group", textContent: trackDef().name }));
@@ -1087,7 +1096,7 @@ export async function runWorld(entry) {
     start.addEventListener("click", () => teleportDistrict("raceway"));
     h.append(start);
     const ul = Object.assign(document.createElement("ul"), { className: "map-list" });
-    const li = Object.assign(document.createElement("li"), { className: "map-item map-item--row" });
+    const li = Object.assign(document.createElement("li"), { className: "map-item" });
     const card = Object.assign(document.createElement("button"), { type: "button", className: "map-go", id: "map-venue-record" });
     card.addEventListener("click", () => teleportDistrict("raceway"));
     fillVenueRecord(card);
@@ -1097,7 +1106,7 @@ export async function runWorld(entry) {
   }
   function fillVenueRecord(card) {
     const r = venueRecord(raceBoard(), deviceBest(), formatTime);
-    card.setAttribute("aria-label", `${r.title}, ${r.text}. Go to the start line.`);
+    card.setAttribute("aria-label", `${r.title}, ${r.text.replace(/\.$/, "")}. Go to the start line.`); // the invitation ends in its own full stop
     card.replaceChildren(Object.assign(document.createElement("strong"), { textContent: r.title }), Object.assign(document.createElement("span"), { textContent: r.text }));
   }
   function openMap() {
@@ -1151,20 +1160,24 @@ export async function runWorld(entry) {
       return [h, ul, top];
     }));
     // Venues, after the districts: each a "Drive in" that hands over to the venue's page (the portal flight from Task 5
-    // when the entry has one, else a plain page load)
+    // when the entry has one, else a plain page load). On a venue the way home is one card and no button beside it: the
+    // card and a "Drive in" side by side read as two controls for one place (the blind read, 6 Nov 2026)
     if (venueRoadList.length) {
       const ul = Object.assign(document.createElement("ul"), { className: "map-list" });
       ul.append(...venueRoadList.map(({ venue }) => {
-        const li = Object.assign(document.createElement("li"), { className: entry.kind === "venue" ? "map-item map-item--row" : "map-item" });
+        const li = Object.assign(document.createElement("li"), { className: "map-item" });
         const drive = () => (entry.portalGo ? entry.portalGo(venue) : location.assign(venue.url));
         const name = Object.assign(document.createElement("button"), { type: "button", className: "map-go" }); // the card does what its button does
-        name.setAttribute("aria-label", `Go to ${venue.name}`);
+        name.setAttribute("aria-label", entry.kind === "venue" ? `Drive in to ${venue.name}` : `Go to ${venue.name}`);
         name.append(Object.assign(document.createElement("strong"), { textContent: venue.name }));
         name.addEventListener("click", drive);
-        const go = Object.assign(document.createElement("button"), { type: "button", className: "map-read", textContent: "Drive in" });
-        go.setAttribute("aria-label", `Drive in to ${venue.name}`);
-        go.addEventListener("click", drive);
-        li.append(name, go);
+        li.append(name);
+        if (entry.kind !== "venue") {
+          const go = Object.assign(document.createElement("button"), { type: "button", className: "map-read", textContent: "Drive in" });
+          go.setAttribute("aria-label", `Drive in to ${venue.name}`);
+          go.addEventListener("click", drive);
+          li.append(go);
+        }
         return li;
       }));
       const h = Object.assign(document.createElement("div"), { className: "map-group-row" });

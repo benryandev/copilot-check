@@ -16,8 +16,26 @@ test('the venue page shares the hub\'s HUD and sheets', () => {
   // The venue's own copy: the opening card's title and the intro dialog (plan 5 Task 5); everything else is the hub's
   // R31 and R32 (fix wave G, H): the Map sheet's lede and the footer are the venue's too
   const same = (h) => h.replace(/<script type="module" src="[^"]+"><\/script>/, '').replace(/<dialog id="intro"[\s\S]*?<\/dialog>/, '').replace(/<p class="arrive-title">[^<]*<\/p>/, '')
-    .replace(/<footer class="hud hud-foot">[\s\S]*?<\/footer>/, '').replace(/(<dialog id="map"[\s\S]*?<h2 id="map-title">Where to\?<\/h2>\s*)<p class="muted">[^<]*<\/p>/, '$1');
-  assert.equal(same(body(venue)), same(body(hub)), 'the body differs only in its entry script, its opening title, its intro, its Map lede and its footer');
+    .replace(/<footer class="hud hud-foot">[\s\S]*?<\/footer>/, '').replace(/(<dialog id="map"[\s\S]*?<h2 id="map-title">Where to\?<\/h2>\s*)<p class="muted">[^<]*<\/p>/, '$1')
+    .replace(/\s*<fieldset class="quality map-theme">[\s\S]*?<\/fieldset>/, '');
+  assert.equal(same(body(venue)), same(body(hub)), 'the body differs only in its entry script, its opening title, its intro, its Map lede, its Map theme row and its footer');
+});
+
+// The blind read (6 Nov 2026): a phone on a venue had no theme control, because the timer panel hides the HUD's theme
+// chip at 600 px and under and a venue's timer panel never leaves. The venue's Map sheet carries a Theme row there.
+test('the venue Map has a Theme row for phones (Light, Dark), shown only while the timer panel hides the HUD chip; the hub has none', () => {
+  const row = /<fieldset class="quality map-theme">\s*<legend>Theme<\/legend>\s*<button type="button" class="chip" data-scheme="light">Light<\/button>\s*<button type="button" class="chip" data-scheme="dark">Dark<\/button>\s*<\/fieldset>/;
+  assert.match(venue, row);
+  const map = /<dialog id="map"[\s\S]*?<\/dialog>/.exec(venue)[0];
+  assert.ok(map.indexOf('data-music="off"') < map.indexOf('map-theme') && map.indexOf('map-theme') < map.indexOf('Keep driving'), 'in the Map sheet, after Music, before Keep driving');
+  assert.doesNotMatch(hub, /map-theme|data-scheme/);
+  const css = readFileSync('ecosystem/ecosystem.css', 'utf8');
+  assert.match(css, /\n\.map-theme \{ display: none; \}/);
+  const phone = css.slice(css.indexOf('@media (max-width: 600px) {', css.indexOf('/* Phones (portrait')));
+  assert.match(phone.slice(0, phone.indexOf('\n}')), /body:has\(#race-hud:not\(\[hidden\]\)\) :is\(#theme, #sound-chip\) \{ display: none; \}[^\n]*\n\s*body:has\(#race-hud:not\(\[hidden\]\)\) \.map-theme \{ display: flex; \}/);
+  const src = readFileSync('ecosystem/js/runner.js', 'utf8');
+  assert.match(src, /querySelectorAll\("\[data-scheme\]"\)\.forEach\(\(b\) => b\.setAttribute\("aria-pressed", String\(\(b\.dataset\.scheme === "dark"\) === dark\)\)\)/, 'applyTheme marks the chosen one');
+  assert.match(src, /dark = b\.dataset\.scheme === "dark";\n\s*try \{ localStorage\.setItem\("theme", dark \? "dark" : "light"\); \} catch \{\}\n\s*applyTheme\(\);/, 'a click sets, saves and applies it');
 });
 
 const foot = (h) => /<footer class="hud hud-foot">[\s\S]*?<\/footer>/.exec(h)[0];

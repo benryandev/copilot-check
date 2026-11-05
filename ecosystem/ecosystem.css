@@ -469,6 +469,7 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
   color: var(--text-secondary);
 }
 .quality button { min-height: 44px; }
+.map-theme { display: none; } /* a venue's Map theme row: phones with the timer panel up only (below) */
 .quality button[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-page); border-color: var(--text-primary); }
 .chip-sound { min-width: 44px; justify-content: center; } /* the short "♪" label alone is narrower than a tap target */
 @media (max-width: 400px) { .chip-sound { display: none; } } /* the smallest phones: four chips do not fit beside the title; mute lives in Map view too */
@@ -486,12 +487,6 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
   .map-item { flex-direction: column; }
   .map-read { align-self: flex-end; }
   .map-item + .map-item { margin-top: var(--space-xs); }
-}
-/* A venue's name-only cards (its lap record, Back to the World) keep the button beside them on a phone: under a card with no
-   description it sat alone on a row of its own (R31, the venue only; runner.js venueMapRows) */
-@media (max-width: 480px) {
-  .map-item--row { flex-direction: row; }
-  .map-item--row .map-read { align-self: center; }
 }
 
 /* ── Open prompt: one panel, district-coloured edge, Enter keycap ──── */
@@ -632,7 +627,8 @@ html.is-portal.dark:has(#world), html.is-portal.dark:has(#world) body, html.is-p
   .race-time { font-size: 1.25rem; line-height: 1.15; }
   .race-sub { font-size: 0.65rem; }
   .race-result { font-size: 2rem !important; }
-  body:has(#race-hud:not([hidden])) :is(#theme, #sound-chip) { display: none; } /* the timer panel needs the room; both live in Map view too */
+  body:has(#race-hud:not([hidden])) :is(#theme, #sound-chip) { display: none; } /* the timer panel needs the room; sound lives in Map view too */
+  body:has(#race-hud:not([hidden])) .map-theme { display: flex; } /* and so does the theme on a venue, whose timer panel never leaves (the hub's page has no .map-theme) */
 }
 
 /* ── Live races ─────────────────────────────────────────────────────── */

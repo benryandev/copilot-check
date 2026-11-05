@@ -38,8 +38,10 @@ test('the runner: a venue\'s Map leads with its rows, drops the Strike figures, 
   assert.match(src, /if \(\$\("map"\)\.open && entry\.kind !== "venue"\) fillStats\(\$\("map-live"\)/, 'the live refresh skips a venue');
   assert.match(src, /venueRecord\(raceBoard\(\), deviceBest\(\), formatTime\)/);
   assert.match(src, /textContent: "Go to start" \}\);\n\s*start\.setAttribute\("aria-label", "Go to the start line"\);\n\s*start\.addEventListener\("click", \(\) => teleportDistrict\("raceway"\)\);/);
-  assert.match(src, /className: entry\.kind === "venue" \? "map-item map-item--row" : "map-item"/, 'the hub keeps its rows as they were');
+  // The way home on a venue is one card, no Drive in beside it (the blind read, 6 Nov 2026); the hub keeps the card and its button
+  assert.match(src, /name\.setAttribute\("aria-label", entry\.kind === "venue" \? `Drive in to \$\{venue\.name\}` : `Go to \$\{venue\.name\}`\);/);
+  assert.match(src, /li\.append\(name\);\n\s*if \(entry\.kind !== "venue"\) \{\n\s*const go = Object\.assign\(document\.createElement\("button"\), \{ type: "button", className: "map-read", textContent: "Drive in" \}\);\n\s*go\.setAttribute\("aria-label", `Drive in to \$\{venue\.name\}`\);\n\s*go\.addEventListener\("click", drive\);\n\s*li\.append\(go\);/, 'the hub keeps its Drive in');
   assert.match(src, /const rec = \$\("map-venue-record"\);\n\s*if \(rec\) fillVenueRecord\(rec\);/, 'the record follows the board');
   const css = readFileSync('ecosystem/ecosystem.css', 'utf8');
-  assert.match(css, /@media \(max-width: 480px\) \{\n\s*\.map-item--row \{ flex-direction: row; \}\n\s*\.map-item--row \.map-read \{ align-self: center; \}\n\}/, 'DRIVE IN stays beside its card at 375');
+  assert.doesNotMatch(css + src, /map-item--row/, 'no card on a venue has a button beside it any more, so the phone row rule is gone');
 });
