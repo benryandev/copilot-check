@@ -50,6 +50,20 @@ test('a ramp near only a lake, or near no water, is not a stunt ramp', () => {
     assert.ok(!T.jumps[0].stunt, 'no water, no stunt');
   } finally { T.configureTerrain(hub); }
 });
+test('a lake on the ramp line never counts, even with an inlet elsewhere on the track; with both on the line, bank is the inlet only', () => {
+  try {
+    const t = withWater([]), at = (s) => { const p = t.at(s); return [p.x, p.z]; };
+    withWater([{ kind: 'lake', centre: at(50), rx: 12, ry: 12, depth: 1.2 }, { s: 150, halfW: 5 }]); // lake from the lip on; the inlet 112 m on
+    assert.equal(T.jumps.length, 1);
+    const q = t.at(44); assert.equal(T.onWater(q.x, q.z), true, 'sanity: the lake is on the line');
+    assert.ok(T.waters.some((w) => w.kind !== 'lake'), 'sanity: the track has an inlet, so the march runs');
+    assert.ok(!T.jumps[0].stunt, 'the lake on the line does not make a stunt ramp');
+    withWater([{ s: 43.5, halfW: 5 }, { kind: 'lake', centre: at(58), rx: 10, ry: 10, depth: 1.2 }]); // the inlet s 38.5 to 48.5, the lake s 48 to 68
+    const r = t.at(55); assert.equal(T.onWater(r.x, r.z), true, 'sanity: the lake carries on past the inlet\'s far bank');
+    assert.equal(T.jumps[0].stunt, true);
+    assert.ok(T.jumps[0].bank > 10 && T.jumps[0].bank < 11.5, `bank ${T.jumps[0].bank} m: the inlet's far bank, not the lake's`);
+  } finally { T.configureTerrain(hub); }
+});
 test('the Lagoon\'s ramp is a stunt ramp from its inlet channel; the hub keeps exactly its two river ramps', async () => {
   const { venueEntry } = await import('../ecosystem/js/entries.js');
   const { default: lagoon } = await import('../ecosystem/tracks/lagoon.js');
