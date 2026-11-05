@@ -30,7 +30,7 @@ export async function generate() {
     const res = existsSync(rf) ? JSON.parse(readFileSync(rf, "utf8")) : null;
     const floorMs = res?.floorMs ?? def.floorMs;
     const limits = res?.limits ?? def.limits;
-    const entry = { checkpoints: [...t.checkpoints], length: Math.floor(t.len) };
+    const entry = { name: def.name, checkpoints: [...t.checkpoints], length: Math.floor(t.len) };
     if (floorMs != null) entry.minMs = Math.round(0.97 * floorMs);
     if (limits?.maxSpeed != null) entry.maxSpeed = limits.maxSpeed;
     if (limits?.segMaxSpeed != null) entry.segMaxSpeed = limits.segMaxSpeed;
