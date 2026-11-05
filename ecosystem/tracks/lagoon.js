@@ -20,7 +20,7 @@ export default {
   // 11 gates in lap order. The third sits 10 m past the inlet's far bank (water s 227.5 + halfW 9.5 + 10 = 247),
   // so its shift is 19.5.
   gates: [
-    { at: [105, -88] }, { at: [119, -85] }, { at: [126, -30], shift: 19.5 }, { at: [85, 97] }, { at: [25, 77] },
+    { at: [105, -88] }, { at: [126, -55] }, { at: [126, -30], shift: 19.5 }, { at: [85, 97] }, { at: [25, 77] },
     { at: [-25, 77] }, { at: [-85, 97] }, { at: [-133, 55] }, { at: [-145, 20] }, { at: [-150, -20] }, { at: [-140, -48] },
   ],
   // Low end at water s − 18 (halfW 9.5 + RAMP.length 8 + LIP_SETBACK 0.5, jump-math.js): the lip sits on the near bank
@@ -37,6 +37,6 @@ export default {
     { s: 241.5, off: 16, len: 40 }, // outside the water jump, facing the landing (water s 227.5 + 14)
     { s: 0, off: 16, len: 90 }, // along the start straight, centred on the line ([-40, -60])
   ],
-  floorMs: 29598,
-  limits: { maxSpeed: 30.8, segMaxSpeed: 35.5 },
+  floorMs: 29469,
+  limits: { maxSpeed: 30.9, segMaxSpeed: 35.6 },
 };

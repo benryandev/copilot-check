@@ -15,6 +15,9 @@ test('the Lagoon resolves: 11 gates in order, lap about 780 m, start on the stra
   assert.equal(t.gates.length - 1, 11, 'eleven gates after the start line'); assert.equal(t.checkpoints.length, 11);
   assert.ok(t.len > 740 && t.len < 860, t.len);
   assert.ok(t.gates.every((g, i) => i === 0 || g.s > t.gates[i - 1].s), 'gates in lap order');
+  // no sector short enough for a cut to inflate its centreline speed (the worker's segMaxSpeed reads it): 29.9 m at the least
+  const gaps = t.gates.map((g, i) => (t.gates[(i + 1) % t.gates.length].s - g.s + t.len) % t.len);
+  assert.ok(Math.min(...gaps) > 29.5, `shortest sector ${Math.min(...gaps)}`);
   const tarmac = t.surface[0]; assert.equal(tarmac.kind, 'tarmac');
   const share = wrapLen(tarmac.from, tarmac.to, t.len) / t.len; // the stretch crosses the line
   assert.ok(share > 0.3 && share < 0.42, `tarmac share ${share}`);
@@ -23,7 +26,7 @@ test('the Lagoon resolves: 11 gates in order, lap about 780 m, start on the stra
   assert.ok(t.gates.some((g) => g.s > w.s + w.halfW + 8 && g.s < w.s + w.halfW + 14), 'first gate after the water sits about 10 m past the far bank');
   assert.deepEqual(lagoon.lifts, []);
   // the floor and limits are the optimiser's (tools/lapsim/results/lagoon.json, plan 5 task 3)
-  assert.equal(lagoon.floorMs, 29598); assert.deepEqual(lagoon.limits, { maxSpeed: 30.8, segMaxSpeed: 35.5 });
+  assert.equal(lagoon.floorMs, 29469); assert.deepEqual(lagoon.limits, { maxSpeed: 30.9, segMaxSpeed: 35.6 });
 });
 
 test('every written s is the named point\'s s on the resolved track (to 0.5 m)', () => {

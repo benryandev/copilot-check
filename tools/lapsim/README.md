@@ -69,10 +69,11 @@ floor line (108 control points at 6 m). `qa/lapsim-unit.mjs` pins them: the repl
 line within 40 ms of 22.914, the centreline flat out is 26.725 s, the three ramps are worth about 1.5 s, and the cut ratio is 87%.
 If a pin moves, `car.js`, the terrain or the wall maths changed.
 
-`qa/fixtures/lapsim/line-lagoon-29598.json` is the Lagoon's floor line (141 control points at 6 m, with its throttle): the
-optimiser from the centreline, rng 11, 4000 iterations, on the layout of plan 5. The pins: it replays within 50 ms of 29.598
-with no wall hits, it lifts below 27 m/s for Turn 1, it lands the jump dry, and the inlet's straight approach lands wet at
-85% of tarmac top and dry at 92% at 1/60 and 1/30. Other seeds land within 0.13 s of it (rng 7: 29.469).
+`qa/fixtures/lapsim/line-lagoon-29469.json` is the Lagoon's floor line (141 control points at 6 m, with its throttle): the
+best clean lap of three optimiser runs from the centreline at 4000 iterations on the layout of plan 5 (rng 7 29.469, rng 11
+29.598, rng 3 30.046; the floor is the best lap found). The pins: it replays within 50 ms of 29.469 with no wall hits, it lifts
+below 27 m/s for Turn 1, it lands the jump dry, and the inlet's straight approach lands wet at 85% of tarmac top and dry at 92%
+at 1/60 and 1/30.
 
 ## Fragility worth knowing
 

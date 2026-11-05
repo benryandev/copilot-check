@@ -72,7 +72,7 @@ test('trackForCli configures a venue from its track module, and realfi stays the
 });
 
 // The Lagoon (plan 5 task 3): its floor line, Turn 1's lift, the water jump. Each test configures the venue and restores the hub.
-const lagoonLine = JSON.parse(readFileSync('qa/fixtures/lapsim/line-lagoon-29598.json', 'utf8'));
+const lagoonLine = JSON.parse(readFileSync('qa/fixtures/lapsim/line-lagoon-29469.json', 'utf8'));
 async function lagoonSim() {
   const { trackForCli } = await import('../tools/lapsim/sim.mjs');
   const T = await import('../ecosystem/js/terrain.js');

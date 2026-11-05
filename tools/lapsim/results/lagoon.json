@@ -1,9 +1,9 @@
 {
   "track": "lagoon",
-  "floorMs": 29598,
+  "floorMs": 29469,
   "limits": {
-    "maxSpeed": 30.8,
-    "segMaxSpeed": 35.5
+    "maxSpeed": 30.9,
+    "segMaxSpeed": 35.6
   },
   "physics": {
     "dirt": {
