@@ -19,6 +19,7 @@ const b = JSON.parse(readFileSync(a.line, "utf8"));
 const fmt = (ms) => `${Math.floor(ms / 60000)}:${((ms % 60000) / 1000).toFixed(3).padStart(6, "0")}`;
 const path = cleared.pathFrom(b.ctrl, b.DS), thrFn = b.thr ? cleared.throttleFrom(b.thr, b.DS) : undefined; // no thr: full throttle
 const DT = 1 / Number(a.dt);
+if (a.write && a.dt !== "60") { console.error("--write records the floor at 1/60 (the floor's convention); drop --dt or --write"); process.exit(2); }
 const r = cleared.runLap(path, { look: b.look, log: true, thrFn, dt: DT });
 if (!r.valid) { console.error(`${a.line}: no valid lap (${r.reason})`); process.exit(1); }
 console.log(`${a.line}: ${fmt(r.ms)} at 1/${a.dt} (stored ${b.ms}), wall hits ${r.wallHits}${r.wallHits ? " (NOT CLEAN)" : ""}`);
@@ -49,7 +50,7 @@ const show = (q) => (q.valid ? fmt(q.ms) : "X " + q.reason);
   console.log("  sector  from-to     ms   cl m/s  min  max");
   seg(splits).forEach((ms, i) => {
     const rows = P.filter((p) => p[1] >= starts[i] && p[1] < ends[i]), v = rows.map((p) => p[3]);
-    console.log(`  ${String(i + 1).padStart(6)}  ${String(starts[i]).padStart(3)}-${String(ends[i]).padEnd(3)}  ${String(ms).padStart(5)}  ${((ends[i] - starts[i]) / (ms / 1000)).toFixed(1).padStart(6)}  ${Math.min(...v).toFixed(1)}  ${Math.max(...v).toFixed(1)}`);
+    console.log(`  ${String(i + 1).padStart(6)}  ${String(starts[i]).padStart(3)}-${String(Math.round(ends[i])).padEnd(3)}  ${String(ms).padStart(5)}  ${((ends[i] - starts[i]) / (ms / 1000)).toFixed(1).padStart(6)}  ${Math.min(...v).toFixed(1)}  ${Math.max(...v).toFixed(1)}`);
   });
 }
 for (const look of [7, 8, 9, 10, 11]) process.stdout.write(`  look ${look}: ${show(cleared.runLap(path, { look, thrFn }))}  `); console.log();

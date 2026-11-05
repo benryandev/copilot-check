@@ -167,20 +167,22 @@ export async function makeSim({ track = trackDef(), props = "cleared", physics =
     const sStart = ramp.s - back, p0 = track.at(sStart);
     const car = fakeCar({ x: p0.x, y: 0, z: p0.z, heading: Math.atan2(-p0.fx, -p0.fz), speed, steer: 0, vy: 0, air: false, squash: 0, pitch: 0, roll: 0, airTime: 0, boost: 0, airHit: false });
     const S = car.s, lip = track.at(lipS);
-    colliders.length = 0; // a check of the flight alone: the walls play no part on a straight approach
-    let takeoff = null;
-    for (let t = 0, hint = Math.round(sStart / STEP); t < 6; t += dt) {
-      const pr = project(S.x, S.z, hint); hint = pr.i;
-      const tp = track.at(pr.s + 9), dx = tp.x - S.x, dz = tp.z - S.z, L = Math.hypot(dx, dz);
-      const err = wrap(Math.atan2(-dx, -dz) - S.heading), steer = Math.max(-1, Math.min(1, 2 * Math.max(S.speed, 1) * Math.sin(err) / Math.max(L, 1) / 2.2));
-      const info = stepCar(car, { up: true, steer }, dt, P);
-      if (!takeoff && S.air) takeoff = S.speed;
-      if (info.event?.landed !== undefined && takeoff) {
-        const past = (S.x - lip.x) * lip.fx + (S.z - lip.z) * lip.fz;
-        return { speed, dt, takeoff: +takeoff.toFixed(2), past: +past.toFixed(2), wet: onWater(S.x, S.z), boost: (info.event.boost ?? 0) > 0 };
+    const walls = colliders.splice(0); // a check of the flight alone: no walls on the straight approach; put back after
+    try {
+      let takeoff = null;
+      for (let t = 0, hint = Math.round(sStart / STEP); t < 6; t += dt) {
+        const pr = project(S.x, S.z, hint); hint = pr.i;
+        const tp = track.at(pr.s + 9), dx = tp.x - S.x, dz = tp.z - S.z, L = Math.hypot(dx, dz);
+        const err = wrap(Math.atan2(-dx, -dz) - S.heading), steer = Math.max(-1, Math.min(1, 2 * Math.max(S.speed, 1) * Math.sin(err) / Math.max(L, 1) / 2.2));
+        const info = stepCar(car, { up: true, steer }, dt, P);
+        if (!takeoff && S.air) takeoff = S.speed;
+        if (info.event?.landed !== undefined && takeoff) {
+          const past = (S.x - lip.x) * lip.fx + (S.z - lip.z) * lip.fz;
+          return { speed, dt, takeoff: +takeoff.toFixed(2), past: +past.toFixed(2), wet: onWater(S.x, S.z), boost: (info.event.boost ?? 0) > 0 };
+        }
       }
-    }
-    return { speed, dt, takeoff: null, past: null, wet: true, boost: false };
+      return { speed, dt, takeoff: null, past: null, wet: true, boost: false };
+    } finally { colliders.push(...walls); }
   }
 
   return { runLap, pathFrom, throttleFrom, inletJump, ghostPath, project, track, gates, LEN, N, props: propList, colliders, physics };

@@ -110,7 +110,8 @@ test('the line clears the jump dry at 1/60, and its committed entry clears dry a
     assert.equal(T.onWater(P[i1][7], P[i1][8]), false, `dry landing (s ${P[i1][1]})`); assert.ok(P[i1][1] > w.s + w.halfW, 'past the far bank');
     // At 1/30 the tuned line itself leaves Turn 1 off the ramp (the README's fragility); the jump check at 1/30 is the
     // committed approach at the line's own entry speed (R10 of plan 5)
-    const entry = P[i0 - 1][3], q = sim.inletJump(entry, { dt: 1 / 30 });
+    const walls = sim.colliders.length, entry = P[i0 - 1][3], q = sim.inletJump(entry, { dt: 1 / 30 });
+    assert.equal(sim.colliders.length, walls, 'the walls are put back after the jump check');
     assert.ok(entry >= 0.92 * sim.physics.tarmac.top, `a committed entry (${entry})`);
     assert.equal(q.wet, false, `dry at 1/30 from ${entry} m/s (${q.past} m past the lip)`);
   } finally { restore(); }
