@@ -106,3 +106,52 @@ test('the runner: the ring belt on a venue, the arch belt beside each arch from 
   assert.match(src, /if \(entry\.kind === "venue"\) treeBelts\.push\(buildTreeBelt\(scene, WORLD\.radius, pal\(\), \{ density: treeDensity\(tierName\) \}\)\)/);
   assert.match(src, /treeBelts\.forEach\(\(b\) => b\.userData\.setDensity\(treeDensity\(tierName\)\)\)/);
 });
+
+// R25 (fix wave C): the hub's arch belt stands in open play space, so its drawn trunks are solid; the venue's rim belt is scenery
+const { loadStepCar } = await import('../tools/lapsim/car-node.mjs');
+const { TRUNK_HALF } = await import('../ecosystem/js/trees.js');
+const car = await loadStepCar();
+/** Drives the real stepCar full throttle at (x, z) from `back` m away; the closest the car's centre comes and how far past it ends. */
+function driveAt(x, z, back = 14, secs = 3) {
+  const a = 0.7, dx = Math.cos(a), dz = Math.sin(a); // a fixed approach direction
+  const sx = x - dx * back, sz = z - dz * back;
+  const s = { x: sx, y: T.groundHeight(sx, sz), z: sz, heading: Math.atan2(-dx, -dz), speed: 0, steer: 0, vy: 0, air: false, squash: 0, pitch: 0, roll: 0, airTime: 0, boost: 0, airHit: false };
+  const c = { s, group: { position: { set() {} }, rotation: {} }, tilt: { rotation: {}, scale: { set() {} } }, wheels: [] };
+  let closest = Infinity, past = -Infinity;
+  for (let i = 0; i < secs * 60; i++) {
+    car.stepCar(c, { up: true, steer: 0 }, 1 / 60);
+    closest = Math.min(closest, Math.hypot(c.s.x - x, c.s.z - z));
+    past = Math.max(past, (c.s.x - x) * dx + (c.s.z - z) * dz);
+  }
+  return { closest, past };
+}
+test('the hub\'s arch belt is solid: a car driven at a drawn trunk stops at it, a tree the tier hides lets it through (R25)', () => {
+  const road = T.roads.find((r) => r.kind === 'venue');
+  const belt = buildArchTrees(new THREE.Scene(), road, pal), boxes = belt.userData.boxes;
+  assert.equal(boxes.length, belt.userData.total, 'one box per tree');
+  const all = trees(belt, belt.userData.total);
+  boxes.forEach((b, i) => { assert.ok(Math.abs(b.cx - all[i].x) < 1e-3 && Math.abs(b.cz - all[i].z) < 1e-3, 'the box is on its trunk'); assert.ok(b.hx >= TRUNK_HALF * 0.8 - 1e-9 && b.hx <= TRUNK_HALF * 1.4 + 1e-9); assert.equal(b.top, undefined, 'no top: the camera and clearance() ignore it'); });
+  const t = boxes[0];
+  car.colliders.length = 0; car.colliders.push(t);
+  const hit = driveAt(t.cx, t.cz);
+  assert.ok(hit.closest >= car.CAR_R + t.hx - 0.05, `the car stops at the trunk (closest ${hit.closest.toFixed(2)} m)`);
+  assert.ok(hit.past < 0, `and never passes it (${hit.past.toFixed(2)} m)`);
+  car.colliders.length = 0; const free = driveAt(t.cx, t.cz);
+  assert.ok(free.past > 5, `without the box the same drive runs through (${free.past.toFixed(1)} m past)`);
+  // The phone and low tiers draw half: the hidden half's boxes are empty, so they stop nothing
+  belt.userData.setDensity(0.5);
+  const hidden = boxes[belt.count];
+  assert.ok(hidden.minX > hidden.maxX, 'a hidden tree\'s box is empty');
+  car.colliders.length = 0; car.colliders.push(hidden);
+  assert.ok(driveAt(hidden.cx, hidden.cz).past > 5, 'a hidden tree lets the car through');
+  belt.userData.setDensity(1); assert.ok(hidden.minX < hidden.maxX, 'and is solid again on high');
+  car.colliders.length = 0;
+});
+test('the venue\'s rim belt has no colliders (R17 stands for it), and the runner adds the hub belt\'s boxes', () => withLagoon(() => {
+  const belt = buildTreeBelt(new THREE.Scene(), R, pal);
+  assert.equal(belt.userData.boxes, undefined);
+  const src = readFileSync('ecosystem/js/runner.js', 'utf8');
+  assert.match(src, /for \(const b of treeBelts\) if \(b\.userData\.boxes\) colliders\.push\(\.\.\.b\.userData\.boxes\);/);
+  // placed before the venue's ring belt is built, so only arch belts are in treeBelts at that point either way
+  assert.ok(src.indexOf('colliders.push(...b.userData.boxes)') < src.indexOf('buildTreeBelt(scene, WORLD.radius'));
+}));

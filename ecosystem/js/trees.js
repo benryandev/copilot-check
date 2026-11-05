@@ -1,7 +1,9 @@
 // Tree belts (plan 5 Task 1, Ben's amendment 1: the Lagoon is hidden in a forest). buildTreeBelt rings a venue's world with
 // low-poly trees between radius − 60 and radius, standing on the bowl's rim; buildArchTrees puts a short belt across a hub
 // venue road at its arch, so the road runs into the trees with the arch in the gap. Either is one InstancedMesh with one
-// material (trunk and crown in one geometry, coloured per vertex), so one draw call; nothing moves and nothing is solid.
+// material (trunk and crown in one geometry, coloured per vertex), so one draw call; nothing moves. The venue's belt is not
+// solid (scenery behind the rim); the hub's arch belt stands in open play space, so each of its drawn trunks is a small box
+// the car stops at (R25, trunkBox).
 // No tree on a road or its verge (and a short lane is kept open past a road's end), in or beside water, on a plaza or in the
 // Raceway. The phone and low tiers draw half the trees (setDensity; the half kept is every other cell of the grid, so it
 // thins evenly). Spots come from a seeded random, so the scene is the same on every load. Imports three.js and terrain.js
@@ -116,6 +118,23 @@ function instanced(parent, spots, palette, density) {
   return mesh;
 }
 
+// A trunk's collider: the car.js pushOut box (orientedBox's shape, unturned) the width of the trunk's base at its scale. No
+// `top`, so the camera's sightline test and clearance() (build.js) ignore it, as they do the bollards.
+export const TRUNK_HALF = 0.3; // m at scale 1, the trunk's base radius is 0.32
+export function trunkBox(t) {
+  const h = TRUNK_HALF * t.k;
+  return { cx: t.x, cz: t.z, hx: h, hz: h, c: 1, s: 0, minX: t.x - h, maxX: t.x + h, minZ: t.z - h, maxZ: t.z + h, tree: true };
+}
+// Only the drawn trees are solid: the first `count` boxes (the spots' order, even cells first, as mesh.count draws them). A
+// hidden tree's box keeps its place in the shared list (build.js holds indices into it) with an empty extent, which
+// pushOut's bounds test always skips.
+export function setTrunks(boxes, count) {
+  boxes.forEach((b, i) => {
+    if (i < count) { b.minX = b.cx - b.hx; b.maxX = b.cx + b.hx; b.minZ = b.cz - b.hz; b.maxZ = b.cz + b.hz; }
+    else { b.minX = b.minZ = Infinity; b.maxX = b.maxZ = -Infinity; }
+  });
+}
+
 /** A venue's belt: the ring from radius − TREES.band to radius round the world's centre (the venue origin). */
 export function buildTreeBelt(scene, radius, palette, { density = 1 } = {}) {
   const inner = radius - TREES.band, open = lanes(TREES.lane);
@@ -135,5 +154,10 @@ export function buildArchTrees(parent, road, palette, { density = 1 } = {}) {
   const spots = grid([x1, z1], f, n, [-depth / 2, depth / 2], [-width / 2, width / 2], cell, (x, z) => clear(x, z, open), 23);
   const mesh = instanced(parent, spots, palette, density);
   mesh.name = `arch-trees-${road.to}`;
+  // Solid trunks (R25): the runner adds userData.boxes to the colliders; setDensity keeps them to the trees it draws
+  const boxes = spots.map(trunkBox), draw = mesh.userData.setDensity;
+  mesh.userData.boxes = boxes;
+  mesh.userData.setDensity = (d) => { draw(d); setTrunks(boxes, mesh.count); };
+  setTrunks(boxes, mesh.count);
   return mesh;
 }

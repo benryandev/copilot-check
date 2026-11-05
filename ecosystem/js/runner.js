@@ -142,6 +142,8 @@ export async function runWorld(entry) {
   // built from the same list, so with no venue roads (VENUES empty) there is no tree; a venue rings itself below
   const treeBelts = [];
   venueRoadList.forEach((r) => { buildVenueArch(scene, r.venue, r); if (entry.kind === "hub") treeBelts.push(buildArchTrees(groupFor(scene, r.from), r, pal(), { density: treeDensity(tierName) })); });
+  // The hub's arch belts are solid (R25): one trunk box per tree, kept to the drawn trees by setDensity (trees.js trunkBox, setTrunks)
+  for (const b of treeBelts) if (b.userData.boxes) colliders.push(...b.userData.boxes);
   // The portal out (Task 5a): each arch's crossing line, computed once. On the hub an arch leads to its venue's page; on a
   // venue page its one arch road (entries.js, beside the grid) leads home. With no venue roads the list is empty and the frame skips the test.
   const archLines = portalLines(venueRoadList, venueRoadList.map((r) => r.venue)).map((l) => (entry.kind === "venue" ? { ...l, target: { url: entry.home } } : l));
