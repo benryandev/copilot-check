@@ -45,3 +45,28 @@ test('makeSim resolves physics once and an override reaches the step', async () 
   const r = sim.runLap(() => 0, { startSpeed: 20, maxT: 12 });
   assert.ok(Math.max(...r.path.map((p) => p[3])) <= 20 * 1.2 + 1e-6, 'never past a boosted 20');
 });
+test('the throttle channel: full by default (the floor line has none), a lift coasts, and wall hits are counted', async () => {
+  const sim = await makeSim({ props: 'cleared' });
+  const lat = sim.pathFrom(line.ctrl, line.DS);
+  const a = sim.runLap(lat, { look: line.look }), b = sim.runLap(lat, { look: line.look, thrFn: sim.throttleFrom(new Array(line.ctrl.length).fill(1), line.DS) });
+  assert.equal(a.ms, b.ms, 'all-ones throttle is the default'); assert.equal(a.wallHits, 0, 'the floor line is clean');
+  const lift = sim.runLap(() => 0, { look: 9, log: true, thrFn: (s) => (s > 100 && s < 130 ? 0 : 1) });
+  const off = lift.path.filter((p) => p[9] === 0);
+  assert.ok(off.length > 20 && off.every((p) => p[1] >= 99 && p[1] <= 131), `throttle off only over s 100 to 130 (${off.length} frames)`);
+  assert.ok(off.at(-1)[3] < off[0][3] - 0.5, `the car coasts down (${off[0][3]} to ${off.at(-1)[3]})`);
+  const { wallSpots } = await import('../ecosystem/js/walls-math.js');
+  const w = wallSpots(sim.track).find((p) => p.s > 100); // the first tyre wall past s 100: drive at it, centre elsewhere
+  const into = sim.runLap((s) => (Math.abs(s - w.s) < 12 ? w.side * (sim.track.half + 4) : 0), { look: 9 });
+  assert.ok(into.wallHits > 0, `hits counted (${into.wallHits}, wall at s ${w.s})`);
+});
+test('trackForCli configures a venue from its track module, and realfi stays the hub', async () => {
+  const { trackForCli } = await import('../tools/lapsim/sim.mjs');
+  const T = await import('../ecosystem/js/terrain.js');
+  const hub = T.terrainConfig();
+  try {
+    assert.equal((await trackForCli('realfi')).id, 'realfi-v1');
+    const t = await trackForCli('lagoon');
+    assert.equal(t.id, 'lagoon-v1'); assert.equal(T.trackDef(), t, 'the terrain is configured for the venue');
+    await assert.rejects(trackForCli('nowhere'), /unknown track "nowhere"/);
+  } finally { T.configureTerrain(hub); }
+});

@@ -1,6 +1,8 @@
 // The cut line: the shortest polyline through the gate windows in order (dynamic programming over window points).
 // With wallsAsGates, every tyre-wall section also counts as a 4.5 m window every 6 m, so the line cannot cut through the walls.
 import { wallSpots } from "../../ecosystem/js/walls-math.js";
+import { parseArgs } from "node:util";
+import { fileURLToPath } from "node:url";
 
 const K = 61;
 const window = (p, w) => Array.from({ length: K }, (_, k) => { const v = -w + 2 * w * k / (K - 1); return [p.x + p.rx * v, p.z + p.rz * v]; });
@@ -34,4 +36,15 @@ export function cutLine(track, { wallsAsGates = true } = {}) {
   }
   const { L, path } = shortest(entries.map((e) => window(e.p, e.w)));
   return { L, ratio: L / track.len, path };
+}
+
+// node tools/lapsim/cut.mjs --track <realfi|lagoon|…>: the cut ratio with and without the walls counted as windows
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const { trackForCli } = await import("./sim.mjs");
+  const { values: a } = parseArgs({ options: { track: { type: "string", default: "realfi" } } });
+  const track = await trackForCli(a.track);
+  for (const wallsAsGates of [false, true]) {
+    const c = cutLine(track, { wallsAsGates });
+    console.log(`${track.id} cut ${wallsAsGates ? "with the walls as windows" : "gates only"}: ${c.L.toFixed(1)} m of ${track.len.toFixed(1)}, ratio ${(c.ratio * 100).toFixed(1)}%`);
+  }
 }

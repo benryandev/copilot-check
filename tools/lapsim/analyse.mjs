@@ -1,24 +1,33 @@
 // Details of a line: splits, sector times against a ghost, path length, grass and air time, sensitivity to lookahead,
 // frame rate, start speed and props, an SVG map, and (with --write) the track's floor and speed limits.
-//   node tools/lapsim/analyse.mjs --track realfi --line out.json [--ghost ghost.json] [--svg out.svg] [--write] [--physics file.json]
+//   node tools/lapsim/analyse.mjs --track realfi --line out.json [--ghost ghost.json] [--svg out.svg] [--write] [--physics file.json] [--dt 60]
+// --dt is the lap's step as frames per second (60 by default, the floor's convention). A track with an inlet also gets the
+// jump sweep: a straight committed approach at shares of tarmac top, at 1/60 and 1/30, wet or dry; --write records it.
 // The SVG is written as SVG only; render it to PNG by hand with `qlmanage -t -s 2000 -o . out.svg`.
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { fileURLToPath } from "node:url";
 import { makeSim, trackForCli } from "./sim.mjs";
 
-const { values: a } = parseArgs({ options: { track: { type: "string", default: "realfi" }, line: { type: "string" }, ghost: { type: "string" }, svg: { type: "string" }, write: { type: "boolean", default: false }, physics: { type: "string" } } });
+const { values: a } = parseArgs({ options: { track: { type: "string", default: "realfi" }, line: { type: "string" }, ghost: { type: "string" }, svg: { type: "string" }, write: { type: "boolean", default: false }, physics: { type: "string" }, dt: { type: "string", default: "60" } } });
 if (!a.line) { console.error("usage: analyse.mjs --track realfi --line out.json [--ghost ghost.json] [--svg out.svg] [--write] [--physics file.json]"); process.exit(2); }
-const track = trackForCli(a.track);
+const track = await trackForCli(a.track);
 const physics = a.physics ? JSON.parse(readFileSync(a.physics, "utf8")) : {};
 const cleared = await makeSim({ track, props: "cleared", physics }), placed = await makeSim({ track, props: "placed", physics });
 const { LEN, gates } = cleared;
 const b = JSON.parse(readFileSync(a.line, "utf8"));
 const fmt = (ms) => `${Math.floor(ms / 60000)}:${((ms % 60000) / 1000).toFixed(3).padStart(6, "0")}`;
-const path = cleared.pathFrom(b.ctrl, b.DS);
-const r = cleared.runLap(path, { look: b.look, log: true });
+const path = cleared.pathFrom(b.ctrl, b.DS), thrFn = b.thr ? cleared.throttleFrom(b.thr, b.DS) : undefined; // no thr: full throttle
+const DT = 1 / Number(a.dt);
+const r = cleared.runLap(path, { look: b.look, log: true, thrFn, dt: DT });
 if (!r.valid) { console.error(`${a.line}: no valid lap (${r.reason})`); process.exit(1); }
-console.log(`${a.line}: ${fmt(r.ms)} (stored ${b.ms})`);
+console.log(`${a.line}: ${fmt(r.ms)} at 1/${a.dt} (stored ${b.ms}), wall hits ${r.wallHits}${r.wallHits ? " (NOT CLEAN)" : ""}`);
+{ // where the line lifts: runs of throttle-off frames, as s from-to and the speed at the end of each
+  const lifts = []; let cur = null;
+  for (const row of r.path) { if (!row[9]) { if (!cur) cur = { from: row[1], v0: row[3] }; cur.to = row[1]; cur.v1 = row[3]; } else if (cur) { lifts.push(cur); cur = null; } }
+  if (cur) lifts.push(cur);
+  console.log("  lifts", lifts.length ? lifts.map((l) => `s ${l.from}-${l.to} ${l.v0.toFixed(1)}->${l.v1.toFixed(1)}`).join(", ") : "none");
+}
 const t0 = r.crossings.find((c) => c.i === 0 && c.fwd).t;
 const splits = gates.slice(1).map((g) => Math.round((r.crossings.find((c) => c.i === g.i && c.fwd && c.t > t0).t - t0) * 1000)); splits.push(r.ms);
 const seg = (v) => v.map((x, i) => x - (i ? v[i - 1] : 0));
@@ -31,14 +40,36 @@ if (ghost) {
 console.log("  gate lat", r.crossings.filter((c) => c.fwd && c.t >= t0 - 1e-9).map((c) => `${c.i}:${c.lat.toFixed(1)}`).join(" "));
 const P = r.path; let len = 0, prev = null;
 for (const row of P) { if (prev) len += Math.hypot(row[7] - prev[0], row[8] - prev[1]); prev = [row[7], row[8]]; }
-console.log(`  path ≈ ${len.toFixed(0)} m, grass ${(P.filter((p) => !p[4]).length / 60).toFixed(2)} s, air ${(P.filter((p) => p[5]).length / 60).toFixed(2)} s, boosting ${(P.filter((p) => p[6] > 0).length / 60).toFixed(2)} s, min speed ${Math.min(...P.map((p) => p[3])).toFixed(1)}, mean ${(P.reduce((s, p) => s + p[3], 0) / P.length).toFixed(2)}`);
+console.log(`  path ≈ ${len.toFixed(0)} m, grass ${(P.filter((p) => !p[4]).length * DT).toFixed(2)} s, air ${(P.filter((p) => p[5]).length * DT).toFixed(2)} s, boosting ${(P.filter((p) => p[6] > 0).length * DT).toFixed(2)} s, min speed ${Math.min(...P.map((p) => p[3])).toFixed(1)}, mean ${(P.reduce((s, p) => s + p[3], 0) / P.length).toFixed(2)}`);
 const gp = ghost ? cleared.ghostPath(ghost.trace) : null;
 if (gp) { let line = "  lat every 20 m (line / ghost): "; for (let s = 0; s < LEN; s += 20) line += `${s}:${path(s).toFixed(0)}/${gp(s).toFixed(0)} `; console.log(line); }
 const show = (q) => (q.valid ? fmt(q.ms) : "X " + q.reason);
-for (const look of [7, 8, 9, 10, 11]) process.stdout.write(`  look ${look}: ${show(cleared.runLap(path, { look }))}  `); console.log();
-for (const dt of [1 / 30, 1 / 60, 1 / 120]) process.stdout.write(`  dt 1/${Math.round(1 / dt)}: ${show(cleared.runLap(path, { look: b.look, dt }))}  `); console.log();
-for (const sp of [21, 24, 25.5]) process.stdout.write(`  start speed ${sp}: ${show(cleared.runLap(path, { look: b.look, startSpeed: sp }))}  `); console.log();
-{ const q = placed.runLap(path, { look: b.look }); console.log(`  with props in place: ${show(q)} hits ${q.hits.map((h) => h.kind + "@" + h.s).join(",")}`); }
+{ // per sector: time, centreline speed, min and max speed of the line
+  const ends = [...gates.map((g) => g.s).slice(1), LEN], starts = [0, ...gates.map((g) => g.s).slice(1)];
+  console.log("  sector  from-to     ms   cl m/s  min  max");
+  seg(splits).forEach((ms, i) => {
+    const rows = P.filter((p) => p[1] >= starts[i] && p[1] < ends[i]), v = rows.map((p) => p[3]);
+    console.log(`  ${String(i + 1).padStart(6)}  ${String(starts[i]).padStart(3)}-${String(ends[i]).padEnd(3)}  ${String(ms).padStart(5)}  ${((ends[i] - starts[i]) / (ms / 1000)).toFixed(1).padStart(6)}  ${Math.min(...v).toFixed(1)}  ${Math.max(...v).toFixed(1)}`);
+  });
+}
+for (const look of [7, 8, 9, 10, 11]) process.stdout.write(`  look ${look}: ${show(cleared.runLap(path, { look, thrFn }))}  `); console.log();
+for (const dt of [1 / 30, 1 / 60, 1 / 120]) process.stdout.write(`  dt 1/${Math.round(1 / dt)}: ${show(cleared.runLap(path, { look: b.look, dt, thrFn }))}  `); console.log();
+for (const sp of [21, 24, 25.5]) process.stdout.write(`  start speed ${sp}: ${show(cleared.runLap(path, { look: b.look, startSpeed: sp, thrFn }))}  `); console.log();
+if (placed.props.length) { const q = placed.runLap(path, { look: b.look, thrFn }); console.log(`  with props in place: ${show(q)} hits ${q.hits.map((h) => h.kind + "@" + h.s).join(",")}`); }
+// The inlet sweep (R10 of plan 5): the jump alone, a straight approach at exactly share × tarmac top, at 1/60 and 1/30
+const SHARES = [0.8, 0.85, 0.86, 0.87, 0.88, 0.89, 0.9, 0.92, 0.95, 1];
+const inlet = track.water?.length ? {
+  halfW: track.water[0].halfW, rampS: track.ramps.find((rp) => Math.abs(rp.s + rp.length - track.water[0].s) < 15)?.s ?? null,
+  sweep: [1 / 60, 1 / 30].map((dt) => ({ dt: `1/${Math.round(1 / dt)}`, runs: SHARES.map((sh) => ({ share: sh, ...cleared.inletJump(sh * cleared.physics.tarmac.top, { dt }) })).map(({ dt: _, ...q }) => q) })),
+} : null;
+if (inlet) {
+  inlet.sweep.forEach((sw) => { sw.dryFrom = sw.runs.find((q, i) => !q.wet && sw.runs.slice(i).every((x) => !x.wet))?.share ?? null; });
+  console.log(`  inlet halfW ${inlet.halfW}, ramp s ${inlet.rampS}`);
+  for (const sw of inlet.sweep) console.log(`    ${sw.dt}: ${sw.runs.map((q) => `${Math.round(q.share * 100)}% ${q.speed.toFixed(1)} ${q.past ?? "-"} m ${q.wet ? "wet" : "dry"}`).join(" | ")}  dry from ${sw.dryFrom}`);
+  // the line's own jump: entry speed, landing and wet or dry at this step
+  const i0 = P.findIndex((p) => p[5] && Math.abs(p[1] - track.water[0].s) < 30);
+  if (i0 > 0) { let i1 = i0; while (i1 < P.length - 1 && P[i1][5]) i1++; inlet.line = { entry: P[i0 - 1][3], landS: P[i1][1] }; console.log(`    the line's jump: entry ${P[i0 - 1][3]} m/s, lands at s ${P[i1][1]}`); }
+}
 
 if (a.write) {
   // sector centreline distance / sector time, the lap's average, and the limits the race server may trust
@@ -46,7 +77,7 @@ if (a.write) {
   const secSpeeds = seg(splits).map((ms, i) => (ends[i] - starts[i]) / (ms / 1000));
   const avg = LEN / (r.ms / 1000);
   const round1 = (v) => Math.round(v * 10) / 10;
-  const out = { track: a.track, floorMs: r.ms, limits: { maxSpeed: round1(avg * 1.08), segMaxSpeed: round1(Math.max(...secSpeeds) * 1.15) }, physics: cleared.physics };
+  const out = { track: a.track, floorMs: r.ms, limits: { maxSpeed: round1(avg * 1.08), segMaxSpeed: round1(Math.max(...secSpeeds) * 1.15) }, physics: cleared.physics, ...(inlet ? { inlet } : {}) };
   const dir = fileURLToPath(new URL("./results/", import.meta.url));
   mkdirSync(dir, { recursive: true });
   writeFileSync(`${dir}${a.track}.json`, JSON.stringify(out, null, 2) + "\n");
