@@ -36,7 +36,7 @@ test('the committed file is the generator output', async () => {
   assert.equal(readFileSync(file, 'utf8'), JSON.stringify(await generate(), null, 2) + '\n');
 });
 test("the worker's copy matches (skipped when no sibling checkout is present)", (t) => {
-  const sib = findSibling(['../copilot-watch-venue/src/tracks.json', '../copilot-watch-registry/src/tracks.json', '../copilot-watch/src/tracks.json']);
+  const sib = findSibling(['../copilot-watch-lagoon/src/tracks.json', '../copilot-watch-venue/src/tracks.json', '../copilot-watch-registry/src/tracks.json', '../copilot-watch/src/tracks.json']);
   if (!sib) return t.skip('no copilot-watch checkout beside this one');
   assert.equal(readFileSync(sib, 'utf8'), readFileSync(file, 'utf8'));
 });

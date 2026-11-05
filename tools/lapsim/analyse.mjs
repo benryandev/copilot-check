@@ -78,7 +78,7 @@ if (a.write) {
   const secSpeeds = seg(splits).map((ms, i) => (ends[i] - starts[i]) / (ms / 1000));
   const avg = LEN / (r.ms / 1000);
   const round1 = (v) => Math.round(v * 10) / 10;
-  const out = { track: a.track, floorMs: r.ms, limits: { maxSpeed: round1(avg * 1.08), segMaxSpeed: round1(Math.max(...secSpeeds) * 1.15) }, physics: cleared.physics, ...(inlet ? { inlet } : {}) };
+  const out = { track: a.track, floorMs: r.ms, splits, limits: { maxSpeed: round1(avg * 1.08), segMaxSpeed: round1(Math.max(...secSpeeds) * 1.15) }, physics: cleared.physics, ...(inlet ? { inlet } : {}) };
   const dir = fileURLToPath(new URL("./results/", import.meta.url));
   mkdirSync(dir, { recursive: true });
   writeFileSync(`${dir}${a.track}.json`, JSON.stringify(out, null, 2) + "\n");
