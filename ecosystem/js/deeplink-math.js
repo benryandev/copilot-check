@@ -10,10 +10,17 @@ export function parseDeepLink(search, stopKeys, districtKeys) {
   const q = new URLSearchParams(search);
   const clean = (v) => (v && !BAD_KEY.test(v) ? v : null);
   const stop = clean(q.get("stop")), district = clean(q.get("district"));
+  if (q.get("start") === "1") return { kind: "start", key: "start" }; // a venue's grid (the hub reads it as the Raceway's)
   if (stop === "raceway" || (!stop && district === "raceway")) return { kind: "start", key: "raceway" };
   if (stop && stopKeys.includes(stop)) return { kind: "stop", key: stop };
   if (district && districtKeys.includes(district)) return { kind: "district", key: district };
   return { kind: null, key: null };
+}
+
+// A venue page's slug from its own path, /ecosystem/tracks/<slug>/ (null for anything else)
+export function venueSlug(pathname) {
+  const m = /^\/ecosystem\/tracks\/([a-z0-9-]+)(?:\/(?:index\.html)?)?$/.exec(pathname);
+  return m ? m[1] : null;
 }
 
 export const stopUrl = (origin, key) => `${origin}/ecosystem/?stop=${encodeURIComponent(key)}`;

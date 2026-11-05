@@ -40,8 +40,10 @@ const ORDER = [
   ["chains", "Chains & Security", 0x94a3b8, null],
 ];
 
+// Strike HQ's green: the hub district's colour and the car's wherever no sponsor gives one (entries.js)
+export const HUB_COLOUR = 0x22c55e;
 export const DISTRICTS = {
-  hub: { key: "hub", name: "Strike HQ", colour: 0x22c55e, centre: [0, 0], radius: 24, board: ["users", "totalVolume", "volume24h", "markets"], ring: -1 },
+  hub: { key: "hub", name: "Strike HQ", colour: HUB_COLOUR, centre: [0, 0], radius: 24, board: ["users", "totalVolume", "volume24h", "markets"], ring: -1 },
 };
 // A plaza's radius follows how many stops it lays out (3 Nov 2026 audit: four stops in a 54 m plaza read as a car park).
 // Monuments and hand-placed stops are not counted; roads, kerbs, cobbles and furniture all derive from this number.

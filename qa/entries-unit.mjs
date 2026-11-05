@@ -86,3 +86,29 @@ test('main.js is the hub entry and runner.js holds the body: every __eco key sur
   assert.ok(keys, 'runner.js assigns window.__eco');
   assert.deepEqual(ECO_KEYS.filter((k) => !keys.includes(k)), [], 'no __eco key lost');
 });
+
+test('venueEntry on the Lagoon: centred, sized under the 320 m ceiling, hub builders off', async () => {
+  const lagoon = (await import('../ecosystem/tracks/lagoon.js')).default;
+  const e = venueEntry(lagoon, { slug: 'lagoon' });
+  assert.equal(e.kind, 'venue'); assert.equal(e.zone, 'lagoon-v1'); assert.equal(e.title, 'The Lagoon');
+  assert.ok(e.terrain.world.radius > 200 && e.terrain.world.radius < 320, `radius ${e.terrain.world.radius}`);
+  const pts = e.terrain.track.worldPoints;
+  const cx = pts.reduce((a, p) => a + p[0], 0) / pts.length, cz = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+  assert.ok(Math.abs(cx) < 1 && Math.abs(cz) < 1, 'centred');
+  assert.deepEqual(e.terrain.districts, {}); assert.equal(e.builders.districts, false); assert.equal(e.builders.raceway, true); assert.equal(e.builders.portal, true);
+  assert.equal(e.arrival, 'portal'); assert.equal(e.home, '/ecosystem/'); assert.deepEqual(e.portal, { to: '/ecosystem/', from: 'lagoon' });
+  assert.equal(e.track.gates.length, 12); assert.equal(e.track.water.length, 1);
+  assert.equal(e.carColour, 0x22c55e, 'no sponsor: the hub green');
+});
+
+test('the car colour: the hub green on the hub, a sponsor\'s colour on its venue', () => {
+  assert.equal(hubEntry().carColour, 0x22c55e);
+  const sponsored = tiny({ origin: [0, 0], angle: 0 }); sponsored.sponsor = { name: 'X', logo: null, colour: 0x123456 };
+  assert.equal(venueEntry(sponsored, { slug: 'x' }).carColour, 0x123456);
+  assert.equal(venueEntry(tiny, { slug: 'tiny' }).carColour, 0x22c55e);
+});
+
+test('venueEntry refuses a track too big for the room\'s pose bound', () => {
+  const huge = tiny({ origin: [0, 0], angle: 0 }); huge.points = [[0, 0], [500, 0], [500, 300], [0, 300]]; huge.start = [250, 0];
+  assert.throws(() => venueEntry(huge, { slug: 'huge' }), /320/);
+});

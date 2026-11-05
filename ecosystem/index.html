@@ -66,7 +66,7 @@
   </header>
 
   <div class="hud race-hud" id="race-hud" hidden>
-    <p class="br-label">RealFi Raceway</p>
+    <p class="br-label" data-track-name>RealFi Raceway</p>
     <p class="race-time" id="race-time">0:00.00</p>
     <p class="race-sub" id="race-sub"></p>
     <p class="race-note" id="race-note" role="status" hidden></p>
@@ -82,14 +82,14 @@
 
   <div class="hud hud-prompt race-invite" id="race-invite" hidden>
     <div class="prompt-card race-invite-card">
-      <span class="prompt-text"><span class="prompt-eyebrow">RealFi Raceway</span><span class="prompt-name" id="race-invite-text"></span></span>
+      <span class="prompt-text"><span class="prompt-eyebrow" data-track-name>RealFi Raceway</span><span class="prompt-name" id="race-invite-text"></span></span>
       <span class="race-invite-actions"><button type="button" class="chip chip--fill" id="race-invite-join">Join</button><button type="button" class="chip" id="race-invite-no">Not now</button></span>
     </div>
   </div>
 
   <div class="hud hud-prompt race-invite" id="board-prompt" hidden>
     <div class="prompt-card race-invite-card">
-      <span class="prompt-text"><span class="prompt-eyebrow">RealFi Raceway</span><span class="prompt-name">See the top 10 board</span></span>
+      <span class="prompt-text"><span class="prompt-eyebrow" data-track-name>RealFi Raceway</span><span class="prompt-name">See the top 10 board</span></span>
       <span class="race-invite-actions"><button type="button" class="chip" id="board-zoom">Zoom in</button><button type="button" class="chip" id="board-no">Not now</button></span>
     </div>
   </div>
@@ -224,7 +224,7 @@
   </dialog>
 
   <dialog id="race" class="sheet" aria-labelledby="race-title">
-    <p class="br-label">RealFi Raceway</p>
+    <p class="br-label" data-track-name>RealFi Raceway</p>
     <h2 id="race-title">Lap complete</h2>
     <p class="race-live-line" id="race-live-line" hidden></p>
     <p class="race-result" id="race-result"></p>

@@ -100,7 +100,9 @@ export async function runWorld(entry) {
   // ── World ─────────────────────────────────────────────────────────────
   // Built in steps with a painted frame between them, so the loader reports real progress
   const load = loader(5);
-  await load.step("Laying the roads");
+  // The loader's first three steps say what this world builds: a venue has no roads or districts, only its track
+  const STEPS = entry.kind === "venue" ? ["Shaping the ground", "Setting out the course", "Marking out the track"] : ["Laying the roads", "Raising the districts", "Marking out the raceway"];
+  await load.step(STEPS[0]);
   // Ground segments grow with the world (it reached past Partners for the raceway), same density
   let ground = buildGround(Math.round((tier().ground * WORLD.radius) / 280), pal());
   const roadMesh = buildRoads(pal());
@@ -114,15 +116,16 @@ export async function runWorld(entry) {
   scene.add(...[ground, roadMesh, jumpMesh, plazaMesh, bedMesh].filter(Boolean));
   const sky = createSky({ reduceMotion });
   scene.add(sky);
-  await load.step("Raising the districts");
+  await load.step(STEPS[1]);
   if (entry.builders.stops) buildStops(scene);
   if (entry.builders.furniture) buildLamps(scene); // plaza furniture: a lamp beside every pad (needs the pads and the buildings' colliders)
   if (entry.builders.monuments) initMonuments({ coarse, reduceMotion }); // the live centrepieces (monuments.js): attach to the pads' groups, poll the SLP fills
   if (entry.builders.furniture) buildBollards(scene); // and bollards either side of every road mouth
   if (entry.builders.signs) buildRoadSigns(scene);
   if (entry.builders.props) addProps(scene, { planters: tier().planters }); // includes the plaza benches and planters (furniture-math.js)
-  await load.step("Marking out the raceway");
+  await load.step(STEPS[2]);
   if (entry.builders.raceway) buildRaceway(scene);
+  if (trackDef()) document.querySelectorAll("[data-track-name]").forEach((el) => { el.textContent = trackDef().name; }); // the race sheets' and prompts' eyebrows
   if (entry.builders.yard) buildYard();
   if (entry.builders.bridges) buildBridges(scene, pal());
 
@@ -173,7 +176,7 @@ export async function runWorld(entry) {
   }
 
   // ── Car ───────────────────────────────────────────────────────────────
-  const car = createCar(districts().hub?.colour);
+  const car = createCar(entry.carColour); // the hub green, or a venue sponsor's colour (entries.js)
   scene.add(car.group);
   Object.assign(car.s, { x: entry.spawn.x, z: entry.spawn.z, heading: entry.spawn.heading, y: groundHeight(entry.spawn.x, entry.spawn.z) });
 
@@ -1116,8 +1119,8 @@ export async function runWorld(entry) {
   }
 
   async function refresh() {
-    pollRidge();
-    pollFunding();
+    if (entry.builders.ridge) pollRidge(); // a venue has no ridge or windsocks to feed
+    if (entry.builders.windsocks) pollFunding();
     try {
       live = await fetchLive();
       if (!cratesAdded && entry.builders.districts) {
@@ -1290,7 +1293,8 @@ export async function runWorld(entry) {
   // consulted, so its once-per-tab flag stays unset and a later plain visit still gets the arrival.
   // The world starts paused and only a closing sheet unpauses it, so the links that open no sheet unpause here.
   // Strike HQ has no spoke road of its own (teleportDistrict needs one), so its link lands at the spawn by the hub.
-  const deepLink = parseDeepLink(location.search, stops().map((s) => s.key), Object.keys(districts()));
+  const asked = parseDeepLink(location.search, stops().map((s) => s.key), Object.keys(districts()));
+  const deepLink = entry.kind === "venue" && asked.kind !== "start" ? { kind: null, key: null } : asked; // a venue honours ?start=1 only
   if (deepLink.kind === "start") { toStart(); paused = false; }
   else if (deepLink.kind === "district") { if (deepLink.key === "hub") placeCar(entry.spawn.x, entry.spawn.z, entry.spawn.heading); else teleportDistrict(deepLink.key); paused = false; }
   else if (deepLink.kind === "stop") { const s = stops().find((x) => x.key === deepLink.key); teleport(s); openStop(s); $("stop").querySelector("[data-close] .br-button-label").textContent = "Start driving"; } // nobody has driven yet; openStop puts "Keep driving" back next time
@@ -1310,16 +1314,16 @@ export async function runWorld(entry) {
 
   // Test hook for automated checks (no effect on play)
   window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, teleport: (key) => teleport(stops().find((s) => s.key === key)), keys, stick, focusBoard, focusEnd, focus, boardPose, boardMarker, camera, project: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight }; }, jumps, groundHeight, placeCamera, placeCar, colliders, pads, deepLink, paused: () => paused,
-    blimp: { setAngle: (deg) => blimp.userData.setAngle(deg == null ? null : (deg * Math.PI) / 180), pose: () => blimp.userData.pose(), setLivery: (n) => blimp.userData.setLivery(n), liveries: () => blimp.userData.liveries },
+    blimp: { setAngle: (deg) => blimp?.userData.setAngle(deg == null ? null : (deg * Math.PI) / 180), pose: () => blimp?.userData.pose(), setLivery: (n) => blimp?.userData.setLivery(n), liveries: () => blimp?.userData.liveries }, // no blimp on a venue
     stunt: () => { const j = jumps.find((o) => o.stunt && o.fx < 0); const lip = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length }; Object.assign(car.s, { x: lip.x + j.fx * 6, z: lip.z, heading: Math.atan2(-j.fx, -j.fz), speed: 24, air: true, vy: 2, airTime: 0.3 }); car.s.y = groundHeight(lip.x, lip.z) + j.height + 1.2; placeCamera(0, true); stuntStart(j); stunt.k = 1; stuntTick(0); } /* the snap first: it resets the stunt */, stuntState: () => ({ k: stunt.k, on: stunt.on }), // QA: mid-flight over the river with the side-on camera up
     splash: (age = 0.35) => { sprayBurst(car.s.x, Math.max(car.s.y, WATER_LEVEL), car.s.z, 40); spray?.userData.step(age); } /* pre-aged, so a still catches the burst spread rather than under the car */, sprayCount: () => sprayCount, // river QA: an entry burst on demand, and how many puffs have flown
     overview: (x, y, z, lx = 0, lz = 0) => { debugCam = true; camera.far = 2000; camera.updateProjectionMatrix(); scene.fog = null; camera.position.set(x, y, z); camera.lookAt(lx, 0, lz); Object.values(districtGroups).forEach((g) => (g.visible = true)); },
     info: () => renderer.info.render, arrival: () => arrival, post, raceGates, toStart, inRaceway, renderer, scene, camera, yardInject: injectFills, ghostPreview, peersInject: injectPeers, peersMove: movePeer, peersState, peersClose: closePeers, peersConnects,
     ridge: { set: (closes) => applyRidge(closes), series: () => ridgeSeries() }, // Chart Ridge: QA and clips set a series by hand
-    windsocks: { set: (raw) => windsocks.userData.apply(normaliseFunding(raw)), state: () => windsocks.userData.state() }, // funding windsocks: QA sets a comparison by hand
+    windsocks: { set: (raw) => windsocks?.userData.apply(normaliseFunding(raw)), state: () => windsocks?.userData.state() }, // funding windsocks: QA sets a comparison by hand
     cine: (fn) => { cineCam = fn; }, celebrate: (rec = { name: 'Aveli', ms: 24650 }, skip = 0) => { celebrate(rec); fireworks?.userData.skip(skip); }, fireworks, sound,
     raceLive: raceLiveState, raceLap: onLap, raceLiveInject: injectRaceLive, boost: (secs = 1.4) => { car.s.boost = secs; },
-    arcade: (key = "arcade-flappy-coin") => openStop(stops().find((s) => s.key === key)), arcadeBoard: injectArcadeBoard,
+    arcade: (key = "arcade-flappy-coin") => { const s = stops().find((x) => x.key === key); if (s) openStop(s); }, arcadeBoard: injectArcadeBoard,
     emote: { open: openEmotes, close: closeEmotes, show: showBubble, send: (e) => { showBubble("me", e); sendEmote(e); }, active: activeEmotes }, peerGroup,
     fps, tiers: TIERS, quality: (name) => { tierName = name; applyTier(); applyTheme(); } }; // QA: the ?fps=1 figures; a tier applied by name as the Graphics setting applies it, nothing saved
 }

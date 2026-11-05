@@ -2,17 +2,18 @@
 // The hub is today's world, every builder on and its terrain self-configured (terrain.js hubConfig). A venue is one
 // track module resolved at the venue origin in a world sized to it, with only the raceway and the portal home built.
 
-import { SPAWN, MULTIPLAYER } from "./content.js";
+import { SPAWN, MULTIPLAYER, HUB_COLOUR } from "./content.js";
 import { frameToWorld, resolveTrack } from "./track-math.js";
 
 const BUILDERS = ["districts", "stops", "boards", "monuments", "yard", "ridge", "windsocks", "blimp", "furniture", "signs", "props", "bridges", "raceway", "portal"];
 const builders = (on) => Object.fromEntries(BUILDERS.map((k) => [k, on(k)]));
 const HOME = "/ecosystem/";
+const MAX_RADIUS = 320; // the room's pose bound is 400 m; a venue world stays well inside it
 
 export function hubEntry() {
   return {
     kind: "hub", zone: "hub", title: "Strike ecosystem", terrain: null, builders: builders(() => true),
-    spawn: { ...SPAWN }, arrival: "flight", track: null, portal: null, home: HOME, multiplayer: MULTIPLAYER,
+    spawn: { ...SPAWN }, arrival: "flight", track: null, portal: null, home: HOME, multiplayer: MULTIPLAYER, carColour: HUB_COLOUR,
   };
 }
 
@@ -26,16 +27,19 @@ export function venueEntry(mod, { slug }) {
   const cx = w.reduce((a, p) => a + p[0], 0) / w.length, cz = w.reduce((a, p) => a + p[1], 0) / w.length;
   const track = resolveTrack(defAt({ origin: [-cx, -cz], angle: 0 }));
   const extent = Math.max(...track.pts.map(([x, z]) => Math.hypot(x, z)));
+  const radius = extent + 80;
+  if (!(radius < MAX_RADIUS)) throw new Error(`venueEntry: ${track.id} needs a world radius of ${Math.round(radius)} m; venues must stay under ${MAX_RADIUS} m`);
   const grid = track.at(track.len - 14);
   return {
     kind: "venue", zone: track.id, title: track.name,
     terrain: {
-      world: { cx: 0, cz: 0, radius: extent + 80 },
+      world: { cx: 0, cz: 0, radius },
       roads: [{ kind: "track", from: "track", to: "track", closed: true, half: track.half, points: track.worldPoints }],
       jumps: [], waters: [], districts: {}, stops: [], track, // the track's ramps and inlets are derived in configureTerrain
     },
     builders: builders((k) => k === "raceway" || k === "portal"),
     spawn: { x: grid.x, z: grid.z, heading: Math.atan2(-grid.fx, -grid.fz) }, // the car faces (-sin h, -cos h)
     arrival: "portal", track, portal: { to: HOME, from: slug }, home: HOME, multiplayer: MULTIPLAYER,
+    carColour: track.sponsor?.colour ?? HUB_COLOUR,
   };
 }

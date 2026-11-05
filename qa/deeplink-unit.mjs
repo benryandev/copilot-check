@@ -23,3 +23,9 @@ test('stopUrl builds the shareable link', () => {
   assert.equal(stopUrl('https://strike.benryan.com.au', 'slp'), 'https://strike.benryan.com.au/ecosystem/?stop=slp');
   assert.equal(stopUrl('http://localhost:8080', 'project-tamtam'), 'http://localhost:8080/ecosystem/?stop=project-tamtam');
 });
+
+test('?start=1 asks for the grid (a venue honours it; the hub reads it as the Raceway\'s start)', () => {
+  assert.deepEqual(parseDeepLink('?start=1', [], []), { kind: 'start', key: 'start' });
+  assert.deepEqual(parseDeepLink('?start=0', [], []), { kind: null, key: null });
+  assert.deepEqual(parseDeepLink('?start=yes', [], []), { kind: null, key: null });
+});
