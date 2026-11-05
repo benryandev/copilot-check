@@ -38,7 +38,7 @@ import { buildYard, flowTick, yardValues, onYardStats, injectFills } from "./flo
 import { initMonuments, applyMonuments, monumentsTick, monumentValues, onMonumentStats, injectSlpFills, monumentsState } from "./monuments.js";
 import { initPeers, sendPose, peersTick, peersState, onPeers, setPeerName, injectPeers, movePeer, sendEmote, peerGroup, closePeers, peersConnects } from "./peers.js";
 import { initEmotes, openEmotes, closeEmotes, toggleEmotes, emoteKeydown, showBubble, emoteTick, activeEmotes } from "./emote.js";
-import { loader, paint, wantsArrival, startArrival, startLanding } from "./arrive.js";
+import { loader, paint, wantsArrival, startArrival, startLanding, LAND_S } from "./arrive.js";
 import { createPost, toGlow } from "./post.js";
 import { initArcade, openArcade, arcadeOpen, injectArcadeBoard } from "./arcade.js";
 import { createFps } from "./fps.js";
@@ -903,7 +903,15 @@ export async function runWorld(entry) {
     const to = line ? { x: line.x, z: line.z, fx: line.fx, fz: line.fz } : { x: s.x + fx * 20, z: s.z + fz * 20, fx, fz }; // no arch for it here: up and ahead of the car
     portal = { target, via, t: 0, done: false, to, from: { pos: camera.position.toArray(), look: camLook.toArray() }, look: camLook.toArray() };
     if (veil) { veil.style.background = `#${new THREE.Color(pal().sky).getHexString()}`; veil.style.opacity = "0"; }
-    if (reduceMotion) { if (veil) veil.style.opacity = "1"; portalGo(); } // R7: no flight; the record and the page load at once, behind the veil
+    // The sound fades out with the flight, so the page change never cuts it mid-waveform (plan 5 amendment 4). R7, reduced
+    // motion: no flight; behind the veil the sound fades over the veil's 300 ms, then the record and the page load (at once
+    // when there is no sound to fade)
+    if (!reduceMotion) sound.fade(0, PORTAL_S);
+    else {
+      if (veil) veil.style.opacity = "1";
+      const wait = sound.fade(0, VEIL_S);
+      if (wait) { portal.done = true; setTimeout(portalGo, wait * 1000); } else portalGo();
+    }
   }
   // The hand-off (R5): the camera and look as offsets from the car with its heading, then the page load. A venue's way home
   // carries ?venues=1 when the record that brought it was a preview (R6); `to` stays the bare path the next page matches.
@@ -1402,7 +1410,7 @@ export async function runWorld(entry) {
     // record without offsets) no flight, the car and camera are simply there once the hold lifts
     const from = landingStart(landing, spot, car.s.y);
     if (reduceMotion || !from) land();
-    else arrival = startLanding({ camera, from, chase: { pos: camera.position.clone(), look: camLook.clone() }, onDone: land });
+    else { sound.fade(1, LAND_S); arrival = startLanding({ camera, from, chase: { pos: camera.position.clone(), look: camLook.clone() }, onDone: land }); } // the sound ramps in over the landing (a no-op until a gesture has made the context)
   }
   else if (deepLink.kind === "start") { toStart(); paused = false; }
   else if (deepLink.kind === "district") { if (deepLink.key === "hub") placeCar(entry.spawn.x, entry.spawn.z, entry.spawn.heading); else teleportDistrict(deepLink.key); paused = false; }

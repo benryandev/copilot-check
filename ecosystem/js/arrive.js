@@ -136,7 +136,7 @@ export function startArrival({ camera, scene, sky, car, hq, chase, stepCar, sett
 // The landing (Task 5b): the page was reached through an arch. The camera starts where the other page's flight drew its last
 // frame (the hand-off record's cam and look) and comes down over LAND_S to the chase pose behind the car, already placed
 // and stopped on its landing spot. No title, no skip: it is short, and the input stays locked until onDone.
-const LAND_S = 1.5;
+export const LAND_S = 1.5;
 export function startLanding({ camera, from, chase, onDone }) {
   const p0 = new THREE.Vector3(...from.cam), l0 = new THREE.Vector3(...from.look);
   const pos = new THREE.Vector3(), look = new THREE.Vector3();

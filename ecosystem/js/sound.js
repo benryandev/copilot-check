@@ -266,6 +266,18 @@ export function createSound({ enabled = true, context = null, offline = false } 
     if (ctx) { if (on && !offline && ctx.state === "suspended") ctx.resume(); master.gain.setTargetAtTime(on ? MASTER * trim.master : 0, ctx.currentTime, 0.05); }
     emit();
   }
+  /** The master eases to `share` of its level (0 silent, 1 as set) on a straight ramp over `seconds`, from wherever it is now:
+   * out over the portal's flight, so the page change never tears the context down mid-waveform, and back in over the landing
+   * (plan 5 amendment 4). Returns the seconds it scheduled: 0, a no-op, with no context yet or with sound off. The Sound
+   * preference is never written. */
+  function fade(share, seconds) {
+    if (!ctx || !on) return 0;
+    const t = ctx.currentTime, g = master.gain;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(MASTER * trim.master * share, t + seconds);
+    return seconds;
+  }
   function setMusic(v) {
     music = !!v; write(MUSIC_KEY, music);
     if (ctx) { if (music) buildMusic(); else dropMusic(); if (musicNode) musicNode.g.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 0.8); }
@@ -279,5 +291,5 @@ export function createSound({ enabled = true, context = null, offline = false } 
     if (musicNode) musicNode.g.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 0.8);
   }
   const setTrim = (k, v) => { if (!(k in trim)) return; trim[k] = Math.max(0, Math.min(3, Number(v) || 0)); try { localStorage.setItem(MIX_KEY, JSON.stringify(trim)); } catch {} if (k === "master" && ctx && on) master.gain.setTargetAtTime(MASTER * trim.master, ctx.currentTime, 0.05); if (k === "bed" && musicNode) musicNode.g.gain.setTargetAtTime(musicLevel(), ctx.currentTime, 0.3); };
-  return { unlock, tick, pauseEngine, state, setOn, setMusic, duck, trims: () => ({ ...trim }), setTrim, TRIM_KEYS, setNight: (v) => { if (night === !!v) return; night = !!v; if (musicNode) { dropMusic(); buildMusic(); } } /* night: a different tempo and tone, so rebuilt with a short crossfade */, onChange: (f) => listeners.add(f), ...cues };
+  return { unlock, tick, pauseEngine, state, setOn, setMusic, fade, duck, trims: () => ({ ...trim }), setTrim, TRIM_KEYS, setNight: (v) => { if (night === !!v) return; night = !!v; if (musicNode) { dropMusic(); buildMusic(); } } /* night: a different tempo and tone, so rebuilt with a short crossfade */, onChange: (f) => listeners.add(f), ...cues };
 }

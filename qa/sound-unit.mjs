@@ -59,3 +59,76 @@ test('tarmac has its own ground sound: a hum under dirt\'s level, saturating at 
   assert.equal(surfaceGain('tarmac', 24), 0.006); assert.ok(surfaceGain('tarmac', 24) < surfaceGain('dirt', 24));
   assert.equal(surfaceGain('tarmac', 30), 0.006, 'no louder past 24');
 });
+
+// ── The master fade over the portal's flight (plan 5 amendment 4), through createSound's context and offline seams ──────
+// A fake AudioContext: every AudioParam records its automation and answers its value at a time (linear ramps and set values,
+// which is all the fade uses); its `value` reads the automation at the context's clock, as a live AudioParam's does. The clock
+// is set by the test.
+import { createSound } from '../ecosystem/js/sound.js';
+function fakeContext() {
+  let ctx = null;
+  const param = (v = 0) => {
+    const ev = [];
+    return {
+      get value() { return this.at(ctx ? ctx.currentTime : 0); }, set value(x) { v = x; }, ev,
+      setValueAtTime(x, t) { ev.push({ type: 'set', x, t }); return this; },
+      linearRampToValueAtTime(x, t) { ev.push({ type: 'ramp', x, t }); return this; },
+      setTargetAtTime(x, t, tc) { ev.push({ type: 'target', x, t, tc }); return this; },
+      exponentialRampToValueAtTime(x, t) { ev.push({ type: 'exp', x, t }); return this; },
+      cancelScheduledValues(t) { for (let i = ev.length - 1; i >= 0; i--) if (ev[i].t >= t) ev.splice(i, 1); return this; },
+      at(t) { // the value at time t: set values and linear ramps, from the initial value
+        let val = v, t0 = 0;
+        for (const e of ev) {
+          if (e.t > t) { if (e.type === 'ramp') return val + (e.x - val) * (t - t0) / (e.t - t0); break; }
+          val = e.x; t0 = e.t;
+        }
+        return val;
+      },
+    };
+  };
+  const node = (extra = {}) => ({ connect() {}, disconnect() {}, start() {}, stop() {}, gain: param(1), frequency: param(), detune: param(), Q: param(), threshold: param(), knee: param(), ratio: param(), attack: param(), release: param(), playbackRate: param(1), ...extra });
+  ctx = {
+    currentTime: 0, state: 'running', sampleRate: 48000, destination: node(), gains: [],
+    createGain() { const g = node(); ctx.gains.push(g); return g; },
+    createOscillator: () => node(), createBiquadFilter: () => node(), createDynamicsCompressor: () => node(), createWaveShaper: () => node(),
+    createBufferSource: () => node(), createBuffer: (ch, n) => ({ getChannelData: () => new Float32Array(n) }),
+    createStereoPanner: () => node({ pan: param() }), createConstantSource: () => node({ offset: param() }),
+  };
+  return ctx;
+}
+// An in-memory localStorage for each test (node 25's own warns when touched without a file)
+function withStorage(fn) {
+  const store = new Map();
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)) } });
+  try { return fn(store); } finally { delete globalThis.localStorage; }
+}
+test('fade: the master gain ramps to 0 over the portal flight and back to its level over the landing', () => withStorage(() => {
+  const ctx = fakeContext();
+  const sound = createSound({ context: () => ctx, offline: true });
+  assert.equal(sound.fade(0, 1.5), 0, 'no context yet: a no-op that schedules nothing');
+  sound.unlock();
+  const master = ctx.gains[0].gain, level = master.value;
+  assert.ok(level > 0.8 && level < 0.9, `the master is Ben's mix (${level})`);
+  ctx.currentTime = 10;
+  assert.equal(sound.fade(0, 1.5), 1.5, 'the fade takes the time asked');
+  assert.equal(master.at(10), level, 'starts from where it is: no step');
+  assert.ok(master.at(10.75) > 0 && master.at(10.75) < level, 'halfway down at the middle of the flight');
+  assert.equal(master.at(11.5), 0, 'silent by the end of the flight');
+  assert.equal(master.at(30), 0, 'and stays there');
+  ctx.currentTime = 40; // the landing (on a page whose sound is up)
+  sound.fade(1, 1.5);
+  assert.equal(master.at(40), 0); assert.ok(master.at(40.75) > 0 && master.at(40.75) < level);
+  assert.ok(Math.abs(master.at(41.5) - level) < 1e-12, `back to the master level after the ramp (${master.at(41.5)})`);
+}));
+test('fade: a no-op with sound off; the sound preference is untouched', () => withStorage((store) => {
+  const ctx = fakeContext();
+  const sound = createSound({ context: () => ctx, offline: true });
+  sound.setOn(false); sound.unlock();
+  const master = ctx.gains[0].gain, before = master.ev.length;
+  ctx.currentTime = 5;
+  assert.equal(sound.fade(0, 1.5), 0, 'sound off: nothing to fade');
+  assert.equal(sound.fade(1, 1.5), 0);
+  assert.equal(master.ev.length, before, 'nothing scheduled'); assert.equal(store.get('eco-sound'), 'off');
+  sound.setOn(true); ctx.currentTime = 6; sound.fade(0, 0.3);
+  assert.equal(store.get('eco-sound'), 'on', 'a fade never writes the preference'); assert.equal(sound.state().on, true);
+}));
