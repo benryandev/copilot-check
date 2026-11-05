@@ -875,7 +875,7 @@ function launchFireworks() {
   fireworks.userData.launch(s.x + fx * 70, s.y, s.z + fz * 70, { rx: -fz, rz: fx }); // in the sky ahead, whichever way you face
 }
 function showCelebration({ rec, self }) {
-  peersNote(self ? `You're #1 on the Raceway with ${formatTime(rec.ms)}` : rec.trackName ? `${rec.name} set a new record on ${rec.trackName}` : `${rec.name} just took #1 on the Raceway with ${formatTime(rec.ms)}`, 6000);
+  peersNote(self ? `You're #1 on the Raceway with ${formatTime(rec.ms)}` : rec.trackName ? `${rec.name} set a new record on ${rec.trackName} with ${formatTime(rec.ms)}` : `${rec.name} just took #1 on the Raceway with ${formatTime(rec.ms)}`, 6000);
   launchFireworks();
   sound.fanfare();
 }
@@ -897,7 +897,7 @@ const peerItem = (p) => {
   const dot = document.createElement("i");
   dot.className = "peers-dot";
   dot.style.setProperty("--c", p.colour);
-  const where = p.zone == null ? p.district : p.zone === peersState().zone ? `${p.district} · on ${zoneName(p.zone)}` : `on ${zoneName(p.zone)}`; // my own row has no zone
+  const where = p.zone == null || p.zone === peersState().zone ? p.district : `on ${zoneName(p.zone)}`; // the label tells venues apart: only someone elsewhere gets one (my own row has no zone)
   li.append(dot, Object.assign(document.createElement("strong"), { textContent: p.name }), Object.assign(document.createElement("span"), { textContent: where }));
   return li;
 };

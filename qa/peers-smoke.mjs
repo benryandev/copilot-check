@@ -77,7 +77,8 @@ async function zones() {
   // The who's-here sheet: both listed; the lagoon row says where (the registry has no lagoon-v1 name yet: the id fallback)
   await page.click('#peers-chip');
   const rows = await until(() => page.evaluate(() => { const t = [...document.querySelectorAll('#peers-list li')].map((li) => li.textContent); return t.some((x) => x.includes('on lagoon-v1')) ? t : null; }), 'the sheet never says "on lagoon-v1"');
-  if (!rows.some((t) => t.startsWith('Hub Peer') && t.includes('on the hub'))) fail(`the hub row should say "on the hub": ${JSON.stringify(rows)}`);
+  const hubRow = rows.find((t) => t.startsWith('Hub Peer'));
+  if (!hubRow || hubRow.includes(' on ')) fail(`the hub row (my zone) should carry no zone label: ${JSON.stringify(rows)}`);
   if (!rows.some((t) => t.startsWith('Lagoon Peer') && t.includes('on lagoon-v1'))) fail(`the lagoon row should say "on lagoon-v1": ${JSON.stringify(rows)}`);
   if (rows[0].includes(' on ')) fail(`my own row says nothing extra: ${rows[0]}`);
   await page.evaluate(() => document.querySelector('#peers [data-close]').click());
