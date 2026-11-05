@@ -432,3 +432,18 @@ out under a sheet, so a human read of the frames stays in the loop; a sticky ele
 Chrome excludes the scroll container's padding, so a bar meant to sit flush with a padded sheet's edge needs a
 negative `bottom` of the padding's size; `:focus-visible` matches a heading focused by script at load, so a
 shared link shows the ring unless the heading opts out.
+
+## Multiplayer smoke (`qa/peers-smoke.mjs`)
+
+```sh
+PORT=8766 node qa/serve.mjs &           # the site, with the production CSP headers
+NO_ROOM=1 node qa/peers-smoke.mjs       # room-free: no worker needed
+node qa/peers-smoke.mjs                 # also runs the part that needs a live room (local worker on 8787)
+```
+
+The first section is the **zones** check and needs no room: the page's hooks inject a hub peer and a venue peer, then it asserts
+that only the own zone is drawn, `online` counts everyone (me plus both), `zones` is `{ hub: 2, lagoon-v1: 1 }`, the who's-here
+sheet labels the venue row ("on …") and leaves the hub row bare, and a `4001`/`dup` close ends in the final `dup` state
+(chip "In another tab", aria-label "This device is driving in another tab", note shown, no reconnect in 5 s) while an ordinary
+close (1006) does reconnect. `NO_ROOM=1` stops after that section. Without it the smoke goes on to the live-room checks.
+The pure parts (`hiMessage`, `safeDevice`, which keep a blocked `localStorage` from stopping the `hi`) are in `qa/peers-unit.mjs`.
