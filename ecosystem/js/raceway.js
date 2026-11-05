@@ -3,17 +3,33 @@
 // knock about. The timing lives in race.js; the track itself is a road in content.js.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { DISTRICTS, TRACK } from "./content.js";
-import { raceGates, trackAt, trackDef, terrainHeight, TRACK_HALF, GATE_HALF } from "./terrain.js";
+import { raceGates, trackAt, trackDef, terrainHeight, TRACK_HALF, GATE_HALF, districts } from "./terrain.js";
+import { boardHeader, brandFor } from "./sponsor-math.js";
 import { wallSpots, wallBoxes } from "./walls-math.js";
 import { MARKER, markerPos, drapedRing, drapedDisc } from "./focus-math.js";
 import {
   M, accent, box, cyl, mesh, canvasTexture, colliders, redraws, groupFor, addCollider, addProp, orientedBox, tintedBasic, makeLabel,
-  drawLogo, realfiLogo, REALFI,
+  drawLogo, realfiLogo,
 } from "./build.js";
 
-const D = () => DISTRICTS.raceway;
-const brand = new THREE.MeshStandardMaterial({ color: REALFI.green, roughness: 0.6 });
+export { boardHeader } from "./sponsor-math.js";
+
+// The configured track's look: the raceway district's colour on the hub, else the sponsor's; RealFi's band, accent and
+// logo only when trackDef().sponsor is RealFi (sponsor-math.js), plain colours and the track's name otherwise
+const D = () => ({ colour: districts().raceway?.colour ?? trackDef().sponsor?.colour ?? 0x9aa4ad });
+const B = () => brandFor(trackDef().sponsor, D().colour);
+const brand = new THREE.MeshStandardMaterial({ color: "#032327", roughness: 0.6 }); // recoloured to B().band in buildRaceway
+// The logo in the box (x, y, w, h), or the track's name where there is none, left-aligned and at most textW wide
+function mark(ctx, x, y, w, h, px, textW = w) {
+  if (B().logo) return drawLogo(ctx, "#ffffff", x, y, w, h);
+  ctx.save();
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `600 ${px}px 'Geist', system-ui, sans-serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(trackDef().name ?? "", x, y + h / 2, textW);
+  ctx.restore();
+}
 const yawOf = (g) => Math.atan2(g.fx, g.fz); // a group turned so its local +z runs along the track
 
 // A banner on both faces of a beam, drawn once (it reads the same in both themes)
@@ -52,11 +68,11 @@ function buildGantry(parent, gate) {
   for (const x of [-half, half]) g.add(box(1.28, 0.3, 1.28, A, x, 1.2, 0), box(1.28, 0.3, 1.28, A, x, 5.4, 0));
   g.add(box(half * 2 + 1.6, 2, 1.2, brand, 0, 5.6, 0));
   const b = banner(half * 2 + 1.2, 1.7, 2048, (ctx, w, h) => {
-    ctx.fillStyle = REALFI.green;
+    ctx.fillStyle = B().band;
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = REALFI.accent;
+    ctx.fillStyle = B().accent;
     ctx.fillRect(0, h - 12, w, 12);
-    drawLogo(ctx, "#ffffff", 70, 22, 520, h - 50);
+    mark(ctx, 70, 22, 520, h - 50, 64);
     ctx.fillStyle = "#ffffff";
     ctx.font = "500 72px 'Geist Mono', monospace";
     ctx.textAlign = "right";
@@ -94,9 +110,9 @@ function buildGate(parent, gate, lineMat) {
   g.add(box(half * 2, 0.22, 0.22, A, 0, 6.4, 0));
   const n = raceGates.length - 1;
   const b = banner(7.2, 1.2, 1024, (ctx, w, h) => {
-    ctx.fillStyle = REALFI.green;
+    ctx.fillStyle = B().band;
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = REALFI.accent;
+    ctx.fillStyle = B().accent;
     ctx.fillRect(0, h - 10, w, 10);
     ctx.fillStyle = "#ffffff";
     ctx.font = "500 64px 'Geist Mono', monospace";
@@ -153,16 +169,16 @@ function buildBoard(parent) {
     lastPal = p;
     ctx.fillStyle = p.panel;
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = REALFI.green;
+    ctx.fillStyle = B().band;
     ctx.fillRect(0, 0, w, 170);
-    ctx.fillStyle = REALFI.accent;
+    ctx.fillStyle = B().accent;
     ctx.fillRect(0, 170, w, 12);
-    drawLogo(ctx, "#ffffff", 60, 40, 300, 96);
+    mark(ctx, 60, 40, 300, 96, 56, 640);
     ctx.fillStyle = "#ffffff";
     ctx.font = "500 50px 'Geist Mono', monospace";
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
-    ctx.fillText("RACEWAY TOP 10", w - 60, 88);
+    ctx.fillText(boardHeader(trackDef().sponsor), w - 60, 88);
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
     const { status, top } = boardState;
@@ -190,8 +206,8 @@ function buildBoard(parent) {
   redraws.push(board.redraw);
   boardRedraw = board.redraw;
   realfiLogo.then(() => lastPal && board.redraw(lastPal));
-  const [x, z] = TRACK.toWorld(-36, -15);
-  const [tx, tz] = TRACK.toWorld(-78, -40);
+  const [x, z] = trackDef().toWorld(-36, -15);
+  const [tx, tz] = trackDef().toWorld(-78, -40);
   const g = new THREE.Group();
   g.position.set(x, terrainHeight(x, z), z);
   g.rotation.y = Math.atan2(tx - x, tz - z);
@@ -265,6 +281,7 @@ function buildProps(parent) {
 
 export function buildRaceway(scene) {
   const parent = groupFor(scene, "raceway");
+  brand.color.set(B().band);
   const lineMat = new THREE.MeshBasicMaterial({ color: D().colour, transparent: true, opacity: 0.85, polygonOffset: true, polygonOffsetFactor: -4 });
   raceGates.forEach((gate) => (gate.i === 0 ? buildGantry(parent, gate) : buildGate(parent, gate, lineMat)));
   const tyres = buildTyreWalls(parent);

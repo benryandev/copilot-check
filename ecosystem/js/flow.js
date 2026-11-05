@@ -8,7 +8,6 @@
 // nothing is invented, and the screen says how long ago the last fill was.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { DISTRICTS } from "./content.js";
 import { groundHeight } from "./terrain.js";
 import { M, box, cyl, mesh, canvasTexture, crates, colliders, orientedBox, redraws, pads, districtGroups, marketLogo, LOGO_DISC } from "./build.js";
 import { markLive } from "./freeze.js";

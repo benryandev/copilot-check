@@ -664,6 +664,9 @@ export function buildPlazas(palette) {
 // by name are reassigned, and the caches are rebuilt or cleared so the old world never answers.
 let config = null;
 export const terrainConfig = () => config;
+// The configured world's districts and stops, read at call time (a venue has none; the hub has content.js's)
+export const districts = () => config.districts ?? {};
+export const stops = () => config.stops ?? [];
 export function configureTerrain(cfg) {
   config = cfg;
   Object.assign(WORLD, cfg.world);

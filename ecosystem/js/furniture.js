@@ -1,13 +1,12 @@
 // Plaza furniture: the stone kerb ring at each plaza's rim (the bump itself lives in terrain.js kerbLift), and later the
 // lamps and bollards. Where things go comes from furniture-math.js.
 import * as THREE from "../vendor/three.module.min.js";
-import { kerbGapsOf, terrainHeight } from "./terrain.js";
+import { kerbGapsOf, terrainHeight, districts } from "./terrain.js";
 import { KERB, lampSpot, bollardSpots, rimLampSpots } from "./furniture-math.js";
 import { pads, colliders, clearance, orientedBox, accent, M } from "./build.js";
-import { DISTRICTS } from "./content.js";
 
 const TAU = Math.PI * 2;
-const plazas = () => Object.values(DISTRICTS).filter((d) => d.plaza !== false);
+const plazas = () => Object.values(districts()).filter((d) => d.plaza !== false);
 
 /** The kerb rings: a tube arc between each pair of gaps on every plaza, at 0.14 m (the disc is at 0.08, the rim ring at 0.12). */
 export function buildKerbs(scene, palette) {
@@ -47,7 +46,7 @@ export function buildLamps(scene) {
   const spots = [];
   const padList = pads.map((p) => ({ x: p.pos.x, z: p.pos.z, dx: p.dir.x, dz: p.dir.z, district: p.stop.district }));
   padList.forEach((pad, i) => {
-    const d = DISTRICTS[pad.district];
+    const d = districts()[pad.district];
     if (!d || d.plaza === false) return;
     const spot = lampSpot(pad, d, { pads: padList.filter((_, k) => k !== i), clearance });
     if (spot) spots.push({ ...spot, colour: d.colour });

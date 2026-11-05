@@ -3,8 +3,7 @@
 // the game when the room can't be reached: the world is single-player exactly as before.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { DISTRICTS } from "./content.js";
-import { groundHeight, inRaceway, onWater } from "./terrain.js";
+import { groundHeight, inRaceway, onWater, districts, trackDef } from "./terrain.js";
 import { paint as carPaint } from "./build.js";
 import { nameTag } from "./tags.js";
 import { markLive } from "./freeze.js";
@@ -30,11 +29,11 @@ let lastSent = -Infinity;
 
 // ── Where someone is, in words ─────────────────────────────────────────
 export function districtAt(x, z) {
-  for (const d of Object.values(DISTRICTS)) {
+  for (const d of Object.values(districts())) {
     if (d.plaza === false) continue;
     if (Math.hypot(x - d.centre[0], z - d.centre[1]) < d.radius + 3) return d.name;
   }
-  if (inRaceway(x, z)) return DISTRICTS.raceway.name;
+  if (inRaceway(x, z)) return trackDef().name; // the configured track (the hub's is "RealFi Raceway")
   return "On the road";
 }
 

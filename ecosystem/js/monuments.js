@@ -7,7 +7,8 @@
 // the car only). Figures arrive two ways: the 30 s fetchLive in main.js (applyMonuments) and this module's own poll of the
 // SLP vault's fills every 10 s (seeded once with a thousand, the API's cap, so the hour figure fills in over the first hour).
 import * as THREE from "../vendor/three.module.min.js";
-import { DISTRICTS, STOPS, isMonument } from "./content.js";
+import { isMonument } from "./content.js";
+import { districts, stops } from "./terrain.js";
 import { pads, accent, M, obbOf, modelHooks, canvasTexture, redraws, themePalette } from "./build.js";
 import { slpVaultId, usd, int } from "./data.js";
 import { FILLS, ENGINE, STAKE, seedDue, pickFills, mergeFills, fillsIn, fillsLine, wheelSpeed, tankLevel, gaugeFraction, topVaults, sparkBudget, columnScale, lampsLit, usdExact, periodLabel, PLINTH, seriesDue, pickSeries, barScales, plinthValues, STACKS, stackScale, ringLayout, BEACON, rungScales, carsHere, carsLine, pulsePeriod, FEED, tradeLine, feedLines, ORRERY, signedUsd } from "./monument-math.js";
@@ -38,7 +39,7 @@ const ease = (cur, target, dt, k) => cur + (target - cur) * (1 - Math.exp(-dt * 
 function findMonument(key) {
   const pad = pads.find((p) => p.stop.key === key);
   if (!pad) return null;
-  const d = DISTRICTS[pad.stop.district];
+  const d = districts()[pad.stop.district];
   let m = monuments.get(key);
   if (!m) {
     const aux = markKeep(new THREE.Group()); // kerb, sparks and rings live beside the building, not in it: a model swap empties the group; kept whole through the merge (merge.js), so a kerb rebuilt later still has its home
@@ -465,7 +466,7 @@ function takeFills(incoming, now, seed = false) {
 export function initMonuments({ coarse = false, reduceMotion = false } = {}) {
   opts = { coarse, reduceMotion };
   const attach = { "monument-earn": attachEngine, "monument-token": attachStake, "monument-analytics": attachPlinth, "monument-collateral": attachStacks, "monument-community": attachBeacon, "monument-developers": attachObelisk, "monument-chains": attachPylons, "monument-partners": attachOrrery };
-  for (const stop of STOPS.filter(isMonument)) {
+  for (const stop of stops().filter(isMonument)) {
     const fn = attach[stop.key];
     if (!fn) continue;
     const go = () => { const m = findMonument(stop.key); if (m) fn(m); };

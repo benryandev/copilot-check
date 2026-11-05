@@ -6,7 +6,7 @@ export default function realfi({ origin, angle }) {
   return {
     id: "realfi-v1",
     name: "RealFi Raceway",
-    sponsor: { name: "RealFi", colour: 0x0fb89c },
+    sponsor: { name: "RealFi", logo: "realfi", colour: 0x0fb89c }, // the gantry, gates and board wear RealFi's colours and logo (raceway.js)
     half: 6,
     frame: { origin, angle },
     points: [

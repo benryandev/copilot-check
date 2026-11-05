@@ -79,3 +79,19 @@ test('a wrapped stretch comes out as two road stretches', () => {
     assert.equal(st.length, 2); assert.equal(st[0].from, 0); assert.equal(st[0].to, 20); assert.ok(Math.abs(st[1].to - cfg.track.len) < 1e-6);
   } finally { T.configureTerrain(hub); }
 });
+test('districts() and stops() are the configured world\'s; a tiny world has none', () => {
+  assert.equal(T.districts(), hub.districts); assert.equal(T.stops(), hub.stops);
+  assert.ok(Object.keys(hub.districts).length > 5 && hub.stops.length > 20, 'the hub has its districts and stops');
+  T.configureTerrain(tiny()); try { assert.deepEqual(T.districts(), {}); assert.deepEqual(T.stops(), []); } finally { T.configureTerrain(hub); }
+  assert.equal(T.districts(), hub.districts);
+});
+test('no module reads DISTRICTS or STOPS from content.js except content.js itself, terrain.js (the hub config) and the hub entry', () => {
+  const exempt = (n) => ['main.js', 'content.js', 'stops.js', 'terrain.js'].includes(n) || /^(guides|deeplink)/.test(n);
+  const bad = [];
+  for (const f of readdirSync('ecosystem/js').filter((n) => n.endsWith('.js') && !exempt(n))) {
+    const src = readFileSync(`ecosystem/js/${f}`, 'utf8');
+    for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']\.\/content\.js["']/g)) if (/\b(DISTRICTS|STOPS)\b/.test(m[1])) bad.push(f);
+    if (/\bDISTRICTS\b/.test(src)) bad.push(`${f} (mentions DISTRICTS)`);
+  }
+  assert.deepEqual(bad, []);
+});

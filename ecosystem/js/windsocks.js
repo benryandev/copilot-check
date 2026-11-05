@@ -5,10 +5,9 @@
 // the world is one InstancedMesh posed every frame (windsock-math.js segmentAngles). A journey piece: nothing on the
 // road, no pad or sheet, no colliders. main.js applies a new comparison every five minutes; the socks ease to it.
 import * as THREE from "../vendor/three.module.min.js";
-import { roads, terrainHeight } from "./terrain.js";
+import { roads, terrainHeight, districts } from "./terrain.js";
 import { WINDSOCKS, sockState, sockLabel, polePositions, segmentAngles } from "./windsock-math.js";
 import { canvasTexture, redraws, animated, box, cyl, M } from "./build.js";
-import { DISTRICTS } from "./content.js";
 import { markLive } from "./freeze.js";
 
 const TONES = { up: new THREE.Color(0x4ade80), down: new THREE.Color(0xf87171), none: new THREE.Color(0x9aa3ad) };
@@ -118,7 +117,7 @@ export function buildWindsocks(scene, palette, { reduceMotion = false } = {}) {
     grp.add(box(0.18, 3.0, 0.18, M.build, -1.8, 0, 0), box(0.18, 3.0, 0.18, M.build, 1.8, 0, 0));
     const { tex, redraw } = canvasTexture(1024, 448, (ctx, w, h, q) => {
       ctx.fillStyle = q.panel; ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = "#" + new THREE.Color(DISTRICTS.perps.colour).getHexString(); ctx.fillRect(0, h - 14, w, 14);
+      ctx.fillStyle = "#" + new THREE.Color(districts().perps.colour).getHexString(); ctx.fillRect(0, h - 14, w, 14);
       ctx.fillStyle = q.text; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.font = "700 72px 'Atkinson Hyperlegible Next', Arial, sans-serif";
       ctx.fillText(BOARD[0], w / 2, 64, w - 60);

@@ -3,8 +3,9 @@ import test from 'node:test'; import assert from 'node:assert/strict';
 import { shareCaption, fitFont, shareBoard } from '../ecosystem/js/board-share.js';
 
 test('shareCaption names the board, the day and the site in one plain sentence', () => {
-  assert.equal(shareCaption(new Date(2026, 10, 3)), 'RealFi Raceway top 10 on 3 November 2026 at strike.benryan.com.au/ecosystem');
-  assert.doesNotMatch(shareCaption(), /[:;–—]/);
+  assert.equal(shareCaption('RealFi Raceway', new Date(2026, 10, 3)), 'RealFi Raceway top 10 on 3 November 2026 at strike.benryan.com.au/ecosystem');
+  assert.equal(shareCaption('The Lagoon', new Date(2026, 10, 3)), 'The Lagoon top 10 on 3 November 2026 at strike.benryan.com.au/ecosystem', 'the track name is a parameter');
+  assert.doesNotMatch(shareCaption('RealFi Raceway'), /[:;–—]/);
 });
 test('fitFont steps the caption down until it fits the band, never under the floor', () => {
   assert.equal(fitFont((px) => px * 45, 1320, 44, 24), 29, 'a 76-character mono caption, about 45 px per px of size');

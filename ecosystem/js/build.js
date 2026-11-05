@@ -2,9 +2,9 @@
 
 import * as THREE from "../vendor/three.module.min.js";
 import { glowIntensity } from "./post.js";
-import { DISTRICTS, STOPS, ROADS, layoutStops, boardSpot, isMonument } from "./content.js";
+import { ROADS, layoutStops, boardSpot, isMonument } from "./content.js";
 import { LABELS } from "./data.js";
-import { roads, jumps, ROAD_HALF, terrainHeight, builderSlots, roadInfo, kerbGapsOf } from "./terrain.js";
+import { roads, jumps, ROAD_HALF, terrainHeight, builderSlots, roadInfo, kerbGapsOf, districts, stops } from "./terrain.js";
 import { tint, setDark } from "./colours.js";
 import { benchSpots } from "./furniture-math.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
@@ -784,8 +784,8 @@ export const modelsReady = () => Promise.allSettled([...loading.values()]);
 const FALLBACK = ["dome", "vault", "kiosk", "pillar", "coins", "arch", "tower", "twin", "cluster"];
 export function buildStops(scene) {
   const placed = layoutStops();
-  STOPS.forEach((stop, i) => {
-    const d = DISTRICTS[stop.district];
+  stops().forEach((stop, i) => {
+    const d = districts()[stop.district];
     if (!d) return;
     const slot = builderSlots.find((b) => b.key === stop.key);
     stop.pos = stop.pos || (slot ? [slot.x, slot.z] : placed.get(stop.key));
@@ -825,7 +825,7 @@ export function buildStops(scene) {
 // ── Billboards with live figures ───────────────────────────────────────
 export const boards = [];
 export function buildBoard(scene, district, getLive) {
-  const d = DISTRICTS[district];
+  const d = districts()[district];
   const keys = d.board;
   if (!keys) return;
   const { x, z, rotY } = boardSpot(d);
@@ -933,7 +933,7 @@ export function clearance(x, z) {
 export function buildRoadSigns(scene) {
   roads.forEach((r) => {
     if (r.kind !== "spoke") return;
-    const to = DISTRICTS[r.to];
+    const to = districts()[r.to];
     const side = (t, s) => {
       const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
       return { x: p.x - tan.z * s, z: p.z + tan.x * s, tx: tan.x, tz: tan.z, px: p.x, pz: p.z };
@@ -944,15 +944,15 @@ export function buildRoadSigns(scene) {
     buildSignpost(groupFor(scene, "hub"), a.x, a.z, [{ text: to.name, colour: to.colour, dir: [a.tx, a.tz] }]);
     // At the district: back to HQ, and along the ring road both ways
     const b = side(0.95, -(ROAD_HALF + 3.4)); // clear of the arch posts
-    const arms = [{ text: "Strike HQ", colour: DISTRICTS.hub.colour, dir: [-b.tx, -b.tz] }];
+    const arms = [{ text: "Strike HQ", colour: districts().hub.colour, dir: [-b.tx, -b.tz] }];
     for (const e of to.exits) {
-      const n = DISTRICTS[e.to];
+      const n = districts()[e.to];
       arms.push({ text: n.name, colour: n.colour, dir: unit(e.at[0] - b.x, e.at[1] - b.z) });
     }
     // Link roads and drives out of this district (Partners to the raceway, Perps to the Fill Yard)
     for (const l of roads) {
       if ((l.kind !== "link" && l.kind !== "drive") || l.from !== r.to) continue;
-      const n = DISTRICTS[l.to];
+      const n = districts()[l.to];
       arms.push({ text: n.name, colour: n.colour, dir: unit(l.pts[0][0] - b.x, l.pts[0][1] - b.z) });
     }
     buildSignpost(groupFor(scene, r.to), b.x, b.z, arms);
@@ -964,19 +964,19 @@ export function buildRoadSigns(scene) {
     const t = 0.88 - (builderSlots.length * 13 + 4) / r.len;
     const p = r.curve.getPointAt(t), tan = r.curve.getTangentAt(t);
     const s = ROAD_HALF + 1.6;
-    buildSignpost(groupFor(scene, "developers"), p.x - tan.z * s, p.z + tan.x * s, [{ text: "Builders' Row", colour: DISTRICTS.developers.colour, dir: [tan.x, tan.z] }]);
+    buildSignpost(groupFor(scene, "developers"), p.x - tan.z * s, p.z + tan.x * s, [{ text: "Builders' Row", colour: districts().developers.colour, dir: [tan.x, tan.z] }]);
   }
   // Chart Ridge: an arch at each plaza edge naming it; it is a way between two plazas, not a place (no pad, no sheet)
   roads.forEach((r) => {
     if (r.kind !== "ridge") return;
-    const sign = { name: "Chart Ridge", colour: DISTRICTS.analytics.colour };
+    const sign = { name: "Chart Ridge", colour: districts().analytics.colour };
     buildArch(groupFor(scene, r.from), r, sign, 5, { start: true });
     buildArch(groupFor(scene, r.to), r, sign, 5);
   });
   // A link road: a signpost where it leaves its district, an arch where it arrives
   roads.forEach((r) => {
     if (r.kind !== "link") return;
-    const to = DISTRICTS[r.to];
+    const to = districts()[r.to];
     const p = r.curve.getPointAt(0.04), tan = r.curve.getTangentAt(0.04);
     const s = r.half + 1.6;
     buildSignpost(groupFor(scene, r.from), p.x - tan.z * s, p.z + tan.x * s, [{ text: to.name, colour: to.colour, dir: [tan.x, tan.z] }]);
@@ -986,7 +986,7 @@ export function buildRoadSigns(scene) {
   // down the drive, and an arch where the drive reaches the yard
   roads.forEach((r) => {
     if (r.kind !== "drive") return;
-    const to = DISTRICTS[r.to];
+    const to = districts()[r.to];
     const spoke = roads.find((x) => x.kind === "spoke" && x.to === r.from);
     if (!spoke) return;
     const [sx, sz] = r.pts[0];
@@ -1223,9 +1223,9 @@ export function addProp(parent, kind, x, z, rotY = 0, lift = 0) {
 
 export function addProps(scene, { planters = true } = {}) {
   // Cones in an arc in front of the Liquidations building
-  const liq = STOPS.find((s) => s.key === "liquidations");
+  const liq = stops().find((s) => s.key === "liquidations");
   if (liq) {
-    const d = DISTRICTS.perps;
+    const d = districts().perps;
     const [dx, dz] = [d.centre[0] - liq.pos[0], d.centre[1] - liq.pos[1]];
     const a0 = Math.atan2(dz, dx);
     // Down both sides of the building, clear of its pad in front
@@ -1248,7 +1248,7 @@ export function addProps(scene, { planters = true } = {}) {
   // (The fourteen-coin tower that stood 6 m inside Token's plaza went on 3 Nov 2026; the Stake monument takes its place.)
   // Benches between the pads on every plaza, facing the centre, a planter either side (not on the low tier). HQ gets none:
   // nine road mouths round a 24 m plaza leave no stretch of rim 4 m clear of a road, and that is right for the hub (ruling, 2 Nov 2026).
-  for (const d of Object.values(DISTRICTS)) {
+  for (const d of Object.values(districts())) {
     if (d.plaza === false) continue;
     const padsHere = pads.filter((p) => p.stop.district === d.key && !isMonument(p.stop)).map((p) => ({ x: p.pos.x, z: p.pos.z }));
     const { benches, planters: pots } = benchSpots(d, padsHere, kerbGapsOf(d), clearance, { planters });

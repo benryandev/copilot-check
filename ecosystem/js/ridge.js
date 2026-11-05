@@ -3,10 +3,9 @@
 // small posts at the verge reading 24h, 18h, 12h, 6h and now. Everything that depends on the series is rebuilt by
 // refresh(); main.js calls it when a new series is applied (only while the local car is clear of the ridge).
 import * as THREE from "../vendor/three.module.min.js";
-import { roads, RIDGE_ROAD, RIDGE_FADE, terrainHeight, ridgeSeries, roadRibbon, dirtMaterial, groundShade } from "./terrain.js";
+import { roads, RIDGE_ROAD, RIDGE_FADE, terrainHeight, ridgeSeries, roadRibbon, dirtMaterial, groundShade, districts } from "./terrain.js";
 import { RIDGE, candleIndex, candleDir } from "./ridge-math.js";
 import { canvasTexture, redraws, accent, box } from "./build.js";
-import { DISTRICTS } from "./content.js";
 import { freezeStatic, markKeep, moved } from "./freeze.js";
 
 const UP = new THREE.Color(0x4ade80), DOWN = new THREE.Color(0xf87171), TINT = 0.26, BLEND = 3; // tint strength; metres either side of a point averaged, so candle boundaries drift rather than band
@@ -74,7 +73,7 @@ export function buildRidge(scene, palette) {
     const post = markKeep(new THREE.Group()); // rises and falls with the ridge: kept out of the geometry merge (merge.js)
     post.position.set(p.x, 0, p.z);
     post.rotation.y = Math.atan2(p.tx, p.tz);
-    post.add(box(0.22, 1.35, 0.22, accent(DISTRICTS.analytics.colour), 0, 0, 0));
+    post.add(box(0.22, 1.35, 0.22, accent(districts().analytics.colour), 0, 0, 0));
     const { tex, redraw } = canvasTexture(256, 96, (ctx, w, h, q) => {
       ctx.fillStyle = q.panel; ctx.fillRect(0, 0, w, h);
       ctx.fillStyle = q.text; ctx.font = "600 56px 'Atkinson Hyperlegible Next', Arial, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";

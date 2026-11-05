@@ -4,7 +4,7 @@
 // cabinet's marquee in the world follow. While a cabinet is open the world's music bed is ducked for the game's own.
 import { parseArcadeMessage, marqueeText, frameUrl } from "./arcade-math.js";
 import { setMarquee } from "./build.js";
-import { STOPS } from "./content.js";
+import { stops } from "./terrain.js";
 
 const API = "https://copilot-watch.benryan.workers.dev";
 const $ = (id) => document.getElementById(id);
@@ -29,7 +29,7 @@ export function initArcade(h) {
     if (m.t === "board") setBoard(m.game, { status: "ok", top: m.top });
   });
   // The marquees: the top score on each cabinet, fetched once at start
-  for (const s of STOPS) if (s.arcade) fetchBoard(s.arcade.slug);
+  for (const s of stops()) if (s.arcade) fetchBoard(s.arcade.slug);
 }
 
 export const arcadeOpen = () => $("arcade").open;
@@ -69,7 +69,7 @@ async function fetchBoard(slug) {
 
 function setBoard(slug, b) {
   boards.set(slug, b);
-  const stop = STOPS.find((s) => s.arcade?.slug === slug);
+  const stop = stops().find((s) => s.arcade?.slug === slug);
   if (stop) setMarquee(stop.key, marqueeText(b.top));
   if (current?.arcade.slug === slug) drawBoard(slug);
 }

@@ -7,7 +7,7 @@ import { guidesForStop } from "./guides.js";
 import { mountGuide, closeGuide, onPopState, rewriteLinks, guideLinkText } from "./guide-sheet.js";
 import { fetchLive, fetchKlines, fetchFunding, LABELS } from "./data.js";
 import { normaliseFunding, pollDue } from "./windsock-math.js";
-import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo, setRidgeSeries, onRidge, ridgeSeries } from "./terrain.js";
+import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo, setRidgeSeries, onRidge, ridgeSeries, districts, trackDef } from "./terrain.js";
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
 import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.js";
 import { initStick } from "./stick.js";
@@ -564,7 +564,7 @@ function focusTick(dt) {
   camera.lookAt(camLook.clone().lerp(focus.look, k));
 }
 $("focus-back").addEventListener("click", focusEnd);
-$("focus-save").addEventListener("click", () => shareBoard(boardImage(boardCanvas(), shareCaption(), { band: REALFI.green, ink: REALFI.paper }), { share: coarse })); // the share sheet on a touch screen, a download elsewhere (board-share.js)
+$("focus-save").addEventListener("click", () => shareBoard(boardImage(boardCanvas(), shareCaption(trackDef().name), { band: REALFI.green, ink: REALFI.paper }), { share: coarse, title: `${trackDef().name} top 10` })); // the share sheet on a touch screen, a download elsewhere (board-share.js)
 
 // ── Skip drawing districts out of sight (beyond the fog) ──────────────
 function cullDistricts() {
@@ -582,17 +582,18 @@ let whereText = "";
 function updateWhere() {
   const s = car.s;
   let text = null;
-  for (const d of Object.values(DISTRICTS)) {
+  const ds = districts(); // the configured world's (a venue has none)
+  for (const d of Object.values(ds)) {
     if (d.plaza === false) continue;
     if (Math.hypot(s.x - d.centre[0], s.z - d.centre[1]) < d.radius + 3) text = d.name;
   }
-  if (!text && inRaceway(s.x, s.z)) text = DISTRICTS.raceway.name;
+  if (!text && inRaceway(s.x, s.z)) text = trackDef().name;
   if (!text) {
     const info = roadInfo(s.x, s.z);
     if (info.d < 12) {
       const r = roads[info.road];
       const ahead = Math.cos(s.heading) * -info.tz + Math.sin(s.heading) * -info.tx > 0;
-      text = `Road to ${DISTRICTS[ahead ? r.to : r.from].name}`;
+      text = `Road to ${ds[ahead ? r.to : r.from]?.name ?? trackDef().name}`;
     } else text = "Off the road";
   }
   if (text !== whereText) { whereText = text; $("where").textContent = text; }
