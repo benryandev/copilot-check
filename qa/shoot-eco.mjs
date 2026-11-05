@@ -3,9 +3,10 @@
 // --page shoots a venue page instead of the hub, its frames named eco-<slug>-<state>-<width>-<theme>.png (eco-lagoon-grid-375-dark.png)
 // so a venue run never overwrites the hub's: loading, intro (the direct-visit intro, the opening flight skipped with &arrive=0),
 // grid (the car on the grid once the intro closes), drive (up held until the car is past the start line and the lap clock
-// runs), peers (three stand-ins round the car in the venue's zone; a peer in another zone is parked, not drawn), jump (the
-// car driven over the ramp at speed and shot in the air over the inlet, the stunt camera up), map, race (the finish sheet
-// with Lagoon times above its floor). raceway and ghost are hub states only: the venue is the track, so raceway would be
+// runs), peers (the car back behind the line with no lap running, three stand-ins apart on the grid in the venue's zone; a peer
+// in another zone is parked, not drawn), jump (the lap run to the ramp's run-up first so the HUD counts its checkpoints, then
+// the car driven over the ramp at speed and shot in the air over the inlet, the stunt camera up), map, race (the finish sheet
+// with Lagoon times above its floor, a new best, each time stated once). raceway and ghost are hub states only: the venue is the track, so raceway would be
 // the grid again, and the ghost needs the open worker's board, which is a production check. Two hub states cross the portal
 // and need ?venues=1 (the shoot adds it): portalOut (the flight to the Lagoon frozen mid-way with the portalHold hook) and
 // portalIn (the venue's hold under a real hand-off record, then the landed frame). They run with --page or on their own:
@@ -357,39 +358,63 @@ for (const w of WIDTHS) for (const theme of THEMES) {
           if (!drove) errors.push(`drive: the car did not get over the start line (${await page.evaluate(() => `${window.__eco.car.s.speed.toFixed(1)} m/s, ${document.getElementById('race-time').textContent}`)})`);
           await shot('drive', 200);
         }
-        // Three other visitors round the car in the venue's own zone (peers.js parks a peer from another zone)
+        // Three other visitors round the car in the venue's own zone (peers.js parks a peer from another zone). The car goes
+        // back to the start (toStart: 14 m behind the line, stopped, no lap running), so the camera is not under the gantry and
+        // the clock reads 0:00.00 with "Cross the start line"; the stand-ins sit apart on the grid, short of the line, each at
+        // its own distance and side so no two cars or name tags overlap and none is under the gantry's beam
         if (pick.includes('peers')) {
+          await page.evaluate(() => window.__eco.toStart());
+          await sleep(600);
           await page.evaluate(() => {
             const e = window.__eco, c = e.car.s, sin = Math.sin(c.heading), cos = Math.cos(c.heading), zone = e.peersState().zone;
-            c.speed = 0; // stopped where the drive left it, so the stand-ins stay ahead of the camera
             const at = (f, r) => ({ x: c.x - sin * f + cos * r, z: c.z - cos * f - sin * r });
             e.peersInject([
-              { id: 'p1', name: 'Aveli', colour: '#22d3ee', zone, ...at(4, -6), h: c.heading + 0.4 },
-              { id: 'p2', name: 'ADA_ACE', colour: '#facc15', zone, ...at(6, 6), h: c.heading - 0.3 },
-              { id: 'p3', name: 'Driver 07', colour: '#ec4899', zone, ...at(13, -10), h: c.heading + 3 },
+              { id: 'p1', name: 'Aveli', colour: '#22d3ee', zone, ...at(4, -2.9), h: c.heading + 0.15 },
+              { id: 'p2', name: 'ADA_ACE', colour: '#facc15', zone, ...at(7.5, 2.7), h: c.heading - 0.12 },
+              { id: 'p3', name: 'Driver 07', colour: '#ec4899', zone, ...at(11, -0.8), h: c.heading + 0.06 },
             ]);
           });
           await shot('peers', 2500);
           const seen = await page.evaluate(() => { const st = window.__eco.peersState(); return st.peers.filter((p) => p.zone === st.zone).length; });
           if (seen !== 3) errors.push(`peers: ${seen} of 3 stand-ins in the venue's zone`);
+          const clock = await page.evaluate(() => document.getElementById('race-time').textContent);
+          if (clock !== '0:00.00') errors.push(`peers: the lap clock runs behind the line (${clock})`);
           await page.evaluate(() => window.__eco.peersInject(null));
         }
         // The water jump: the car put 12 m before the ramp's foot (the hairpin's exit) on its line at 27 m/s with up held, and shot once it is in
         // the air over the inlet with the stunt camera most of the way round (stunt k past 0.5; the hub's stunt state snaps there with a hook; on the venue the
         // physics takes it off the real ramp)
+        // The lap is run up to there first, so the HUD counts the checkpoints a driver would have taken (not "Checkpoint 0 of 11"
+        // while passing gate 3): from the start, the page's own race module (race.js raceTick) is taken over the start line and
+        // each checkpoint short of the run-up, its clock moved on as a car at 25 m/s would take, then the car is put down
         if (pick.includes('jump')) {
-          await page.evaluate(async () => {
-            window.__onWater = (await import('/ecosystem/js/terrain.js')).onWater;
+          const cps = await page.evaluate(async () => {
+            const T = await import('/ecosystem/js/terrain.js'), R = await import('/ecosystem/js/race.js');
+            window.__onWater = T.onWater;
             const e = window.__eco, j = e.jumps.find((o) => o.stunt) || e.jumps[0];
-            const x = j.ox - j.fx * 12, z = j.oz - j.fz * 12;
-            e.placeCar(x, z, Math.atan2(-j.fx, -j.fz));
+            const x = j.ox - j.fx * 12, z = j.oz - j.fz * 12, h = Math.atan2(-j.fx, -j.fz);
+            const len = T.trackLen;
+            let sAt = 0, best = Infinity;
+            for (let u = 0; u < len; u += 0.5) { const p = T.trackAt(u), d = Math.hypot(p.x - x, p.z - z); if (d < best) { best = d; sAt = u; } }
+            e.toStart(); // no lap running, so the start line starts a fresh one
+            let s0 = 0;
+            for (const g of [...T.raceGates].sort((a, b) => a.i - b.i)) {
+              if (g.i > 0 && g.s >= sAt) break;
+              R.raceTick(g.x - g.fx, g.z - g.fz, g.x + g.fx, g.z + g.fz, Math.atan2(-g.fx, -g.fz), g.i === 0 ? 0.01 : (g.s - s0) / 25);
+              s0 = g.i === 0 ? 0 : g.s;
+            }
+            R.raceTick(x, z, x, z, h, Math.max(0, sAt - s0) / 25); // the clock to the run-up's start, no crossing
+            e.placeCar(x, z, h);
             e.car.s.speed = 27; e.keys.up = true;
+            return T.raceGates.filter((g) => g.i > 0 && g.s < sAt).length;
           });
           const flew = await page.waitForFunction(() => { const e = window.__eco, s = e.car.s; return s.air && e.stuntState().on && e.stuntState().k > 0.5 && window.__onWater(s.x, s.z); }, null, { timeout: 60000, polling: 'raf' }).then(() => true, () => false);
           await page.screenshot({ path: `${out}${PREFIX}jump-${tag}.png` });
           const air = await page.evaluate(() => ({ air: window.__eco.car.s.air, stunt: window.__eco.stuntState().on, k: +window.__eco.stuntState().k.toFixed(2) }));
           await page.evaluate(() => { window.__eco.keys.up = false; });
           if (!flew || !air.air) errors.push(`jump: the car was not in the air over the inlet when shot (${JSON.stringify(air)})`);
+          const sub = await page.evaluate(() => document.getElementById('race-sub')?.textContent || '');
+          if (cps < 1 || /Checkpoint 0 of|CP 0\//.test(sub)) errors.push(`jump: the HUD has taken no checkpoint (${cps} short of the run-up, "${sub}")`);
           const found = await page.evaluate(audit); problems += found.length; for (const i of found) console.log(`     jump-${tag}: ${i}`);
           await page.waitForFunction(() => !window.__eco.car.s.air, null, { timeout: 30000 }).catch(() => {});
           await page.evaluate(() => window.__eco.toStart());
@@ -397,15 +422,15 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         await page.click('#open-map');
         await shot('map');
         await page.evaluate(() => document.querySelector('#map [data-close]').click());
-        // The lap-finish sheet with Lagoon times (the floor is 29.469 s, results/lagoon.json): a 0:30.412 lap, 0.618 s slower
-        // than the device's best 0:29.794, which never made the board, so the post-my-best note is offered under the form
-        // as race.js openFinish and showOffer write them
+        // The lap-finish sheet with Lagoon times (the floor is 29.469 s, results/lagoon.json): a new best of 0:29.794, 0.326 s
+        // faster than the last best 0:30.120, as race.js openFinish writes it. The lap is the device's best, so showOffer has no
+        // older best to offer and the post-my-best note stays hidden: each time is stated once. (A slower lap's sheet names
+        // the same best twice, in the gap line and the offer, by construction; that is the hub's sheet, not the fixture.)
         await page.evaluate(() => {
-          document.getElementById('race-result').textContent = '0:30.412';
-          document.getElementById('race-gap').textContent = '0.618 s slower than your best (0:29.794).';
+          document.getElementById('race-result').textContent = '0:29.794';
+          document.getElementById('race-gap').textContent = 'New best, 0.326 s faster than your last best (0:30.120).';
           document.getElementById('race-form').hidden = false;
-          document.getElementById('race-best-note').hidden = false;
-          document.getElementById('race-best-time').textContent = '0:29.794';
+          document.getElementById('race-best-note').hidden = true;
           document.getElementById('race').showModal();
         });
         await shot('race');
