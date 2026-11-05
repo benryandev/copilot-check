@@ -3,19 +3,31 @@
 // terrain.js; this file only draws it.
 
 import * as THREE from "../vendor/three.module.min.js";
-import { waters, waterInfo, terrainHeight, groundShade, WATER_LEVEL, crossings, roads, DECK_Y, DECK_RAMP } from "./terrain.js";
+import { waters, waterInfo, lakeDistance, terrainHeight, groundShade, WATER_LEVEL, crossings, roads, DECK_Y, DECK_RAMP } from "./terrain.js";
 import { M, box, cyl, canvasTexture, redraws, colliders, orientedBox } from "./build.js";
 
 const BED_PAD = 14; // the bed patch reaches this far past a body's half-width: wide enough to cover the ground mesh's pushed-down band and the triangles beside it
 const BED_ACROSS = 15; // samples across the patch
 const WATER_PAD = 0.8; // the surface tucks under the banks
+// A lake (terrain.js, kind "lake") is drawn by its own meshes inside the same two geometries: its bed as a grid LAKE_CELL m
+// fine out to LAKE_BED_PAD m past the shore (where the ground mesh is pushed down, and the triangles beside it), its
+// surface as rings, finer toward the shore. Where a channel runs into it, the channel's bed is left to the lake's grid and
+// its surface sinks UNDER_LAKE m under the lake's (drawn first), so the two never blend over each other.
+const LAKE_CELL = 1.25, LAKE_BED_PAD = 8, UNDER_LAKE = 0.03, LAKE_SEGMENTS = 128;
+const LAKE_RINGS = [1, 0.985, 0.97, 0.95, 0.92, 0.88, 0.8, 0.65, 0.45, 0.2, 0];
+const lakePoint = (L, lx, ly) => [L.cx + L.ax * lx - L.az * ly, L.cz + L.az * lx + L.ax * ly]; // lake-local (along rx, along ry) to world
+const lakeMin = (lakes, x, z) => lakes.reduce((m, L) => Math.min(m, lakeDistance(L, x, z)), Infinity);
 
-// Sweep a strip of `across` samples along every body of water, merged into one geometry; `at(x, z, u)` gives the height,
-// u is -1..1 across, and `halfW(body)` the strip's half-width. No bodies, an empty geometry.
-function sweep(halfW, across, at) {
+// Sweep a strip of `across` samples along every river-shaped body of water, merged into one geometry; `at(x, z, u)` gives
+// the height, u is -1..1 across, and `halfW(body)` the strip's half-width. `lake(L, verts, uvs, idx)` adds each lake's own
+// mesh first, and `covered(x, z)` (lakes only) drops a strip's quad when all four corners are under a lake's. No bodies,
+// an empty geometry.
+function sweep(halfW, across, at, lake = null, covered = null) {
   const verts = [], uvs = [], idx = [];
+  if (lake) for (const W of waters) if (W.kind === "lake") lake(W, verts, uvs, idx);
   for (const W of waters) {
-    const n = W.pts.length, base = verts.length / 3, hw = halfW(W);
+    if (W.kind === "lake") continue;
+    const n = W.pts.length, base = verts.length / 3, hw = halfW(W), under = [];
     for (let i = 0; i < n; i++) {
       const [x, z] = W.pts[i];
       const [ax, az] = W.pts[Math.max(0, i - 1)], [bx, bz] = W.pts[Math.min(n - 1, i + 1)];
@@ -26,11 +38,13 @@ function sweep(halfW, across, at) {
         const px = x + nx * hw * u, pz = z + nz * hw * u;
         verts.push(px, at(px, pz, u), pz);
         uvs.push(k / (across - 1), W.cum[i] / 4);
-        if (i < n - 1 && k < across - 1) {
-          const a = base + i * across + k, b = a + 1, c = a + across, d = c + 1;
-          idx.push(a, c, b, b, c, d);
-        }
+        if (covered) under.push(covered(px, pz));
       }
+    }
+    for (let i = 0; i < n - 1; i++) for (let k = 0; k < across - 1; k++) {
+      const a = i * across + k, b = a + 1, c = a + across, d = c + 1;
+      if (covered && under[a] && under[b] && under[c] && under[d]) continue;
+      idx.push(base + a, base + c, base + b, base + b, base + c, base + d);
     }
   }
   const geo = new THREE.BufferGeometry();
@@ -41,9 +55,27 @@ function sweep(halfW, across, at) {
   return { geo };
 }
 
+// A lake's bed: a grid over its box, the quads within LAKE_BED_PAD m of the shore
+function lakeBedMesh(L, verts, uvs, idx) {
+  const ex = L.rx + LAKE_BED_PAD, ey = L.ry + LAKE_BED_PAD, nx = Math.ceil((2 * ex) / LAKE_CELL), ny = Math.ceil((2 * ey) / LAKE_CELL);
+  const base = verts.length / 3, near = [];
+  for (let j = 0; j <= ny; j++) for (let i = 0; i <= nx; i++) {
+    const [x, z] = lakePoint(L, -ex + (2 * ex * i) / nx, -ey + (2 * ey * j) / ny);
+    verts.push(x, terrainHeight(x, z), z);
+    uvs.push(i / nx, j / ny);
+    near.push(lakeDistance(L, x, z) <= LAKE_BED_PAD);
+  }
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+    const a = j * (nx + 1) + i, b = a + 1, c = a + nx + 1, d = c + 1;
+    if (near[a] || near[b] || near[c] || near[d]) idx.push(base + a, base + c, base + b, base + b, base + c, base + d);
+  }
+}
+
 /** The riverbed: analytic heights at a fine spacing, mud in the channel, the ground's own grass colour outside it. */
 export function buildRiverBed(palette) {
-  const { geo } = sweep((W) => W.half + BED_PAD, BED_ACROSS, (x, z) => terrainHeight(x, z));
+  const lakes = waters.filter((W) => W.kind === "lake");
+  const covered = lakes.length ? (x, z) => lakeMin(lakes, x, z) < LAKE_BED_PAD - 0.5 : null;
+  const { geo } = sweep((W) => W.half + BED_PAD, BED_ACROSS, (x, z) => terrainHeight(x, z), lakeBedMesh, covered);
   const pos = geo.attributes.position;
   geo.setAttribute("color", new THREE.BufferAttribute(new Float32Array(pos.count * 3), 3));
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
@@ -90,12 +122,37 @@ function noiseTexture(size = 256, cells = 12) {
   return tex;
 }
 
+// A lake's surface: rings from its shore (padded under the bank) to its centre. u runs from 1 at the rim to 0.5 10 m in, so
+// the shader's bank foam sits along the shore as it does along a channel's banks, plus a slow wander inside (never past
+// the foam's 0.38) so the ripples vary across the lake and not only along it; v is metres / 8 along the long axis (a
+// channel's is / 4: a lake's ripples are broader and slower).
+function lakeSurfaceMesh(L, verts, uvs, idx) {
+  const base = verts.length / 3, ring = LAKE_SEGMENTS + 1;
+  for (const k of LAKE_RINGS) for (let j = 0; j <= LAKE_SEGMENTS; j++) {
+    const t = (j / LAKE_SEGMENTS) * Math.PI * 2, lx = (L.rx + WATER_PAD) * Math.cos(t) * k, ly = (L.ry + WATER_PAD) * Math.sin(t) * k;
+    const [x, z] = lakePoint(L, lx, ly), w = waterInfo(x, z, 20);
+    // How far in from dry land: from the lake's rim, or where a channel runs in, from the channel's own bank (no foam
+    // across its mouth)
+    const inward = Math.max(WATER_PAD - lakeDistance(L, x, z), w.kind === "lake" ? -Infinity : w.half - w.d);
+    const wander = 0.3 * Math.sin(lx * 0.031 + ly * 0.13) * Math.cos(lx * 0.019 - ly * 0.05) * THREE.MathUtils.smoothstep(inward, 4, 12);
+    verts.push(x, WATER_LEVEL, z);
+    uvs.push(0.5 + 0.5 * Math.max(0, 1 - inward / 10) + wander, lx / 8);
+  }
+  for (let r = 0; r < LAKE_RINGS.length - 1; r++) for (let j = 0; j < LAKE_SEGMENTS; j++) {
+    const a = base + r * ring + j, b = a + 1, c = a + ring, d = c + 1;
+    idx.push(a, c, b, b, c, d);
+  }
+}
+
 /**
  * The water surface. Medium and High: an unlit shader with two noise layers scrolling downstream and foam at the
  * banks, under the bloom threshold in both themes. Low: a flat tinted plane. Still under reduced motion.
  */
 export function buildWater(palette, { tier = "high", reduceMotion = false } = {}) {
-  const { geo } = sweep((W) => W.half + WATER_PAD, 2, () => WATER_LEVEL);
+  const lakes = waters.filter((W) => W.kind === "lake");
+  const level = lakes.length ? (x, z) => (lakeMin(lakes, x, z) < WATER_PAD ? WATER_LEVEL - UNDER_LAKE : WATER_LEVEL) : () => WATER_LEVEL;
+  const covered = lakes.length ? (x, z) => lakeMin(lakes, x, z) < 0 : null;
+  const { geo } = sweep((W) => W.half + WATER_PAD, 2, level, lakeSurfaceMesh, covered);
   const simple = tier === "low";
   let mat, uniforms = null;
   if (simple) {

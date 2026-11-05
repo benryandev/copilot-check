@@ -99,7 +99,7 @@ test('venueEntry on the Lagoon: centred, sized under the 320 m ceiling, hub buil
   assert.ok(Math.abs(cx) < 1 && Math.abs(cz) < 1, 'centred');
   assert.deepEqual(e.terrain.districts, {}); assert.equal(e.builders.districts, false); assert.equal(e.builders.raceway, true); assert.equal(e.builders.portal, true);
   assert.equal(e.arrival, 'portal'); assert.equal(e.home, '/ecosystem/'); assert.deepEqual(e.portal, { to: '/ecosystem/', from: 'lagoon' });
-  assert.equal(e.track.gates.length, 12); assert.equal(e.track.water.length, 1);
+  assert.equal(e.track.gates.length, 12); assert.equal(e.track.water.length, 2, 'the inlet and the lake');
   assert.equal(e.carColour, 0x22c55e, 'no sponsor: the hub green');
 });
 

@@ -39,7 +39,10 @@ export function venueEntry(mod, { slug }) {
     terrain: {
       world: { cx: 0, cz: 0, radius },
       roads: [{ kind: "track", from: "track", to: "track", closed: true, half: track.half, points: track.worldPoints }, home],
-      jumps: [], waters: [], districts: {}, stops: [], track, // the track's ramps and inlets are derived in configureTerrain
+      jumps: [], waters: [], districts: {}, stops: [], track, // the track's ramps, inlets and lakes are derived in configureTerrain
+      // A shallow bowl: flat to 20 m past the track's outermost point (the start of the tree belt, radius − 60), then 6 m up over
+      // the belt's inner 30 m, so the belt stands on a rim and no point of the track or its run-off changes height (R2)
+      bowl: { from: extent + 20, to: extent + 50, height: 6 },
     },
     builders: builders((k) => k === "raceway" || k === "portal"),
     spawn: { x: grid.x, z: grid.z, heading: Math.atan2(-grid.fx, -grid.fz) }, // the car faces (-sin h, -cos h)

@@ -25,7 +25,14 @@ export default {
   ],
   // Low end at water s − 18 (halfW 9.5 + RAMP.length 8 + LIP_SETBACK 0.5, jump-math.js): the lip sits on the near bank
   ramps: [{ s: 209.5, side: 0, length: 8, height: 1.9, width: 5.4 }],
-  water: [{ s: 227.5, halfW: 9.5 }], // s of [126, -30]
+  // The inlet (s of [126, -30]) is a channel: straight across the track as a plain inlet is (terrain.js inletBody), then on
+  // through `inside` (from the track toward the lake, ending in it: a 40 m arc, so the 10 m strip never folds on its inner
+  // bank) and `outside` (out past the venue's radius, bending gently away from the hairpin). The lake (terrain.js, kind
+  // "lake"; rx along the frame's x) fills the infield north of the road home, 14 m or more from the track's edge.
+  water: [
+    { s: 227.5, halfW: 9.5, inside: [[60, -25.6], [45.4, -11], [38.5, 8], [34, 22]], outside: [[175, -38], [215, -55], [262, -78]] },
+    { kind: "lake", centre: [-10, 31], rx: 95, ry: 26, depth: 1.2 },
+  ],
   walls: [
     { from: 119.8, to: 197.6, sides: [-1, 1] }, // [79, -65] to [126, -60]: Turn 1, from the end of the start straight to the corner's exit
     { from: 403.2, to: 527.1, sides: [-1, 1] }, // [50, 93] to [-50, 95]: the esses

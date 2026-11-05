@@ -90,14 +90,19 @@ export function roadInfo(x, z, maxD = 26) {
 // nearest body (by its edge, like roads), the distance to its centreline, how far along (s, and t as a share), the unit
 // tangent and that body's half and depth, so every channel term reads the body it belongs to. A world without water has
 // an empty list: waterInfo finds nothing and every water term is zero.
+// A lake (kind "lake", from a track's water list) is an ellipse, not a polyline: it sits after every river-shaped body, so
+// waters[0] (the river, WATER_LEVEL) is never a lake, and it has no centreline: its half is 0 and its d is the signed
+// distance to its shore (negative inside), so d − half is the distance to the bank for every kind.
 export const waters = [];
+let lakes = []; // the lake bodies of `waters`: none on the hub, so every lake term there is a loop over nothing
 const NO_RIVER = { half: 0, depth: 0, level: 0, fords: [], points: [], pts: [], cum: [], len: 0 };
-export let river = NO_RIVER; // waters[0], kept for water.js's callers and the tools
+export let river = NO_RIVER; // waters[0], the first river-shaped body, kept for water.js's callers and the tools
 let waterGrid = new Map();
 let waterReach = 20; // how far from a centreline any body still shapes the ground (its half + 10, at least 20)
 let waterMaxHalf = 0;
 export let WATER_LEVEL = 0;
-export function waterInfo(x, z, maxD = 20) {
+// The nearest river-shaped body, by its edge, within maxD of its centreline
+function channelInfo(x, z, maxD) {
   let best = { body: -1, d: Infinity, s: 0, t: 0, tx: 0, tz: 1, half: 0, depth: 0 }, bestEdge = Infinity;
   const ci = Math.floor(x / CELL), cj = Math.floor(z / CELL), n = Math.ceil(maxD / CELL);
   for (let a = ci - n; a <= ci + n; a++) for (let b = cj - n; b <= cj + n; b++) {
@@ -117,7 +122,45 @@ export function waterInfo(x, z, maxD = 20) {
   }
   return best;
 }
+// The nearest body of any kind; a lake's s and t are 0 and its tangent is its long axis
+export function waterInfo(x, z, maxD = 20) {
+  let best = channelInfo(x, z, maxD);
+  for (let i = 0; i < lakes.length; i++) {
+    const L = lakes[i], e = lakeDistance(L, x, z);
+    if (e <= maxD && e < best.d - best.half) best = { body: L.body, d: e, s: 0, t: 0, tx: L.ax, tz: L.az, half: 0, depth: L.depth, kind: "lake" };
+  }
+  return best;
+}
 export const riverInfo = waterInfo;
+// Signed distance from (x, z) to a lake's shore, negative inside. The nearest point on the ellipse by four fixed-point
+// steps in its first quadrant (well under a centimetre on these shapes; qa/water-bodies-unit.mjs checks it by brute force).
+export function lakeDistance(L, x, z) {
+  const dx = x - L.cx, dz = z - L.cz, a = L.rx, b = L.ry;
+  const px = Math.abs(dx * L.ax + dz * L.az), pz = Math.abs(dz * L.ax - dx * L.az);
+  let tx = Math.SQRT1_2, tz = Math.SQRT1_2;
+  for (let i = 0; i < 4; i++) {
+    const ex = ((a * a - b * b) * tx ** 3) / a, ez = ((b * b - a * a) * tz ** 3) / b; // the centre of curvature
+    const r = Math.hypot(a * tx - ex, b * tz - ez), qx = px - ex, qz = pz - ez, q = Math.hypot(qx, qz) || 1e-9;
+    tx = Math.min(1, Math.max(0, ((qx * r) / q + ex) / a));
+    tz = Math.min(1, Math.max(0, ((qz * r) / q + ez) / b));
+    const t = Math.hypot(tx, tz) || 1;
+    tx /= t; tz /= t;
+  }
+  const d = Math.hypot(px - a * tx, pz - b * tz);
+  return (px / a) ** 2 + (pz / b) ** 2 < 1 ? -d : d;
+}
+// A lake's bed at signed distance e: the shore at ground level, shelving to `depth` over LAKE_SHELF m (a slope of 0.4 at
+// the edge, so 0.3 m in, where onWater begins, the bed is already 0.12 m down), flat beyond. No cut below the depth.
+const LAKE_SHELF = 6;
+const lakeBed = (e, depth) => (e >= 0 ? 0 : depth * (1 - (1 - Math.min(-e, LAKE_SHELF) / LAKE_SHELF) ** 2));
+// The hills flatten towards a lake over 18 m, not a channel's 8: the infield's hills stand up to 5 m, and coming back over
+// 8 m they climbed steeper than the car can (car-math.js MAX_CLIMB) on the lake's bank. 20 m is waterReach's floor.
+const lakeFlat = (e) => smooth(2, 20, e);
+function lakeBody(trk, w, like) {
+  const [cx, cz] = trk.toWorld(w.centre[0], w.centre[1]), [x1, z1] = trk.toWorld(w.centre[0] + 1, w.centre[1]);
+  const l = Math.hypot(x1 - cx, z1 - cz); // rx runs along the frame's x
+  return { kind: "lake", cx, cz, ax: (x1 - cx) / l, az: (z1 - cz) / l, rx: w.rx, ry: w.ry, depth: w.depth, level: like.level, flow: like.flow, half: 0, pts: [], cum: [], len: 0, fords: [], bridges: false };
+}
 // The channel: a parabola `depth` deep at the centre, back to ground level at `half`
 const riverChannel = (d, half, depth) => (d >= half ? 0 : depth * (1 - (d / half) ** 2));
 // Hills flatten towards the water like they do towards a road, and the rim opens where it leaves
@@ -126,11 +169,20 @@ const rimOpen = (d, half) => smooth(half + 1, half + 8, d);
 
 // A track's inlet: a straight body across the track at `s`, from 60 m on the inside (the side of the track's right
 // vector that points at the centroid of its points) to 14 m on the outside. It never bridges: the track runs through it.
+// As a channel it goes on: `inside` and `outside` (points in the track's frame, each listed from the track outward) carry it
+// to a lake and to the world's edge. The straight then runs from 30 m inside to the same 14 m outside, with two more points
+// 8 m apart on each side in line with it: a Catmull-Rom span is straight when its four points are, so the curve (and every
+// sample of it) is exactly the straight inlet's line from 38 m inside to 22 m outside, across the track and its banks.
+const INLET_IN = 60, INLET_OUT = 14, CHANNEL_IN = 30, CHANNEL_GUARD = 8;
 function inletBody(trk, w, like) {
   const p = trk.at(w.s), pts = trk.worldPoints;
   const cx = pts.reduce((a, q) => a + q[0], 0) / pts.length, cz = pts.reduce((a, q) => a + q[1], 0) / pts.length;
   const sg = (cx - p.x) * p.rx + (cz - p.z) * p.rz >= 0 ? 1 : -1;
-  return { points: [[p.x + p.rx * sg * 60, p.z + p.rz * sg * 60], [p.x - p.rx * sg * 14, p.z - p.rz * sg * 14]], half: w.halfW, depth: like.depth, level: like.level, flow: like.flow, bridges: false };
+  const at = (d) => [p.x + p.rx * sg * d, p.z + p.rz * sg * d], frame = ([x, y]) => trk.toWorld(x, y); // d > 0 inside
+  const G = CHANNEL_GUARD;
+  const inner = w.inside ? [...w.inside.map(frame).reverse(), at(CHANNEL_IN + 2 * G), at(CHANNEL_IN + G), at(CHANNEL_IN)] : [at(INLET_IN)];
+  const outer = w.outside ? [at(-INLET_OUT), at(-INLET_OUT - G), at(-INLET_OUT - 2 * G), ...w.outside.map(frame)] : [at(-INLET_OUT)];
+  return { points: [...inner, ...outer], half: w.halfW, depth: like.depth, level: like.level, flow: like.flow, bridges: false };
 }
 
 // Where roads cross a bridged body of water: one entry per crossing, with the road's heading there (local +z along the road,
@@ -323,6 +375,17 @@ function edgeRise(x, z) {
   const d = Math.hypot(x - WORLD.cx, z - WORLD.cz);
   return Math.max(0, d - (WORLD.radius - 25)) * 0.55;
 }
+// A venue's bowl (cfg.bowl = { from, to, height }, entries.js): the ground rises `height` m between `from` and `to` m from
+// the world's centre, so the tree belt stands on a rim. Opened where water runs out through it, over BOWL_OPEN m past the
+// bank (a gentler valley than the rim's notch). The hub has none: null, and terrainHeight never calls this.
+let bowl = null;
+const BOWL_OPEN = 24;
+function bowlRise(x, z) {
+  const r = Math.hypot(x - WORLD.cx, z - WORLD.cz);
+  if (r <= bowl.from) return 0;
+  const w = waterInfo(x, z, waterMaxHalf + BOWL_OPEN);
+  return bowl.height * smooth(bowl.from, bowl.to, r) * smooth(2, BOWL_OPEN, w.d - w.half);
+}
 
 // ── Chart Ridge ────────────────────────────────────────────────────────
 // The ridge road's lift comes from the last 24 hourly closes (ridge-math.js); it is part of the one height function,
@@ -361,8 +424,15 @@ export function kerbLift(x, z, info = roadInfo(x, z)) {
 }
 
 export function terrainHeight(x, z, info = roadInfo(x, z), lift = true) {
-  const w = waterInfo(x, z, waterReach), rd = w.d;
-  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) * riverFlat(rd, w.half) + trackLift(info) + edgeRise(x, z) * rimOpen(rd, w.half) - riverChannel(rd, w.half, w.depth) + (lift ? ridgeLift(info) + kerbLift(x, z, info) : 0);
+  const w = channelInfo(x, z, waterReach), rd = w.d;
+  let flat = riverFlat(rd, w.half), open = rimOpen(rd, w.half), cut = riverChannel(rd, w.half, w.depth);
+  // Where a channel meets a lake the deeper cut wins and the flattening is the stronger, so the ground stays continuous
+  for (let i = 0; i < lakes.length; i++) {
+    const L = lakes[i], e = lakeDistance(L, x, z);
+    if (e > waterReach) continue;
+    flat = Math.min(flat, lakeFlat(e)); open = Math.min(open, rimOpen(e, 0)); cut = Math.max(cut, lakeBed(e, L.depth));
+  }
+  return Math.max(0, hills(x, z)) * flatMask(x, z, info.d, info.half) * flat + trackLift(info) + edgeRise(x, z) * open + (bowl ? bowlRise(x, z) : 0) - cut + (lift ? ridgeLift(info) + kerbLift(x, z, info) : 0);
 }
 // The one truth for where the ground is: terrain and jumps, or a bridge deck where one spans the river
 export function groundHeight(x, z) {
@@ -667,7 +737,8 @@ export function buildPlazas(palette) {
 }
 
 // ── Configuration ──────────────────────────────────────────────────────
-// cfg = { world: { cx, cz, radius }, roads, jumps, waters: [river-shaped bodies], track: resolved Track | null, districts, stops }.
+// cfg = { world: { cx, cz, radius }, roads, jumps, waters: [river-shaped bodies], track: resolved Track | null, districts, stops,
+// bowl?: { from, to, height } }. The track's water list adds an inlet per entry and a lake per entry of kind "lake".
 // Rebuilds every per-world value in place: objects and arrays keep their identity (importers hold them), scalars read
 // by name are reassigned, and the caches are rebuilt or cleared so the old world never answers.
 let config = null;
@@ -683,11 +754,14 @@ export function configureTerrain(cfg) {
   trackRoad = roads.findIndex((r) => r.kind === "track");
   RIDGE_ROAD = roads.findIndex((r) => r.kind === "ridge");
 
-  const bodies = (cfg.waters || []).filter((b) => b.points?.length >= 2);
-  const inlets = (cfg.track?.water || []).map((w) => inletBody(cfg.track, w, HUB_RIVER)); // an inlet is cut and levelled like the hub river
-  waters.splice(0, waters.length, ...[...bodies, ...inlets].map((b) => ({ fords: [], bridges: true, ...sampled(b) })));
-  river = waters[0] ?? NO_RIVER;
-  waterGrid = bucket(waters);
+  const bodies = (cfg.waters || []).filter((b) => b.points?.length >= 2), trackWater = cfg.track?.water || [];
+  const inlets = trackWater.filter((w) => w.kind !== "lake").map((w) => inletBody(cfg.track, w, HUB_RIVER)); // an inlet is cut and levelled like the hub river
+  const channels = [...bodies, ...inlets].map((b) => ({ fords: [], bridges: true, ...sampled(b) }));
+  const lakeList = trackWater.filter((w) => w.kind === "lake").map((w, i) => ({ ...lakeBody(cfg.track, w, HUB_RIVER), body: channels.length + i }));
+  waters.splice(0, waters.length, ...channels, ...lakeList); // lakes last: waters[0] is river-shaped whenever there is one
+  lakes = lakeList;
+  river = channels[0] ?? NO_RIVER;
+  waterGrid = bucket(channels);
   waterMaxHalf = waters.reduce((m, w) => Math.max(m, w.half), 0);
   waterReach = Math.max(20, waterMaxHalf + 10);
   WATER_LEVEL = waters[0]?.level ?? 0;
@@ -716,6 +790,7 @@ export function configureTerrain(cfg) {
     if (drift > 0.5) console.warn(`[eco] raceway: the road is ${roads[trackRoad].len.toFixed(1)} m but the track's lap is ${track.len.toFixed(1)} m`);
   }
   CREST = track?.lifts?.[0] ?? { height: 0 };
+  bowl = cfg.bowl?.height ? cfg.bowl : null;
 
   kerbGapCache.clear();
   setRidgeSeries(ridgeState.closes); // the profile is scaled to the ridge road's length
