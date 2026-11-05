@@ -20,6 +20,13 @@ test('tracks.json is up to date and the Raceway entry matches the worker as depl
   assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), fresh, 'run node tools/tracks-json.mjs');
   assert.deepEqual(fresh['realfi-v1'], { name: 'RealFi Raceway', checkpoints: [211, 300, 420, 500, 550], length: 642, minMs: 22138, maxSpeed: 29, segMaxSpeed: 36, note: 'pinned to the worker constants of 1 Nov 2026 until the optimiser-derived limits are adopted' });
 });
+test('the Lagoon is open: minMs is round(0.97 × floorMs) from its lap-simulator results, with both limits', async () => {
+  const res = JSON.parse(readFileSync(resolve(root, 'tools/lapsim/results/lagoon.json'), 'utf8'));
+  const e = (await generate())['lagoon-v1'];
+  assert.equal(e.minMs, Math.round(0.97 * res.floorMs)); assert.equal(e.minMs, 28710);
+  assert.equal(e.maxSpeed, res.limits.maxSpeed); assert.equal(e.segMaxSpeed, res.limits.segMaxSpeed);
+  for (const k of ['checkpoints', 'length', 'minMs', 'maxSpeed', 'segMaxSpeed']) assert.ok(e[k] != null, k); // the worker's openTracks needs all five
+});
 test('every entry carries the track name', async () => {
   const out = await generate();
   assert.equal(out['realfi-v1'].name, 'RealFi Raceway');

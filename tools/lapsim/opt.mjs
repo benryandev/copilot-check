@@ -31,8 +31,8 @@ let accepted = 0;
 const save = (it) => writeFileSync(a.out, JSON.stringify({ ms: best, ctrl: bestC, thr: bestT, DS, look: LOOK, seedName: a.seed, it, physics: sim.physics }));
 for (let it = 0; it < iters; it++) {
   const c = bestC.slice(), t = bestT.slice();
-  if (rnd() < 0.25) { // a throttle move: lift over (or restore) a run of 1 to 4 control points
-    const at = Math.floor(rnd() * NC), n = 1 + Math.floor(rnd() * 4), to = rnd() < 0.5 ? 0 : 1;
+  if (rnd() < 0.25) { // a throttle move: lift over (or restore) a run of 1 to 12 control points (a coast from 30 needs tens of metres)
+    const at = Math.floor(rnd() * NC), n = 1 + Math.floor(rnd() * 12), to = rnd() < 0.5 ? 0 : 1;
     for (let k = 0; k < n; k++) t[(at + k) % NC] = to;
     const v = evalC(c, t);
     if (v < best) { best = v; bestT = t; accepted++; }

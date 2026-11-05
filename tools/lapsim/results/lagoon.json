@@ -1,0 +1,211 @@
+{
+  "track": "lagoon",
+  "floorMs": 29598,
+  "limits": {
+    "maxSpeed": 30.8,
+    "segMaxSpeed": 35.5
+  },
+  "physics": {
+    "dirt": {
+      "top": 24,
+      "pull": 16,
+      "turn": 2.2
+    },
+    "tarmac": {
+      "top": 30,
+      "pull": 20,
+      "turn": 2.2,
+      "turnHigh": 1,
+      "vLow": 20,
+      "vHigh": 30
+    },
+    "graze": {
+      "min": 0.8,
+      "headOn": 0.35,
+      "nudge": 0.2
+    },
+    "resolved": true
+  },
+  "inlet": {
+    "halfW": 9.5,
+    "rampS": 209.5,
+    "sweep": [
+      {
+        "dt": "1/60",
+        "runs": [
+          {
+            "share": 0.8,
+            "speed": 24,
+            "takeoff": 24,
+            "past": 17.11,
+            "wet": true,
+            "boost": false
+          },
+          {
+            "share": 0.85,
+            "speed": 25.5,
+            "takeoff": 25.5,
+            "past": 18.4,
+            "wet": true,
+            "boost": false
+          },
+          {
+            "share": 0.86,
+            "speed": 25.8,
+            "takeoff": 25.8,
+            "past": 18.62,
+            "wet": true,
+            "boost": false
+          },
+          {
+            "share": 0.87,
+            "speed": 26.1,
+            "takeoff": 26.1,
+            "past": 18.84,
+            "wet": true,
+            "boost": false
+          },
+          {
+            "share": 0.88,
+            "speed": 26.4,
+            "takeoff": 26.4,
+            "past": 19.48,
+            "wet": false,
+            "boost": true
+          },
+          {
+            "share": 0.89,
+            "speed": 26.7,
+            "takeoff": 26.7,
+            "past": 19.68,
+            "wet": false,
+            "boost": true
+          },
+          {
+            "share": 0.9,
+            "speed": 27,
+            "takeoff": 27,
+            "past": 19.87,
+            "wet": false,
+            "boost": true
+          },
+          {
+            "share": 0.92,
+            "speed": 27.6,
+            "takeoff": 27.6,
+            "past": 21.14,
+            "wet": false,
+            "boost": true
+          },
+          {
+            "share": 0.95,
+            "speed": 28.5,
+            "takeoff": 28.5,
+            "past": 22.09,
+            "wet": false,
+            "boost": true
+          },
+          {
+            "share": 1,
+            "speed": 30,
+            "takeoff": 30,
+            "past": 23.66,
+            "wet": false,
+            "boost": true
+          }
+        ],
+        "dryFrom": 0.88
+      },
+      {
+        "dt": "1/30",
+        "runs": [
+          {
+            "share": 0.8,
+            "speed": 24,
+            "takeoff": 24,
+            "past": 17.15,
+            "wet": true,
+            "boost": false
+          },
+          {
+            "share": 0.85,
+            "speed": 25.5,
+            "takeoff": 25.5,
+            "past": 18.02,
+            "wet": true,
+            "boost": false
+          },
+          {
+            "share": 0.86,
+            "speed": 25.8,
+            "takeoff": 25.8,
+            "past": 19.53,
+            "wet": false,
+            "boost": true
+          },
+          {
+            "share": 0.87,
+            "speed": 26.1,
+            "takeoff": 26.1,
+            "past": 18.45,
+            "wet": true,
+            "boost": false
+          },
+          {
+            "share": 0.88,
+            "speed": 26.4,
+            "takeoff": 26.4,
+            "past": 19.97,
+            "wet": false,
+            "boost": true
+          },
+          {
+            "share": 0.89,
+            "speed": 26.7,
+            "takeoff": 26.7,
+            "past": 18.84,
+            "wet": true,
+            "boost": false
+          },
+          {
+            "share": 0.9,
+            "speed": 27,
+            "takeoff": 27,
+            "past": 20.37,
+            "wet": false,
+            "boost": true
+          },
+          {
+            "share": 0.92,
+            "speed": 27.6,
+            "takeoff": 27.6,
+            "past": 20.73,
+            "wet": false,
+            "boost": true
+          },
+          {
+            "share": 0.95,
+            "speed": 28.5,
+            "takeoff": 28.5,
+            "past": 22.61,
+            "wet": false,
+            "boost": true
+          },
+          {
+            "share": 1,
+            "speed": 30,
+            "takeoff": 30,
+            "past": 24.73,
+            "wet": false,
+            "boost": true
+          }
+        ],
+        "dryFrom": 0.9
+      }
+    ],
+    "line": {
+      "entry": 30,
+      "landS": 241
+    }
+  }
+}

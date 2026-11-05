@@ -26,7 +26,7 @@ speed limits. It runs in node with no browser and no bundler. A lap takes about 
     any subset. `makeSim` resolves it once (`resolvePhysics`) and hands the resolved object to every `stepCar`; `sim.physics` is that object.
     `opt.mjs` and `analyse.mjs` take `--physics file.json` (an overrides object) and write the resolved physics under `physics` in their output;
     `analyse --write` records it in `results/<track>.json`.
-- `opt.mjs`: the hill-climb over the lateral offsets and the throttle (a quarter of the moves lift or restore a run of 1 to 4
+- `opt.mjs`: the hill-climb over the lateral offsets and the throttle (a quarter of the moves lift or restore a run of 1 to 12
   control points). Each wall hit scores a second, so the best line is clean when a clean one exists; `DONE` says if it is not.
 - `analyse.mjs`: splits, the per-sector table (time, centreline speed, the line's min and max), the lifts, wall hits, sector diffs against a ghost, path length, grass and air time, sensitivity to lookahead, frame rate, start
   speed and props, an SVG map, and `--write`.
@@ -68,6 +68,11 @@ qlmanage -t -s 2000 -o . out.svg
 floor line (108 control points at 6 m). `qa/lapsim-unit.mjs` pins them: the replay lands within 60 ms of the real lap, the floor
 line within 40 ms of 22.914, the centreline flat out is 26.725 s, the three ramps are worth about 1.5 s, and the cut ratio is 87%.
 If a pin moves, `car.js`, the terrain or the wall maths changed.
+
+`qa/fixtures/lapsim/line-lagoon-29598.json` is the Lagoon's floor line (141 control points at 6 m, with its throttle): the
+optimiser from the centreline, rng 11, 4000 iterations, on the layout of plan 5. The pins: it replays within 50 ms of 29.598
+with no wall hits, it lifts below 27 m/s for Turn 1, it lands the jump dry, and the inlet's straight approach lands wet at
+85% of tarmac top and dry at 92% at 1/60 and 1/30. Other seeds land within 0.13 s of it (rng 7: 29.469).
 
 ## Fragility worth knowing
 
