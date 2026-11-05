@@ -56,3 +56,33 @@ test('the source track module is not mutated and two venue entries do not share 
   assert.notEqual(a.terrain, b.terrain); assert.notEqual(a.builders, b.builders);
   assert.notEqual(hubEntry().builders, hubEntry().builders);
 });
+
+// The top-level keys of the window.__eco literal (comments stripped)
+function ecoKeys(src) {
+  src = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+  const i = src.indexOf('window.__eco = {'); if (i < 0) return null;
+  let d = 0, k = [], tok = '', str = null;
+  for (let j = src.indexOf('{', i); j < src.length; j++) {
+    const c = src[j];
+    if (str) { if (c === '\\') { j++; continue; } if (c === str) str = null; continue; }
+    if (c === '"' || c === "'" || c === '`') { str = c; continue; }
+    if ('{[('.includes(c)) { d++; if (d === 1) { tok = ''; } continue; }
+    if ('}])'.includes(c)) { if (d === 1 && tok.trim()) k.push(tok.trim()); d--; if (d === 0) break; continue; }
+    if (d === 1) { if (c === ',') { if (tok.trim()) k.push(tok.trim()); tok = ''; } else if (c === ':') { k.push(tok.trim()); tok = '\u0000'; } else if (tok !== '\u0000') tok += c; }
+  }
+  return k.filter((x) => x && x !== '\u0000').map((x) => x.replace(/^\.\.\./, '...'));
+}
+// Every key the hub's __eco had in main.js before the move (5 Nov 2026, at 41fc3d6); the smokes under qa/ read them
+const ECO_KEYS = ["monuments","car","teleport","keys","stick","focusBoard","focusEnd","focus","boardPose","boardMarker","camera","project","jumps","groundHeight","placeCamera","placeCar","colliders","pads","deepLink","paused","blimp","stunt","stuntState","splash","sprayCount","overview","info","arrival","post","raceGates","toStart","inRaceway","renderer","scene","yardInject","ghostPreview","peersInject","peersMove","peersState","peersClose","peersConnects","ridge","windsocks","cine","celebrate","fireworks","sound","raceLive","raceLap","raceLiveInject","boost","arcade","arcadeBoard","emote","peerGroup","fps","tiers","quality"];
+
+test('main.js is the hub entry and runner.js holds the body: every __eco key survives the move', () => {
+  const main = readFileSync('ecosystem/js/main.js', 'utf8').replace(/^\/\/[^\n]*\n/gm, '').trim();
+  assert.equal(main, 'import { runWorld } from "./runner.js";\nimport { hubEntry } from "./entries.js";\nrunWorld(hubEntry());');
+  const runner = readFileSync('ecosystem/js/runner.js', 'utf8');
+  assert.match(runner, /export async function runWorld\(entry\)/);
+  assert.doesNotMatch(runner, /from "\.\/content\.js"/, 'the runner reads the world through the entry and the terrain accessors');
+  assert.doesNotMatch(runner, /\b(DISTRICTS|STOPS|SPAWN|MULTIPLAYER)\b/);
+  const keys = ecoKeys(runner);
+  assert.ok(keys, 'runner.js assigns window.__eco');
+  assert.deepEqual(ECO_KEYS.filter((k) => !keys.includes(k)), [], 'no __eco key lost');
+});

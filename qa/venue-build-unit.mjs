@@ -22,7 +22,7 @@ test('the saved board image takes its band and ink from the sponsor: RealFi on t
   assert.equal(hub.band, '#032327'); assert.equal(hub.paper, '#fafafa', 'the hub image keeps RealFi green and paper as before');
   const plain = brandFor(null);
   assert.equal(plain.band, '#1b1f24'); assert.equal(plain.paper, '#fafafa', 'a track with no sponsor gets the neutral band');
-  const src = readFileSync('ecosystem/js/main.js', 'utf8');
+  const src = readFileSync('ecosystem/js/runner.js', 'utf8');
   assert.match(src, /shareCaption\(trackDef\(\)\.name\), \{ band: brandFor\(trackDef\(\)\.sponsor\)\.band, ink: brandFor\(trackDef\(\)\.sponsor\)\.paper \}/, 'main.js colours the saved image through brandFor');
   assert.doesNotMatch(src, /band: REALFI\.green/, 'no hard-wired RealFi band');
 });
