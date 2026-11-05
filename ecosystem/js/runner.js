@@ -902,6 +902,7 @@ export async function runWorld(entry) {
     portalLatch = clock.elapsedTime + 2;
     dialogs.forEach((d) => d.open && d.close());
     releaseKeys(); paused = false;
+    document.body.classList.add("is-porting"); // R33: the touch controls go with the keys (ecosystem.css); the next page lands under is-holding, which hides them until it lands
     const s = car.s, line = archLines.find((l) => l.target.url === target.url);
     const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
     const to = line ? { x: line.x, z: line.z, fx: line.fx, fz: line.fz } : { x: s.x + fx * 20, z: s.z + fz * 20, fx, fz }; // no arch for it here: up and ahead of the car

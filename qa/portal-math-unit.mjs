@@ -162,3 +162,15 @@ test('handoffBase: a crossing measures from the car; Drive-in from afar measures
   assert.ok(Math.abs(e.heading + Math.PI / 2) < 1e-12);
   assert.deepEqual(handoffBase('go', car, { x: 0, z: 0 }, 0).pos, [500, 2, -300]); // no usable road direction: the car
 });
+
+// R33 (fix wave I): the touch controls hide for the flight out (is-porting, set as the keys are released) and stay hidden
+// through the landing (is-holding, from the record read at load until land() drops it). The frame is the venue shoot's portalOut-375.
+test('the touch controls hide through the portal flight and the landing, and come back when the car can drive', async () => {
+  const { readFileSync } = await import('node:fs');
+  const run = readFileSync('ecosystem/js/runner.js', 'utf8'), css = readFileSync('ecosystem/ecosystem.css', 'utf8');
+  assert.match(run, /releaseKeys\(\); paused = false;\n\s*document\.body\.classList\.add\("is-porting"\);/);
+  assert.match(css, /body\.is-porting \.touch \{ opacity: 0; pointer-events: none; transition: none; \}/);
+  assert.match(css, /body\.is-holding :is\(\.hud, \.touch\) \{ opacity: 0; pointer-events: none;/);
+  assert.match(run, /if \(landing\) document\.body\.classList\.add\("is-holding"\);/);
+  assert.match(run, /const land = \(\) => \{ placeCamera\(0, true\); paused = false; document\.body\.classList\.remove\("is-holding"\);/);
+});
