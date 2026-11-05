@@ -323,14 +323,15 @@ for (const w of WIDTHS) for (const theme of THEMES) {
           await shot('guide', 600);
         }
       }
-      // A venue page: no intro sheet, the car starts on the grid. Same states as the hub's where the page is the same.
+      // A venue page: the car starts on the grid. Same states as the hub's where the page is the same. A direct visit plays the
+      // opening flight as the hub does (plan 5 Task 5), so it is skipped here with &arrive=0, as on the hub, and the grid is what is shot.
       if (venueFlow) {
-        await page.goto(`${base}${PAGE}?mp=0#${theme}`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`${base}${PAGE}?mp=0&arrive=0#${theme}`, { waitUntil: 'domcontentloaded' });
         if (pick.includes('loading')) { await sleep(150); await page.screenshot({ path: `${out}eco-loading-${tag}.png` }); }
         await page.waitForFunction(() => window.__eco && !document.getElementById('loader'), null, { timeout: 120000 });
         await page.evaluate(() => document.fonts.ready);
         const grid = await page.evaluate(() => { const s = window.__eco.car.s; return { intro: document.getElementById('intro').open, holding: document.body.classList.contains('is-holding'), speed: s.speed, title: document.getElementById('where')?.textContent?.trim() }; });
-        // A direct visit (no record from an arch) still opens the intro sheet on the venue; a landing never does. Close it the way a visitor would, then the grid is what is shot.
+        // A direct visit (no record from an arch) opens the intro sheet on the venue after its flight (here skipped); a landing never does. Close it the way a visitor would, then the grid is what is shot.
         if (grid.intro) { console.log(`note ${tag}: a direct visit to ${PAGE} opens #intro (a landing through the arch does not)`); await page.click('#start'); }
         if (grid.holding) errors.push('the venue is still holding');
         if (grid.speed !== 0) errors.push(`the car is not stopped on the grid (${grid.speed} m/s)`);

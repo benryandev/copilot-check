@@ -22,7 +22,9 @@ const intro = (h) => /<dialog id="intro"[\s\S]*?<\/dialog>/.exec(h)[0];
 test('the venue intro is the Lagoon\'s own, with the hub\'s buttons and keys', () => {
   const v = intro(venue), hb = intro(hub);
   assert.match(v, /<h1>The Lagoon<\/h1>/);
-  assert.match(v, /tarmac/); assert.match(v, /dirt/); assert.match(v, /hairpin/); assert.match(v, /tyre walls/); assert.match(v, /esses/); assert.match(v, /board/);
+  assert.match(v, /tarmac/); assert.match(v, /dirt/);
+  // lagoon.js `surface`: tarmac from the last corner across the line to the water, so the lap ends on tarmac (review I1)
+  assert.doesNotMatch(venue, /ends on dirt/); assert.match(v, /back onto tarmac for the last corner/); assert.match(v, /hairpin/); assert.match(v, /tyre walls/); assert.match(v, /esses/); assert.match(v, /board/);
   const ids = (h) => [...h.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(ids(v), ids(hb), 'the same ids (start, intro-race, intro-map), which the runner wires');
   assert.equal(/<ul class="keys">[\s\S]*?<\/ul>/.exec(v)[0], /<ul class="keys">[\s\S]*?<\/ul>/.exec(hb)[0], 'the same keys');
