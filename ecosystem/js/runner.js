@@ -529,7 +529,7 @@ export async function runWorld(entry) {
     const s = car.s;
     const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
     // On the grid (stopped behind the start line, no lap running) the portrait camera pulls back to take the gantry in
-    const grid = !lapRunning() && s.speed < 0.5 && !!raceGates[0] && behindLine(s, raceGates[0]);
+    const grid = !lapRunning() && Math.abs(s.speed) < 0.5 && !!raceGates[0] && behindLine(s, raceGates[0]);
     const { back, ahead, lift: baseLift } = chaseFrame({ aspect: camera.aspect, speed: s.speed, grid });
     const want = new THREE.Vector3(s.x - fx * back, s.y + 6.5, s.z - fz * back);
     // Never dip under a hill behind the car
