@@ -1,10 +1,16 @@
 // Design-QA screenshots for the ecosystem world (dev only).
 // Usage: node qa/shoot-eco.mjs [baseUrl] [--states=intro,map] [--widths=375,1280] [--themes=dark] [--page=/ecosystem/tracks/lagoon/]
-// --page shoots a venue page instead of the hub: loading, grid (no intro sheet; the car on the grid once it has opened),
-// drive, peers, map, raceway, ghost, race, as the hub's states of those names are shot. Two hub states cross the portal and
-// need ?venues=1 (the shoot adds it): portalOut (the flight to the Lagoon frozen mid-way with the portalHold hook) and
-// portalIn (the venue's hold, then the landed frame). They run with --page or on their own: --states=portalOut,portalIn.
-// Shoots each state × width × theme to qa/shots/eco-<state>-<width>-<theme>.png and prints, per frame:
+// --page shoots a venue page instead of the hub, its frames named eco-<slug>-<state>-<width>-<theme>.png (eco-lagoon-grid-375-dark.png)
+// so a venue run never overwrites the hub's: loading, intro (the direct-visit intro, the opening flight skipped with &arrive=0),
+// grid (the car on the grid once the intro closes), drive (up held until the car is past the start line and the lap clock
+// runs), peers (three stand-ins round the car in the venue's zone; a peer in another zone is parked, not drawn), jump (the
+// car driven over the ramp at speed and shot in the air over the inlet, the stunt camera up), map, race (the finish sheet
+// with Lagoon times above its floor). raceway and ghost are hub states only: the venue is the track, so raceway would be
+// the grid again, and the ghost needs the open worker's board, which is a production check. Two hub states cross the portal
+// and need ?venues=1 (the shoot adds it): portalOut (the flight to the Lagoon frozen mid-way with the portalHold hook) and
+// portalIn (the venue's hold under a real hand-off record, then the landed frame). They run with --page or on their own:
+// --states=portalOut,portalIn.
+// Shoots each state × width × theme to qa/shots/eco-<state>-<width>-<theme>.png (the venue's prefixed, above) and prints, per frame:
 //   - sideways scroll, sheets past the viewport, HUD pieces off-screen or overlapping each other;
 //   - tap targets under 44px on touch layouts (375 and 768 run as touch devices);
 //   - WCAG AA contrast on panel text. A translucent panel is tried over a black and a white scene and the worse
@@ -34,7 +40,10 @@ const WIDTHS = (opt('widths') || ['360', '375', '390', '430', '844', '768', '100
 const THEMES = opt('themes') || ['light', 'dark'];
 const ALL = ['loading', 'arrive', 'intro', 'drive', 'boost', 'bridge', 'ford', 'stunt', 'ridge', 'windsocks', 'stop', 'plaza', 'yard', 'yardSheet', 'cabinet', 'arcade', 'peers', 'emote', 'peersSheet', 'map', 'mapEnd', 'raceway', 'walls', 'ghost', 'fireworks', 'raceGrid', 'racePos', 'raceInvite', 'race', 'deeplink', 'guide'];
 const PAGE = args.find(a => a.startsWith('--page='))?.slice(7) || null;
-const VENUE_STATES = ['loading', 'grid', 'drive', 'peers', 'map', 'raceway', 'ghost', 'race'], PORTAL_STATES = ['portalOut', 'portalIn'];
+const VENUE_STATES = ['loading', 'intro', 'grid', 'drive', 'peers', 'jump', 'map', 'race'], PORTAL_STATES = ['portalOut', 'portalIn'];
+// A venue run's frames carry its slug (R30), so they sit beside the hub's instead of over them
+const SLUG = PAGE ? (/\/tracks\/([a-z0-9-]+)\/?/.exec(PAGE)?.[1] ?? 'venue') : null;
+const PREFIX = SLUG ? `eco-${SLUG}-` : 'eco-';
 const pick = opt('states') || (PAGE ? [...VENUE_STATES, ...PORTAL_STATES] : ALL);
 const hubFlow = !PAGE && pick.some(x => ALL.includes(x));
 const venueFlow = !!PAGE && pick.some(x => VENUE_STATES.includes(x));
@@ -142,7 +151,7 @@ for (const w of WIDTHS) for (const theme of THEMES) {
     const shot = async (state, wait = 700) => {
       if (!pick.includes(state)) return;
       await sleep(wait);
-      await page.screenshot({ path: `${out}eco-${state}-${tag}.png` });
+      await page.screenshot({ path: `${out}${PREFIX}${state}-${tag}.png` });
       const found = await page.evaluate(audit);
       problems += found.length;
       for (const i of found) console.log(`     ${state}-${tag}: ${i}`);
@@ -327,47 +336,76 @@ for (const w of WIDTHS) for (const theme of THEMES) {
       // opening flight as the hub does (plan 5 Task 5), so it is skipped here with &arrive=0, as on the hub, and the grid is what is shot.
       if (venueFlow) {
         await page.goto(`${base}${PAGE}?mp=0&arrive=0#${theme}`, { waitUntil: 'domcontentloaded' });
-        if (pick.includes('loading')) { await sleep(150); await page.screenshot({ path: `${out}eco-loading-${tag}.png` }); }
+        if (pick.includes('loading')) { await sleep(150); await page.screenshot({ path: `${out}${PREFIX}loading-${tag}.png` }); }
         await page.waitForFunction(() => window.__eco && !document.getElementById('loader'), null, { timeout: 120000 });
         await page.evaluate(() => document.fonts.ready);
         const grid = await page.evaluate(() => { const s = window.__eco.car.s; return { intro: document.getElementById('intro').open, holding: document.body.classList.contains('is-holding'), speed: s.speed, title: document.getElementById('where')?.textContent?.trim() }; });
-        // A direct visit (no record from an arch) opens the intro sheet on the venue after its flight (here skipped); a landing never does. Close it the way a visitor would, then the grid is what is shot.
-        if (grid.intro) { console.log(`note ${tag}: a direct visit to ${PAGE} opens #intro (a landing through the arch does not)`); await page.click('#start'); }
+        // A direct visit (no record from an arch) opens the intro sheet after its flight (skipped here); a landing never does.
+        // Shot as it is shown, then closed the way a visitor would, and the grid is shot.
+        if (!grid.intro) errors.push(`a direct visit to ${PAGE} did not open #intro`);
+        else { await shot('intro', 1500); await page.click('#start'); }
         if (grid.holding) errors.push('the venue is still holding');
         if (grid.speed !== 0) errors.push(`the car is not stopped on the grid (${grid.speed} m/s)`);
         if (/lagoon\/?$/.test(PAGE) && grid.title !== 'The Lagoon') errors.push(`the HUD title is "${grid.title}", not "The Lagoon"`);
         await shot('grid', 2500);
-        // Driving: up held for a spell, then let go (software frames are few, so the car has not gone far)
-        await page.evaluate(() => { window.__eco.keys.up = true; });
-        await sleep(2500);
-        await page.evaluate(() => { window.__eco.keys.up = false; });
-        await shot('drive', 300);
-        // Three other visitors stood around the car, as on the hub
-        await page.evaluate(() => {
-          const c = window.__eco.car.s, sin = Math.sin(c.heading), cos = Math.cos(c.heading);
-          const at = (f, r) => ({ x: c.x - sin * f + cos * r, z: c.z - cos * f - sin * r });
-          window.__eco.peersInject([
-            { id: 'p1', name: 'Aveli', colour: '#22d3ee', ...at(4, -6), h: c.heading + 0.4 },
-            { id: 'p2', name: 'ADA_ACE', colour: '#facc15', ...at(6, 6), h: c.heading - 0.3 },
-            { id: 'p3', name: 'Driver 07', colour: '#ec4899', ...at(13, -10), h: c.heading + 3 },
-          ]);
-        });
-        await shot('peers', 2500);
-        await page.evaluate(() => window.__eco.peersInject(null));
+        // Driving: up held until the car is over the line with the lap clock running (software frames are few, so wait on
+        // the car, not the clock), then let go
+        if (pick.includes('drive')) {
+          await page.evaluate(() => { window.__eco.keys.up = true; });
+          const drove = await page.waitForFunction(() => window.__eco.car.s.speed > 12 && !/^0:00\.00$/.test(document.getElementById('race-time').textContent), null, { timeout: 60000 }).then(() => true, () => false);
+          await page.evaluate(() => { window.__eco.keys.up = false; });
+          if (!drove) errors.push(`drive: the car did not get over the start line (${await page.evaluate(() => `${window.__eco.car.s.speed.toFixed(1)} m/s, ${document.getElementById('race-time').textContent}`)})`);
+          await shot('drive', 200);
+        }
+        // Three other visitors round the car in the venue's own zone (peers.js parks a peer from another zone)
+        if (pick.includes('peers')) {
+          await page.evaluate(() => {
+            const e = window.__eco, c = e.car.s, sin = Math.sin(c.heading), cos = Math.cos(c.heading), zone = e.peersState().zone;
+            c.speed = 0; // stopped where the drive left it, so the stand-ins stay ahead of the camera
+            const at = (f, r) => ({ x: c.x - sin * f + cos * r, z: c.z - cos * f - sin * r });
+            e.peersInject([
+              { id: 'p1', name: 'Aveli', colour: '#22d3ee', zone, ...at(4, -6), h: c.heading + 0.4 },
+              { id: 'p2', name: 'ADA_ACE', colour: '#facc15', zone, ...at(6, 6), h: c.heading - 0.3 },
+              { id: 'p3', name: 'Driver 07', colour: '#ec4899', zone, ...at(13, -10), h: c.heading + 3 },
+            ]);
+          });
+          await shot('peers', 2500);
+          const seen = await page.evaluate(() => { const st = window.__eco.peersState(); return st.peers.filter((p) => p.zone === st.zone).length; });
+          if (seen !== 3) errors.push(`peers: ${seen} of 3 stand-ins in the venue's zone`);
+          await page.evaluate(() => window.__eco.peersInject(null));
+        }
+        // The water jump: the car put 12 m before the ramp's foot (the hairpin's exit) on its line at 27 m/s with up held, and shot once it is in
+        // the air over the inlet with the stunt camera most of the way round (stunt k past 0.5; the hub's stunt state snaps there with a hook; on the venue the
+        // physics takes it off the real ramp)
+        if (pick.includes('jump')) {
+          await page.evaluate(async () => {
+            window.__onWater = (await import('/ecosystem/js/terrain.js')).onWater;
+            const e = window.__eco, j = e.jumps.find((o) => o.stunt) || e.jumps[0];
+            const x = j.ox - j.fx * 12, z = j.oz - j.fz * 12;
+            e.placeCar(x, z, Math.atan2(-j.fx, -j.fz));
+            e.car.s.speed = 27; e.keys.up = true;
+          });
+          const flew = await page.waitForFunction(() => { const e = window.__eco, s = e.car.s; return s.air && e.stuntState().on && e.stuntState().k > 0.5 && window.__onWater(s.x, s.z); }, null, { timeout: 60000, polling: 'raf' }).then(() => true, () => false);
+          await page.screenshot({ path: `${out}${PREFIX}jump-${tag}.png` });
+          const air = await page.evaluate(() => ({ air: window.__eco.car.s.air, stunt: window.__eco.stuntState().on, k: +window.__eco.stuntState().k.toFixed(2) }));
+          await page.evaluate(() => { window.__eco.keys.up = false; });
+          if (!flew || !air.air) errors.push(`jump: the car was not in the air over the inlet when shot (${JSON.stringify(air)})`);
+          const found = await page.evaluate(audit); problems += found.length; for (const i of found) console.log(`     jump-${tag}: ${i}`);
+          await page.waitForFunction(() => !window.__eco.car.s.air, null, { timeout: 30000 }).catch(() => {});
+          await page.evaluate(() => window.__eco.toStart());
+        }
         await page.click('#open-map');
         await shot('map');
         await page.evaluate(() => document.querySelector('#map [data-close]').click());
-        await page.evaluate(() => window.__eco.toStart());
-        await shot('raceway', 3000);
-        await page.evaluate(() => window.__eco.ghostPreview(1.4, { name: 'Ben', ms: 25449, splits: [8570, 11900, 16630, 19950, 21840] }));
-        await shot('ghost', 1500);
-        await page.evaluate(() => window.__eco.ghostPreview(null));
+        // The lap-finish sheet with Lagoon times (the floor is 29.469 s, results/lagoon.json): a 0:30.412 lap, 0.618 s slower
+        // than the device's best 0:29.794, which never made the board, so the post-my-best note is offered under the form
+        // as race.js openFinish and showOffer write them
         await page.evaluate(() => {
-          document.getElementById('race-result').textContent = '0:25.853';
-          document.getElementById('race-gap').textContent = 'New best, 1.417 s faster than your last best (0:27.270).';
+          document.getElementById('race-result').textContent = '0:30.412';
+          document.getElementById('race-gap').textContent = '0.618 s slower than your best (0:29.794).';
           document.getElementById('race-form').hidden = false;
           document.getElementById('race-best-note').hidden = false;
-          document.getElementById('race-best-time').textContent = '0:24.892';
+          document.getElementById('race-best-time').textContent = '0:29.794';
           document.getElementById('race').showModal();
         });
         await shot('race');
@@ -388,6 +426,10 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         await page.waitForURL(u => u.pathname.startsWith('/ecosystem/tracks/'), { timeout: 60000 });
         await page.waitForFunction(() => document.body.classList.contains('is-holding'), null, { timeout: 60000 });
         await page.waitForFunction(() => window.__eco && !document.body.classList.contains('is-holding') && !document.getElementById('loader'), null, { timeout: 180000 });
+        // The landed frame under a real hand-off record: the record was read (landing()), no intro opened, the car stopped
+        const landed = await page.evaluate(() => ({ record: !!window.__eco.landing(), intro: document.getElementById('intro').open, speed: window.__eco.car.s.speed }));
+        if (!landed.record) errors.push('portalIn: the venue opened without the hand-off record');
+        if (landed.intro) errors.push('portalIn: the landing opened #intro');
         await shot('portalIn', 2500);
       }
       problems += errors.length;
