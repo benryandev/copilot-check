@@ -13,7 +13,7 @@ import { stuntBlend, stuntCamera, stuntTakeoff, stuntEase } from "./stunt-math.j
 import { initStick } from "./stick.js";
 import { FOCUS, focusPose, focusBlend, nearBoard, atMarker } from "./focus-math.js";
 import { boardImage, shareBoard, shareCaption } from "./board-share.js";
-import { REALFI } from "./build.js";
+import { brandFor } from "./sponsor-math.js"; // the saved image's band in the track sponsor's colours, as the board's header
 import { footStep } from "./hud-math.js";
 import { buildBlimp } from "./blimp.js";
 import { buildRidge } from "./ridge.js";
@@ -564,7 +564,7 @@ function focusTick(dt) {
   camera.lookAt(camLook.clone().lerp(focus.look, k));
 }
 $("focus-back").addEventListener("click", focusEnd);
-$("focus-save").addEventListener("click", () => shareBoard(boardImage(boardCanvas(), shareCaption(trackDef().name), { band: REALFI.green, ink: REALFI.paper }), { share: coarse, title: `${trackDef().name} top 10` })); // the share sheet on a touch screen, a download elsewhere (board-share.js)
+$("focus-save").addEventListener("click", () => shareBoard(boardImage(boardCanvas(), shareCaption(trackDef().name), { band: brandFor(trackDef().sponsor).band, ink: brandFor(trackDef().sponsor).paper }), { share: coarse, title: `${trackDef().name} top 10` })); // the share sheet on a touch screen, a download elsewhere (board-share.js)
 
 // ── Skip drawing districts out of sight (beyond the fog) ──────────────
 function cullDistricts() {
