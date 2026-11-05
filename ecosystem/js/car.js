@@ -152,7 +152,9 @@ export function stepCar(car, keys, dt, physics = DEFAULT_PHYSICS) {
   if (throttle > 0) s.speed += (s.speed < 0 ? BRAKE : pull * accelShare(wet)) * dt;
   else if (throttle < 0) s.speed -= (s.speed > 0 ? BRAKE : P.dirt.pull * 0.7) * dt;
   else if (!s.air) s.speed -= Math.sign(s.speed) * Math.min(Math.abs(s.speed), ROLL * dt);
-  if (s.speed > top) s.speed = Math.max(top, s.speed - easeRate(pull, wet) * dt); // ease down when leaving the road or as a boost ends (out-pulls the throttle by 1 m/s², so it never creeps past top); water drags hard
+  // Ease down when leaving the road or as a boost ends (out-pulls the throttle by 1 m/s², so it never creeps past top); water drags hard.
+  // Not in the air: a flying car holds its speed (Ben, 5 Nov 2026), else a tarmac launch over dirt bled toward dirt's top mid-flight
+  if (!s.air && s.speed > top) s.speed = Math.max(top, s.speed - easeRate(pull, wet) * dt);
   s.boost = Math.max(0, s.boost - dt);
   s.speed = Math.max(-MAX_R, s.speed);
 

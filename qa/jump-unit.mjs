@@ -41,8 +41,8 @@ test('the inlet for a 30 m/s surface needs about 90% of top: halfW 9.5, a 19.5 m
 // The inlet world: the inlet at s W across the straight, half width inletHalfFor(30) = 9.5, and the ramp placed as plan 5
 // will place it (`s: W - halfW - ramp.length - LIP_SETBACK` = W - 18): the far bank is inletGap(9.5) = 19.5 m past the lip
 // and onWater ends 0.3 m inside it, at 19.2. The tarmac runs from well back, up the ramp, across the inlet and on past the
-// landing (`to`). That matters: in the air the step still eases the speed down to the top of the surface under the car
-// (car.js), so the pure model's constant speed in flight holds only where that top is at least the approach speed.
+// landing (`to`). The car holds its speed in the air (car.js skips the ease-down while airborne, 5 Nov 2026), so the pure
+// model's constant speed in flight holds whatever the surface under the flight.
 const W = 600, HALF_W = inletHalfFor(30), RAMP_S = W - HALF_W - RAMP.length - LIP_SETBACK, LIP = RAMP_S + RAMP.length, FAR = inletGap(HALF_W);
 const inletWorld = (to = W + HALF_W + 60) => {
   const points = [[-600, -40], [600, -40], [600, 40], [-600, 40]];
@@ -124,12 +124,61 @@ test('a clear miss (20 m/s) lands mid-channel and wades at 12', () => {
   } finally { T.configureTerrain(hub); }
 });
 
-test('with dirt past the lip the flight eases to dirt top and the same committed entry falls short', () => {
-  T.configureTerrain(inletWorld(LIP)); // tarmac ends at the lip: the air over the inlet reads dirt (top 24)
+test('with dirt past the lip the flight holds its launch speed and the same committed entry still clears dry with a boost', () => {
+  T.configureTerrain(inletWorld(LIP)); // tarmac ends at the lip: the air over the inlet reads dirt (top 24), the landing is dirt
   try {
     const r = jump(27);
-    assert.ok(r.landed.speed < 24 + 1e-9, `eased in the air (${r.landed.speed})`);
-    assert.ok(r.landed.at < FAR - 0.3 && r.landed.wet, `short and wet (${r.landed.at})`);
+    assert.ok(r.takeoff && r.landed, 'took off and landed');
+    near(r.takeoff.speed, 27, 0.05, 'launch speed');
+    near(r.landed.speed, r.takeoff.speed, 0.05, 'speed at the landing frame vs the launch');
+    assert.ok(r.landed.at > FAR, `past the far bank (${r.landed.at})`);
+    assert.equal(r.landed.wet, false); assert.ok(r.landed.boost > 0, 'a boost on landing');
+    assert.equal(r.splash, null, 'no splash');
+  } finally { T.configureTerrain(hub); }
+});
+
+// The hub's case: all dirt, the Raceway ramp, no water. A boosted car at 28 (dirt's boosted top) whose boost runs out in
+// flight. It used to brake in the air at the full ease rate toward dirt's 24; now it lands at 28, and once the landing's own
+// boost is spent it eases on the ground at the net 1 m/s² with the throttle held.
+const dirtRampWorld = () => {
+  const points = [[-600, -40], [600, -40], [600, 40], [-600, 40]];
+  return {
+    world: { cx: 0, cz: 0, radius: 800 }, roads: [{ kind: 'track', from: 'x', to: 'x', closed: true, half: 6, points }],
+    jumps: [], waters: [], districts: {}, stops: [],
+    track: resolveTrack({ id: 'tiny-ramp', half: 6, points, gates: [{ s: 150 }, { s: 300 }], ramps: [{ s: RAMP_S, side: 0, ...RAMP }] }),
+  };
+};
+/** From 60 m before the inlet's s at 28 with `boost` s of boost, throttle held; the frames from launch to 4 s past the landing. */
+function boostedJump(boost) {
+  const car = mk(W - 60, 28); car.s.boost = boost;
+  let takeoff = null, landed = null, n = 0;
+  const after = [];
+  for (let i = 0; i < Math.round(7 / DT); i++) {
+    const info = stepCar(car, keys, DT); n++;
+    if (takeoff === null && car.s.air) takeoff = { n, speed: car.s.speed, boost: car.s.boost };
+    if (info.event?.landed !== undefined && landed === null) { landed = { n, speed: car.s.speed, boost: info.event.boost ?? 0 }; continue; }
+    if (landed) after.push({ t: (n - landed.n) * DT, speed: car.s.speed, boost: car.s.boost, air: car.s.air, dirt: info.dirt });
+  }
+  return { takeoff, landed, after };
+}
+
+test('a boost that runs out mid-flight: lands at 28, then eases about 2 m/s over 2 s on dirt once the landing boost is spent', () => {
+  T.configureTerrain(dirtRampWorld());
+  try {
+    const probe = boostedJump(10); // where the launch falls, with boost to spare
+    assert.ok(probe.takeoff, 'took off');
+    const tUp = probe.takeoff.n * DT;
+    const r = boostedJump(tUp + 0.3); // the boost ends 0.3 s into a flight of about 0.75 s
+    assert.ok(r.takeoff && r.landed, 'took off and landed');
+    assert.ok(r.takeoff.boost > 0, `boosted at the launch (${r.takeoff.boost})`);
+    near(r.takeoff.speed, 28, 0.05, 'launch speed');
+    near(r.landed.speed, 28, 0.05, 'speed at the landing frame');
+    const spent = r.after.findIndex((f) => f.boost === 0);
+    assert.ok(spent >= 0, 'the landing boost runs out');
+    const from = r.after[spent], to = r.after.find((f) => f.t >= from.t + 2 - 1e-9);
+    assert.ok(to, 'two seconds of running after the landing boost');
+    assert.ok(r.after.slice(spent).every((f) => !f.air && f.dirt), 'on the dirt throughout');
+    near(from.speed - to.speed, 2, 0.3, 'fall over 2 s with the throttle held');
   } finally { T.configureTerrain(hub); }
 });
 
