@@ -67,6 +67,16 @@ if (inlet) {
   inlet.sweep.forEach((sw) => { sw.dryFrom = sw.runs.find((q, i) => !q.wet && sw.runs.slice(i).every((x) => !x.wet))?.share ?? null; });
   console.log(`  inlet halfW ${inlet.halfW}, ramp s ${inlet.rampS}`);
   for (const sw of inlet.sweep) console.log(`    ${sw.dt}: ${sw.runs.map((q) => `${Math.round(q.share * 100)}% ${q.speed.toFixed(1)} ${q.past ?? "-"} m ${q.wet ? "wet" : "dry"}`).join(" | ")}  dry from ${sw.dryFrom}`);
+  // The exit sweep (lagoon-v2): from the hairpin's exit (the first walls' end) at v0, full throttle on the car's own physics,
+  // at 1/60 and 1/30; lipDist is the ramp's lip past the walls' end, wadesUpTo the highest v0 that lands wet
+  if (Array.isArray(track.walls) && track.walls.length) {
+    const ramp = track.ramps.find((rp) => rp.s === inlet.rampS), from = track.walls[0].to, lipS = ramp.s + ramp.length;
+    const round1 = (v) => Math.round(v * 10) / 10;
+    inlet.exit = { from, lipDist: round1(lipS - from), sweep: [1 / 60, 1 / 30].map((dt) => ({ dt: `1/${Math.round(1 / dt)}`, runs: [0, 5, 8, 10, 12, 15, 20, 23].map((v0) => ({ v0, ...cleared.exitJump(v0, { dt }) })) })) };
+    for (const sw of inlet.exit.sweep) { const wet = sw.runs.filter((q) => q.wet).map((q) => q.v0); sw.wadesUpTo = wet.length ? Math.max(...wet) : null; }
+    console.log(`  exit from s ${from}, lip ${inlet.exit.lipDist} m past it`);
+    for (const sw of inlet.exit.sweep) console.log(`    ${sw.dt}: ${sw.runs.map((q) => `${q.v0} ${q.lip ?? "-"} ${q.past ?? "-"} m ${q.wet ? "wet" : "dry"}`).join(" | ")}  wades up to ${sw.wadesUpTo}`);
+  }
   // the line's own jump: entry speed, landing and wet or dry at this step
   const i0 = P.findIndex((p) => p[5] && Math.abs(p[1] - track.water[0].s) < 30);
   if (i0 > 0) { let i1 = i0; while (i1 < P.length - 1 && P[i1][5]) i1++; inlet.line = { entry: P[i0 - 1][3], landS: P[i1][1] }; console.log(`    the line's jump: entry ${P[i0 - 1][3]} m/s, lands at s ${P[i1][1]}`); }

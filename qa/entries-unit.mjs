@@ -92,7 +92,7 @@ test('main.js is the hub entry and runner.js holds the body: every __eco key sur
 test('venueEntry on the Lagoon: centred, sized under the 320 m ceiling, hub builders off', async () => {
   const lagoon = (await import('../ecosystem/tracks/lagoon.js')).default;
   const e = venueEntry(lagoon, { slug: 'lagoon' });
-  assert.equal(e.kind, 'venue'); assert.equal(e.zone, 'lagoon-v1'); assert.equal(e.title, 'The Lagoon');
+  assert.equal(e.kind, 'venue'); assert.equal(e.zone, 'lagoon-v2'); assert.equal(e.title, 'The Lagoon');
   assert.ok(e.terrain.world.radius > 200 && e.terrain.world.radius < 320, `radius ${e.terrain.world.radius}`);
   const pts = e.terrain.track.worldPoints;
   const cx = pts.reduce((a, p) => a + p[0], 0) / pts.length, cz = pts.reduce((a, p) => a + p[1], 0) / pts.length;
@@ -142,7 +142,7 @@ test('a venue\'s opening flight starts high over its centre, looking at it, with
   const lagoon = (await import('../ecosystem/tracks/lagoon.js')).default;
   const e = venueEntry(lagoon, { slug: 'lagoon' }), f = e.flight;
   assert.deepEqual(f.look, [0, 0], 'it looks at the venue centre (the track is centred on it)');
-  assert.ok(Math.hypot(...f.at) <= 60, `over the centre (${f.at})`);
+  assert.ok(Math.hypot(...f.at) <= 60 + 1e-9, `over the centre (${f.at})`); // FLIGHT.back is 60 exactly; the tolerance is float rounding
   assert.ok(f.height >= 150, `high (${f.height} m)`);
   const far = Math.max(...e.track.pts.map(([x, z]) => Math.hypot(x - f.at[0], z - f.at[1])));
   assert.ok(f.fog.far > Math.hypot(far, f.height) + 20, 'the far side of the track is inside the fog');

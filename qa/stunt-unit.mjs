@@ -127,7 +127,7 @@ test('the Lagoon\'s stand-side pose: on the stand\'s side, 12 m off the ramp lan
     const j = T.jumps.find((o) => o.stunt), l = lip(j), trk = T.trackDef();
     const c = stuntPose(j, T.jumps, T.riverInfo, T.WATER_LEVEL);
     const lat = (p) => (p.x - l.x) * j.rx + (p.z - l.z) * j.rz, fwd = (p) => (p.x - l.x) * j.fx + (p.z - l.z) * j.fz;
-    const st = trk.stands.find((s) => s.s === 259), sp = trk.at(st.s), stand = { x: sp.x + sp.rx * st.off, z: sp.z + sp.rz * st.off };
+    const st = trk.stands.find((s) => s.s === 247.4), sp = trk.at(st.s), stand = { x: sp.x + sp.rx * st.off, z: sp.z + sp.rz * st.off };
     assert.ok(lat(stand) > 0 && Math.abs(lat(c) - 12) < 1e-9, `the jump stand at ${lat(stand).toFixed(1)} m, the camera at ${lat(c).toFixed(2)} m: same side, 12 m off the lane`);
     assert.ok(Math.abs(fwd(c) - j.bank / 4) < 1e-9, `a quarter of the flight past the lip (${fwd(c)} vs ${j.bank / 4})`);
     // The ramp the car has just left is behind the camera: its whole length is short of the camera along the flight

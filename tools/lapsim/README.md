@@ -17,7 +17,13 @@ speed limits. It runs in node with no browser and no bundler. A lap takes about 
   - `pathFrom(ctrl, DS)` makes a `latFn` from control offsets every `DS` m (Catmull-Rom). `throttleFrom(thr, DS)` makes a `thrFn`
     from one value per control point (a step: each holds for `DS` m around its point). `ghostPath(trace)` makes a `latFn` from a recorded lap.
   - `inletJump(speed, { wi, dt })` is the water jump alone: a straight approach on the centreline at exactly `speed` (the tops
-    pinned there) from 30 m before the ramp, returning the landing distance past the lip and whether it lands wet.
+    pinned there) from the first walls' end (the hairpin's exit) to the ramp, or from 30 m before it on a track without
+    walls, returning the landing distance past the lip and whether it lands wet. The run-up was 30 m until lagoon-v2, whose
+    ramp sits 2 m past the walls: a 30 m run-up started inside the hairpin and the 95% and 100% runs never took off.
+  - `exitJump(v0, { dt })` is the jump from the hairpin's exit: the car on the centreline at the first walls' end
+    (`track.walls[0].to`), heading along the track at `v0`, full throttle on the car's own physics, stepped to the landing or
+    6 s. It returns `{ lip, past, wet, boost }`: `lip` the speed on the take-off frame, `past` metres past the lip at landing,
+    `wet` and `boost` as `inletJump`'s. A track without an inlet or walls throws.
   - Colliders are `wallBoxes(wallSpots(track))` from `walls-math.js` plus the gantry posts, so the tool and the world agree on the walls.
   - `props: "cleared"` removes the bales, crate stacks and cones. This is the floor's convention: the record holders' laps
     were driven with the props knocked out of the way, and the floor must be a time a clean lap can approach. `props: "placed"` puts
@@ -51,6 +57,9 @@ writes the best line to `--out` every 250 iterations. 500 iterations take about 
 
 `--dt` is the lap's step as frames per second (60 by default, the floor's convention). On a track with an inlet, analyse also
 sweeps the jump at shares of tarmac top at 1/60 and 1/30 (wet or dry, metres past the lip) and `--write` records it under `inlet`.
+A track with walls and an inlet also gets the exit sweep, `exitJump` from 0, 5, 8, 10, 12, 15, 20 and 23 m/s at both steps,
+recorded under `inlet.exit` with `from` (the walls' end), `lipDist` (the lip's distance past it) and each step's `wadesUpTo`
+(the highest start speed that lands wet).
 
 `--write` records `floorMs` (the analysed line's time), `limits.maxSpeed` (the lap's average centreline speed times 1.08, rounded to
 0.1) and `limits.segMaxSpeed` (the fastest sector's centreline speed times 1.15, rounded to 0.1). A sector's centreline speed is its
@@ -69,11 +78,12 @@ floor line (108 control points at 6 m). `qa/lapsim-unit.mjs` pins them: the repl
 line within 40 ms of 22.914, the centreline flat out is 26.725 s, the three ramps are worth about 1.5 s, and the cut ratio is 87%.
 If a pin moves, `car.js`, the terrain or the wall maths changed.
 
-`qa/fixtures/lapsim/line-lagoon-29469.json` is the Lagoon's floor line (141 control points at 6 m, with its throttle): the
-best clean lap of three optimiser runs from the centreline at 4000 iterations on the layout of plan 5 (rng 7 29.469, rng 11
-29.598, rng 3 30.046; the floor is the best lap found). The pins: it replays within 50 ms of 29.469 with no wall hits, it lifts
-below 27 m/s for Turn 1, it lands the jump dry, and the inlet's straight approach lands wet at 85% of tarmac top and dry at 92%
-at 1/60 and 1/30.
+`qa/fixtures/lapsim/line-lagoon-29578.json` is the Lagoon's floor line on lagoon-v2 (142 control points at 6 m, with its
+throttle): the best clean lap of three optimiser runs from the centreline at 4000 iterations on the relaid layout of 6 Nov 2026
+(rng 7 29.578, rng 11 29.812, rng 3 30.169 with a wall hit; the floor is the best clean lap). The pins: it replays within 50 ms of
+29.578 with no wall hits, it lifts below 27 m/s for Turn 1, it lands the jump dry, its offset spans 3 m or more across the walled
+kink, it leaves the ground over the crest (or the brow holds it 1.5 m up), the inlet's straight approach lands wet at 85% of
+tarmac top and dry at 92% at 1/60 and 1/30, and from the hairpin's exit (`exitJump`) it wades from 0 and clears from 20.
 
 ## Fragility worth knowing
 

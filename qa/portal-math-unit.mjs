@@ -122,10 +122,10 @@ test('landingSpot: a venue lands on its grid facing the straight', async () => {
 });
 
 test('landingSpot: the hub lands on the venue road 18 m short of the arch, facing the ring', () => {
-  const venue = { key: 'lagoon', track: 'lagoon-v1', url: '/ecosystem/tracks/lagoon/', name: 'The Lagoon', off: 'partners' };
+  const venue = { key: 'lagoon', track: 'lagoon-v2', url: '/ecosystem/tracks/lagoon/', name: 'The Lagoon', off: 'partners' };
   const districts = { partners: { centre: [100, 0], exits: [{ at: [120, 0], dir: [1, 0], to: 'x' }] } };
   const [r] = venueRoads([venue], districts);
-  const spot = landingSpot({ from: 'lagoon-v1', to: '/ecosystem/' }, hubEntry(), [r]);
+  const spot = landingSpot({ from: 'lagoon-v2', to: '/ecosystem/' }, hubEntry(), [r]);
   const end = r.points[r.points.length - 1], start = r.points[0];
   const ux = (end[0] - start[0]) / VENUE_ROAD, uz = (end[1] - start[1]) / VENUE_ROAD;
   // 23 m back from the far end (the arch is 5 m back), on the road's line

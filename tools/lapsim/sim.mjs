@@ -156,13 +156,16 @@ export async function makeSim({ track = trackDef(), props = "cleared", physics =
 
   /** The inlet check: a straight committed approach on the centreline at exactly `speed` (the tarmac and dirt tops pinned
    * there, the throttle held, so the entry is the speed asked for) from `back` m before the ramp of water `wi`, at step dt.
+   * `back` defaults to the run-up from the first walls' end (the Lagoon's hairpin exit) to the ramp's foot, so the approach
+   * never starts inside a walled corner; a track without walls keeps the old 30 m.
    * Returns { speed, dt, takeoff, past, wet, boost }: past is metres from the lip to the landing along the track, wet
    * whether the landing frame is in the water. takeoff is null when the car never left the ground. */
-  function inletJump(speed, { wi = 0, dt = 1 / 60, back = 30 } = {}) {
+  function inletJump(speed, { wi = 0, dt = 1 / 60, back } = {}) {
     const w = track.water?.[wi];
     if (!w) throw new Error(`inletJump: ${track.id} has no water ${wi}`);
     const ramp = (track.ramps ?? []).reduce((b, r) => (Math.abs(r.s + r.length - w.s) < Math.abs((b?.s ?? Infinity) + (b?.length ?? 0) - w.s) ? r : b), null);
     const lipS = ramp.s + ramp.length;
+    back ??= Array.isArray(track.walls) && track.walls.length ? ramp.s - track.walls[0].to : 30;
     const P = resolvePhysics({ ...physics, dirt: { ...physics.dirt, top: speed }, tarmac: { ...physics.tarmac, top: speed } });
     const sStart = ramp.s - back, p0 = track.at(sStart);
     const car = fakeCar({ x: p0.x, y: 0, z: p0.z, heading: Math.atan2(-p0.fx, -p0.fz), speed, steer: 0, vy: 0, air: false, squash: 0, pitch: 0, roll: 0, airTime: 0, boost: 0, airHit: false });
@@ -185,7 +188,37 @@ export async function makeSim({ track = trackDef(), props = "cleared", physics =
     } finally { colliders.push(...walls); }
   }
 
-  return { runLap, pathFrom, throttleFrom, inletJump, ghostPath, project, track, gates, LEN, N, props: propList, colliders, physics };
+  /** The exit check (lagoon-v2): the car on the centreline at the end of the first walls (the hairpin's exit), heading along
+   * the track at `v0`, full throttle on the car's own physics, stepped to the landing or 6 s. Returns { lip, past, wet, boost }:
+   * lip is the speed on the take-off frame (null when the car never left the ground), past metres from the ramp's lip to the
+   * landing along the track, wet and boost as inletJump's. The ramp is the one whose lip sits nearest the inlet's near bank. */
+  function exitJump(v0, { dt = 1 / 60 } = {}) {
+    const w = track.water?.[0], from = track.walls?.[0]?.to;
+    if (!w) throw new Error(`exitJump: ${track.id} has no inlet`);
+    if (from == null) throw new Error(`exitJump: ${track.id} has no walls`);
+    const ramp = (track.ramps ?? []).reduce((b, r) => (Math.abs(r.s + r.length - w.s) < Math.abs((b?.s ?? Infinity) + (b?.length ?? 0) - w.s) ? r : b), null);
+    const p0 = track.at(from), lip = track.at(ramp.s + ramp.length);
+    const car = fakeCar({ x: p0.x, y: 0, z: p0.z, heading: Math.atan2(-p0.fx, -p0.fz), speed: v0, steer: 0, vy: 0, air: false, squash: 0, pitch: 0, roll: 0, airTime: 0, boost: 0, airHit: false });
+    const S = car.s;
+    const walls = colliders.splice(0); // as inletJump: the flight alone, the walls put back after
+    try {
+      let takeoff = null;
+      for (let t = 0, hint = Math.round(from / STEP); t < 6; t += dt) {
+        const pr = project(S.x, S.z, hint); hint = pr.i;
+        const tp = track.at(pr.s + 9), dx = tp.x - S.x, dz = tp.z - S.z, L = Math.hypot(dx, dz);
+        const err = wrap(Math.atan2(-dx, -dz) - S.heading), steer = Math.max(-1, Math.min(1, 2 * Math.max(S.speed, 1) * Math.sin(err) / Math.max(L, 1) / 2.2));
+        const info = stepCar(car, { up: true, steer }, dt, physics);
+        if (takeoff === null && S.air) takeoff = S.speed;
+        if (info.event?.landed !== undefined && takeoff !== null) {
+          const past = (S.x - lip.x) * lip.fx + (S.z - lip.z) * lip.fz;
+          return { lip: +takeoff.toFixed(2), past: +past.toFixed(2), wet: onWater(S.x, S.z), boost: (info.event.boost ?? 0) > 0 };
+        }
+      }
+      return { lip: takeoff === null ? null : +takeoff.toFixed(2), past: null, wet: true, boost: false };
+    } finally { colliders.push(...walls); }
+  }
+
+  return { runLap, pathFrom, throttleFrom, inletJump, exitJump, ghostPath, project, track, gates, LEN, N, props: propList, colliders, physics };
 }
 
 /** The CLIs take --track <id>. "realfi" is the terrain's configured track (the hub's Raceway, id "realfi-v1"). Any other

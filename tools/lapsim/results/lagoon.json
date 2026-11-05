@@ -1,23 +1,23 @@
 {
   "track": "lagoon",
-  "floorMs": 29469,
+  "floorMs": 29578,
   "splits": [
-    5124,
-    6608,
-    8131,
-    12028,
-    14407,
-    16657,
-    19233,
-    21829,
-    23393,
-    24969,
-    26072,
-    29469
+    5120,
+    6333,
+    7656,
+    11999,
+    14424,
+    16675,
+    19216,
+    21787,
+    23335,
+    25004,
+    26165,
+    29578
   ],
   "limits": {
-    "maxSpeed": 30.9,
-    "segMaxSpeed": 35.6
+    "maxSpeed": 31,
+    "segMaxSpeed": 37.9
   },
   "physics": {
     "dirt": {
@@ -42,7 +42,7 @@
   },
   "inlet": {
     "halfW": 9.5,
-    "rampS": 209.5,
+    "rampS": 197.9,
     "sweep": [
       {
         "dt": "1/60",
@@ -51,7 +51,7 @@
             "share": 0.8,
             "speed": 24,
             "takeoff": 24,
-            "past": 17.11,
+            "past": 17.59,
             "wet": true,
             "boost": false
           },
@@ -59,7 +59,7 @@
             "share": 0.85,
             "speed": 25.5,
             "takeoff": 25.5,
-            "past": 18.4,
+            "past": 18.47,
             "wet": true,
             "boost": false
           },
@@ -67,23 +67,23 @@
             "share": 0.86,
             "speed": 25.8,
             "takeoff": 25.8,
-            "past": 18.62,
-            "wet": true,
-            "boost": false
+            "past": 19.23,
+            "wet": false,
+            "boost": true
           },
           {
             "share": 0.87,
             "speed": 26.1,
             "takeoff": 26.1,
-            "past": 18.84,
-            "wet": true,
-            "boost": false
+            "past": 19.57,
+            "wet": false,
+            "boost": true
           },
           {
             "share": 0.88,
             "speed": 26.4,
             "takeoff": 26.4,
-            "past": 19.48,
+            "past": 19.47,
             "wet": false,
             "boost": true
           },
@@ -91,7 +91,7 @@
             "share": 0.89,
             "speed": 26.7,
             "takeoff": 26.7,
-            "past": 19.68,
+            "past": 19.81,
             "wet": false,
             "boost": true
           },
@@ -99,7 +99,7 @@
             "share": 0.9,
             "speed": 27,
             "takeoff": 27,
-            "past": 19.87,
+            "past": 20.59,
             "wet": false,
             "boost": true
           },
@@ -107,7 +107,7 @@
             "share": 0.92,
             "speed": 27.6,
             "takeoff": 27.6,
-            "past": 21.14,
+            "past": 20.35,
             "wet": false,
             "boost": true
           },
@@ -115,7 +115,7 @@
             "share": 0.95,
             "speed": 28.5,
             "takeoff": 28.5,
-            "past": 22.09,
+            "past": 22.29,
             "wet": false,
             "boost": true
           },
@@ -123,12 +123,12 @@
             "share": 1,
             "speed": 30,
             "takeoff": 30,
-            "past": 23.66,
+            "past": 24.48,
             "wet": false,
             "boost": true
           }
         ],
-        "dryFrom": 0.88
+        "dryFrom": 0.86
       },
       {
         "dt": "1/30",
@@ -137,7 +137,7 @@
             "share": 0.8,
             "speed": 24,
             "takeoff": 24,
-            "past": 17.15,
+            "past": 17.2,
             "wet": true,
             "boost": false
           },
@@ -145,7 +145,7 @@
             "share": 0.85,
             "speed": 25.5,
             "takeoff": 25.5,
-            "past": 18.02,
+            "past": 18.04,
             "wet": true,
             "boost": false
           },
@@ -153,23 +153,23 @@
             "share": 0.86,
             "speed": 25.8,
             "takeoff": 25.8,
-            "past": 19.53,
-            "wet": false,
-            "boost": true
+            "past": 18.37,
+            "wet": true,
+            "boost": false
           },
           {
             "share": 0.87,
             "speed": 26.1,
             "takeoff": 26.1,
-            "past": 18.45,
-            "wet": true,
-            "boost": false
+            "past": 19.57,
+            "wet": false,
+            "boost": true
           },
           {
             "share": 0.88,
             "speed": 26.4,
             "takeoff": 26.4,
-            "past": 19.97,
+            "past": 19.91,
             "wet": false,
             "boost": true
           },
@@ -177,15 +177,15 @@
             "share": 0.89,
             "speed": 26.7,
             "takeoff": 26.7,
-            "past": 18.84,
-            "wet": true,
-            "boost": false
+            "past": 20.25,
+            "wet": false,
+            "boost": true
           },
           {
             "share": 0.9,
             "speed": 27,
             "takeoff": 27,
-            "past": 20.37,
+            "past": 20.59,
             "wet": false,
             "boost": true
           },
@@ -193,7 +193,7 @@
             "share": 0.92,
             "speed": 27.6,
             "takeoff": 27.6,
-            "past": 20.73,
+            "past": 20.35,
             "wet": false,
             "boost": true
           },
@@ -201,7 +201,7 @@
             "share": 0.95,
             "speed": 28.5,
             "takeoff": 28.5,
-            "past": 22.61,
+            "past": 21.34,
             "wet": false,
             "boost": true
           },
@@ -209,17 +209,147 @@
             "share": 1,
             "speed": 30,
             "takeoff": 30,
-            "past": 24.73,
+            "past": 24.99,
             "wet": false,
             "boost": true
           }
         ],
-        "dryFrom": 0.9
+        "dryFrom": 0.87
       }
     ],
+    "exit": {
+      "from": 195.9,
+      "lipDist": 10,
+      "sweep": [
+        {
+          "dt": "1/60",
+          "runs": [
+            {
+              "v0": 0,
+              "lip": 20,
+              "past": 13.16,
+              "wet": true,
+              "boost": false
+            },
+            {
+              "v0": 5,
+              "lip": 20.67,
+              "past": 13.96,
+              "wet": true,
+              "boost": false
+            },
+            {
+              "v0": 8,
+              "lip": 21.67,
+              "past": 14.69,
+              "wet": true,
+              "boost": false
+            },
+            {
+              "v0": 10,
+              "lip": 22.33,
+              "past": 15.33,
+              "wet": true,
+              "boost": false
+            },
+            {
+              "v0": 12,
+              "lip": 23.33,
+              "past": 16.05,
+              "wet": true,
+              "boost": false
+            },
+            {
+              "v0": 15,
+              "lip": 25,
+              "past": 17.58,
+              "wet": true,
+              "boost": false
+            },
+            {
+              "v0": 20,
+              "lip": 28.33,
+              "past": 21.38,
+              "wet": false,
+              "boost": true
+            },
+            {
+              "v0": 23,
+              "lip": 30,
+              "past": 23.82,
+              "wet": false,
+              "boost": true
+            }
+          ],
+          "wadesUpTo": 15
+        },
+        {
+          "dt": "1/30",
+          "runs": [
+            {
+              "v0": 0,
+              "lip": 20,
+              "past": 13,
+              "wet": true,
+              "boost": false
+            },
+            {
+              "v0": 5,
+              "lip": 21,
+              "past": 14.66,
+              "wet": true,
+              "boost": false
+            },
+            {
+              "v0": 8,
+              "lip": 22,
+              "past": 15.4,
+              "wet": true,
+              "boost": false
+            },
+            {
+              "v0": 10,
+              "lip": 22.67,
+              "past": 15.66,
+              "wet": true,
+              "boost": false
+            },
+            {
+              "v0": 12,
+              "lip": 23.33,
+              "past": 15.75,
+              "wet": true,
+              "boost": false
+            },
+            {
+              "v0": 15,
+              "lip": 25,
+              "past": 17.66,
+              "wet": true,
+              "boost": false
+            },
+            {
+              "v0": 20,
+              "lip": 28.67,
+              "past": 22.66,
+              "wet": false,
+              "boost": true
+            },
+            {
+              "v0": 23,
+              "lip": 30,
+              "past": 24.88,
+              "wet": false,
+              "boost": true
+            }
+          ],
+          "wadesUpTo": 15
+        }
+      ]
+    },
     "line": {
       "entry": 30,
-      "landS": 241
+      "landS": 230
     }
   }
 }

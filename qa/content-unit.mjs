@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { ROADS, VENUES, DISTRICTS, venuesPreview, venueRoads } from '../ecosystem/js/content.js';
 
 const hash = (x) => createHash('sha256').update(JSON.stringify(x)).digest('hex').slice(0, 16);
-const LAGOON = { key: 'lagoon', name: 'The Lagoon', track: 'lagoon-v1', url: '/ecosystem/tracks/lagoon/', off: 'partners', colour: 0x2fa7c9 };
+const LAGOON = { key: 'lagoon', name: 'The Lagoon', track: 'lagoon-v2', url: '/ecosystem/tracks/lagoon/', off: 'partners', colour: 0x2fa7c9 };
 
 const PRE_VENUE = '122fc1ed0ff683d6'; // the 22 roads before venues existed (c0d26d9)
 

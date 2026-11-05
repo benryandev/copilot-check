@@ -32,9 +32,9 @@ const outline = (b) => {
 };
 
 test('the Lagoon has two stands: the jump stand north of the inlet\'s far bank (R13), the start-line stand on the line', () => {
-  assert.deepEqual(trk.stands, [{ s: 259, off: 16, len: 40 }, { s: 0, off: 16, len: 90 }]);
+  assert.deepEqual(trk.stands, [{ s: 247.4, off: 16, len: 40 }, { s: 0, off: 16, len: 90 }]);
   const inlet = trk.water.find((w) => w.kind !== 'lake');
-  assert.ok(259 - 40 / 2 >= inlet.s + inlet.halfW + 2, 'the jump stand\'s south end clears the far bank by 2 m');
+  assert.ok(247.4 - 40 / 2 >= inlet.s + inlet.halfW + 2, 'the jump stand\'s south end clears the far bank by 2 m');
 });
 
 test('buildStands: one stand per entry at its s and on its side, 8 m deep, one collider box each and nothing else solid', () => withLagoon(() => {

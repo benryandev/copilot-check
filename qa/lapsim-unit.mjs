@@ -66,13 +66,13 @@ test('trackForCli configures a venue from its track module, and realfi stays the
   try {
     assert.equal((await trackForCli('realfi')).id, 'realfi-v1');
     const t = await trackForCli('lagoon');
-    assert.equal(t.id, 'lagoon-v1'); assert.equal(T.trackDef(), t, 'the terrain is configured for the venue');
+    assert.equal(t.id, 'lagoon-v2'); assert.equal(T.trackDef(), t, 'the terrain is configured for the venue');
     await assert.rejects(trackForCli('nowhere'), /unknown track "nowhere"/);
   } finally { T.configureTerrain(hub); }
 });
 
 // The Lagoon (plan 5 task 3): its floor line, Turn 1's lift, the water jump. Each test configures the venue and restores the hub.
-const lagoonLine = JSON.parse(readFileSync('qa/fixtures/lapsim/line-lagoon-29469.json', 'utf8'));
+const lagoonLine = JSON.parse(readFileSync('qa/fixtures/lapsim/line-lagoon-29578.json', 'utf8'));
 async function lagoonSim() {
   const { trackForCli } = await import('../tools/lapsim/sim.mjs');
   const T = await import('../ecosystem/js/terrain.js');
@@ -125,6 +125,49 @@ test('the inlet (halfW 9.5): 80% and 85% of tarmac top land wet, 92% lands dry, 
       const at = (share) => sim.inletJump(share * top, { dt });
       for (const sh of [0.8, 0.85]) { const q = at(sh); assert.ok(q.takeoff, `${sh} took off`); assert.equal(q.wet, true, `${sh} at 1/${Math.round(1 / dt)}: lands wet (${q.past} m)`); }
       const q = at(0.92); assert.equal(q.wet, false, `0.92 at 1/${Math.round(1 / dt)}: lands dry (${q.past} m)`); assert.ok(q.boost, 'with a boost');
+    }
+  } finally { restore(); }
+});
+test('the exit jump (lagoon-v2): from the hairpin\'s exit at 0 m/s the car wades, at 20 m/s it clears with a boost, at 1/60 and 1/30', async () => {
+  const { sim, restore } = await lagoonSim();
+  try {
+    const walls = sim.colliders.length;
+    for (const dt of [1 / 60, 1 / 30]) {
+      const fps = `1/${Math.round(1 / dt)}`;
+      const slow = sim.exitJump(0, { dt });
+      assert.equal(slow.wet, true, `from 0 at ${fps}: wet (lip ${slow.lip}, ${slow.past} m)`);
+      const fast = sim.exitJump(20, { dt });
+      assert.equal(fast.wet, false, `from 20 at ${fps}: dry (lip ${fast.lip}, ${fast.past} m)`); assert.ok(fast.boost, `from 20 at ${fps}: a boost`);
+      assert.ok(fast.lip < 30.5, `from 20 at ${fps}: take-off at ${fast.lip} m/s, under 30.5`);
+    }
+    assert.equal(sim.colliders.length, walls, 'the walls are put back after the jump check');
+  } finally { restore(); }
+});
+test('the recorded exit sweep: the lip 10 m past the walls\' end (Ben\'s LIP_FROM_EXIT, 6 Nov 2026)', () => {
+  const res = JSON.parse(readFileSync('tools/lapsim/results/lagoon.json', 'utf8'));
+  assert.ok(res.inlet?.exit, 'results/lagoon.json records inlet.exit');
+  assert.equal(res.inlet.exit.from, lagoonDef.walls[0].to);
+  assert.ok(Math.abs(res.inlet.exit.lipDist - 10) <= 0.5, `lipDist ${res.inlet.exit.lipDist}`);
+  assert.deepEqual(res.inlet.exit.sweep.map((sw) => sw.dt), ['1/60', '1/30']);
+  for (const sw of res.inlet.exit.sweep) assert.deepEqual(sw.runs.map((q) => q.v0), [0, 5, 8, 10, 12, 15, 20, 23]);
+});
+test('the back arc (lagoon-v2): the line steers through the kink clean, and leaves the ground or holds the brow over the crest', async () => {
+  const { sim, T, restore } = await lagoonSim();
+  try {
+    const t = sim.track, r = lagoonRun(sim), P = r.path, k = t.walls[2];
+    const kink = P.filter((p) => p[1] >= k.from && p[1] <= k.to), lat = kink.map((p) => p[2]);
+    assert.ok(Math.max(...lat) - Math.min(...lat) >= 3, `the line's offset across the kink spans ${(Math.max(...lat) - Math.min(...lat)).toFixed(1)} m`);
+    assert.equal(r.wallHits, 0, 'no wall hits, the kink included');
+    // over the crest: air time, or on the ground at the peak 1.5 m above the same spot with the crest taken away (the flat grass)
+    const [lift] = t.lifts, peak = (lift.from + lift.to) / 2;
+    const crest = P.filter((p) => p[1] >= lift.from && p[1] < lift.to);
+    if (!crest.some((p) => p[5] === 1)) {
+      const row = crest.reduce((b, p) => (Math.abs(p[1] - peak) < Math.abs(b[1] - peak) ? p : b));
+      const { venueEntry } = await import('../ecosystem/js/entries.js');
+      const up = T.groundHeight(row[7], row[8]);
+      T.configureTerrain(venueEntry({ ...lagoonDef, lifts: [] }, { slug: 'lagoon' }).terrain);
+      const flat = T.groundHeight(row[7], row[8]);
+      assert.ok(up - flat >= 1.5, `no air over the crest, and the brow holds the car ${(up - flat).toFixed(2)} m above the flat at s ${row[1]}`);
     }
   } finally { restore(); }
 });

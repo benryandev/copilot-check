@@ -52,7 +52,8 @@ export function deviceToken(store, random = (n) => crypto.getRandomValues(new Ui
 // configured after import (or with no track at all) gets its own record, and a null id reads as none.
 export const bestKey = (id) => (id ? `eco-race-best:${id}` : null);
 // A layout's signature: the resolved track's lap length in whole metres. A track can keep its id through a relayout (the
-// Lagoon's lap went from 779.6 m to 844.5 m as lagoon-v1, 5 Nov 2026), and a best from the old layout may be one the new
+// Lagoon's lap went from 779.6 m to 844.5 m as lagoon-v1, 5 Nov 2026, before it opened; the 6 Nov relay took a new id,
+// lagoon-v2, 847.8 m), and a best from the old layout may be one the new
 // one cannot beat (0:27.922 under a 29.469 s floor), so a record carries the length it was set on.
 export const layoutLen = (track) => (track && Number.isFinite(track.len) ? Math.round(track.len) : null);
 // Records from before the signature have no `len`. Only the Raceway had bests then and it has never been relaid (642 m), so

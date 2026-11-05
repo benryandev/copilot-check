@@ -104,24 +104,26 @@ test('a local best carries its layout\'s length: dropped after a relayout, kept 
   assert.equal(layoutLen({ len: 844.5045 }), 845, 'whole metres'); assert.equal(layoutLen(null), null);
   const hubLen = layoutLen(T.trackDef()), lagLen = layoutLen(venueEntry(lagoon, { slug: 'lagoon' }).track);
   assert.equal(T.trackDef().id, 'realfi-v1'); assert.equal(hubLen, 642, 'the Raceway, never relaid');
-  assert.equal(lagLen, 845, 'the Lagoon after its 65 m relayout');
+  assert.equal(lagLen, 848, 'the Lagoon after the lagoon-v2 relay');
   assert.deepEqual(LEGACY_BEST_IDS, ['realfi-v1']);
   // recordBest writes the signature, and a slower lap keeps the record it beat (signature and all)
   const b = recordBest(null, { ms: 30100, splits: [1], trace: [], len: lagLen });
-  assert.equal(b.len, 845);
+  assert.equal(b.len, 848);
   assert.equal(recordBest(b, { ms: 31000, splits: [2], trace: [], len: lagLen }), b);
-  assert.equal(markPosted(b, 30100).len, 845, 'posting keeps the signature');
+  assert.equal(markPosted(b, 30100).len, 848, 'posting keeps the signature');
   assert.equal('len' in recordBest(null, { ms: 1, splits: [], trace: [] }), false, 'no length given, none written');
   const store = {
-    'eco-race-best:lagoon-v1': { ms: 27922, splits: [], len: 780 }, // set on the old 779.6 m layout
+    'eco-race-best:lagoon-v1': { ms: 27922, splits: [], len: 848 }, // under the old id, even with the new layout's length
     'eco-race-best:realfi-v1': { ms: 24892, splits: [] }, // a hub best from before signatures
   };
   const read = (k) => store[k] ?? null;
-  assert.equal(loadBest(read, 'lagoon-v1', lagLen), null, 'a different len is dropped');
-  store['eco-race-best:lagoon-v1'] = { ms: 30100, splits: [], len: 845 };
-  assert.equal(loadBest(read, 'lagoon-v1', lagLen).ms, 30100, 'the same len is kept');
-  store['eco-race-best:lagoon-v1'] = { ms: 27922, splits: [] };
-  assert.equal(loadBest(read, 'lagoon-v1', lagLen), null, 'a legacy record without len is dropped on the Lagoon');
+  assert.equal(loadBest(read, 'lagoon-v2', lagLen), null, 'the v2 page never reads a lagoon-v1 record');
+  store['eco-race-best:lagoon-v2'] = { ms: 27922, splits: [], len: 845 }; // set on lagoon-v1's 844.5 m layout
+  assert.equal(loadBest(read, 'lagoon-v2', lagLen), null, 'a different len is dropped');
+  store['eco-race-best:lagoon-v2'] = { ms: 30100, splits: [], len: 848 };
+  assert.equal(loadBest(read, 'lagoon-v2', lagLen).ms, 30100, 'the same len is kept');
+  store['eco-race-best:lagoon-v2'] = { ms: 27922, splits: [] };
+  assert.equal(loadBest(read, 'lagoon-v2', lagLen), null, 'a legacy record without len is dropped on the Lagoon');
   assert.equal(loadBest(read, 'realfi-v1', hubLen).ms, 24892, 'a legacy record without len is kept on the Raceway');
   store['eco-race-best:realfi-v1'] = { ms: 24892, splits: [], len: 642 };
   assert.equal(loadBest(read, 'realfi-v1', hubLen).ms, 24892, 'a signed Raceway record is kept');

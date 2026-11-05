@@ -62,24 +62,24 @@ async function zones() {
     const s = window.__eco.car.s;
     window.__eco.peersInject([
       { id: 'zh', name: 'Hub Peer', colour: '#3b82f6', zone: 'hub', x: s.x + 6, z: s.z, h: 0 },
-      { id: 'zl', name: 'Lagoon Peer', colour: '#f97316', zone: 'lagoon-v1', x: s.x - 6, z: s.z, h: 0 },
+      { id: 'zl', name: 'Lagoon Peer', colour: '#f97316', zone: 'lagoon-v2', x: s.x - 6, z: s.z, h: 0 },
     ]);
   });
   const st = await state(page);
   if (st.online !== 3) fail(`online should be 3 (me + 2 in any zone), is ${st.online}`);
-  if (st.zones?.hub !== 2 || st.zones?.['lagoon-v1'] !== 1) fail(`zones should be { hub: 2, lagoon-v1: 1 }, are ${JSON.stringify(st.zones)}`);
-  if (st.peers.find((p) => p.id === 'zl')?.zone !== 'lagoon-v1') fail('the lagoon peer has lost its zone');
+  if (st.zones?.hub !== 2 || st.zones?.['lagoon-v2'] !== 1) fail(`zones should be { hub: 2, lagoon-v2: 1 }, are ${JSON.stringify(st.zones)}`);
+  if (st.peers.find((p) => p.id === 'zl')?.zone !== 'lagoon-v2') fail('the lagoon peer has lost its zone');
   await until(async () => (await chip(page)) === '3 driving', `the chip should count everyone ("3 driving"), reads "${await chip(page)}"`);
   await until(() => page.evaluate(() => window.__eco.peerGroup('zh')?.visible === true), "the hub peer's car is never drawn", 15000);
   await sleep(1500);
   const lagoon = await page.evaluate(() => window.__eco.peerGroup('zl')?.visible ?? false);
   if (lagoon) fail("the lagoon peer's car is drawn on the hub");
-  // The who's-here sheet: both listed; the lagoon row says where (the registry has no lagoon-v1 name yet: the id fallback)
+  // The who's-here sheet: both listed; the lagoon row says where (the registry has no lagoon-v2 name yet: the id fallback)
   await page.click('#peers-chip');
-  const rows = await until(() => page.evaluate(() => { const t = [...document.querySelectorAll('#peers-list li')].map((li) => li.textContent); return t.some((x) => x.includes('on lagoon-v1')) ? t : null; }), 'the sheet never says "on lagoon-v1"');
+  const rows = await until(() => page.evaluate(() => { const t = [...document.querySelectorAll('#peers-list li')].map((li) => li.textContent); return t.some((x) => x.includes('on lagoon-v2')) ? t : null; }), 'the sheet never says "on lagoon-v2"');
   const hubRow = rows.find((t) => t.startsWith('Hub Peer'));
   if (!hubRow || hubRow.includes(' on ')) fail(`the hub row (my zone) should carry no zone label: ${JSON.stringify(rows)}`);
-  if (!rows.some((t) => t.startsWith('Lagoon Peer') && t.includes('on lagoon-v1'))) fail(`the lagoon row should say "on lagoon-v1": ${JSON.stringify(rows)}`);
+  if (!rows.some((t) => t.startsWith('Lagoon Peer') && t.includes('on lagoon-v2'))) fail(`the lagoon row should say "on lagoon-v2": ${JSON.stringify(rows)}`);
   if (rows[0].includes(' on ')) fail(`my own row says nothing extra: ${rows[0]}`);
   await page.evaluate(() => document.querySelector('#peers [data-close]').click());
   // A duplicate close is final: status dup, the note, and no reconnect attempt in the next 5 s

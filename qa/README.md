@@ -465,7 +465,7 @@ node qa/peers-smoke.mjs                 # also runs the part that needs a live r
 ```
 
 The first section is the **zones** check and needs no room: the page's hooks inject a hub peer and a venue peer, then it asserts
-that only the own zone is drawn, `online` counts everyone (me plus both), `zones` is `{ hub: 2, lagoon-v1: 1 }`, the who's-here
+that only the own zone is drawn, `online` counts everyone (me plus both), `zones` is `{ hub: 2, lagoon-v2: 1 }`, the who's-here
 sheet labels the venue row ("on …") and leaves the hub row bare, and a `4001`/`dup` close ends in the final `dup` state
 (chip "In another tab", aria-label "This device is driving in another tab", note shown, no reconnect in 5 s) while an ordinary
 close (1006) does reconnect. `NO_ROOM=1` stops after that section. Without it the smoke goes on to the live-room checks.
