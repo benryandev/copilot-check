@@ -377,6 +377,13 @@ export function grassWeight(x, z) {
 }
 export const onDirt = (x, z) => { const info = roadInfo(x, z); return info.d < info.half + 0.3 || jumpHeight(x, z) > 0; };
 // Is the point on the track's own road, on a tarmac stretch of its surface list? (False on a track with none, as the hub's.)
+// Off the track but nearest a tarmac stretch of it (within roadInfo's reach): the grass that steers as tarmac (car-math.js steerSurface)
+export function besideTarmac(x, z) {
+  if (!hasTarmac || trackRoad < 0) return false;
+  const info = roadInfo(x, z);
+  if (info.road !== trackRoad) return false;
+  return surfaceAt(track, trackS(info.t * roads[trackRoad].len)) === "tarmac";
+}
 export function onTarmac(x, z) {
   if (!hasTarmac || trackRoad < 0) return false;
   const info = roadInfo(x, z);

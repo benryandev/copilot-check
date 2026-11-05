@@ -5,11 +5,11 @@ import * as THREE from "../vendor/three.module.min.js";
 import { M, paint, box, mesh, colliders } from "./build.js";
 import { GLTFLoader } from "../vendor/GLTFLoader.js";
 import { markLive } from "./freeze.js";
-import { groundHeight, onDirt, onWater, onTarmac, racewayWeight, jumpAt, WORLD } from "./terrain.js";
+import { groundHeight, onDirt, onWater, onTarmac, besideTarmac, racewayWeight, jumpAt, WORLD } from "./terrain.js";
 
 import { glowIntensity } from "./post.js";
 import { boostFor, boostedTop } from "./boost-math.js";
-import { topShare, accelShare, easeRate, blocksClimb, CLIMB_PROBE, GRAVITY, resolvePhysics, DEFAULT_PHYSICS, turnRate, hitSpeedShare, slideShare, grazeNudge } from "./car-math.js";
+import { topShare, accelShare, easeRate, blocksClimb, CLIMB_PROBE, GRAVITY, resolvePhysics, DEFAULT_PHYSICS, turnRate, steerSurface, hitSpeedShare, slideShare, grazeNudge } from "./car-math.js";
 import { steerInput } from "./stick-math.js";
 
 export const CAR_R = 1.6;
@@ -162,7 +162,8 @@ export function stepCar(car, keys, dt, physics = DEFAULT_PHYSICS) {
   s.steer += (steerIn - s.steer) * Math.min(1, dt * 10);
   const traction = Math.min(1, Math.abs(s.speed) / 8); // how much the wheels can turn the car: none at rest, all of it from 8 m/s
   const grip = s.air ? 0.15 : traction;
-  s.heading += s.steer * turnRate(tarmac ? "tarmac" : "dirt", Math.abs(s.speed), P) * grip * Math.sign(s.speed) * dt; // tarmac steers less at speed
+  const steerAs = steerSurface(surface, surface === "grass" && besideTarmac(s.x, s.z)); // grass beside tarmac steers as the tarmac
+  s.heading += s.steer * turnRate(steerAs, Math.abs(s.speed), P) * grip * Math.sign(s.speed) * dt; // tarmac steers less at speed
 
   const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
   const nx = s.x + fx * s.speed * dt, nz = s.z + fz * s.speed * dt;

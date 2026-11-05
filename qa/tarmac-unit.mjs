@@ -92,6 +92,49 @@ test('grass beside tarmac is raceway grass: top 19.2', () => {
   } finally { T.configureTerrain(hub); }
 });
 
+/** Heading change over 0.5 s with the right held and the speed pinned at v, from a car `lateral` m right of the centreline at s. */
+function turnOver(s, v, lateral) {
+  const k = { up: true, right: true }, phys = resolvePhysics({ tarmac: { top: v } });
+  const car = mk(s, v, lateral), surfaces = new Set();
+  for (let i = 0; i < Math.round(0.5 / DT); i++) car.s.speed = v, stepCar(car, k, DT, phys); // the steer eases in
+  const h0 = car.s.heading;
+  for (let i = 0; i < Math.round(0.5 / DT); i++) { car.s.speed = v; surfaces.add(stepCar(car, k, DT, phys).surface); }
+  return { dh: Math.abs(car.s.heading - h0), surfaces: [...surfaces] };
+}
+
+// R8 of plan 5: grass is never better than the tarmac it is beside. Off a tarmac stretch the car steers with the tarmac's
+// speed curve; grass beside dirt (all of the hub) keeps dirt's 2.2 at any speed.
+test('grass 2 m beside a tarmac stretch steers as the tarmac: 1.0 rad/s at 30 m/s, 2.2 at 20', () => {
+  T.configureTerrain(tarmacWorld(380, 520));
+  try {
+    for (const [v, rate] of [[30, 1.0], [20, 2.2]]) {
+      const r = turnOver(450, v, 6 + 2);
+      assert.deepEqual(r.surfaces, ['grass'], `on grass throughout at ${v}`);
+      near(r.dh, rate * 0.5, rate * 0.5 * 0.08, `heading change over 0.5 s at ${v} m/s`);
+    }
+  } finally { T.configureTerrain(hub); }
+});
+
+test('grass beside a dirt stretch of the same track steers at 2.2 at any speed', () => {
+  T.configureTerrain(tarmacWorld(380, 520));
+  try {
+    const r = turnOver(800, 30, 6 + 2);
+    assert.deepEqual(r.surfaces, ['grass']);
+    near(r.dh, 2.2 * 0.5, 2.2 * 0.5 * 0.08, 'heading change over 0.5 s at 30 m/s');
+  } finally { T.configureTerrain(hub); }
+});
+
+test("grass beside the hub's dirt Raceway steers at 2.2 at 30 m/s (the hub has no tarmac)", () => {
+  T.configureTerrain(hub);
+  const car = mk(100, 30, 6 + 2); // the hub's track, 2 m off its edge
+  const k = { up: true, right: true }, phys = resolvePhysics({ dirt: { top: 30 } });
+  for (let i = 0; i < 30; i++) car.s.speed = 30, stepCar(car, k, DT, phys);
+  const h0 = car.s.heading, surfaces = new Set();
+  for (let i = 0; i < 30; i++) { car.s.speed = 30; surfaces.add(stepCar(car, k, DT, phys).surface); }
+  assert.ok(!surfaces.has('tarmac'), [...surfaces].join());
+  near(Math.abs(car.s.heading - h0), 2.2 * 0.5, 2.2 * 0.5 * 0.08, 'heading change over 0.5 s');
+});
+
 test('the hub is restored after', () => {
   T.configureTerrain(hub);
   assert.equal(T.raceGates.length, 6);

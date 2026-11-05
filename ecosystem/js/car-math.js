@@ -43,6 +43,9 @@ export function turnRate(surface, speed, P = DEFAULT_PHYSICS) {
   if (speed >= t.vHigh) return t.turnHigh;
   return t.turn + (t.turnHigh - t.turn) * (speed - t.vLow) / (t.vHigh - t.vLow);
 }
+/** The surface whose turn rate the car steers with: tarmac on tarmac, and on grass beside a tarmac stretch too, so grass is
+ * never better than the tarmac it is beside (plan 5 R8, 5 Nov 2026); everything else (dirt, water, grass beside dirt) steers as dirt. */
+export const steerSurface = (surface, besideTarmac) => (surface === "tarmac" || (surface === "grass" && besideTarmac) ? "tarmac" : "dirt");
 /** Deceleration above top speed: pull + 1 on land (never creeps past top), water drags hard. Dirt: 17, as before. */
 export const easeRate = (pull, wet) => (wet ? BRAKE_WATER : pull + EASE_NET);
 /** Speed kept on the hit frame for wall-normal share k (sin of the angle): 0.8 at a graze, 0.35 head-on; 0.77 at 15°. */

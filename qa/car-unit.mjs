@@ -1,6 +1,6 @@
 // The car's surface rule (no three.js): node --test qa/car-unit.mjs
 import test from 'node:test'; import assert from 'node:assert/strict';
-import { topShare, accelShare, easeRate, EASE_NET, SURFACES, GRAZE, resolvePhysics, DEFAULT_PHYSICS, turnRate, hitSpeedShare, slideShare, grazeNudge, blocksClimb, MAX_CLIMB, CLIMB_PROBE, OFF_ROAD, WATER_SHARE, WATER_ACCEL, WATER_DRAG } from '../ecosystem/js/car-math.js';
+import { topShare, accelShare, easeRate, EASE_NET, SURFACES, GRAZE, resolvePhysics, DEFAULT_PHYSICS, turnRate, hitSpeedShare, slideShare, grazeNudge, blocksClimb, MAX_CLIMB, CLIMB_PROBE, OFF_ROAD, WATER_SHARE, WATER_ACCEL, WATER_DRAG, steerSurface } from '../ecosystem/js/car-math.js';
 
 test('topShare: grass only costs top speed at the raceway; dirt is always full speed', () => {
   assert.equal(OFF_ROAD, 0.8);
@@ -53,6 +53,10 @@ test('turnRate: dirt 2.2 at any speed; tarmac falls from 2.2 at 20 m/s to 1.0 at
   assert.equal(turnRate('tarmac', 10), 2.2); assert.equal(turnRate('tarmac', 20), 2.2);
   assert.ok(Math.abs(turnRate('tarmac', 25) - 1.6) < 1e-9); assert.ok(Math.abs(turnRate('tarmac', 30) - 1.0) < 1e-9); assert.ok(Math.abs(turnRate('tarmac', 36) - 1.0) < 1e-9);
   assert.equal(turnRate('tarmac', 30, resolvePhysics({ tarmac: { turnHigh: 1.4 } })), 1.4);
+});
+test('steerSurface: tarmac, and grass beside tarmac, steer as tarmac; dirt, water and grass beside dirt as dirt', () => {
+  assert.equal(steerSurface('tarmac', false), 'tarmac'); assert.equal(steerSurface('grass', true), 'tarmac');
+  assert.equal(steerSurface('grass', false), 'dirt'); assert.equal(steerSurface('dirt', true), 'dirt');
 });
 test('easeRate: the net bleed above top is 1 m/s² on any surface with the throttle held; water drags at 68', () => {
   assert.equal(EASE_NET, 1);
