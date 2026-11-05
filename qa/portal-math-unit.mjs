@@ -45,3 +45,19 @@ test('readPortal: the record once; null when stale, for another page, garbage, o
   s.setItem('eco-portal', '{nope'); assert.equal(readPortal(s, { to: 'lagoon', now: 2000 }), null);
   s.setItem('eco-portal', JSON.stringify(rec)); assert.deepEqual(readPortal(s, { to: 'lagoon', now: 31000 }), rec); // exactly 30 s is fresh
 });
+
+test('portalLines: one venue road → one line at its arch (5 m short of the far end) facing along the road; none → []', async () => {
+  const { portalLines } = await import('../ecosystem/js/portal-math.js');
+  const venue = { key: 'lagoon', url: '/ecosystem/tracks/lagoon/' };
+  const roads = [{ kind: 'spoke', pts: [[0, 0], [50, 0]], half: 6 }, { kind: 'venue', venue, half: 6, pts: [[0, 0], [0, -20], [0, -40]] }];
+  const ls = portalLines(roads, [venue]);
+  assert.equal(ls.length, 1);
+  const [l] = ls;
+  assert.equal(l.fx, 0); assert.equal(l.fz, -1); assert.equal(l.x, 0); assert.equal(l.z, -35);
+  assert.equal(l.az, -35); assert.equal(l.bz, -35); assert.ok(Math.abs(Math.hypot(l.bx - l.ax, l.bz - l.az) - 2 * 7.6) < 1e-9);
+  assert.equal(l.target, venue);
+  assert.equal(crossed([0, -34], [0, -36], l), true);
+  assert.deepEqual(portalLines([roads[0]], [venue]), []);
+  assert.deepEqual(portalLines([], []), []);
+  assert.deepEqual(portalLines(roads, [{ key: 'other' }]), []);
+});

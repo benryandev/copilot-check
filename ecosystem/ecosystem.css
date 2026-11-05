@@ -642,3 +642,8 @@ body.is-focus :is(.hud:not(.focus-bar), .touch) { visibility: hidden; }
 
 /* ── ?fps=1 frame-time readout (dev only, fps.js) ───────────────────── */
 .fps { position: fixed; left: var(--space-2xs); top: 42%; z-index: 20; margin: 0; padding: var(--space-2xs); font: 0.75rem/1.45 var(--font-mono); white-space: pre; color: #f9fafb; background: rgb(13 13 13 / 0.78); border-radius: 4px; pointer-events: none; }
+
+/* The portal out (Task 5a): the veil the runner adds when a venue road exists, faded in over the flight's last 300 ms
+   in the sky colour; the cross-document view transition carries the last frame across in Chrome and Safari 18.2+. */
+@view-transition { navigation: auto; }
+#portal-veil { position: fixed; inset: 0; z-index: 1000; opacity: 0; pointer-events: none; }

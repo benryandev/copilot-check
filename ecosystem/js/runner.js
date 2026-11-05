@@ -42,6 +42,7 @@ import { initArcade, openArcade, arcadeOpen, injectArcadeBoard } from "./arcade.
 import { createFps } from "./fps.js";
 import { TIERS, startTier, nextTier, SLOW_MS, WINDOW } from "./quality-math.js";
 import { markLive, freezeStatic } from "./freeze.js";
+import { portalLines, crossed, flightPath, portalRecord, PORTAL_KEY } from "./portal-math.js";
 import { mergeStatic, collapseStatic, disposeOrphans, pruneEmpty } from "./merge.js";
 
 // The body below is the hub's world as it was in main.js, wrapped: `entry` (entries.js) says which world it builds, where
@@ -126,6 +127,9 @@ export async function runWorld(entry) {
   // (content.js venuesPreview); each gets its arch. A venue page has none of these roads, so nothing is built there.
   const venueRoadList = entry.builders.portal ? roads.filter((r) => r.kind === "venue") : [];
   venueRoadList.forEach((r) => buildVenueArch(scene, r.venue, r));
+  // The portal out (Task 5a): each arch's crossing line, computed once. On the hub an arch leads to its venue's page; on a
+  // venue page an arch road (none yet) leads home. With no venue roads the list is empty and the frame skips the test.
+  const archLines = portalLines(venueRoadList, venueRoadList.map((r) => r.venue)).map((l) => (entry.kind === "venue" ? { ...l, target: { url: entry.home } } : l));
   if (entry.builders.props) addProps(scene, { planters: tier().planters }); // includes the plaza benches and planters (furniture-math.js)
   await load.step(STEPS[2]);
   if (entry.builders.raceway) buildRaceway(scene);
@@ -863,6 +867,41 @@ export async function runWorld(entry) {
     updateWhere();
   }
 
+  // ── The portal out (Task 5a) ──────────────────────────────────────
+  // Through an arch (or the Map view's "Drive in"): the input locks and the car coasts, the camera flies from the chase pose
+  // up over the arch looking down the road (portal-math.js flightPath, 1.5 s), the veil fades in over the last 300 ms, then
+  // the hand-off record goes to sessionStorage for the next page and the browser navigates. The HUD is left as it is.
+  const PORTAL_S = 1.5, VEIL_S = 0.3;
+  let portal = null, portalLatch = 0; // portalLatch: the clock time before which a crossing is ignored (2 s after the last)
+  const veil = archLines.length ? document.body.appendChild(Object.assign(document.createElement("div"), { id: "portal-veil" })) : null;
+  if (veil) veil.setAttribute("aria-hidden", "true");
+  function portalOut(target) {
+    if (portal || !target?.url) return;
+    portalLatch = clock.elapsedTime + 2;
+    dialogs.forEach((d) => d.open && d.close());
+    releaseKeys(); paused = false;
+    const s = car.s, line = archLines.find((l) => l.target.url === target.url);
+    const fx = -Math.sin(s.heading), fz = -Math.cos(s.heading);
+    const to = line ? { x: line.x, z: line.z, fx: line.fx, fz: line.fz } : { x: s.x + fx * 20, z: s.z + fz * 20, fx, fz }; // no arch for it here: up and ahead of the car
+    portal = { target, t: 0, done: false, to, from: { pos: camera.position.toArray(), look: camLook.toArray() }, look: camLook.toArray() };
+    if (veil) { veil.style.background = `#${new THREE.Color(pal().sky).getHexString()}`; veil.style.opacity = "0"; }
+  }
+  let portalHeld = false; // QA: window.__eco.portalHold(true) freezes the flight for a mid-flight screenshot
+  function portalTick(dt) {
+    if (!portalHeld) portal.t += dt;
+    const k = Math.min(1, portal.t / PORTAL_S), f = flightPath(k, portal.from, portal.to);
+    camera.position.set(...f.pos);
+    camera.lookAt(f.look[0], f.look[1], f.look[2]);
+    portal.look = f.look;
+    if (veil) veil.style.opacity = String(Math.min(1, Math.max(0, (portal.t - (PORTAL_S - VEIL_S)) / VEIL_S)));
+    if (k < 1 || portal.done) return;
+    portal.done = true;
+    const rec = portalRecord({ from: entry.zone, to: portal.target.url, cam: camera.position.toArray(), look: portal.look, heading: car.s.heading, now: Date.now() });
+    try { sessionStorage.setItem(PORTAL_KEY, JSON.stringify(rec)); } catch {}
+    location.assign(portal.target.url);
+  }
+  entry.portalGo = (venue) => portalOut(venue);
+
   // Put the car down somewhere, stopped (the raceway's start)
   function placeCar(x, z, heading) {
     jumped = true;
@@ -1215,7 +1254,8 @@ export async function runWorld(entry) {
     const t = clock.elapsedTime;
     if (!paused) {
       const px = car.s.x, pz = car.s.z, wasAir = car.s.air;
-      const info = stepCar(car, raceLocked() || focus.on ? NO_KEYS : keys, dt);
+      const info = stepCar(car, raceLocked() || focus.on || portal ? NO_KEYS : keys, dt); // the portal's flight locks the input: the car coasts
+      if (archLines.length && !portal && t >= portalLatch) for (const l of archLines) if (crossed([px, pz], [car.s.x, car.s.z], l)) { portalOut(l.target); break; }
       if (info.event) car.lastEvent = info.event; // QA scripts read it
       { const j = jumpAt(px, pz) || jumpAt(px - info.fx, pz - info.fz); if (stuntTakeoff(wasAir, car.s.air, j, info.fx, info.fz)) stuntStart(j); } // off a stunt ramp, heading up it: the side-on camera
       brakeLights(car, keys.down && car.s.speed > 0.3 && !car.s.air, post.on, info.boost > 0);
@@ -1257,7 +1297,8 @@ export async function runWorld(entry) {
     blimp?.userData.tick(t);
     sky.userData.tick(t, dt, camera.position);
     fps?.mark("fx"); // dust, spray, fireworks, grass, water, the blimp, the sky
-    if (arrival?.active) arrival.tick(dt);
+    if (portal) portalTick(Math.min(raw, 0.1)); // the flight runs on the wall clock (capped): a slow frame must not stretch it
+    else if (arrival?.active) arrival.tick(dt);
     else if (!debugCam) { placeCamera(dt); stuntTick(dt); focusTick(dt); cineCam?.(dt); }
     if ((frameNo++ & 15) === 0) {
       if (!debugCam) cullDistricts();
@@ -1338,7 +1379,7 @@ export async function runWorld(entry) {
   setTimeout(() => $("loader").remove(), 450);
 
   // Test hook for automated checks (no effect on play)
-  window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, teleport: (key) => teleport(stops().find((s) => s.key === key)), keys, stick, focusBoard, focusEnd, focus, boardPose, boardMarker, camera, project: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight }; }, jumps, groundHeight, placeCamera, placeCar, colliders, pads, deepLink, paused: () => paused,
+  window.__eco = { monuments: { state: monumentsState, injectSlpFills }, car, teleport: (key) => teleport(stops().find((s) => s.key === key)), keys, stick, focusBoard, focusEnd, focus, boardPose, boardMarker, camera, project: (x, y, z) => { const v = new THREE.Vector3(x, y, z).project(camera); return { x: ((v.x + 1) / 2) * innerWidth, y: ((1 - v.y) / 2) * innerHeight }; }, jumps, groundHeight, placeCamera, placeCar, colliders, pads, portalLines: () => archLines, portalState: () => portal && { t: portal.t, to: portal.target.url }, portalHold: (on) => { portalHeld = !!on; }, deepLink, paused: () => paused,
     blimp: { setAngle: (deg) => blimp?.userData.setAngle(deg == null ? null : (deg * Math.PI) / 180), pose: () => blimp?.userData.pose(), setLivery: (n) => blimp?.userData.setLivery(n), liveries: () => blimp?.userData.liveries }, // no blimp on a venue
     stunt: () => { const j = jumps.find((o) => o.stunt && o.fx < 0); const lip = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length }; Object.assign(car.s, { x: lip.x + j.fx * 6, z: lip.z, heading: Math.atan2(-j.fx, -j.fz), speed: 24, air: true, vy: 2, airTime: 0.3 }); car.s.y = groundHeight(lip.x, lip.z) + j.height + 1.2; placeCamera(0, true); stuntStart(j); stunt.k = 1; stuntTick(0); } /* the snap first: it resets the stunt */, stuntState: () => ({ k: stunt.k, on: stunt.on }), // QA: mid-flight over the river with the side-on camera up
     splash: (age = 0.35) => { sprayBurst(car.s.x, Math.max(car.s.y, WATER_LEVEL), car.s.z, 40); spray?.userData.step(age); } /* pre-aged, so a still catches the burst spread rather than under the car */, sprayCount: () => sprayCount, // river QA: an entry burst on demand, and how many puffs have flown

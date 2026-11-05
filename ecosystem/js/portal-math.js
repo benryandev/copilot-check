@@ -52,3 +52,21 @@ export function readPortal(store, { to, now, maxAge = 30_000 }) {
   if (!rec || typeof rec !== "object" || rec.to !== to || typeof rec.at !== "number" || now - rec.at > maxAge) return null;
   return rec;
 }
+
+/** The crossing lines of the venue roads (Task 5a): each at its arch, `back` m short of the road's far end (build.js
+ * buildVenueArch), across the arch's width (road half + 1.6 m), facing along the road; `x, z` the arch, `target` its venue.
+ * Only roads of kind "venue" whose venue is in `venues` (by key; all when `venues` is omitted). No venue roads → []. */
+export function portalLines(roads, venues, { back = 5 } = {}) {
+  const keys = venues ? new Set(venues.map((v) => v.key)) : null;
+  return roads.filter((r) => r.kind === "venue" && r.venue && (!keys || keys.has(r.venue.key))).map((r) => {
+    const p = r.pts ?? r.points;
+    let left = back, i = p.length - 1, x = p[i][0], z = p[i][1];
+    while (i > 0) { // walk back along the polyline
+      const [ax, az] = p[i - 1], seg = Math.hypot(x - ax, z - az);
+      if (seg >= left) { const k = left / seg; x += (ax - x) * k; z += (az - z) * k; break; }
+      left -= seg; x = ax; z = az; i--;
+    }
+    const half = (r.half ?? 6) + 1.6;
+    return { ...archLine({ pts: p }, { x, z, half }), x, z, half, target: r.venue };
+  });
+}
