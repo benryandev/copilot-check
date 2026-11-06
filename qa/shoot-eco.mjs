@@ -162,29 +162,38 @@ async function jumpFrame(page) {
     const M = cam.matrixWorldInverse.elements, P = cam.projectionMatrix.elements;
     const view = (x, y, z) => ({ x: M[0] * x + M[4] * y + M[8] * z + M[12], y: M[1] * x + M[5] * y + M[9] * z + M[13], z: M[2] * x + M[6] * y + M[10] * z + M[14] });
     const corner = (f, lat, up) => { const x = j.ox + j.fx * f + j.rx * lat, z = j.oz + j.fz * f + j.rz * lat; return view(x, ground(x, z) + up, z); };
-    let v = [corner(0, -2.7, 0), corner(0, 2.7, 0), corner(j.length, 2.7, j.height), corner(j.length, -2.7, j.height)];
-    const NEAR = -0.1, out3 = [];
-    for (let i = 0; i < v.length; i++) {
-      const a = v[i], b = v[(i + 1) % v.length], ia = a.z <= NEAR, ib = b.z <= NEAR;
-      if (ia) out3.push(a);
-      if (ia !== ib) { const t = (NEAR - a.z) / (b.z - a.z); out3.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: NEAR }); }
-    }
-    let poly = out3.map((q) => { const w = -q.z; return { x: ((P[0] * q.x) / w + 1) / 2 * W, y: (1 - (P[5] * q.y) / w) / 2 * H }; });
-    const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-    poly = clip(poly, (p) => p.x >= 0, (a, b) => lerp(a, b, (0 - a.x) / (b.x - a.x)));
-    poly = clip(poly, (p) => p.x <= W, (a, b) => lerp(a, b, (W - a.x) / (b.x - a.x)));
-    poly = clip(poly, (p) => p.y >= 0, (a, b) => lerp(a, b, (0 - a.y) / (b.y - a.y)));
-    poly = clip(poly, (p) => p.y <= H, (a, b) => lerp(a, b, (H - a.y) / (b.y - a.y)));
-    let area = 0;
-    for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; area += a.x * b.y - b.x * a.y; }
-    const deck = Math.abs(area) / 2 / (W * H);
-    const base = ground(g.x, g.z), ban = [];
+    const NEAR = -0.1, lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    // The share of the viewport a quad (view-space corners, in order) covers: near-plane clip, projection, clip to the four edges, shoelace
+    const visible = (v) => {
+      const out3 = [];
+      for (let i = 0; i < v.length; i++) {
+        const a = v[i], b = v[(i + 1) % v.length], ia = a.z <= NEAR, ib = b.z <= NEAR;
+        if (ia) out3.push(a);
+        if (ia !== ib) { const t = (NEAR - a.z) / (b.z - a.z); out3.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: NEAR }); }
+      }
+      let poly = out3.map((q) => { const w = -q.z; return { x: ((P[0] * q.x) / w + 1) / 2 * W, y: (1 - (P[5] * q.y) / w) / 2 * H }; });
+      poly = clip(poly, (p) => p.x >= 0, (a, b) => lerp(a, b, (0 - a.x) / (b.x - a.x)));
+      poly = clip(poly, (p) => p.x <= W, (a, b) => lerp(a, b, (W - a.x) / (b.x - a.x)));
+      poly = clip(poly, (p) => p.y >= 0, (a, b) => lerp(a, b, (0 - a.y) / (b.y - a.y)));
+      poly = clip(poly, (p) => p.y <= H, (a, b) => lerp(a, b, (H - a.y) / (b.y - a.y)));
+      let area = 0;
+      for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; area += a.x * b.y - b.x * a.y; }
+      return Math.abs(area) / 2 / (W * H);
+    };
+    const deck = visible([corner(0, -2.7, 0), corner(0, 2.7, 0), corner(j.length, 2.7, j.height), corner(j.length, -2.7, j.height)]);
+    // Gate 3's banner: "inside" is every corner within the 2% margin and none behind the camera; "outside" is no visible area at all
+    // (a banner hanging off two edges, or half behind the camera, is neither: it is clipped)
+    const base = ground(g.x, g.z), ban = [], bv = [];
     let behind = false;
-    for (const lat of [-3.6, 3.6]) for (const y of [5.0, 6.2]) { if (view(g.x + rx * lat, base + y, g.z + rz * lat).z > NEAR) behind = true; ban.push(e.project(g.x + rx * lat, base + y, g.z + rz * lat)); }
+    for (const [lat, y] of [[-3.6, 5.0], [3.6, 5.0], [3.6, 6.2], [-3.6, 6.2]]) {
+      const x = g.x + rx * lat, z = g.z + rz * lat;
+      if (view(x, base + y, z).z > NEAR) behind = true;
+      ban.push(e.project(x, base + y, z)); bv.push(view(x, base + y, z));
+    }
     const mx = W * 0.02, my = H * 0.02;
     const inside = !behind && ban.every((p) => p.x >= mx && p.x <= W - mx && p.y >= my && p.y <= H - my);
-    const outside = behind || ban.every((p) => p.x < 0 || p.x > W || p.y < 0 || p.y > H);
-    const margin = Math.round(Math.min(...ban.map((p) => Math.min(p.x - mx, W - mx - p.x, p.y - my, H - my - p.y))));
+    const outside = visible(bv) < 1e-9;
+    const margin = behind ? -9999 : Math.round(Math.min(...ban.map((p) => Math.min(p.x - mx, W - mx - p.x, p.y - my, H - my - p.y))));
     const c = e.car.s, cp = e.project(c.x, c.y + 0.8, c.z);
     return { W, H, deck, inside, outside, margin, carOn: cp.x >= 0 && cp.x <= W && cp.y >= 0 && cp.y <= H, car: `${Math.round(cp.x)},${Math.round(cp.y)}` };
   });
