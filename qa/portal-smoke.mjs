@@ -13,14 +13,18 @@
 //       the car drives (speed > 0 with up held). The line says whether the browser actually restored from the cache. When it
 //       did not (Playwright's builds often skip the cache), the stranded page is made directly: the venue's load answers 204 (no content)
 //       so the hub stays put with the hand-off done under the opaque veil, then a persisted pageshow is dispatched to it.
-//   (g) the landed frame in both directions: not near-white, the car projected inside the frame in front of the camera,
+//   (g) the landed frame in both directions: not blank, the car projected inside the frame in front of the camera,
 //       and the camera clear of the arch (≥ 4 m across from it or above its 6.4 m beam). PORTAL_SHOTS=<dir> saves them.
 //   (e) during the transitions of (a) and (b) a JPEG (quality 30) every 100 ms for 2.5 s from the crossing; each frame is
-//       decoded by drawing it into a canvas on a separate blank page and must not be near-white (≥ 90% of its pixels with
-//       every channel ≥ 240). The light sky (#cfe0ec) the veil fades to has a minimum channel of 207, so it passes.
+//       decoded by drawing it into a canvas on a separate blank page and must not be blank. Blank means a uniform near-white
+//       frame: ≥ 97% of the pixels within ±6 of the frame's per-channel median, and that median's lowest channel ≥ 235.
+//       The climb passes through the cloud band, so a drifting cloud may fill the frame; it is shaded, so it is not uniform
+//       and passes (qa/fixtures/portal/cloud-frame.jpg is one). The light sky (#cfe0ec) the veil fades to has a minimum
+//       channel of 207, so it passes too. A self-test of the rule runs first (the fixture, #ffffff, #fafafa, #cfe0ec).
 // Debug: PORTAL_BROWSERS=webkit runs one browser; PORTAL_DUMP=<dir> writes every transition frame there and prints the shares.
 import { createRequire } from 'node:module';
 import { execSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 let pw;
 try { pw = await import('playwright'); } catch {
   const g = execSync('npm root -g').toString().trim();
@@ -35,14 +39,28 @@ async function run(name, type) {
   const check = (ok, msg) => { if (!ok) fails.push(msg); return ok; };
   const decoder = await (await browser.newContext()).newPage();
   await decoder.setContent('<canvas id=c></canvas>');
-  const whiteShare = (b64) => decoder.evaluate(async (src) => {
+  // blankFrame: a uniform near-white frame. Median per channel over a 1-in-4 pixel sample, then the share of the sample
+  // within ±6 of it in every channel; blank when that share ≥ 97% and the median's lowest channel ≥ 235.
+  const blankFrame = (b64) => decoder.evaluate(async (src) => {
     const img = new Image(); img.src = `data:image/jpeg;base64,${src}`; await img.decode();
     const c = document.getElementById('c'); c.width = img.width; c.height = img.height;
-    const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+    const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0);
     const d = g.getImageData(0, 0, c.width, c.height).data;
-    let w = 0; for (let i = 0; i < d.length; i += 4) if (d[i] >= 240 && d[i + 1] >= 240 && d[i + 2] >= 240) w++;
-    return w / (d.length / 4);
+    const hist = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)]; let n = 0;
+    for (let i = 0; i < d.length; i += 16) { hist[0][d[i]]++; hist[1][d[i + 1]]++; hist[2][d[i + 2]]++; n++; }
+    const median = hist.map((h) => { let acc = 0; for (let v = 0; v < 256; v++) { acc += h[v]; if (acc * 2 >= n) return v; } return 255; });
+    let near = 0;
+    for (let i = 0; i < d.length; i += 16) if (Math.abs(d[i] - median[0]) <= 6 && Math.abs(d[i + 1] - median[1]) <= 6 && Math.abs(d[i + 2] - median[2]) <= 6) near++;
+    const share = near / n;
+    return { blank: share >= 0.97 && Math.min(...median) >= 235, share, median };
   }, b64);
+  const solid = (color) => decoder.evaluate((col) => { const c = document.createElement('canvas'); c.width = 1280; c.height = 800; const g = c.getContext('2d'); g.fillStyle = col; g.fillRect(0, 0, 1280, 800); return c.toDataURL('image/jpeg', 0.3).split(',')[1]; }, color);
+  // the rule's self-test (as shoot-eco.mjs tests its audit): a real cloud-filled frame is not blank, flat white and near-white are, the veil's sky is not
+  const cloud = readFileSync(new URL('./fixtures/portal/cloud-frame.jpg', import.meta.url)).toString('base64');
+  const cases = [['the cloud fixture', cloud, false], ['#ffffff', await solid('#ffffff'), true], ['#fafafa', await solid('#fafafa'), true], ['#cfe0ec', await solid('#cfe0ec'), false]];
+  const wrong = []; for (const [what, b64, want] of cases) { const r = await blankFrame(b64); if (r.blank !== want) wrong.push(`${what}: blank ${r.blank} (share ${r.share.toFixed(2)}, median ${r.median})`); }
+  console.log(wrong.length ? `FAIL ${name}: blank-frame self-test ${wrong.join('; ')}` : 'ok   blank-frame self-test');
+  if (wrong.length) { await browser.close(); return false; }
 
   async function context({ seedStale = false } = {}) {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -78,11 +96,11 @@ async function run(name, type) {
       if (buf && process.env.PORTAL_DUMP) (await import('node:fs')).writeFileSync(`${process.env.PORTAL_DUMP}/${name}-${label.replace(/\W+/g, '_')}-${String(Date.now() - t0).padStart(4, '0')}.jpg`, buf);
       const wait = 100 - (Date.now() - tick); if (wait > 0) await new Promise((r) => setTimeout(r, wait));
     }
-    let worst = 0;
-    const shares = []; for (const b of bufs) { const w = await whiteShare(b.toString('base64')); shares.push(+w.toFixed(2)); worst = Math.max(worst, w); }
+    let worst = 0, blanks = 0;
+    const shares = []; for (const b of bufs) { const r = await blankFrame(b.toString('base64')); shares.push(+r.share.toFixed(2)); worst = Math.max(worst, r.share); if (r.blank) blanks++; }
     if (process.env.PORTAL_DUMP) console.log(name, label, JSON.stringify(shares));
     const n = bufs.length;
-    check(n > 0 && worst < 0.9, `${label}: ${n} frames, the whitest ${(worst * 100).toFixed(0)}% near-white`);
+    check(n > 0 && blanks === 0, `${label}: ${n} frames, ${blanks} blank (the most uniform ${(worst * 100).toFixed(0)}% within ±6 of its median)`);
     return { n, worst };
   }
   // (g) the landed frame: pixels, the car on screen, the camera clear of the arch
@@ -90,7 +108,7 @@ async function run(name, type) {
     const buf = await page.screenshot({ type: 'png' });
     if (process.env.PORTAL_SHOTS) (await import('node:fs')).writeFileSync(`${process.env.PORTAL_SHOTS}/task-5c-${shot}-${name}.png`, buf);
     const jpg = await page.screenshot({ type: 'jpeg', quality: 30 });
-    const white = await whiteShare(jpg.toString('base64'));
+    const blank = await blankFrame(jpg.toString('base64'));
     const g = await page.evaluate(() => {
       const e = window.__eco, s = e.car.s, c = e.camera;
       const p = e.project(s.x, s.y + 0.8, s.z);
@@ -102,10 +120,10 @@ async function run(name, type) {
       const arch = Math.min(...e.portalLines().map((l) => Math.hypot(c.position.x - l.x, c.position.z - l.z)));
       return { onScreen: ahead && p.x > 0 && p.x < innerWidth && p.y > 0 && p.y < innerHeight, visible: e.car.group.visible, arch, camY: c.position.y };
     });
-    check(white < 0.9, `${label}: the landed frame ${(white * 100).toFixed(0)}% near-white`);
+    check(!blank.blank, `${label}: the landed frame is blank (${(blank.share * 100).toFixed(0)}% within ±6 of median ${blank.median})`);
     check(g.onScreen && g.visible, `${label}: the car in frame ${JSON.stringify(g)}`);
     check(g.arch >= 4 || g.camY > 8, `${label}: the camera clear of the arch (${g.arch.toFixed(1)} m across, ${g.camY.toFixed(1)} m up)`);
-    return { white, arch: g.arch };
+    return { white: blank.share, arch: g.arch };
   }
   const near = (a, b, m) => Math.hypot(a.x - b.x, a.z - b.z) < m;
   const out = {};
@@ -214,8 +232,8 @@ async function run(name, type) {
     }
   } catch (e) { fails.push(`threw: ${e.message.split('\n')[0]}`); }
   await browser.close();
-  const frames = out.a && out.b ? `frames ${out.a.n}+${out.b.n}, whitest ${(Math.max(out.a.worst, out.b.worst) * 100).toFixed(0)}%` : 'frames n/a';
-  console.log(`${fails.length ? 'FAIL' : 'ok  '} ${name}: (a)–(e) ${fails.length ? fails.join('; ') : 'pass'}; ${frames}; (c) opening ${out.c ?? 'n/a'}; (f) ${out.f ?? 'n/a'}; (g) landed whitest ${out.ga && out.gb ? (Math.max(out.ga.white, out.gb.white) * 100).toFixed(0) + '%' : 'n/a'}, camera ${out.gb ? out.gb.arch.toFixed(1) : 'n/a'} m from the hub arch`);
+  const frames = out.a && out.b ? `frames ${out.a.n}+${out.b.n}, most uniform ${(Math.max(out.a.worst, out.b.worst) * 100).toFixed(0)}%` : 'frames n/a';
+  console.log(`${fails.length ? 'FAIL' : 'ok  '} ${name}: (a)–(e) ${fails.length ? fails.join('; ') : 'pass'}; ${frames}; (c) opening ${out.c ?? 'n/a'}; (f) ${out.f ?? 'n/a'}; (g) landed most uniform ${out.ga && out.gb ? (Math.max(out.ga.white, out.gb.white) * 100).toFixed(0) + '%' : 'n/a'}, camera ${out.gb ? out.gb.arch.toFixed(1) : 'n/a'} m from the hub arch`);
   return fails.length === 0;
 }
 
