@@ -469,6 +469,14 @@ body:has(#touch:not([hidden])) .emote-row { bottom: calc(max(var(--space-2xs), e
   color: var(--text-secondary);
 }
 .quality button { min-height: 44px; }
+/* The venue's Map settings (Lagoon v2 Task 5): wrapped so a phone can lay them two across, which lifts the Music row above the sticky Keep driving bar at 375 wide; the wrapper's children are not direct sheet children, so the sheet's own spacing is restated here */
+.sheet--venue .map-rows { display: flex; flex-direction: column; gap: var(--space-md); }
+@media (max-width: 480px) {
+  .sheet--venue .map-rows { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm) var(--space-md); }
+  .sheet--venue .map-rows fieldset:nth-child(-n+2) { grid-column: 1 / -1; } /* Theme and Graphics take a full row, so the grid's empty half does not cost a row of its own */
+  .sheet--venue > p.muted { display: none; } /* the lede (two ways out) gives way on a phone, where the buttons below say the same and its two lines pushed Music under the bar */
+  .sheet--venue .map-rows legend { float: none; flex-basis: 100%; margin: 0; } /* Sound and Music sit side by side, each with its label over its chips; beside them the label wrapped the chips onto two lines */
+}
 .map-theme { display: none; } /* a venue's Map theme row: phones with the timer panel up only (below) */
 .quality button[aria-pressed="true"] { background: var(--text-primary); color: var(--bg-page); border-color: var(--text-primary); }
 .chip-sound { min-width: 44px; justify-content: center; } /* the short "♪" label alone is narrower than a tap target */

@@ -17,8 +17,25 @@ test('the venue page shares the hub\'s HUD and sheets', () => {
   // R31 and R32 (fix wave G, H): the Map sheet's lede and the footer are the venue's too
   const same = (h) => h.replace(/<script type="module" src="[^"]+"><\/script>/, '').replace(/<dialog id="intro"[\s\S]*?<\/dialog>/, '').replace(/<p class="arrive-title">[^<]*<\/p>/, '')
     .replace(/<footer class="hud hud-foot">[\s\S]*?<\/footer>/, '').replace(/(<dialog id="map"[\s\S]*?<h2 id="map-title">Where to\?<\/h2>\s*)<p class="muted">[^<]*<\/p>/, '$1')
-    .replace(/\s*<fieldset class="quality map-theme">[\s\S]*?<\/fieldset>/, '');
-  assert.equal(same(body(venue)), same(body(hub)), 'the body differs only in its entry script, its opening title, its intro, its Map lede, its Map theme row and its footer');
+    .replace(/\s*<fieldset class="quality map-theme">[\s\S]*?<\/fieldset>/, '')
+    .replace('<dialog id="map" class="sheet sheet--venue"', '<dialog id="map" class="sheet"').replace(/\s*<div class="map-rows">([\s\S]*?)<\/div>(\s*<div class="sheet-actions">)/, '$1$2').replace(/\s+/g, ' ');
+  assert.equal(same(body(venue)), same(body(hub).replace(/\s+/g, ' ')), 'the body differs only in its entry script, its opening title, its intro, its Map lede, its Map theme row, its Map rows wrapper and its footer');
+});
+
+// Lagoon v2 Task 5: on 375 wide the Music row sat under the sticky Keep driving bar until the sheet was scrolled. The venue's
+// four settings sit in .map-rows, a two-column grid at 480 and under (Graphics across both); the hub's sheet is as it was.
+test('the venue Map wraps its four settings in .map-rows under .sheet--venue; the hub has neither', () => {
+  const map = /<dialog id="map"[\s\S]*?<\/dialog>/.exec(venue)[0];
+  assert.match(map, /^<dialog id="map" class="sheet sheet--venue"/);
+  const rows = /<div class="map-rows">([\s\S]*?)<\/div>\s*<div class="sheet-actions">/.exec(map);
+  assert.ok(rows, 'a .map-rows holds the settings and ends before the action bar');
+  assert.equal((rows[1].match(/<fieldset class="quality/g) || []).length, 4);
+  assert.deepEqual([...rows[1].matchAll(/<legend>([^<]*)<\/legend>/g)].map((m) => m[1]), ['Theme', 'Graphics', 'Sound', 'Music']);
+  assert.doesNotMatch(hub, /sheet--venue|map-rows/);
+  const css = readFileSync('ecosystem/ecosystem.css', 'utf8');
+  assert.match(css, /@media \(max-width: 480px\) \{[^}]*\.sheet--venue \.map-rows \{ display: grid; grid-template-columns: 1fr 1fr;/);
+  assert.match(css, /\.sheet--venue \.map-rows fieldset:nth-child\(-n\+2\) \{ grid-column: 1 \/ -1; \}/);
+  assert.match(css, /\.sheet--venue > p\.muted \{ display: none; \}/);
 });
 
 // The blind read (6 Nov 2026): a phone on a venue had no theme control, because the timer panel hides the HUD's theme

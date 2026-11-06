@@ -513,6 +513,11 @@ for (const w of WIDTHS) for (const theme of THEMES) {
           await page.evaluate(() => window.__eco.toStart());
         }
         await page.click('#open-map');
+        if (pick.includes('map')) { // Lagoon v2 Task 5: unscrolled, the Music row must end above the sticky Keep driving bar and inside the viewport
+          const m = await page.evaluate(() => { const d = document.getElementById('map'), r = d.querySelector('[data-music]').closest('fieldset').getBoundingClientRect(), a = d.querySelector('.sheet-actions').getBoundingClientRect(); return { bottom: Math.round(r.bottom), bar: Math.round(a.top), H: innerHeight }; });
+          console.log(`map ${tag}: the Music row ends at ${m.bottom}px, the Keep driving bar starts at ${m.bar}px`);
+          if (m.bottom > m.bar || m.bottom > m.H) errors.push(`map: the Music row ends at ${m.bottom}px, under the Keep driving bar at ${m.bar}px (viewport ${m.H}px)`);
+        }
         await shot('map');
         await page.evaluate(() => document.querySelector('#map [data-close]').click());
         // The lap-finish sheet with Lagoon times (the floor is 29.469 s, results/lagoon.json): a new best of 0:29.794, 0.326 s
