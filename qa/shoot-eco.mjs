@@ -338,7 +338,7 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         await page.evaluate(() => document.querySelector('#map [data-close]').click());
         await page.evaluate(() => window.__eco.toStart());
         await shot('raceway', 3000); // the race HUD updates every 16 frames
-        { const f = await gantryFit(page); console.log(`gantry ${tag} hub worst margin ${f.worst}px`); if (f.bad.length) errors.push(`raceway: the start gantry is clipped (${f.bad.join('; ')})`); }
+        if (pick.includes('raceway')) { const f = await gantryFit(page); console.log(`gantry ${tag} hub worst margin ${f.worst}px`); if (f.bad.length) errors.push(`raceway: the start gantry is clipped (${f.bad.join('; ')})`); }
         // The graze rule on the hairpin's tyre walls: 12 m before a point 8 m into the first auto wall run, 15 degrees into it at 24 m/s, then real frames
         if (pick.includes('walls')) {
           await page.evaluate(async () => {
@@ -428,7 +428,7 @@ for (const w of WIDTHS) for (const theme of THEMES) {
         if (grid.speed !== 0) errors.push(`the car is not stopped on the grid (${grid.speed} m/s)`);
         if (/lagoon\/?$/.test(PAGE) && grid.title !== 'The Lagoon') errors.push(`the HUD title is "${grid.title}", not "The Lagoon"`);
         await shot('grid', 2500);
-        { const f = await gantryFit(page); console.log(`gantry ${tag} venue worst margin ${f.worst}px`); if (f.bad.length) errors.push(`grid: the start gantry is clipped (${f.bad.join('; ')})`); }
+        if (pick.includes('grid')) { const f = await gantryFit(page); console.log(`gantry ${tag} venue worst margin ${f.worst}px`); if (f.bad.length) errors.push(`grid: the start gantry is clipped (${f.bad.join('; ')})`); }
         // Driving: up held until the car is over the line with the lap clock running (software frames are few, so wait on
         // the car, not the clock), then let go
         if (pick.includes('drive')) {
