@@ -456,6 +456,10 @@ hash identical outside a 60 m window round the venue road, its arch and its tree
 item by item (the road, the arch sign and beam, the belt): the masked rule replaces the whole-grid hash now that a road
 exists by design.
 
+## The Lagoon v2 relay (6 Nov 2026): change-scoped, no design loop
+
+No new sheet or page, so the round ran the automated audit on the full matrix on both pages, its own measures and the phone pass, with no design loop or blind re-score. New measures in `shoot-eco.mjs`: the **gantry fit** (the start gantry's twelve points inside the frame with a 3% margin, in the hub's `raceway` and the venue's `grid` states only), the **jump frame** (the ramp deck's clipped area under 6% of the viewport, gate 3's banner wholly inside with a 2% margin or of zero visible area, inside from 1001 up, the car in frame on every airborne frame), and the **venue Map's Music row** above the sticky bar at widths up to 480. `portal-smoke.mjs` judges a transition frame blank when it is a uniform near-white frame (97% of pixels within 6 of the median, the median's lowest channel 235 or more), with a self-test on `fixtures/portal/cloud-frame.jpg` and three synthetic frames; a drifting cloud no longer fails it. Gate on fe05690: the audit clean on both pages, the hub's fingerprints equal main in 3 of 3 runs, portal smoke clean in 3 Chromium runs and WebKit. `peers-smoke.mjs` times out in `open()` on main as well (pre-existing, not yet looked at).
+
 ## Multiplayer smoke (`qa/peers-smoke.mjs`)
 
 ```sh
