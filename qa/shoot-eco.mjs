@@ -140,6 +140,56 @@ async function gantryFit(page) {
   });
 }
 
+// The jump frame (Lagoon v2 Task 4), judged through the live stunt camera: (i) the ramp deck's four corners projected and clipped
+// to the viewport (Sutherland-Hodgman) must cover under 6% of it, (ii) gate 3's banner (7.2 x 1.2 m at 5.6 m, centred on the gate)
+// must sit wholly inside with a 2% margin or wholly outside, and wholly inside from 1001 wide up, (iii) the car must be on screen.
+async function jumpFrame(page) {
+  return page.evaluate(() => {
+    const e = window.__eco, W = innerWidth, H = innerHeight, j = e.jumps.find((o) => o.stunt) || e.jumps[0];
+    const g = e.raceGates.find((o) => o.i === 3), rx = -g.fz, rz = g.fx;
+    const clip = (poly, inside, cut) => {
+      const out = [];
+      for (let i = 0; i < poly.length; i++) {
+        const a = poly[i], b = poly[(i + 1) % poly.length], ia = inside(a), ib = inside(b);
+        if (ia) out.push(a);
+        if (ia !== ib) out.push(cut(a, b));
+      }
+      return out;
+    };
+    const ground = (x, z) => e.groundHeight(x, z);
+    // The deck is clipped against the near plane in view space first, so a corner behind the camera cannot mirror into the frame
+    const cam = e.camera; cam.updateMatrixWorld();
+    const M = cam.matrixWorldInverse.elements, P = cam.projectionMatrix.elements;
+    const view = (x, y, z) => ({ x: M[0] * x + M[4] * y + M[8] * z + M[12], y: M[1] * x + M[5] * y + M[9] * z + M[13], z: M[2] * x + M[6] * y + M[10] * z + M[14] });
+    const corner = (f, lat, up) => { const x = j.ox + j.fx * f + j.rx * lat, z = j.oz + j.fz * f + j.rz * lat; return view(x, ground(x, z) + up, z); };
+    let v = [corner(0, -2.7, 0), corner(0, 2.7, 0), corner(j.length, 2.7, j.height), corner(j.length, -2.7, j.height)];
+    const NEAR = -0.1, out3 = [];
+    for (let i = 0; i < v.length; i++) {
+      const a = v[i], b = v[(i + 1) % v.length], ia = a.z <= NEAR, ib = b.z <= NEAR;
+      if (ia) out3.push(a);
+      if (ia !== ib) { const t = (NEAR - a.z) / (b.z - a.z); out3.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: NEAR }); }
+    }
+    let poly = out3.map((q) => { const w = -q.z; return { x: ((P[0] * q.x) / w + 1) / 2 * W, y: (1 - (P[5] * q.y) / w) / 2 * H }; });
+    const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    poly = clip(poly, (p) => p.x >= 0, (a, b) => lerp(a, b, (0 - a.x) / (b.x - a.x)));
+    poly = clip(poly, (p) => p.x <= W, (a, b) => lerp(a, b, (W - a.x) / (b.x - a.x)));
+    poly = clip(poly, (p) => p.y >= 0, (a, b) => lerp(a, b, (0 - a.y) / (b.y - a.y)));
+    poly = clip(poly, (p) => p.y <= H, (a, b) => lerp(a, b, (H - a.y) / (b.y - a.y)));
+    let area = 0;
+    for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; area += a.x * b.y - b.x * a.y; }
+    const deck = Math.abs(area) / 2 / (W * H);
+    const base = ground(g.x, g.z), ban = [];
+    let behind = false;
+    for (const lat of [-3.6, 3.6]) for (const y of [5.0, 6.2]) { if (view(g.x + rx * lat, base + y, g.z + rz * lat).z > NEAR) behind = true; ban.push(e.project(g.x + rx * lat, base + y, g.z + rz * lat)); }
+    const mx = W * 0.02, my = H * 0.02;
+    const inside = !behind && ban.every((p) => p.x >= mx && p.x <= W - mx && p.y >= my && p.y <= H - my);
+    const outside = behind || ban.every((p) => p.x < 0 || p.x > W || p.y < 0 || p.y > H);
+    const margin = Math.round(Math.min(...ban.map((p) => Math.min(p.x - mx, W - mx - p.x, p.y - my, H - my - p.y))));
+    const c = e.car.s, cp = e.project(c.x, c.y + 0.8, c.z);
+    return { W, H, deck, inside, outside, margin, carOn: cp.x >= 0 && cp.x <= W && cp.y >= 0 && cp.y <= H, car: `${Math.round(cp.x)},${Math.round(cp.y)}` };
+  });
+}
+
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 let problems = 0;
 // Self-test: the audit must catch a translucent panel that fails only over a dark scene (and parse its color(srgb)
@@ -427,10 +477,19 @@ for (const w of WIDTHS) for (const theme of THEMES) {
             R.raceTick(x, z, x, z, h, Math.max(0, sAt - s0) / 25); // the clock to the run-up's start, no crossing
             e.placeCar(x, z, h);
             e.car.s.speed = 27; e.keys.up = true;
+            // The car's screen position on every frame the stunt camera is more than a third in, to the landing (read after the shot)
+            window.__jumpTrack = [];
+            const tick = () => { const c = e.car.s, k = e.stuntState().k; if (k > 0.33 && c.air) { const p = e.project(c.x, c.y + 0.8, c.z); window.__jumpTrack.push([p.x, p.y]); } if (!window.__jumpDone) requestAnimationFrame(tick); };
+            window.__jumpDone = false; requestAnimationFrame(tick);
             return T.raceGates.filter((g) => g.i > 0 && g.s < sAt).length;
           });
           const flew = await page.waitForFunction(() => { const e = window.__eco, s = e.car.s; return s.air && e.stuntState().on && e.stuntState().k > 0.5 && window.__onWater(s.x, s.z); }, null, { timeout: 60000, polling: 'raf' }).then(() => true, () => false);
+          const f = await jumpFrame(page); // measured on the frame that is shot, not after it: the car keeps flying
           await page.screenshot({ path: `${out}${PREFIX}jump-${tag}.png` });
+          console.log(`jump ${tag}: deck ${(f.deck * 100).toFixed(1)}%, sign ${f.inside ? 'inside' : f.outside ? 'outside' : 'CLIPPED'} (margin ${f.margin}px), car at ${f.car}`);
+          if (f.deck >= 0.06) errors.push(`jump: the ramp deck fills ${(f.deck * 100).toFixed(1)}% of the frame (limit 6%)`);
+          if (!f.inside && !(f.outside && f.W < 1001)) errors.push(`jump: gate 3's sign is ${f.outside ? 'out of the frame (it must be whole from 1001 up)' : 'clipped'} at ${f.W} wide (worst margin ${f.margin}px)`);
+          if (!f.carOn) errors.push(`jump: the car is off screen at ${f.car}`);
           const air = await page.evaluate(() => ({ air: window.__eco.car.s.air, stunt: window.__eco.stuntState().on, k: +window.__eco.stuntState().k.toFixed(2) }));
           await page.evaluate(() => { window.__eco.keys.up = false; });
           if (!flew || !air.air) errors.push(`jump: the car was not in the air over the inlet when shot (${JSON.stringify(air)})`);
@@ -438,6 +497,10 @@ for (const w of WIDTHS) for (const theme of THEMES) {
           if (cps < 1 || /Checkpoint 0 of|CP 0\//.test(sub)) errors.push(`jump: the HUD has taken no checkpoint (${cps} short of the run-up, "${sub}")`);
           const found = await page.evaluate(audit); problems += found.length; for (const i of found) console.log(`     jump-${tag}: ${i}`);
           await page.waitForFunction(() => !window.__eco.car.s.air, null, { timeout: 30000 }).catch(() => {});
+          { const t = await page.evaluate(() => { window.__jumpDone = true; return { pts: window.__jumpTrack, W: innerWidth, H: innerHeight }; });
+            const out = t.pts.filter(([x, y]) => x < 0 || x > t.W || y < 0 || y > t.H);
+            console.log(`jump ${tag}: the car stays in the frame on ${t.pts.length - out.length} of ${t.pts.length} airborne frames`);
+            if (!t.pts.length || out.length) errors.push(`jump: the car is off screen on ${out.length} of ${t.pts.length} airborne frames of the stunt camera (first at ${out[0] ? Math.round(out[0][0]) + ',' + Math.round(out[0][1]) : 'none'})`); }
           await page.evaluate(() => window.__eco.toStart());
         }
         await page.click('#open-map');

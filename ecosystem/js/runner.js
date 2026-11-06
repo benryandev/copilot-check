@@ -10,7 +10,7 @@ import { normaliseFunding, pollDue } from "./windsock-math.js";
 import { chaseFrame, behindLine } from "./camera-math.js";
 import { buildGround, buildRoads, buildJumps, buildPlazas, groundHeight, roadInfo, roads, jumps, WORLD, inRaceway, trackDistance, raceGates, WATER_LEVEL, jumpAt, riverInfo, setRidgeSeries, onRidge, ridgeSeries, districts, stops, trackDef, configureTerrain } from "./terrain.js";
 import { buildWater, buildRiverBed, buildBridges } from "./water.js";
-import { stuntPose, stuntStep, stuntTakeoff, stuntEase } from "./stunt-math.js";
+import { stuntPose, stuntLook, stuntStep, stuntTakeoff, stuntEase } from "./stunt-math.js";
 import { initStick } from "./stick.js";
 import { FOCUS, focusPose, focusBlend, nearBoard, atMarker } from "./focus-math.js";
 import { boardImage, shareBoard, shareCaption } from "./board-share.js";
@@ -522,7 +522,7 @@ export async function runWorld(entry) {
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
   let foot = { driving: false, t: 0 }; // the footer's driving state (hud-math.js)
   // The epic jump's camera state lives up here because a snap (teleport, grid, placeCar) ends it; see stuntTick below
-  const stunt = { k: 0, on: false, cam: new THREE.Vector3(), look: new THREE.Vector3() };
+  const stunt = { k: 0, on: false, jump: null, cam: new THREE.Vector3(), look: new THREE.Vector3() };
   function placeCamera(dt, snap = false) {
     if (snap) { stunt.k = 0; stunt.on = false; }
     if (snap && focus.on) { focusEnd(); focus.k = 0; } // a teleport (Map view, a guide, a race grid) ends the zoom at once // a teleport mid-flight must not leave the camera easing back from the river
@@ -563,6 +563,7 @@ export async function runWorld(entry) {
     if (reduceMotion) return;
     const c = stuntPose(j, jumps, riverInfo, WATER_LEVEL);
     stunt.cam.set(c.x, c.y, c.z);
+    stunt.jump = j;
     stunt.on = true;
   }
   function stuntTick(dt) {
@@ -571,7 +572,8 @@ export async function runWorld(entry) {
     if (stunt.k <= 0) return;
     const s = car.s, k = stuntEase(stunt.k);
     camera.position.lerpVectors(camPos, stunt.cam, k);
-    stunt.look.set(s.x, s.y + 0.8, s.z).lerp(camLook, 1 - k);
+    const l = stuntLook(s, stunt.jump, camera.aspect);
+    stunt.look.set(l.x, l.y, l.z).lerp(camLook, 1 - k);
     camera.lookAt(stunt.look);
   }
 

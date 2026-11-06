@@ -96,7 +96,7 @@ test('the blend is eased, so the camera starts and stops gently', () => {
 
 // ── Plan 5 Task 2: the Lagoon's water jump, seen from the grandstand's side ──────────────────────────────────────────
 import * as T from '../ecosystem/js/terrain.js';
-import { stuntPose, stuntStep, standSide, STAND_OFF, STAND_UP } from '../ecosystem/js/stunt-math.js';
+import { stuntPose, stuntLook, stuntStep, standSide, STAND_ALONG, STAND_OFF, STAND_UP, STAND_LOOK, STAND_WIDE } from '../ecosystem/js/stunt-math.js';
 import { venueEntry } from '../ecosystem/js/entries.js';
 import lagoon from '../ecosystem/tracks/lagoon.js';
 import { loadStepCar } from '../tools/lapsim/car-node.mjs';
@@ -120,25 +120,45 @@ test('standSide: the stand nearest the ramp along the lap gives the side by its 
   assert.equal(standSide(10, [], 844.5, -1), -1); assert.equal(standSide(10, undefined, 844.5, 1), 1);
 });
 
-test('the Lagoon\'s stand-side pose: on the stand\'s side, 12 m off the ramp lane, a quarter of the flight past the lip, below 4 m, looking along the flight', () => {
+test('the Lagoon\'s stand-side pose: on the stand\'s side, 15 m off the ramp lane, 0.4 of the flight past the lip, 2.5 m up, looking along the flight (Lagoon v2 Task 4: the deck out of the foreground)', () => {
   T.configureTerrain(lagoonCfg());
   try {
-    assert.equal(STAND_OFF, 12); assert.equal(STAND_UP, 3);
+    assert.equal(STAND_ALONG, 0.4); assert.equal(STAND_OFF, 15); assert.equal(STAND_UP, 2.5);
     const j = T.jumps.find((o) => o.stunt), l = lip(j), trk = T.trackDef();
     const c = stuntPose(j, T.jumps, T.riverInfo, T.WATER_LEVEL);
     const lat = (p) => (p.x - l.x) * j.rx + (p.z - l.z) * j.rz, fwd = (p) => (p.x - l.x) * j.fx + (p.z - l.z) * j.fz;
     const st = trk.stands.find((s) => s.s === 247.4), sp = trk.at(st.s), stand = { x: sp.x + sp.rx * st.off, z: sp.z + sp.rz * st.off };
-    assert.ok(lat(stand) > 0 && Math.abs(lat(c) - 12) < 1e-9, `the jump stand at ${lat(stand).toFixed(1)} m, the camera at ${lat(c).toFixed(2)} m: same side, 12 m off the lane`);
-    assert.ok(Math.abs(fwd(c) - j.bank / 4) < 1e-9, `a quarter of the flight past the lip (${fwd(c)} vs ${j.bank / 4})`);
+    assert.ok(lat(stand) > 0 && Math.abs(lat(c) - 15) < 1e-9, `the jump stand at ${lat(stand).toFixed(1)} m, the camera at ${lat(c).toFixed(2)} m: same side, 15 m off the lane`);
+    assert.ok(Math.abs(fwd(c) - j.bank * 0.4) < 1e-9, `0.4 of the flight past the lip (${fwd(c)} vs ${j.bank * 0.4})`);
     // The ramp the car has just left is behind the camera: its whole length is short of the camera along the flight
     assert.ok(fwd({ x: j.ox, z: j.oz }) < fwd(c) && fwd(l) < fwd(c), 'the ramp, foot to lip, behind the camera');
-    assert.ok(c.y - T.WATER_LEVEL < 4 && Math.abs(c.y - T.WATER_LEVEL - 3) < 1e-9, `3 m up (${c.y})`);
+    assert.ok(Math.abs(c.y - T.WATER_LEVEL - 2.5) < 1e-9, `2.5 m up (${c.y})`);
     assert.ok(c.y > T.groundHeight(c.x, c.z) + 1.5, 'clear of the ground under it');
     const far = { x: l.x + j.fx * j.bank, z: l.z + j.fz * j.bank }, mid = { x: l.x + j.fx * j.bank / 2, z: l.z + j.fz * j.bank / 2 };
     const look = (p) => { const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz); return (dx * j.fx + dz * j.fz) / d; };
-    assert.ok(look(far) > 0.7, `the far bank is ahead of the camera along the flight (cos ${look(far).toFixed(2)})`);
-    assert.ok(look(mid) > 0.3, `so is the middle of the flight (cos ${look(mid).toFixed(2)})`);
+    assert.ok(look(far) > 0.5, `the far bank is ahead of the camera along the flight (cos ${look(far).toFixed(2)})`);
+    assert.ok(look(mid) > 0.1, `so is the middle of the flight (cos ${look(mid).toFixed(2)})`);
     assert.equal(T.onWater(far.x - j.fx * 0.5, far.z - j.fz * 0.5), true, 'bank is where the water ends'); assert.equal(T.onWater(far.x + j.fx * 0.5, far.z + j.fz * 0.5), false);
+  } finally { T.configureTerrain(hubCfg); }
+});
+
+test('stuntLook: the car for the hub\'s river ramps; on the Lagoon a wide frame leans toward the far side of the inlet, a portrait one keeps the car', () => {
+  const car = { x: 3, y: 1, z: -4 };
+  const [a] = stunt();
+  assert.deepEqual(stuntLook(car, a), { x: 3, y: 1.8, z: -4 }, 'the hub\'s ramp: the car, 0.8 m up, whatever the aspect');
+  assert.deepEqual(stuntLook(car, a, 0.5), { x: 3, y: 1.8, z: -4 });
+  T.configureTerrain(lagoonCfg());
+  try {
+    const j = T.jumps.find((o) => o.stunt), own = { x: car.x, y: car.y + 0.8, z: car.z };
+    const far = stuntLook(car, j, 1.6), portrait = stuntLook(car, j, 0.75), mid = stuntLook(car, j, 1.05);
+    assert.deepEqual(portrait, own, 'portrait: the car alone');
+    assert.deepEqual(stuntLook(car, j), far, 'no aspect: the full lean');
+    const d = j.length + j.bank, ax = j.ox + j.fx * d, az = j.oz + j.fz * d; // the far bank on the lane
+    assert.ok(Math.abs(far.x - (own.x + (ax - own.x) * STAND_LOOK)) < 1e-9 && Math.abs(far.z - (own.z + (az - own.z) * STAND_LOOK)) < 1e-9, 'wide: STAND_LOOK of the way to the far bank');
+    assert.equal(far.y, own.y, 'height is the car\'s');
+    const share = (p) => Math.hypot(p.x - own.x, p.z - own.z);
+    assert.ok(share(portrait) < share(mid) && share(mid) < share(far), 'the lean fades in with the aspect ratio');
+    assert.ok(STAND_WIDE[0] < STAND_WIDE[1] && stuntLook(car, j, STAND_WIDE[1] + 0.3).x === far.x, 'full from the upper aspect');
   } finally { T.configureTerrain(hubCfg); }
 });
 

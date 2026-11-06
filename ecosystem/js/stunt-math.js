@@ -18,8 +18,12 @@ export const stuntBlend = (k, dt, airborne) => (airborne ? Math.min(1, k + dt / 
  * With `{ side: "stand", fx, fz, rx, rz, back }` (a lone ramp over a track inlet, plan 5 Task 2) it stands low and trackside
  * instead: `back` m behind `at` along the flight (fx, fz), STAND_OFF m off the ramp lane toward
  * (rx, rz), the grandstand's side, and STAND_UP m above the water, looking along the flight toward the far bank. */
-export const STAND_OFF = 12; // m off the ramp lane
-export const STAND_UP = 3; // m above the water
+export const STAND_ALONG = 0.4; // of the bank (lip to far bank) past the lip
+export const STAND_LOOK_TO = 1; // the point the stand camera leans toward: this fraction of the bank past the lip, on the lane
+export const STAND_LOOK = 0.7; // how far from the car toward that point it looks, on a wide frame
+export const STAND_WIDE = [0.9, 1.2]; // the aspect ratios between which that lean fades in: a portrait frame is too narrow to hold both
+export const STAND_OFF = 15; // m off the ramp lane
+export const STAND_UP = 2.5; // m above the water
 export const stuntCamera = (at, tan, waterLevel, o) =>
   o?.side === "stand"
     ? { x: at.x - o.fx * o.back + o.rx * STAND_OFF, y: waterLevel + STAND_UP, z: at.z - o.fz * o.back + o.rz * STAND_OFF }
@@ -34,7 +38,7 @@ export function stuntPose(j, all, waterAt, waterLevel) {
   const lipA = { x: j.ox + j.fx * j.length, z: j.oz + j.fz * j.length };
   if (!other && j.bank > 0) {
     const h = j.bank / 2, mid = { x: lipA.x + j.fx * h, z: lipA.z + j.fz * h };
-    return stuntCamera(mid, null, waterLevel, { side: "stand", fx: j.fx, fz: j.fz, rx: j.rx * j.standSide, rz: j.rz * j.standSide, back: h / 2 });
+    return stuntCamera(mid, null, waterLevel, { side: "stand", fx: j.fx, fz: j.fz, rx: j.rx * j.standSide, rz: j.rz * j.standSide, back: h - j.bank * STAND_ALONG });
   }
   const lipB = other ? { x: other.ox + other.fx * other.length, z: other.oz + other.fz * other.length } : lipA;
   const mid = { x: (lipA.x + lipB.x) / 2, z: (lipA.z + lipB.z) / 2 }, ri = waterAt(mid.x, mid.z, 12);
@@ -53,4 +57,15 @@ export function standSide(s, stands, len, outside) {
   let best = null, bd = Infinity;
   for (const st of stands || []) { const d = Math.abs(st.s - s) % len, w = Math.min(d, len - d); if (w < bd) { bd = w; best = st; } }
   return best ? Math.sign(best.off) || outside : outside;
+}
+/** Where the stunt camera looks: the car (a little above its middle) for the hub's river ramps; for a lone ramp with a far bank,
+ * up to `STAND_LOOK` of the way from the car toward the lane STAND_LOOK_TO banks past the lip, so the far side of the inlet
+ * and the gate beyond it share the frame with the car. The lean fades in with the frame's aspect ratio (STAND_WIDE): a
+ * portrait frame cannot hold the car and the gate, so it keeps the car (the gate falls wholly out of it, never half in). */
+export function stuntLook(car, j, aspect = Infinity) {
+  const own = { x: car.x, y: car.y + 0.8, z: car.z };
+  if (!(j?.bank > 0)) return own;
+  const t = Math.min(1, Math.max(0, (aspect - STAND_WIDE[0]) / (STAND_WIDE[1] - STAND_WIDE[0]))), w = STAND_LOOK * t * t * (3 - 2 * t);
+  const d = j.length + j.bank * STAND_LOOK_TO, ax = j.ox + j.fx * d, az = j.oz + j.fz * d;
+  return { x: own.x + (ax - own.x) * w, y: own.y, z: own.z + (az - own.z) * w };
 }
